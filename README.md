@@ -1,67 +1,69 @@
-# Pilot — pi.dev 的管理平面
+# Pilot
 
-> pi 跑活，Pilot 管 pi。
+> **Pi 跑活，Pilot 管 Pi。**
+>
+> Pilot 管包、管会话、管 profile、看消耗、做体检，并把扩展生态沉淀成可组合的 Pi 能力。
 
-Pilot 是一个为 [pi.dev](https://pi.dev) 编码 agent 设计的**管理工具**（不是另一个 agent runtime）。它帮你：
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Node ≥ 20](https://img.shields.io/badge/node-%E2%89%A520-green.svg)](https://nodejs.org)
 
-- 📦 **管理 4624+ pi 包**：搜索、装卸、组合、冲突检测
-- 💬 **管理会话**：列表、全文搜索、对比、统计
-- 🎛 **管理 profile**：项目级 model/extension/thinking 切换
-- 📊 **看消耗**：token、成本、按模型/扩展分维度
-- 🔧 **做体检**：环境/配置/包/会话的健康检查
+[Pi](https://pi.dev) 是极简终端编码 agent。**Pilot 是 Pi 的管理平面**——它不运行 agent，只管理 Pi：包、会话、profile、消耗、健康状态。
 
 ## 30 秒上手
 
 ```bash
-# 装 Pilot
 npm install -g pilot
 
-# 确认环境
-pilot doctor
-
-# 搜包
+pilot doctor           # 体检：Pi / Node / fd / settings
+pilot pack ls          # 看已装包（按类别分组）
 pilot pack search subagent
-
-# 看已装
-pilot pack ls
-
-# 全文搜会话
 pilot session search "JWT auth"
 ```
 
-## 为什么需要 Pilot？
-
-pi 自己很极简——4 个原子工具（read / write / edit / bash），<1000 token system prompt。这让 pi 跑得快，但同时留下了 10 个管理缺口（[设计文档 §2.5](./PILOT.md)）。
-
-Pilot **不替代 pi**，只管理 pi。`~/.pi/agent/` 永远是 source of truth。
-
-## 命令一览（v0.1）
+## 命令一览
 
 | 命令 | 说明 |
 |---|---|
-| `pilot pack ls` | 列出已装包，按用途分组 |
-| `pilot pack search <query>` | 终端内搜 npm |
+| `pilot pack ls` | 已装包 + 冲突检测 |
+| `pilot pack search <q>` | 终端内搜 npm |
 | `pilot pack info <pkg>` | 详情 |
-| `pilot pack install <pkg>` | 装（包装 pi install） |
-| `pilot pack team install <name>` | 装组合包 |
-| `pilot session ls` | 列出本地会话 |
-| `pilot session search <q>` | 全文搜会话 |
-| `pilot doctor` | 体检 |
+| `pilot pack install <pkg>` | 包装 `pi install` |
+| `pilot session ls` | 列出会话（按项目分组） |
+| `pilot session search <q>` | 全文搜会话（8 路并发） |
+| `pilot doctor` | 健康检查 |
 
-完整规划见 [PILOT.md](./PILOT.md)。
+v0.2+：`pilot server`（本地 HTTP）、`pilot ui`（Web UI）、`pilot profile`。
+v0.4+：`pilot forge`（能力工厂）。
+v0.5+：`pilot avatar`（分身）。
+
+## 设计原则
+
+1. **Pi 是 source of truth** — Pilot 永远不复制 Pi 的 session、package、model、settings
+2. **`~/.pilot/` 是 Pilot 自己的** — 不污染 `~/.pi/agent/`，除非用户显式 apply
+3. **不抓取闭源产品内部实现** — 只复刻"公开可观察的工作流行为"
+4. **不承诺"等价 Claude Code"** — 表述为 "inspired by"
+
+## 文档
+
+- 📖 [Vision](./docs/vision.md) — Pilot 是什么、不是什么、边界、长期形态
+- 🏗️ [Architecture](./docs/architecture.md) — core / cli / server / ui / 安全模型
+- 🗺️ [Roadmap](./docs/roadmap.md) — 三段式：看见 Pi → 管理 Pi → 进化 Pi
+- 🔥 [Forge & Avatars](./docs/forge-and-avatars.md) — 能力系统（v0.4+）
+- 📦 [Pack module](./docs/modules/pack.md) · 💬 [Session module](./docs/modules/session.md)
+- 📐 [Design overview](./PILOT.md)
 
 ## 贡献
 
-详见 [CONTRIBUTING.md](./CONTRIBUTING.md)。
+见 [CONTRIBUTING.md](./CONTRIBUTING.md)。简单版：
 
-简单版：
-1. Fork + clone
-2. `npm install`
-3. `npm run dev` 跑起来
-4. 改代码
-5. `npm test && npm run lint`
-6. 提 PR
+```bash
+git clone https://github.com/wwppee/pilot.git
+cd pilot
+npm install
+npm run dev -- pack ls
+npm test
+```
 
-## License
+## 许可
 
-[MIT](./LICENSE)
+[MIT](./LICENSE) © 2026 Pilot Contributors
