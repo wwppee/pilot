@@ -16,6 +16,7 @@ import { mkdtempSync, rmSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startServer, type ServerHandle } from '../../src/server/server.js';
+import { VERSION } from '../../src/core/version.js';
 
 describe('pilot server', () => {
   let handle: ServerHandle;
@@ -51,7 +52,7 @@ describe('pilot server', () => {
       expect(res.statusCode).toBe(200);
       const body = res.json();
       expect(body.status).toBe('ok');
-      expect(body.version).toBe('0.2.0');
+      expect(body.version).toBe(VERSION);
     });
   });
 

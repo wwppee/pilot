@@ -25,6 +25,7 @@ import { randomUUID } from 'node:crypto';
 
 import { createService, type CreateServiceOptions } from '../core/service-impl.js';
 import type { PilotService } from '../core/service.js';
+import { VERSION } from '../core/version.js';
 
 import { readOrCreateToken, TOKEN_HEADER, verifyToken } from './auth.js';
 import { CSRF_COOKIE, CSRF_HEADER, CsrfState } from './csrf.js';
@@ -43,6 +44,7 @@ export interface StartServerOptions {
 
 export interface ServerHandle {
   port: number;
+  host: string;
   url: string;
   token: string;
   csrf: CsrfState;
@@ -55,11 +57,23 @@ export interface ServerHandle {
 
 const DEFAULT_PORT = 17361;
 const DEFAULT_HOST = '127.0.0.1';
-const ALLOWED_ORIGINS = new Set([
-  'http://127.0.0.1:17361',
-  'http://localhost:17361',
-  // Allow same-origin requests (no Origin header) — common for curl / scripts.
-]);
+
+/**
+ * Build the set of allowed Origin values for the bound host+port.
+ *
+ * Localhost has two reasonable spellings; both 127.0.0.1 and localhost must
+ * be accepted because browsers and OSes don't always agree on which to send.
+ */
+function allowedOriginsFor(host: string, port: number): Set<string> {
+  const origins = new Set<string>();
+  const variants = host === '127.0.0.1' || host === '0.0.0.0'
+    ? [host, 'localhost']
+    : [host];
+  for (const h of variants) {
+    origins.add(`http://${h}:${port}`);
+  }
+  return origins;
+}
 
 /** Routes that require CSRF + Origin check (mutating operations). */
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -74,6 +88,7 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Server
   const service = createService(serviceOptions);
   const token = await readOrCreateToken(home);
   const csrf = new CsrfState();
+  const allowedOrigins = allowedOriginsFor(host, port);
 
   const app = Fastify({
     logger: opts.logger ?? false,
@@ -98,7 +113,7 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Server
     // Origin + CSRF check for write methods
     if (WRITE_METHODS.has(req.method)) {
       const origin = req.headers['origin'];
-      if (origin && !ALLOWED_ORIGINS.has(origin)) {
+      if (origin && !allowedOrigins.has(origin)) {
         reply.code(403).send({ error: 'forbidden: bad origin' });
         return reply;
       }
@@ -132,7 +147,7 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Server
 
   app.get('/health', async () => ({
     status: 'ok',
-    version: '0.2.0',
+    version: VERSION,
     pid: process.pid,
   }));
 
@@ -210,6 +225,7 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Server
   const url = `http://${host}:${port}`;
   return {
     port,
+    host,
     url,
     token,
     csrf,

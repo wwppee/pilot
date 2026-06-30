@@ -10,10 +10,13 @@
  * a mock.
  */
 
-import { execSync } from 'node:child_process';
-import { existsSync, statSync } from 'node:fs';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { stat } from 'node:fs/promises';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
+
+const execFileAsync = promisify(execFile);
 
 import { listCapabilities, tryLoadCapability } from './capability.js';
 import { searchSession } from './jsonl-parser.js';
@@ -188,7 +191,8 @@ async function runDoctor(home?: string): Promise<DoctorReport> {
   // fd (optional)
   let fdOk = false;
   try {
-    execSync('fd --version', { stdio: 'ignore' });
+    // We only care whether the binary exists; ignore its output.
+    await execFileAsync('fd', ['--version'], { stdio: 'ignore' } as never);
     fdOk = true;
   } catch {
     fdOk = false;
@@ -200,7 +204,7 @@ async function runDoctor(home?: string): Promise<DoctorReport> {
   });
 
   // ~/.pi/agent exists
-  const dirOk = existsSync(piAgentDir(home));
+  const dirOk = await pathExists(piAgentDir(home));
   checks.push({
     ok: dirOk,
     message: dirOk ? '~/.pi/agent exists' : '~/.pi/agent missing',
@@ -209,7 +213,8 @@ async function runDoctor(home?: string): Promise<DoctorReport> {
 
   // settings.json
   const settings = await readSettings(home);
-  if (existsSync(piSettingsFile(home))) {
+  const settingsExists = await pathExists(piSettingsFile(home));
+  if (settingsExists) {
     checks.push({
       ok: settings !== null,
       message: settings !== null ? 'settings.json valid' : 'settings.json malformed',
@@ -236,7 +241,7 @@ async function runDoctor(home?: string): Promise<DoctorReport> {
 
   // Sessions dir size
   const sessionsDir = piSessionsDir(home);
-  if (existsSync(sessionsDir)) {
+  if (await pathExists(sessionsDir)) {
     const total = await dirSize(sessionsDir);
     const mb = total / (1024 * 1024);
     checks.push({
@@ -255,24 +260,38 @@ async function runDoctor(home?: string): Promise<DoctorReport> {
 /** Recursive size of a directory in bytes. Bounded by depth for safety. */
 async function dirSize(p: string, depth = 0): Promise<number> {
   if (depth > 6) return 0;
-  let total = 0;
   let entries;
   try {
     entries = await readdir(p, { withFileTypes: true });
   } catch {
     return 0;
   }
+  let total = 0;
   for (const e of entries) {
     const full = join(p, e.name);
     if (e.isDirectory()) {
       total += await dirSize(full, depth + 1);
     } else if (e.isFile()) {
       try {
-        total += statSync(full).size;
+        const s = await stat(full);
+        total += s.size;
       } catch {
         // skip
       }
     }
   }
   return total;
+}
+
+/**
+ * Check if a path exists. Resolves true/false; never throws.
+ * Replaces existsSync (which is sync and not promisified).
+ */
+async function pathExists(p: string): Promise<boolean> {
+  try {
+    await stat(p);
+    return true;
+  } catch {
+    return false;
+  }
 }
