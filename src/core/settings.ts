@@ -31,7 +31,7 @@ export async function readSettings(): Promise<PiSettings | null> {
 }
 
 /** Return the list of installed sources, or [] if settings is missing. */
-export function listSources(settings: PiSettings | null): PiSettings['sources'] {
+export function listSources(settings: PiSettings | null): NonNullable<PiSettings['sources']> {
   if (!settings || !Array.isArray(settings.sources)) return [];
   return settings.sources;
 }

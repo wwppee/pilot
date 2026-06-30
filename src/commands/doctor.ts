@@ -31,7 +31,7 @@ interface Check {
   hint?: string;
 }
 
-export async function run(args: string[], ctx: PilotContext): Promise<number> {
+export async function run(args: string[], _ctx: PilotContext): Promise<number> {
   if (args[0] === '--json') {
     return json();
   }

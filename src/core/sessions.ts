@@ -6,7 +6,7 @@
  */
 
 import { readdir, stat } from 'node:fs/promises';
-import { join, basename, dirname } from 'node:path';
+import { join, basename } from 'node:path';
 import { PI_SESSIONS_DIR } from './types.js';
 import { readSessionInfo } from './jsonl-parser.js';
 import type { SessionInfo } from './types.js';
