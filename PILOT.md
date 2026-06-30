@@ -89,9 +89,9 @@
 
 ## 6. 关键架构决策
 
-- **v0.2 必出**：PilotService interface（CLI/server/web 共享）
-- **v0.2 必出**：Capability 数据模型（Zod schema，Forge 的前置）
-- **v0.2 必出**：本地 server + token 鉴权 + 写操作 CSRF
+- ✅ **v0.2-a 已完**：Capability 数据模型 + Zod schema（`src/core/capability.ts`，23 测试通过）
+- **v0.2-b**：PilotService interface（CLI/server/web 共享）
+- **v0.2-c**：本地 server + token 鉴权 + 写操作 CSRF
 - **v0.3.5 必出**：Web UI v1（3 个只读页，第一张截图）
 - **v0.4 必出**：Forge MVP（3 个手写能力 + eval harness）
 - **v0.5 必出**：Avatars + Session capability snapshot

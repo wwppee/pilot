@@ -19,6 +19,42 @@ export const PI_MODELS_FILE = `${PI_AGENT_DIR}/models.json`;
 /** Absolute path to the session storage directory. */
 export const PI_SESSIONS_DIR = `${PI_AGENT_DIR}/sessions`;
 
+// ─── Pilot-owned paths (v0.2+) ────────────────────────────────────
+//
+// These are Pilot's own directories — they live in `~/.pilot/`,
+// completely separate from `~/.pi/agent/`. Pi never reads from these.
+// Functions instead of constants so tests can pass a custom home dir.
+
+/** Absolute path to `~/.pilot/` — Pilot's own config/data directory. */
+export function pilotDir(home: string = process.env.HOME ?? ''): string {
+  return `${home}/.pilot`;
+}
+
+/** Absolute path to `~/.pilot/capabilities/` — capability store (v0.4+). */
+export function pilotCapabilitiesDir(home?: string): string {
+  return `${pilotDir(home)}/capabilities`;
+}
+
+/** Absolute path to `~/.pilot/profiles/` — named profiles (v0.3+). */
+export function pilotProfilesDir(home?: string): string {
+  return `${pilotDir(home)}/profiles`;
+}
+
+/** Absolute path to `~/.pilot/teams/` — meta-pack TOML files (v0.2+). */
+export function pilotTeamsDir(home?: string): string {
+  return `${pilotDir(home)}/teams`;
+}
+
+/** Absolute path to `~/.pilot/avatars/` — avatar configs (v0.5+). */
+export function pilotAvatarsDir(home?: string): string {
+  return `${pilotDir(home)}/avatars`;
+}
+
+/** Absolute path to `~/.pilot/runtime/` — avatar runtime overlays (v0.5+). */
+export function pilotRuntimeDir(home?: string): string {
+  return `${pilotDir(home)}/runtime`;
+}
+
 // ─── Settings types ────────────────────────────────────────────────
 
 /**
