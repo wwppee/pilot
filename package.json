@@ -57,10 +57,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/<owner>/pilot.git"
+    "url": "https://github.com/wwppee/pilot.git"
   },
   "bugs": {
-    "url": "https://github.com/<owner>/pilot/issues"
+    "url": "https://github.com/wwppee/pilot/issues"
   },
-  "homepage": "https://github.com/<owner>/pilot#readme"
+  "homepage": "https://github.com/wwppee/pilot#readme"
 }
