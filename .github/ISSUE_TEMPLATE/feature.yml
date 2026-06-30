@@ -1,0 +1,48 @@
+name: Feature Request
+description: Propose a new Pilot feature
+title: "[Feature] "
+labels: ["enhancement", "triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      block: |
+        Thanks for proposing a feature! Please describe it concretely.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem does this solve? What pain point?
+      placeholder: |
+        I'm always frustrated when I have to...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: How should Pilot solve this?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What other approaches did you consider?
+    validations:
+      required: false
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Usage examples
+      description: Show what the command(s) would look like.
+      placeholder: |
+        ```bash
+        pilot foo bar --baz
+        ```
+    validations:
+      required: false

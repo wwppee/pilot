@@ -1,0 +1,22 @@
+# Example meta-pack: code-review-team
+#
+# This bundles 4 packs commonly used together for code review workflows.
+# Install: pilot pack team install code-review-team
+#
+# Schema docs: docs/modules/pack.md#team
+
+[team]
+name = "code-review-team"
+description = "Code review expert combo: subagents + real-time lens + simplify + security"
+
+packs = [
+  "npm:pi-subagents",
+  "npm:pi-lens",
+  "npm:pi-simplify",
+  "npm:@vigolium/piolium",
+]
+
+# Optional profile overrides — applied when this team is active
+[profiles]
+thinking = "high"
+model = "claude-opus-4.6"
