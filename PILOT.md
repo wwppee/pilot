@@ -89,9 +89,10 @@
 
 ## 6. 关键架构决策
 
-- ✅ **v0.2-a 已完**：Capability 数据模型 + Zod schema（`src/core/capability.ts`，23 测试）
-- ✅ **v0.2-b 已完**：PilotService interface + 默认实现（`src/core/service.ts` + `service-impl.ts`，15 测试）
+- ✅ **v0.2-a 已完**：Capability 数据模型 + Zod schema（23 测试）
+- ✅ **v0.2-b 已完**：PilotService interface + 默认实现（15 测试）
 - ✅ **v0.2-c 已完**：pilot server（Fastify + token + Origin + CSRF，17 测试）
+- ✅ **v0.2-d 已完**：CLI 切到 ctx.service（7 个 commands 全走 service，16 mock 测试）
 - **v0.3.0**：Session tree (CLI) + Profile + Cost + 包分类重构（读 manifest）
 - **v0.3.5 必出**：Web UI v1（3 个只读页，第一张截图）
 - **v0.4 必出**：Forge MVP（3 个手写能力 + eval harness）

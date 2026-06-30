@@ -18,7 +18,7 @@ import { join } from 'node:path';
 import { listCapabilities, tryLoadCapability } from './capability.js';
 import { searchSession } from './jsonl-parser.js';
 import { getPack, searchPacks as searchPacksNpm } from './npm-registry.js';
-import { isPiInstalled, runPi } from './pi-cli.js';
+import { isPiInstalled, runPiStreaming } from './pi-cli.js';
 import { listAllSessions, sortByRecent } from './sessions.js';
 import { listSources, readSettings } from './settings.js';
 import {
@@ -81,11 +81,7 @@ async function searchPacks(query: string): Promise<Pack[]> {
 
 async function installPack(source: string): Promise<void> {
   const spec = source.includes(':') ? source : `npm:${source}`;
-  const res = await runPi({ args: ['install', spec], tolerateFailure: true });
-  if (res.exitCode !== 0) {
-    const detail = res.stderr.trim() || res.stdout.trim() || `exit ${res.exitCode}`;
-    throw new Error(`pi install failed: ${detail}`);
-  }
+  await runPiStreaming(['install', spec]);
 }
 
 function toInstalledPack(src: NonNullable<ReturnType<typeof listSources>>[number]): InstalledPack {

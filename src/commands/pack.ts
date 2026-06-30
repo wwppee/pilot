@@ -5,13 +5,12 @@
  *   ls        List installed packs, grouped by kind
  *   search    Search npm registry from the terminal
  *   info      Show details for a pack
- *   install   Install a pack (shells out to `pi install`)
+ *   install   Install a pack (delegates to PilotService.installPack)
+ *
+ * All read/write paths go through `ctx.service` — no direct core imports.
  */
 
 import kleur from 'kleur';
-import { readSettings, listSources } from '../core/settings.js';
-import { searchPacks, getPack } from '../core/npm-registry.js';
-import { runPi } from '../core/pi-cli.js';
 import type { InstalledPack, PackKind, PilotContext, Command } from '../core/types.js';
 
 export const manifest: Command = {
@@ -48,15 +47,12 @@ export async function run(args: string[], ctx: PilotContext): Promise<number> {
 // ─── ls ─────────────────────────────────────────────────────────────
 
 async function ls(ctx: PilotContext): Promise<number> {
-  const settings = await readSettings();
-  const sources = listSources(settings);
+  const packs = await ctx.service.listPacks();
 
-  if (sources.length === 0) {
+  if (packs.length === 0) {
     ctx.logger.info('No packs installed. Try: pilot pack search subagent');
     return 0;
   }
-
-  const packs = sources.map(toInstalledPack);
 
   ctx.logger.info(`${packs.length} pack(s) installed:\n`);
 
@@ -71,7 +67,7 @@ async function ls(ctx: PilotContext): Promise<number> {
     console.log();
   }
 
-  // Heuristic conflict detection: warn if 3+ subagent packs installed.
+  // Heuristic conflict detection: warn if 2+ subagent packs installed.
   const subagentCount = packs.filter(isSubagentPack).length;
   if (subagentCount >= 2) {
     ctx.logger.warn(
@@ -91,7 +87,7 @@ async function search(query: string, ctx: PilotContext): Promise<number> {
   }
 
   try {
-    const results = await searchPacks({ query, size: 15 });
+    const results = await ctx.service.searchPacks(query);
     if (results.length === 0) {
       ctx.logger.info('No matches.');
       return 0;
@@ -124,7 +120,7 @@ async function info(name: string, ctx: PilotContext): Promise<number> {
   }
 
   try {
-    const pack = await getPack(name);
+    const pack = await ctx.service.getPack(name);
     if (!pack) {
       ctx.logger.error(`Package not found: ${name}`);
       return 1;
@@ -160,48 +156,19 @@ async function install(source: string, ctx: PilotContext): Promise<number> {
   const spec = source.includes(':') ? source : `npm:${source}`;
 
   ctx.logger.info(`Running: pi install ${spec}`);
-  const res = await runPi({ args: ['install', spec], tolerateFailure: true });
-
-  if (res.stdout.trim()) process.stdout.write(res.stdout);
-  if (res.stderr.trim()) process.stderr.write(res.stderr);
-
-  if (res.exitCode !== 0) {
-    ctx.logger.error(`Install failed (exit ${res.exitCode})`);
-    return res.exitCode;
+  try {
+    await ctx.service.installPack(spec);
+    ctx.logger.success('Installed.');
+    return 0;
+  } catch (err) {
+    ctx.logger.error(`Install failed: ${(err as Error).message}`);
+    return 1;
   }
-
-  ctx.logger.success('Installed.');
-  return 0;
 }
 
 // ─── helpers ───────────────────────────────────────────────────────
 
-function toInstalledPack(src: NonNullable<ReturnType<typeof listSources>>[number]): InstalledPack {
-  const raw = src.source;
-  // Source spec: "npm:@scope/pkg" or "git:..." or local path
-  const colonIdx = raw.indexOf(':');
-  const name = colonIdx >= 0 ? raw.slice(colonIdx + 1) : raw;
-  return {
-    source: raw,
-    name,
-    enabled: src.enabled !== false,
-    kind: classifyKind(name),
-  };
-}
-
 const SUBAGENT_HINTS = ['subagent', 'sub-agent', 'agent', 'crew', 'orchestr'];
-const SKILL_HINTS = ['-skill', 'skill-', 'superpowers', 'memory'];
-const THEME_HINTS = ['-theme', 'theme-', 'footer', 'hud'];
-const PROMPT_HINTS = ['-prompt', 'prompt-'];
-
-function classifyKind(name: string): PackKind {
-  const lower = name.toLowerCase();
-  if (SKILL_HINTS.some((h) => lower.includes(h))) return 'skill';
-  if (THEME_HINTS.some((h) => lower.includes(h))) return 'theme';
-  if (PROMPT_HINTS.some((h) => lower.includes(h))) return 'prompt';
-  if (lower.endsWith('-prompt') || lower.endsWith('-theme')) return 'prompt';
-  return 'extension';
-}
 
 function isSubagentPack(p: InstalledPack): boolean {
   const lower = p.name.toLowerCase();

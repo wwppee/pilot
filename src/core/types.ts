@@ -174,6 +174,8 @@ export interface SessionInfo {
 
 // ─── Command runtime ────────────────────────────────────────────────
 
+import type { PilotService } from './service.js';
+
 /** Context passed to every command's `run` function. */
 export interface PilotContext {
   /** The user's home directory. */
@@ -186,6 +188,12 @@ export interface PilotContext {
   logger: Logger;
   /** Whether stdout is a TTY (controls color/animations). */
   isInteractive: boolean;
+  /**
+   * PilotService — the single API surface.
+   * Every command goes through this; never call core modules directly.
+   * Imported as `import type` to avoid circular runtime dependency.
+   */
+  service: PilotService;
 }
 
 /** Minimal logger interface — concrete impl lives in utils/logger.ts. */

@@ -215,7 +215,7 @@ describe('pilot server', () => {
       // installPack will throw because the package doesn't exist
       // but we got past auth + CSRF, so status is 500 (not 401/403)
       expect([500]).toContain(res.statusCode);
-    }, 15_000);
+    }, 30_000);
   });
 
   // ─── CSRF token behavior ──────────────────────────

@@ -6,11 +6,11 @@
  *   search  Full-text search across all session entries
  *
  * v0.2: diff, tree, export, share, gc, stats.
+ *
+ * All read/write paths go through `ctx.service` — no direct core imports.
  */
 
 import kleur from 'kleur';
-import { listAllSessions, sortByRecent } from '../core/sessions.js';
-import { searchSession } from '../core/jsonl-parser.js';
 import type { PilotContext, Command, SessionInfo } from '../core/types.js';
 
 export const manifest: Command = {
@@ -44,8 +44,7 @@ export async function run(args: string[], ctx: PilotContext): Promise<number> {
 // ─── ls ────────────────────────────────────────────────────────────
 
 async function ls(ctx: PilotContext): Promise<number> {
-  const all = await listAllSessions();
-  const sorted = sortByRecent(all);
+  const sorted = await ctx.service.listSessions();
 
   if (sorted.length === 0) {
     ctx.logger.info('No sessions found.');
@@ -93,39 +92,16 @@ async function search(args: string[], ctx: PilotContext): Promise<number> {
 
   ctx.logger.info(`Searching all sessions for: ${kleur.cyan(query)}\n`);
 
-  const all = await listAllSessions();
-
-  // Concurrent search across files — bounded so we don't melt the box.
-  const CONCURRENCY = 8;
-  const queue = [...all];
-  const hits: Array<{ info: SessionInfo; count: number }> = [];
-
-  await Promise.all(
-    Array.from({ length: CONCURRENCY }, async () => {
-      while (queue.length > 0) {
-        const info = queue.shift();
-        if (!info) return;
-        try {
-          const count = await searchSession(info.path, query, caseSensitive);
-          if (count > 0) hits.push({ info, count });
-        } catch {
-          // skip unreadable
-        }
-      }
-    }),
-  );
+  const hits = await ctx.service.searchSessions(query, { caseSensitive });
 
   if (hits.length === 0) {
     ctx.logger.info('No matches.');
     return 0;
   }
 
-  // Sort by hit count descending
-  hits.sort((a, b) => b.count - a.count);
-
   console.log(kleur.dim(`${hits.length} session(s) contain matches.\n`));
 
-  for (const { info, count } of hits) {
+  for (const { info, hits: count } of hits) {
     const date = (info.lastUsedAt ?? '').slice(0, 16).replace('T', ' ');
     const marker = kleur.yellow('★');
     console.log(`  ${marker} ${kleur.cyan(date)}  ${kleur.bold(String(count))} hits`);

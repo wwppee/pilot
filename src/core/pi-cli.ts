@@ -6,7 +6,7 @@
  * ON TOP of what pi provides.
  */
 
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 
 const exec = promisify(execFile);
@@ -54,6 +54,27 @@ export async function runPi(opts: PiExecOptions): Promise<PiExecResult> {
     }
     throw err;
   }
+}
+
+/**
+ * Run `pi <args>` with stdio inherited — output streams directly to the user's
+ * terminal. Use this for long-running operations (install, update) where
+ * progress matters.
+ *
+ * Resolves with the exit code on success. Throws on non-zero exit.
+ */
+export async function runPiStreaming(args: string[], opts?: { cwd?: string }): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const child = spawn('pi', args, {
+      cwd: opts?.cwd,
+      stdio: 'inherit',
+    });
+    child.on('error', (err) => reject(err));
+    child.on('close', (code) => {
+      if (code === 0) resolve(0);
+      else reject(new Error(`pi exited with code ${code}`));
+    });
+  });
 }
 
 /** Check whether the `pi` binary is on PATH. */

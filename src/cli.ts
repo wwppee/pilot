@@ -12,6 +12,7 @@
 import { Command as Commander } from 'commander';
 import { logger } from './utils/logger.js';
 import { readSettings } from './core/settings.js';
+import { createService } from './core/service-impl.js';
 import { piAgentDir, type PilotContext } from './core/types.js';
 
 import * as packCmd from './commands/pack.js';
@@ -32,7 +33,11 @@ async function main(): Promise<void> {
     .showHelpAfterError();
 
   for (const c of commands) {
-    const sub = program.command(c.manifest.name).description(c.manifest.description);
+    const sub = program
+      .command(c.manifest.name)
+      .description(c.manifest.description)
+      .allowUnknownOption(true)
+      .allowExcessArguments(true);
 
     if (c.manifest.subcommands) {
       sub.addHelpText(
@@ -42,10 +47,10 @@ async function main(): Promise<void> {
     }
 
     // All commands accept variadic args — we dispatch internally.
-    sub.allowExcessArguments(true).action(async (...actionArgs) => {
-      // commander passes (cmd, ...positionalArgs, options). Strip the Command instance.
-      const cmd = actionArgs[0];
-      const args = actionArgs.slice(1, cmd.args.length);
+    sub.action(async function (this: InstanceType<typeof Commander>, ..._actionArgs: unknown[]) {
+      // `this.args` is commander's full argv (positional + unknown options).
+      // We pass them as-is to the command's run() for it to parse.
+      const args = this.args;
       const ctx = await buildContext();
       try {
         const code = await c.run(args, ctx);
@@ -77,13 +82,15 @@ async function main(): Promise<void> {
 }
 
 async function buildContext(): Promise<PilotContext> {
+  const home = process.env['HOME'] ?? '';
   const settings = await readSettings();
   return {
-    home: process.env['HOME'] ?? '',
-    piAgentDir: piAgentDir(),
+    home,
+    piAgentDir: piAgentDir(home),
     settings,
     logger,
     isInteractive: Boolean(process.stdout.isTTY),
+    service: createService({ home }),
   };
 }
 
