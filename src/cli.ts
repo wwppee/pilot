@@ -17,9 +17,10 @@ import { piAgentDir, type PilotContext } from './core/types.js';
 import * as packCmd from './commands/pack.js';
 import * as sessionCmd from './commands/session.js';
 import * as doctorCmd from './commands/doctor.js';
+import * as serverCmd from './commands/server.js';
 
 /** All registered top-level commands. */
-const commands = [packCmd, sessionCmd, doctorCmd] as const;
+const commands = [packCmd, sessionCmd, doctorCmd, serverCmd] as const;
 
 async function main(): Promise<void> {
   const program = new Commander();
