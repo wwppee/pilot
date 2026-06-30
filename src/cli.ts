@@ -12,7 +12,7 @@
 import { Command as Commander } from 'commander';
 import { logger } from './utils/logger.js';
 import { readSettings } from './core/settings.js';
-import { PI_AGENT_DIR, type PilotContext } from './core/types.js';
+import { piAgentDir, type PilotContext } from './core/types.js';
 
 import * as packCmd from './commands/pack.js';
 import * as sessionCmd from './commands/session.js';
@@ -79,7 +79,7 @@ async function buildContext(): Promise<PilotContext> {
   const settings = await readSettings();
   return {
     home: process.env['HOME'] ?? '',
-    piAgentDir: PI_AGENT_DIR,
+    piAgentDir: piAgentDir(),
     settings,
     logger,
     isInteractive: Boolean(process.stdout.isTTY),

@@ -8,20 +8,21 @@
 
 import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { PI_SETTINGS_FILE, type PiSettings } from './types.js';
+import { piSettingsFile, type PiSettings } from './types.js';
 
 /**
  * Read and parse the global pi settings file.
  *
  * @returns The parsed settings, or null if the file is missing / malformed.
  */
-export async function readSettings(): Promise<PiSettings | null> {
-  if (!existsSync(PI_SETTINGS_FILE)) {
+export async function readSettings(home?: string): Promise<PiSettings | null> {
+  const file = piSettingsFile(home);
+  if (!existsSync(file)) {
     return null;
   }
 
   try {
-    const raw = await readFile(PI_SETTINGS_FILE, 'utf-8');
+    const raw = await readFile(file, 'utf-8');
     return JSON.parse(raw) as PiSettings;
   } catch (err) {
     // Malformed JSON — return null so callers can handle it.

@@ -7,7 +7,7 @@
 
 import { readdir, stat } from 'node:fs/promises';
 import { join, basename } from 'node:path';
-import { PI_SESSIONS_DIR } from './types.js';
+import { piSessionsDir } from './types.js';
 import { readSessionInfo } from './jsonl-parser.js';
 import type { SessionInfo } from './types.js';
 
@@ -16,17 +16,18 @@ import type { SessionInfo } from './types.js';
  *
  * If the directory doesn't exist, returns [] (no sessions yet is normal).
  */
-export async function listAllSessions(): Promise<SessionInfo[]> {
+export async function listAllSessions(home?: string): Promise<SessionInfo[]> {
   const results: SessionInfo[] = [];
+  const dir = piSessionsDir(home);
 
-  if (!(await exists(PI_SESSIONS_DIR))) return results;
+  if (!(await exists(dir))) return results;
 
   // Two-level walk: sessions/<encoded-cwd>/<file>.jsonl
-  const cwdDirs = await readdir(PI_SESSIONS_DIR, { withFileTypes: true });
+  const cwdDirs = await readdir(dir, { withFileTypes: true });
 
   for (const dirent of cwdDirs) {
     if (!dirent.isDirectory()) continue;
-    const dirPath = join(PI_SESSIONS_DIR, dirent.name);
+    const dirPath = join(dir, dirent.name);
 
     const files = await readdir(dirPath, { withFileTypes: true });
     for (const f of files) {

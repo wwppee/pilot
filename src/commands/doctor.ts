@@ -17,7 +17,7 @@ import { join } from 'node:path';
 import { execSync } from 'node:child_process';
 import { isPiInstalled } from '../core/pi-cli.js';
 import { readSettings, listSources } from '../core/settings.js';
-import { PI_AGENT_DIR, PI_SETTINGS_FILE, PI_SESSIONS_DIR } from '../core/types.js';
+import { piAgentDir, piSettingsFile, piSessionsDir } from '../core/types.js';
 import type { PilotContext, Command } from '../core/types.js';
 
 export const manifest: Command = {
@@ -72,7 +72,7 @@ export async function run(args: string[], _ctx: PilotContext): Promise<number> {
   });
 
   // ~/.pi/agent exists
-  const dirOk = existsSync(PI_AGENT_DIR);
+  const dirOk = existsSync(piAgentDir());
   checks.push({
     ok: dirOk,
     message: dirOk ? '~/.pi/agent exists' : '~/.pi/agent missing',
@@ -81,7 +81,7 @@ export async function run(args: string[], _ctx: PilotContext): Promise<number> {
 
   // settings.json
   const settings = await readSettings();
-  if (existsSync(PI_SETTINGS_FILE)) {
+  if (existsSync(piSettingsFile())) {
     checks.push({
       ok: settings !== null,
       message: settings !== null ? 'settings.json valid' : 'settings.json malformed',
@@ -112,8 +112,8 @@ export async function run(args: string[], _ctx: PilotContext): Promise<number> {
   }
 
   // Sessions dir size
-  if (existsSync(PI_SESSIONS_DIR)) {
-    const total = await dirSize(PI_SESSIONS_DIR);
+  if (existsSync(piSessionsDir())) {
+    const total = await dirSize(piSessionsDir());
     const mb = total / (1024 * 1024);
     checks.push({
       ok: mb < 500,
@@ -155,8 +155,8 @@ async function json(): Promise<number> {
   }
   const settings = await readSettings();
   checks.push({
-    ok: settings !== null || !existsSync(PI_SETTINGS_FILE),
-    message: existsSync(PI_SETTINGS_FILE)
+    ok: settings !== null || !existsSync(piSettingsFile()),
+    message: existsSync(piSettingsFile())
       ? settings !== null ? 'settings.json valid' : 'settings.json malformed'
       : 'settings.json missing',
   });

@@ -5,28 +5,48 @@
  * Command-specific types live next to their command file.
  */
 
-// ─── Path constants ────────────────────────────────────────────────
+import { homedir } from 'node:os';
+
+/**
+ * Resolve the user's home directory, preferring $HOME (so tests can override)
+ * and falling back to os.homedir().
+ */
+export function userHome(): string {
+  return process.env.HOME ?? homedir();
+}
+
+// ─── Pi-owned paths (Pi 拥有，Pilot 主要读) ────────────────────
+//
+// These paths are FUNCTIONS (not const) so tests can inject a custom home dir.
+// Production callers just call `piAgentDir()` — no args needed.
 
 /** Absolute path to `~/.pi/agent/` — Pilot treats this as the source of truth. */
-export const PI_AGENT_DIR = `${process.env.HOME}/.pi/agent`;
+export function piAgentDir(home: string = userHome()): string {
+  return `${home}/.pi/agent`;
+}
 
 /** Absolute path to the user's global settings.json. */
-export const PI_SETTINGS_FILE = `${PI_AGENT_DIR}/settings.json`;
+export function piSettingsFile(home?: string): string {
+  return `${piAgentDir(home)}/settings.json`;
+}
 
 /** Absolute path to the user's global models.json. */
-export const PI_MODELS_FILE = `${PI_AGENT_DIR}/models.json`;
+export function piModelsFile(home?: string): string {
+  return `${piAgentDir(home)}/models.json`;
+}
 
 /** Absolute path to the session storage directory. */
-export const PI_SESSIONS_DIR = `${PI_AGENT_DIR}/sessions`;
+export function piSessionsDir(home?: string): string {
+  return `${piAgentDir(home)}/sessions`;
+}
 
 // ─── Pilot-owned paths (v0.2+) ────────────────────────────────────
 //
 // These are Pilot's own directories — they live in `~/.pilot/`,
 // completely separate from `~/.pi/agent/`. Pi never reads from these.
-// Functions instead of constants so tests can pass a custom home dir.
 
 /** Absolute path to `~/.pilot/` — Pilot's own config/data directory. */
-export function pilotDir(home: string = process.env.HOME ?? ''): string {
+export function pilotDir(home: string = userHome()): string {
   return `${home}/.pilot`;
 }
 
