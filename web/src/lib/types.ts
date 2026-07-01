@@ -85,3 +85,34 @@ export type StatsRange =
   | { kind: 'today' }
   | { kind: 'lastDays'; days: number }
   | { kind: 'all' };
+
+// ─── Capability types (v0.3.9+) ─────────────────────────────────────
+
+export type CapabilityType = 'workflow' | 'lens' | 'reviewer' | string;
+
+export interface CapabilitySource {
+  type: 'npm' | 'git' | 'local' | string;
+  ref: string;
+  mode?: 'L1-referenced' | 'L2-wrapped';
+}
+
+export interface CapabilityCompatibility {
+  conflicts: string[];
+  requires: string[];
+}
+
+export interface CapabilityMetadata {
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Capability {
+  id: string;
+  title: string;
+  description?: string;
+  type?: CapabilityType;
+  sources: CapabilitySource[];
+  artifacts: Record<string, unknown>;
+  compatibility: CapabilityCompatibility;
+  metadata: CapabilityMetadata;
+}

@@ -51,6 +51,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
                 <Link href="/profiles" className="text-[var(--text-muted)] hover:text-[var(--text)]">
                   Profiles
                 </Link>
+                <Link href="/capabilities" className="text-[var(--text-muted)] hover:text-[var(--text)]">
+                  Capabilities
+                </Link>
               </nav>
               <div className="ml-auto text-xs text-[var(--text-muted)] flex items-center gap-2">
                 <span

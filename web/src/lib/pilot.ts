@@ -130,6 +130,7 @@ import type {
   SessionInfo,
   SessionTree,
   Profile,
+  Capability,
 } from './types.js';
 
 export const api = {
@@ -159,6 +160,11 @@ export const api = {
 
   profiles: () => pilot<Profile[]>('/profiles'),
   profile: (name: string) => pilot<Profile>(`/profiles/${encodeName(name)}`),
+
+  // ─── Capabilities (v0.3.9+) ───────────────────────────────
+  listCapabilities: () => pilot<Capability[]>('/capabilities'),
+  getCapability: (id: string) =>
+    pilot<Capability>(`/capabilities/${encodeName(id)}`),
 };
 
 function encodeName(name: string): string {

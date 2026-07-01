@@ -440,3 +440,86 @@ describe("commands use ctx.service (not direct core)", () => {
     });
   });
 });
+
+// ─── Capability command (v0.3.9+) ─────────────────────────────────
+
+import * as capCmd from "../../src/commands/capability.js";
+
+describe("commands use ctx.service (not direct core) > pilot capability", () => {
+  function makeCap(service: any) {
+    const logger = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      success: vi.fn(),
+    };
+    return { logger, service } as any;
+  }
+
+  it("ls prints a placeholder when no capabilities are installed", async () => {
+    const code = await capCmd.run(
+      ["ls"],
+      makeCap({ listCapabilities: async () => [] }),
+    );
+    expect(code).toBe(0);
+  });
+
+  it("ls prints capabilities with type and title", async () => {
+    const svc = {
+      listCapabilities: async () => [
+        {
+          id: "x",
+          title: "X",
+          type: "workflow",
+          sources: [],
+          artifacts: {},
+          compatibility: { conflicts: [], requires: [] },
+          metadata: {
+            createdAt: "2026-07-01T00:00:00Z",
+            updatedAt: "2026-07-01T00:00:00Z",
+          },
+        },
+      ],
+    };
+    const code = await capCmd.run(["ls"], makeCap(svc));
+    expect(code).toBe(0);
+  });
+
+  it("show prints details for an existing capability", async () => {
+    const svc = {
+      getCapability: async (_id: string) => ({
+        id: "x",
+        title: "X",
+        type: "workflow",
+        description: "A workflow.",
+        sources: [{ type: "npm", ref: "npm:foo", mode: "L2-wrapped" }],
+        artifacts: {},
+        compatibility: { conflicts: [], requires: ["base"] },
+        metadata: {
+          createdAt: "2026-07-01T00:00:00Z",
+          updatedAt: "2026-07-01T00:00:00Z",
+        },
+      }),
+    };
+    const code = await capCmd.run(["show", "x"], makeCap(svc));
+    expect(code).toBe(0);
+  });
+
+  it("show returns 1 for missing capability", async () => {
+    const svc = { getCapability: async (_id: string) => null };
+    const ctx = makeCap(svc);
+    const code = await capCmd.run(["show", "missing"], ctx);
+    expect(code).toBe(1);
+    expect(ctx.logger.error).toHaveBeenCalled();
+  });
+
+  it("show without an id returns 1", async () => {
+    const code = await capCmd.run(["show"], makeCap({}));
+    expect(code).toBe(1);
+  });
+
+  it("unknown subcommand returns 1", async () => {
+    const code = await capCmd.run(["delete"], makeCap({}));
+    expect(code).toBe(1);
+  });
+});
