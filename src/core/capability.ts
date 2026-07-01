@@ -12,10 +12,10 @@
  * See: docs/forge-and-avatars.md §2 for the full design rationale.
  */
 
-import { readFile, readdir, stat } from 'node:fs/promises';
-import { join } from 'node:path';
-import { z } from 'zod';
-import { pilotCapabilitiesDir } from './types.js';
+import { readFile, readdir, stat } from "node:fs/promises";
+import { join } from "node:path";
+import { z } from "zod";
+import { pilotCapabilitiesDir } from "./types.js";
 
 // ─── Zod schemas ──────────────────────────────────────────────
 
@@ -28,9 +28,9 @@ import { pilotCapabilitiesDir } from './types.js';
  * L4-native:      built into Pilot core
  */
 export const CapabilitySourceSchema = z.object({
-  type: z.enum(['npm', 'git', 'local', 'pilot-native']),
+  type: z.enum(["npm", "git", "local", "pilot-native"]),
   ref: z.string().min(1),
-  mode: z.enum(['L1-referenced', 'L2-wrapped', 'L3-distilled', 'L4-native']),
+  mode: z.enum(["L1-referenced", "L2-wrapped", "L3-distilled", "L4-native"]),
 });
 
 export const CapabilityArtifactsSchema = z.object({
@@ -66,9 +66,12 @@ export const CapabilitySchema = z.object({
   /** Kebab-case id, used as directory name. */
   id: z
     .string()
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'id must be kebab-case (a-z, 0-9, single -)'),
+    .regex(
+      /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+      "id must be kebab-case (a-z, 0-9, single -)",
+    ),
   title: z.string().min(1),
-  type: z.enum(['workflow', 'tool', 'integration', 'safety']),
+  type: z.enum(["workflow", "tool", "integration", "safety"]),
   description: z.string(),
 
   sources: z.array(CapabilitySourceSchema).min(1),
@@ -87,11 +90,13 @@ export const CapabilitySchema = z.object({
 export type CapabilitySource = z.infer<typeof CapabilitySourceSchema>;
 export type CapabilityArtifacts = z.infer<typeof CapabilityArtifactsSchema>;
 export type CapabilityEval = z.infer<typeof CapabilityEvalSchema>;
-export type CapabilityCompatibility = z.infer<typeof CapabilityCompatibilitySchema>;
+export type CapabilityCompatibility = z.infer<
+  typeof CapabilityCompatibilitySchema
+>;
 export type CapabilityMetadata = z.infer<typeof CapabilityMetadataSchema>;
 export type Capability = z.infer<typeof CapabilitySchema>;
-export type CapabilityType = Capability['type'];
-export type CapabilitySourceMode = CapabilitySource['mode'];
+export type CapabilityType = Capability["type"];
+export type CapabilitySourceMode = CapabilitySource["mode"];
 
 // ─── Validation ───────────────────────────────────────────────
 
@@ -100,9 +105,12 @@ export type CapabilitySourceMode = CapabilitySource['mode'];
  *
  * @throws ZodError if the file is missing, malformed, or doesn't match the schema.
  */
-export async function loadCapability(id: string, home?: string): Promise<Capability> {
-  const file = join(capabilityDir(id, home), 'capability.json');
-  const raw = await readFile(file, 'utf-8');
+export async function loadCapability(
+  id: string,
+  home?: string,
+): Promise<Capability> {
+  const file = join(capabilityDir(id, home), "capability.json");
+  const raw = await readFile(file, "utf-8");
   const json: unknown = JSON.parse(raw);
   return CapabilitySchema.parse(json);
 }
@@ -112,7 +120,10 @@ export async function loadCapability(id: string, home?: string): Promise<Capabil
  * malformed JSON, schema mismatch). Use this when scanning many capabilities
  * and you want to skip bad ones.
  */
-export async function tryLoadCapability(id: string, home?: string): Promise<Capability | null> {
+export async function tryLoadCapability(
+  id: string,
+  home?: string,
+): Promise<Capability | null> {
   try {
     return await loadCapability(id, home);
   } catch {
@@ -160,10 +171,10 @@ export function capabilityDir(id: string, home?: string): string {
 
 /** Path to a capability's spec.md (human-readable description). */
 export function capabilitySpecPath(id: string, home?: string): string {
-  return join(capabilityDir(id, home), 'spec.md');
+  return join(capabilityDir(id, home), "spec.md");
 }
 
 /** Path to a capability's evals.yaml (evaluation definitions). */
 export function capabilityEvalsPath(id: string, home?: string): string {
-  return join(capabilityDir(id, home), 'evals.yaml');
+  return join(capabilityDir(id, home), "evals.yaml");
 }

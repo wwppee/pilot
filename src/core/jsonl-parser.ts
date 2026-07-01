@@ -6,9 +6,14 @@
  * callers only need metadata — we stream and aggregate as we go.
  */
 
-import { createReadStream, statSync } from 'node:fs';
-import { createInterface } from 'node:readline';
-import type { SessionEntry, SessionInfo, SessionTree, SessionTreeNode } from './types.js';
+import { createReadStream, statSync } from "node:fs";
+import { createInterface } from "node:readline";
+import type {
+  SessionEntry,
+  SessionInfo,
+  SessionTree,
+  SessionTreeNode,
+} from "./types.js";
 
 /**
  * Read session entries one at a time (streaming).
@@ -16,8 +21,10 @@ import type { SessionEntry, SessionInfo, SessionTree, SessionTreeNode } from './
  * Skips malformed lines rather than throwing — pi sessions occasionally
  * contain partial writes from interrupted runs.
  */
-export async function* readEntries(filePath: string): AsyncIterable<SessionEntry> {
-  const stream = createReadStream(filePath, { encoding: 'utf-8' });
+export async function* readEntries(
+  filePath: string,
+): AsyncIterable<SessionEntry> {
+  const stream = createReadStream(filePath, { encoding: "utf-8" });
   const rl = createInterface({ input: stream, crlfDelay: Infinity });
 
   for await (const line of rl) {
@@ -39,7 +46,10 @@ export async function* readEntries(filePath: string): AsyncIterable<SessionEntry
  * Stops reading as soon as it has the model + entry count + timestamps,
  * which is usually within the first ~50 lines for normal sessions.
  */
-export async function readSessionInfo(filePath: string, id: string): Promise<SessionInfo> {
+export async function readSessionInfo(
+  filePath: string,
+  id: string,
+): Promise<SessionInfo> {
   let entries = 0;
   let startedAt: string | undefined;
   let lastUsedAt: string | undefined;
@@ -52,7 +62,7 @@ export async function readSessionInfo(filePath: string, id: string): Promise<Ses
     if (entry.timestamp) lastUsedAt = entry.timestamp;
 
     // First assistant message usually carries the model name in data.
-    if (!model && entry.type === 'assistant') {
+    if (!model && entry.type === "assistant") {
       const m = extractModel(entry.data);
       if (m) model = m;
     }
@@ -77,15 +87,15 @@ export async function readSessionInfo(filePath: string, id: string): Promise<Ses
  * We probe a few common shapes; if none match, return undefined.
  */
 function extractModel(data: unknown): string | undefined {
-  if (!data || typeof data !== 'object') return undefined;
+  if (!data || typeof data !== "object") return undefined;
   const obj = data as Record<string, unknown>;
 
   // Common shapes: { model: "..." } or { metadata: { model: "..." } }
-  if (typeof obj['model'] === 'string') return obj['model'];
-  const metadata = obj['metadata'];
-  if (metadata && typeof metadata === 'object') {
-    const m = (metadata as Record<string, unknown>)['model'];
-    if (typeof m === 'string') return m;
+  if (typeof obj["model"] === "string") return obj["model"];
+  const metadata = obj["metadata"];
+  if (metadata && typeof metadata === "object") {
+    const m = (metadata as Record<string, unknown>)["model"];
+    if (typeof m === "string") return m;
   }
   return undefined;
 }
@@ -122,7 +132,10 @@ export async function searchSession(
  * The root is the first node encountered with no `parentId` (or whose
  * parent isn't in the file). If multiple roots exist, we pick the first.
  */
-export async function readSessionTree(filePath: string, id: string): Promise<SessionTree> {
+export async function readSessionTree(
+  filePath: string,
+  id: string,
+): Promise<SessionTree> {
   const nodes = new Map<string, SessionTreeNode>();
   const models = new Set<string>();
   const entryById = new Map<string, SessionEntry>();
@@ -140,7 +153,7 @@ export async function readSessionTree(filePath: string, id: string): Promise<Ses
     };
     nodes.set(entry.id, node);
 
-    if (entry.type === 'assistant') {
+    if (entry.type === "assistant") {
       const m = extractModel(entry.data);
       if (m) models.add(m);
     }
@@ -176,7 +189,7 @@ export async function readSessionTree(filePath: string, id: string): Promise<Ses
 
   return {
     id,
-    root: root ?? { id: 'empty', type: 'empty', children: [] },
+    root: root ?? { id: "empty", type: "empty", children: [] },
     totalNodes: nodes.size,
     maxDepth,
     models: [...models],
@@ -189,24 +202,24 @@ export async function readSessionTree(filePath: string, id: string): Promise<Ses
  * Used by readSessionTree to show one-line summaries in the tree.
  */
 function extractPreview(data: unknown): string | undefined {
-  if (!data || typeof data !== 'object') return undefined;
+  if (!data || typeof data !== "object") return undefined;
   const obj = data as Record<string, unknown>;
 
   // Text content patterns: { text: "..." }, { content: "..." }, { delta: "..." }
-  for (const key of ['text', 'content', 'delta', 'message']) {
+  for (const key of ["text", "content", "delta", "message"]) {
     const v = obj[key];
-    if (typeof v === 'string' && v.length > 0) {
-      return v.length > 100 ? v.slice(0, 97) + '...' : v;
+    if (typeof v === "string" && v.length > 0) {
+      return v.length > 100 ? v.slice(0, 97) + "..." : v;
     }
   }
 
   // Tool call patterns: { name: "read", path: "..." } or { name: "bash", command: "..." }
-  const name = obj['name'];
-  if (typeof name === 'string') {
-    const arg = obj['path'] ?? obj['command'] ?? obj['query'] ?? obj['input'];
-    if (typeof arg === 'string') {
+  const name = obj["name"];
+  if (typeof name === "string") {
+    const arg = obj["path"] ?? obj["command"] ?? obj["query"] ?? obj["input"];
+    if (typeof arg === "string") {
       const combined = `${name}: ${arg}`;
-      return combined.length > 100 ? combined.slice(0, 97) + '...' : combined;
+      return combined.length > 100 ? combined.slice(0, 97) + "..." : combined;
     }
     return name;
   }

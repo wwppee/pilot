@@ -16,17 +16,17 @@
  * have one user — the local machine owner).
  */
 
-import { randomBytes } from 'node:crypto';
+import { randomBytes } from "node:crypto";
 
 /** Header name carrying the CSRF token on POST. */
-export const CSRF_HEADER = 'x-pilot-csrf';
+export const CSRF_HEADER = "x-pilot-csrf";
 
 /** Cookie name carrying the CSRF token. */
-export const CSRF_COOKIE = 'pilot-csrf';
+export const CSRF_COOKIE = "pilot-csrf";
 
 /** Generate a fresh CSRF token. */
 export function generateCsrfToken(): string {
-  return randomBytes(32).toString('base64url');
+  return randomBytes(32).toString("base64url");
 }
 
 /**
@@ -49,7 +49,10 @@ export class CsrfState {
    * Verify a POST request's CSRF token.
    * Both the cookie value and the header value must match the server's current token.
    */
-  verify(cookieValue: string | undefined, headerValue: string | undefined): boolean {
+  verify(
+    cookieValue: string | undefined,
+    headerValue: string | undefined,
+  ): boolean {
     if (!cookieValue || !headerValue) return false;
     return cookieValue === headerValue && cookieValue === this.current;
   }

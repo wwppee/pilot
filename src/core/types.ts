@@ -5,7 +5,7 @@
  * Command-specific types live next to their command file.
  */
 
-import { homedir } from 'node:os';
+import { homedir } from "node:os";
 
 /**
  * Resolve the user's home directory, preferring $HOME (so tests can override)
@@ -116,7 +116,7 @@ export interface Pack {
 }
 
 /** Classification of a pack by what it adds. Used for grouping in `pack ls`. */
-export type PackKind = 'extension' | 'skill' | 'theme' | 'prompt' | 'unknown';
+export type PackKind = "extension" | "skill" | "theme" | "prompt" | "unknown";
 
 /** A pack installed locally, derived from `settings.json`. */
 export interface InstalledPack {
@@ -146,7 +146,7 @@ export interface PackTeam {
 export interface SessionEntry {
   id: string;
   parentId?: string;
-  type: 'user' | 'assistant' | 'tool' | 'system';
+  type: "user" | "assistant" | "tool" | "system";
   timestamp?: string;
   /** Entry-specific data. Shape varies by type. */
   data?: unknown;
@@ -174,7 +174,7 @@ export interface SessionInfo {
 
 // ─── Command runtime ────────────────────────────────────────────────
 
-import type { PilotService } from './service.js';
+import type { PilotService } from "./service.js";
 
 // ─── Session tree (v0.3.0+) ──────────────────────────────────────
 

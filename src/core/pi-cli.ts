@@ -6,8 +6,8 @@
  * ON TOP of what pi provides.
  */
 
-import { execFile, spawn } from 'node:child_process';
-import { promisify } from 'node:util';
+import { execFile, spawn } from "node:child_process";
+import { promisify } from "node:util";
 
 const exec = promisify(execFile);
 
@@ -33,7 +33,7 @@ export interface PiExecResult {
  */
 export async function runPi(opts: PiExecOptions): Promise<PiExecResult> {
   try {
-    const { stdout, stderr } = await exec('pi', opts.args, {
+    const { stdout, stderr } = await exec("pi", opts.args, {
       cwd: opts.cwd,
       maxBuffer: 10 * 1024 * 1024,
     });
@@ -47,9 +47,9 @@ export async function runPi(opts: PiExecOptions): Promise<PiExecResult> {
     };
     if (opts.tolerateFailure) {
       return {
-        stdout: e.stdout ?? '',
-        stderr: e.stderr ?? '',
-        exitCode: typeof e.code === 'number' ? e.code : 1,
+        stdout: e.stdout ?? "",
+        stderr: e.stderr ?? "",
+        exitCode: typeof e.code === "number" ? e.code : 1,
       };
     }
     throw err;
@@ -63,14 +63,17 @@ export async function runPi(opts: PiExecOptions): Promise<PiExecResult> {
  *
  * Resolves with the exit code on success. Throws on non-zero exit.
  */
-export async function runPiStreaming(args: string[], opts?: { cwd?: string }): Promise<number> {
+export async function runPiStreaming(
+  args: string[],
+  opts?: { cwd?: string },
+): Promise<number> {
   return new Promise((resolve, reject) => {
-    const child = spawn('pi', args, {
+    const child = spawn("pi", args, {
       cwd: opts?.cwd,
-      stdio: 'inherit',
+      stdio: "inherit",
     });
-    child.on('error', (err) => reject(err));
-    child.on('close', (code) => {
+    child.on("error", (err) => reject(err));
+    child.on("close", (code) => {
       if (code === 0) resolve(0);
       else reject(new Error(`pi exited with code ${code}`));
     });
@@ -80,7 +83,7 @@ export async function runPiStreaming(args: string[], opts?: { cwd?: string }): P
 /** Check whether the `pi` binary is on PATH. */
 export async function isPiInstalled(): Promise<boolean> {
   try {
-    await exec('pi', ['--version']);
+    await exec("pi", ["--version"]);
     return true;
   } catch {
     return false;

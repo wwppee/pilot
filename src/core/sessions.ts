@@ -5,11 +5,11 @@
  * and returns SessionInfo for each.
  */
 
-import { readdir, stat } from 'node:fs/promises';
-import { join, basename } from 'node:path';
-import { piSessionsDir } from './types.js';
-import { readSessionInfo } from './jsonl-parser.js';
-import type { SessionInfo } from './types.js';
+import { readdir, stat } from "node:fs/promises";
+import { join, basename } from "node:path";
+import { piSessionsDir } from "./types.js";
+import { readSessionInfo } from "./jsonl-parser.js";
+import type { SessionInfo } from "./types.js";
 
 /**
  * Recursively walk the sessions dir and return info for every .jsonl file.
@@ -31,9 +31,9 @@ export async function listAllSessions(home?: string): Promise<SessionInfo[]> {
 
     const files = await readdir(dirPath, { withFileTypes: true });
     for (const f of files) {
-      if (!f.isFile() || !f.name.endsWith('.jsonl')) continue;
+      if (!f.isFile() || !f.name.endsWith(".jsonl")) continue;
       const filePath = join(dirPath, f.name);
-      const id = basename(f.name, '.jsonl');
+      const id = basename(f.name, ".jsonl");
 
       try {
         const info = await readSessionInfo(filePath, id);
@@ -60,8 +60,8 @@ async function exists(p: string): Promise<boolean> {
 /** Sort sessions by most-recent first. */
 export function sortByRecent(sessions: SessionInfo[]): SessionInfo[] {
   return [...sessions].sort((a, b) => {
-    const ta = a.lastUsedAt ?? '';
-    const tb = b.lastUsedAt ?? '';
+    const ta = a.lastUsedAt ?? "";
+    const tb = b.lastUsedAt ?? "";
     return tb.localeCompare(ta);
   });
 }

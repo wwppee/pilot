@@ -23,49 +23,52 @@
  *                unless the parent `pilot server` is run separately)
  */
 
-import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
-import kleur from 'kleur';
-import { startServer, type ServerHandle } from '../server/server.js';
-import type { Command, PilotContext } from '../core/types.js';
+import kleur from "kleur";
+import { startServer, type ServerHandle } from "../server/server.js";
+import type { Command, PilotContext } from "../core/types.js";
 
 const WEB_PORT = 17371;
 const PILOT_PORT = 17361;
 
 export const manifest: Command = {
-  name: 'dashboard',
-  description: 'Open the local Web UI in your browser (auto-starts the pilot server too)',
+  name: "dashboard",
+  description:
+    "Open the local Web UI in your browser (auto-starts the pilot server too)",
 };
 
 export async function run(args: string[], ctx: PilotContext): Promise<number> {
-  const noOpen = args.includes('--no-open');
-  const noServer = args.includes('--no-server');
+  const noOpen = args.includes("--no-open");
+  const noServer = args.includes("--no-server");
 
   // Optional port override: --port 17400 → next dev -p 17400
-  const portIdx = args.indexOf('--port');
+  const portIdx = args.indexOf("--port");
   const webPort = portIdx >= 0 ? Number(args[portIdx + 1]) : WEB_PORT;
   if (Number.isNaN(webPort)) {
-    ctx.logger.error('Invalid --port value');
+    ctx.logger.error("Invalid --port value");
     return 1;
   }
 
   // Locate the web/ dir (sibling of this CLI package).
   const here = dirname(fileURLToPath(import.meta.url));
-  const webDir = resolve(here, '..', '..', 'web');
+  const webDir = resolve(here, "..", "..", "web");
 
   if (!existsSync(webDir)) {
-    ctx.logger.error(`web/ not found at ${webDir}. Did you clone with the subdir?`);
+    ctx.logger.error(
+      `web/ not found at ${webDir}. Did you clone with the subdir?`,
+    );
     return 1;
   }
 
   if (!existsSync(`${webDir}/node_modules`)) {
-    ctx.logger.info('Installing web dependencies (first run)…');
-    const { execFile } = await import('node:child_process');
-    const { promisify } = await import('node:util');
-    await promisify(execFile)('npm', ['install'], { cwd: webDir });
+    ctx.logger.info("Installing web dependencies (first run)…");
+    const { execFile } = await import("node:child_process");
+    const { promisify } = await import("node:util");
+    await promisify(execFile)("npm", ["install"], { cwd: webDir });
   }
 
   // Step 1: start the pilot server in-process (unless --no-server).
@@ -74,7 +77,7 @@ export async function run(args: string[], ctx: PilotContext): Promise<number> {
     try {
       const opts: Parameters<typeof startServer>[0] = {
         port: PILOT_PORT,
-        host: '127.0.0.1',
+        host: "127.0.0.1",
         logger: false, // stay quiet so web output is readable
       };
       if (ctx.home) opts.home = ctx.home;
@@ -83,12 +86,18 @@ export async function run(args: string[], ctx: PilotContext): Promise<number> {
         `pilot server up on ${kleur.cyan(serverHandle.url)} (token: ${serverHandle.token.slice(0, 8)}…)`,
       );
     } catch (err) {
-      ctx.logger.error(`Failed to start pilot server: ${(err as Error).message}`);
-      ctx.logger.error(`Try \`pilot server --stop\` first, or pass --no-server if it's already running.`);
+      ctx.logger.error(
+        `Failed to start pilot server: ${(err as Error).message}`,
+      );
+      ctx.logger.error(
+        `Try \`pilot server --stop\` first, or pass --no-server if it's already running.`,
+      );
       return 1;
     }
   } else {
-    ctx.logger.info(`Assuming pilot server is running on 127.0.0.1:${PILOT_PORT}`);
+    ctx.logger.info(
+      `Assuming pilot server is running on 127.0.0.1:${PILOT_PORT}`,
+    );
   }
 
   // Step 2: start next dev with PILOT_SERVER_URL + PORT set.
@@ -96,15 +105,15 @@ export async function run(args: string[], ctx: PilotContext): Promise<number> {
   // override that with PORT env so user-supplied --port wins.
   const url = `http://127.0.0.1:${webPort}`;
   ctx.logger.info(`Starting Web UI on ${kleur.cyan(url)}`);
-  ctx.logger.info('Press Ctrl-C to stop both servers.\n');
+  ctx.logger.info("Press Ctrl-C to stop both servers.\n");
 
   if (!noOpen) {
     setTimeout(() => openBrowser(url), 1500);
   }
 
-  const proc = spawn('npm', ['run', 'dev'], {
+  const proc = spawn("npm", ["run", "dev"], {
     cwd: webDir,
-    stdio: 'inherit',
+    stdio: "inherit",
     env: {
       ...process.env,
       PORT: String(webPort),
@@ -113,16 +122,16 @@ export async function run(args: string[], ctx: PilotContext): Promise<number> {
   });
 
   const cleanup = () => {
-    proc.kill('SIGINT');
+    proc.kill("SIGINT");
     if (serverHandle) {
       serverHandle.close().catch(() => undefined);
     }
   };
-  process.on('SIGINT', cleanup);
-  process.on('SIGTERM', cleanup);
+  process.on("SIGINT", cleanup);
+  process.on("SIGTERM", cleanup);
 
   await new Promise<number>((resolveP) => {
-    proc.on('exit', (code) => {
+    proc.on("exit", (code) => {
       if (serverHandle) {
         serverHandle.close().catch(() => undefined);
       }
@@ -137,7 +146,7 @@ async function openBrowser(url: string): Promise<void> {
   const cmd = browserCommand(url);
   if (!cmd) return;
   try {
-    spawn(cmd[0]!, cmd.slice(1), { detached: true, stdio: 'ignore' }).unref();
+    spawn(cmd[0]!, cmd.slice(1), { detached: true, stdio: "ignore" }).unref();
   } catch {
     /* ignore — user can paste the URL manually */
   }
@@ -146,12 +155,12 @@ async function openBrowser(url: string): Promise<void> {
 /** Pick the right `open` invocation per OS. */
 function browserCommand(url: string): string[] | null {
   switch (process.platform) {
-    case 'darwin':
-      return ['open', url];
-    case 'win32':
-      return ['cmd', '/c', 'start', url];
-    case 'linux':
-      return ['xdg-open', url];
+    case "darwin":
+      return ["open", url];
+    case "win32":
+      return ["cmd", "/c", "start", url];
+    case "linux":
+      return ["xdg-open", url];
     default:
       return null;
   }

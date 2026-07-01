@@ -10,13 +10,18 @@
  * All read/write paths go through `ctx.service` — no direct core imports.
  */
 
-import kleur from 'kleur';
-import type { InstalledPack, PackKind, PilotContext, Command } from '../core/types.js';
+import kleur from "kleur";
+import type {
+  InstalledPack,
+  PackKind,
+  PilotContext,
+  Command,
+} from "../core/types.js";
 
 export const manifest: Command = {
-  name: 'pack',
-  description: 'Manage pi packages and meta-packs',
-  subcommands: ['ls', 'search <query>', 'info <pkg>', 'install <pkg>'],
+  name: "pack",
+  description: "Manage pi packages and meta-packs",
+  subcommands: ["ls", "search <query>", "info <pkg>", "install <pkg>"],
 };
 
 /** Dispatch `pilot pack <subcommand>` to the right function. */
@@ -24,19 +29,21 @@ export async function run(args: string[], ctx: PilotContext): Promise<number> {
   const sub = args[0];
 
   switch (sub) {
-    case 'ls':
+    case "ls":
       return ls(ctx);
-    case 'search':
-      return search((args[1] ?? '').trim(), ctx);
-    case 'info':
-      return info(args[1] ?? '', ctx);
-    case 'install':
-      return install(args[1] ?? '', ctx);
-    case 'team':
-      ctx.logger.warn('`pilot pack team` is in v0.2 — track in #15');
+    case "search":
+      return search((args[1] ?? "").trim(), ctx);
+    case "info":
+      return info(args[1] ?? "", ctx);
+    case "install":
+      return install(args[1] ?? "", ctx);
+    case "team":
+      ctx.logger.warn("`pilot pack team` is in v0.2 — track in #15");
       return 0;
     case undefined:
-      ctx.logger.error('Missing subcommand. Try: pilot pack ls|search|info|install');
+      ctx.logger.error(
+        "Missing subcommand. Try: pilot pack ls|search|info|install",
+      );
       return 1;
     default:
       ctx.logger.error(`Unknown subcommand: ${sub}`);
@@ -50,7 +57,7 @@ async function ls(ctx: PilotContext): Promise<number> {
   const packs = await ctx.service.listPacks();
 
   if (packs.length === 0) {
-    ctx.logger.info('No packs installed. Try: pilot pack search subagent');
+    ctx.logger.info("No packs installed. Try: pilot pack search subagent");
     return 0;
   }
 
@@ -60,7 +67,7 @@ async function ls(ctx: PilotContext): Promise<number> {
   for (const [kind, items] of grouped) {
     console.log(kleur.bold().underline(labelForKind(kind)));
     for (const p of items) {
-      const mark = p.enabled ? kleur.green('●') : kleur.gray('○');
+      const mark = p.enabled ? kleur.green("●") : kleur.gray("○");
       const src = kleur.cyan(p.source);
       console.log(`  ${mark} ${src}`);
     }
@@ -82,25 +89,30 @@ async function ls(ctx: PilotContext): Promise<number> {
 
 async function search(query: string, ctx: PilotContext): Promise<number> {
   if (!query) {
-    ctx.logger.error('Usage: pilot pack search <query>');
+    ctx.logger.error("Usage: pilot pack search <query>");
     return 1;
   }
 
   try {
     const results = await ctx.service.searchPacks(query);
     if (results.length === 0) {
-      ctx.logger.info('No matches.');
+      ctx.logger.info("No matches.");
       return 0;
     }
 
-    console.log(kleur.dim(`Showing ${results.length} of many. Install with: pilot pack install <name>\n`));
+    console.log(
+      kleur.dim(
+        `Showing ${results.length} of many. Install with: pilot pack install <name>\n`,
+      ),
+    );
 
     for (const p of results) {
       const name = kleur.cyan().bold(p.name);
       const ver = kleur.dim(`@${p.version}`);
-      const desc = p.description.length > 60
-        ? p.description.slice(0, 57) + '...'
-        : p.description;
+      const desc =
+        p.description.length > 60
+          ? p.description.slice(0, 57) + "..."
+          : p.description;
       console.log(`  ${name}${ver}`);
       console.log(`    ${desc}`);
     }
@@ -115,7 +127,7 @@ async function search(query: string, ctx: PilotContext): Promise<number> {
 
 async function info(name: string, ctx: PilotContext): Promise<number> {
   if (!name) {
-    ctx.logger.error('Usage: pilot pack info <pkg>');
+    ctx.logger.error("Usage: pilot pack info <pkg>");
     return 1;
   }
 
@@ -130,9 +142,12 @@ async function info(name: string, ctx: PilotContext): Promise<number> {
     console.log();
     if (pack.description) console.log(`  ${pack.description}`);
     if (pack.author) console.log(kleur.dim(`  author: ${pack.author}`));
-    if (pack.lastPublished) console.log(kleur.dim(`  last published: ${pack.lastPublished.slice(0, 10)}`));
+    if (pack.lastPublished)
+      console.log(
+        kleur.dim(`  last published: ${pack.lastPublished.slice(0, 10)}`),
+      );
     if (pack.keywords && pack.keywords.length > 0) {
-      console.log(kleur.dim(`  keywords: ${pack.keywords.join(', ')}`));
+      console.log(kleur.dim(`  keywords: ${pack.keywords.join(", ")}`));
     }
     console.log();
     console.log(kleur.dim(`  Install: pilot pack install ${pack.name}`));
@@ -148,17 +163,19 @@ async function info(name: string, ctx: PilotContext): Promise<number> {
 
 async function install(source: string, ctx: PilotContext): Promise<number> {
   if (!source) {
-    ctx.logger.error('Usage: pilot pack install <pkg>     (e.g. npm:pi-subagents or @scope/pkg)');
+    ctx.logger.error(
+      "Usage: pilot pack install <pkg>     (e.g. npm:pi-subagents or @scope/pkg)",
+    );
     return 1;
   }
 
   // If user passed bare package name without scheme, default to npm:
-  const spec = source.includes(':') ? source : `npm:${source}`;
+  const spec = source.includes(":") ? source : `npm:${source}`;
 
   ctx.logger.info(`Running: pi install ${spec}`);
   try {
     await ctx.service.installPack(spec);
-    ctx.logger.success('Installed.');
+    ctx.logger.success("Installed.");
     return 0;
   } catch (err) {
     ctx.logger.error(`Install failed: ${(err as Error).message}`);
@@ -168,7 +185,7 @@ async function install(source: string, ctx: PilotContext): Promise<number> {
 
 // ─── helpers ───────────────────────────────────────────────────────
 
-const SUBAGENT_HINTS = ['subagent', 'sub-agent', 'agent', 'crew', 'orchestr'];
+const SUBAGENT_HINTS = ["subagent", "sub-agent", "agent", "crew", "orchestr"];
 
 function isSubagentPack(p: InstalledPack): boolean {
   const lower = p.name.toLowerCase();
@@ -176,13 +193,15 @@ function isSubagentPack(p: InstalledPack): boolean {
 }
 
 function labelForKind(kind: PackKind): string {
-  return ({
-    extension: '🔌 Extensions',
-    skill: '📚 Skills',
-    theme: '🎨 Themes',
-    prompt: '💬 Prompts',
-    unknown: '❓ Unknown',
-  } as const)[kind];
+  return (
+    {
+      extension: "🔌 Extensions",
+      skill: "📚 Skills",
+      theme: "🎨 Themes",
+      prompt: "💬 Prompts",
+      unknown: "❓ Unknown",
+    } as const
+  )[kind];
 }
 
 function groupByKind(packs: InstalledPack[]): Map<PackKind, InstalledPack[]> {
@@ -193,6 +212,12 @@ function groupByKind(packs: InstalledPack[]): Map<PackKind, InstalledPack[]> {
     m.set(p.kind, arr);
   }
   // Stable display order
-  const order: PackKind[] = ['extension', 'skill', 'theme', 'prompt', 'unknown'];
+  const order: PackKind[] = [
+    "extension",
+    "skill",
+    "theme",
+    "prompt",
+    "unknown",
+  ];
   return new Map(order.filter((k) => m.has(k)).map((k) => [k, m.get(k) ?? []]));
 }

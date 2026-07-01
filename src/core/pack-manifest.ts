@@ -21,13 +21,18 @@
  * See: docs/forge-and-avatars.md §2 (capability model context).
  */
 
-import { z } from 'zod';
+import { z } from "zod";
 
-const REGISTRY = 'https://registry.npmjs.org';
+const REGISTRY = "https://registry.npmjs.org";
 
 // ─── Zod schemas ──────────────────────────────────────────────
 
-export const PackKindInManifest = z.enum(['extension', 'skill', 'theme', 'prompt']);
+export const PackKindInManifest = z.enum([
+  "extension",
+  "skill",
+  "theme",
+  "prompt",
+]);
 export type PackKindInManifest = z.infer<typeof PackKindInManifest>;
 
 /** The `pi` sub-object inside a package's package.json. */
@@ -65,7 +70,7 @@ interface NpmVersionEntry {
 }
 interface NpmPackageResponse {
   name: string;
-  'dist-tags': { latest: string };
+  "dist-tags": { latest: string };
   description?: string;
   versions: Record<string, NpmVersionEntry>;
   /** Some legacy packages flatten `pi` to the top level. Tolerated. */
@@ -81,16 +86,18 @@ interface NpmPackageResponse {
  * `pi` is included as a fallback for any package that published with it
  * at the root, but `versions[latest].pi` wins when present.
  */
-export async function readPackManifest(name: string): Promise<PackManifest | null> {
-  const url = `${REGISTRY}/${encodeURIComponent(name).replace('%40', '@')}`;
-  const res = await fetch(url, { headers: { accept: 'application/json' } });
+export async function readPackManifest(
+  name: string,
+): Promise<PackManifest | null> {
+  const url = `${REGISTRY}/${encodeURIComponent(name).replace("%40", "@")}`;
+  const res = await fetch(url, { headers: { accept: "application/json" } });
   if (res.status === 404) return null;
   if (!res.ok) {
     throw new Error(`registry request failed: ${res.status} ${res.statusText}`);
   }
   const json = (await res.json()) as NpmPackageResponse;
 
-  const latest = json['dist-tags'].latest;
+  const latest = json["dist-tags"].latest;
   const v = json.versions[latest];
   if (!v) {
     throw new Error(`registry returned no version ${latest} for ${name}`);
@@ -118,7 +125,9 @@ export async function readPackManifest(name: string): Promise<PackManifest | nul
 const cache = new Map<string, PackManifest | null>();
 
 /** Read a manifest, caching the result. Cache hits are sync after the first call. */
-export async function readPackManifestCached(name: string): Promise<PackManifest | null> {
+export async function readPackManifestCached(
+  name: string,
+): Promise<PackManifest | null> {
   if (cache.has(name)) return cache.get(name) ?? null;
   const m = await readPackManifest(name);
   cache.set(name, m);
@@ -132,7 +141,7 @@ export function clearManifestCache(): void {
 
 // ─── Classification ────────────────────────────────────────
 
-import type { PackKind } from './types.js';
+import type { PackKind } from "./types.js";
 
 /**
  * Classify a pack using its manifest, with a graceful fallback.
@@ -149,10 +158,10 @@ export function classifyFromManifest(
   if (manifest?.pi?.kind) return manifest.pi.kind;
 
   if (manifest?.pi) {
-    if (manifest.pi.themes && manifest.pi.themes.length > 0) return 'theme';
-    if (manifest.pi.prompts && manifest.pi.prompts.length > 0) return 'prompt';
-    if (manifest.pi.skills && manifest.pi.skills.length > 0) return 'skill';
-    if (manifest.pi.extension !== undefined) return 'extension';
+    if (manifest.pi.themes && manifest.pi.themes.length > 0) return "theme";
+    if (manifest.pi.prompts && manifest.pi.prompts.length > 0) return "prompt";
+    if (manifest.pi.skills && manifest.pi.skills.length > 0) return "skill";
+    if (manifest.pi.extension !== undefined) return "extension";
   }
 
   return classifyByName(fallbackName);
@@ -164,11 +173,21 @@ export function classifyFromManifest(
  */
 export function classifyByName(name: string): PackKind {
   const lower = name.toLowerCase();
-  if (lower.includes('-skill') || lower.includes('skill-') || lower.includes('superpowers') || lower.includes('memory'))
-    return 'skill';
-  if (lower.includes('-theme') || lower.includes('theme-') || lower.includes('footer') || lower.includes('hud'))
-    return 'theme';
-  if (lower.includes('-prompt') || lower.includes('prompt-')) return 'prompt';
-  if (lower.endsWith('-prompt') || lower.endsWith('-theme')) return 'prompt';
-  return 'extension';
+  if (
+    lower.includes("-skill") ||
+    lower.includes("skill-") ||
+    lower.includes("superpowers") ||
+    lower.includes("memory")
+  )
+    return "skill";
+  if (
+    lower.includes("-theme") ||
+    lower.includes("theme-") ||
+    lower.includes("footer") ||
+    lower.includes("hud")
+  )
+    return "theme";
+  if (lower.includes("-prompt") || lower.includes("prompt-")) return "prompt";
+  if (lower.endsWith("-prompt") || lower.endsWith("-theme")) return "prompt";
+  return "extension";
 }

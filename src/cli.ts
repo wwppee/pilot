@@ -9,30 +9,38 @@
  *   2. Import + register it below.
  */
 
-import { Command as Commander } from 'commander';
-import { logger } from './utils/logger.js';
-import { readSettings } from './core/settings.js';
-import { createService } from './core/service-impl.js';
-import { piAgentDir, type PilotContext } from './core/types.js';
-import { VERSION } from './core/version.js';
+import { Command as Commander } from "commander";
+import { logger } from "./utils/logger.js";
+import { readSettings } from "./core/settings.js";
+import { createService } from "./core/service-impl.js";
+import { piAgentDir, type PilotContext } from "./core/types.js";
+import { VERSION } from "./core/version.js";
 
-import * as packCmd from './commands/pack.js';
-import * as sessionCmd from './commands/session.js';
-import * as doctorCmd from './commands/doctor.js';
-import * as serverCmd from './commands/server.js';
-import * as profileCmd from './commands/profile.js';
-import * as statsCmd from './commands/stats.js';
-import * as dashboardCmd from './commands/dashboard.js';
+import * as packCmd from "./commands/pack.js";
+import * as sessionCmd from "./commands/session.js";
+import * as doctorCmd from "./commands/doctor.js";
+import * as serverCmd from "./commands/server.js";
+import * as profileCmd from "./commands/profile.js";
+import * as statsCmd from "./commands/stats.js";
+import * as dashboardCmd from "./commands/dashboard.js";
 
 /** All registered top-level commands. */
-const commands = [packCmd, sessionCmd, profileCmd, doctorCmd, serverCmd, statsCmd, dashboardCmd] as const;
+const commands = [
+  packCmd,
+  sessionCmd,
+  profileCmd,
+  doctorCmd,
+  serverCmd,
+  statsCmd,
+  dashboardCmd,
+] as const;
 
 async function main(): Promise<void> {
   const program = new Commander();
 
   program
-    .name('pilot')
-    .description('Pilot — management plane for pi.dev coding agent')
+    .name("pilot")
+    .description("Pilot — management plane for pi.dev coding agent")
     .version(VERSION)
     .showHelpAfterError();
 
@@ -45,13 +53,16 @@ async function main(): Promise<void> {
 
     if (c.manifest.subcommands) {
       sub.addHelpText(
-        'after',
-        `\nSubcommands:\n  ${c.manifest.subcommands.join('\n  ')}\n`,
+        "after",
+        `\nSubcommands:\n  ${c.manifest.subcommands.join("\n  ")}\n`,
       );
     }
 
     // All commands accept variadic args — we dispatch internally.
-    sub.action(async function (this: InstanceType<typeof Commander>, ..._actionArgs: unknown[]) {
+    sub.action(async function (
+      this: InstanceType<typeof Commander>,
+      ..._actionArgs: unknown[]
+    ) {
       // `this.args` is commander's full argv (positional + unknown options).
       // We pass them as-is to the command's run() for it to parse.
       const args = this.args;
@@ -70,15 +81,17 @@ async function main(): Promise<void> {
   program.action(() => {
     console.log(
       [
-        'Pilot — pi.dev management plane',
-        '',
-        'Usage: pilot <command> [args]',
-        '',
-        'Commands:',
-        ...commands.map((c) => `  ${c.manifest.name.padEnd(12)} ${c.manifest.description}`),
-        '',
-        'Tip: try `pilot doctor` first.',
-      ].join('\n'),
+        "Pilot — pi.dev management plane",
+        "",
+        "Usage: pilot <command> [args]",
+        "",
+        "Commands:",
+        ...commands.map(
+          (c) => `  ${c.manifest.name.padEnd(12)} ${c.manifest.description}`,
+        ),
+        "",
+        "Tip: try `pilot doctor` first.",
+      ].join("\n"),
     );
   });
 
@@ -86,7 +99,7 @@ async function main(): Promise<void> {
 }
 
 async function buildContext(): Promise<PilotContext> {
-  const home = process.env['HOME'] ?? '';
+  const home = process.env["HOME"] ?? "";
   const settings = await readSettings();
   return {
     home,

@@ -15,24 +15,33 @@
  * See: docs/architecture.md §1, docs/roadmap.md §2.
  */
 
-import { readFile, readdir, writeFile, mkdir, unlink, stat } from 'node:fs/promises';
-import { join } from 'node:path';
-import { parse as parseToml, stringify as stringifyToml } from 'smol-toml';
-import { z } from 'zod';
-import { pilotProfilesDir } from './types.js';
+import {
+  readFile,
+  readdir,
+  writeFile,
+  mkdir,
+  unlink,
+  stat,
+} from "node:fs/promises";
+import { join } from "node:path";
+import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
+import { z } from "zod";
+import { pilotProfilesDir } from "./types.js";
 
 // ─── Zod schemas ──────────────────────────────────────────────
 
 export const ThinkingLevelSchema = z.enum([
-  'off',
-  'low',
-  'medium',
-  'high',
-  'xhigh',
+  "off",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
 ]);
 
 export const ProfileSchema = z.object({
-  name: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'name must be kebab-case'),
+  name: z
+    .string()
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "name must be kebab-case"),
   description: z.string().optional(),
   model: z.string().optional(),
   thinking: ThinkingLevelSchema.optional(),
@@ -67,7 +76,7 @@ export function profilePath(name: string, home?: string): string {
 
 /** Absolute path to the project-level profile override. */
 export function projectProfilePath(cwd: string = process.cwd()): string {
-  return join(cwd, '.pilot', 'profile.toml');
+  return join(cwd, ".pilot", "profile.toml");
 }
 
 /** Absolute path to the global profiles directory. */
@@ -78,9 +87,12 @@ export function profilesDir(home?: string): string {
 // ─── Read / write ──────────────────────────────────────────
 
 /** Read and parse a profile TOML. Throws ZodError on bad shape. */
-export async function readProfile(name: string, home?: string): Promise<Profile> {
+export async function readProfile(
+  name: string,
+  home?: string,
+): Promise<Profile> {
   const file = profilePath(name, home);
-  const raw = await readFile(file, 'utf-8');
+  const raw = await readFile(file, "utf-8");
   const data: unknown = parseToml(raw);
 
   // Inject name + timestamps (TOML stores everything else; we add these for the schema).
@@ -94,7 +106,10 @@ export async function readProfile(name: string, home?: string): Promise<Profile>
 }
 
 /** Safe variant — returns null on any error. */
-export async function tryReadProfile(name: string, home?: string): Promise<Profile | null> {
+export async function tryReadProfile(
+  name: string,
+  home?: string,
+): Promise<Profile | null> {
   try {
     return await readProfile(name, home);
   } catch {
@@ -114,8 +129,8 @@ export async function listProfiles(home?: string): Promise<Profile[]> {
 
   const results: Profile[] = [];
   for (const entry of entries) {
-    if (!entry.endsWith('.toml')) continue;
-    const name = entry.slice(0, -'.toml'.length);
+    if (!entry.endsWith(".toml")) continue;
+    const name = entry.slice(0, -".toml".length);
     const profile = await tryReadProfile(name, home);
     if (profile) results.push(profile);
   }
@@ -153,12 +168,15 @@ export async function writeProfile(
   // Serialize (strip the injected name — it's the file's identity)
   const { name: _omit, ...rest } = validated;
   await mkdir(dir, { recursive: true });
-  await writeFile(file, stringifyToml(rest), 'utf-8');
+  await writeFile(file, stringifyToml(rest), "utf-8");
   return validated;
 }
 
 /** Delete a profile. No-op if it doesn't exist. Returns true if deleted. */
-export async function deleteProfile(name: string, home?: string): Promise<boolean> {
+export async function deleteProfile(
+  name: string,
+  home?: string,
+): Promise<boolean> {
   const file = profilePath(name, home);
   try {
     await stat(file);

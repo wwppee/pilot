@@ -19,17 +19,20 @@
  *   GET    /capabilities/:id         — get one capability
  */
 
-import Fastify, { type FastifyInstance } from 'fastify';
-import fastifyCookie from '@fastify/cookie';
-import { randomUUID } from 'node:crypto';
+import Fastify, { type FastifyInstance } from "fastify";
+import fastifyCookie from "@fastify/cookie";
+import { randomUUID } from "node:crypto";
 
-import { createService, type CreateServiceOptions } from '../core/service-impl.js';
-import type { PilotService } from '../core/service.js';
-import type { StatsRange } from '../core/stats.js';
-import { VERSION } from '../core/version.js';
+import {
+  createService,
+  type CreateServiceOptions,
+} from "../core/service-impl.js";
+import type { PilotService } from "../core/service.js";
+import type { StatsRange } from "../core/stats.js";
+import { VERSION } from "../core/version.js";
 
-import { readOrCreateToken, TOKEN_HEADER, verifyToken } from './auth.js';
-import { CSRF_COOKIE, CSRF_HEADER, CsrfState } from './csrf.js';
+import { readOrCreateToken, TOKEN_HEADER, verifyToken } from "./auth.js";
+import { CSRF_COOKIE, CSRF_HEADER, CsrfState } from "./csrf.js";
 
 // ─── Server options ────────────────────────────────────────
 
@@ -57,7 +60,7 @@ export interface ServerHandle {
 // ─── Factory ───────────────────────────────────────────────
 
 const DEFAULT_PORT = 17361;
-const DEFAULT_HOST = '127.0.0.1';
+const DEFAULT_HOST = "127.0.0.1";
 
 /**
  * Build the set of allowed Origin values for the bound host+port.
@@ -67,9 +70,8 @@ const DEFAULT_HOST = '127.0.0.1';
  */
 function allowedOriginsFor(host: string, port: number): Set<string> {
   const origins = new Set<string>();
-  const variants = host === '127.0.0.1' || host === '0.0.0.0'
-    ? [host, 'localhost']
-    : [host];
+  const variants =
+    host === "127.0.0.1" || host === "0.0.0.0" ? [host, "localhost"] : [host];
   for (const h of variants) {
     origins.add(`http://${h}:${port}`);
   }
@@ -79,27 +81,30 @@ function allowedOriginsFor(host: string, port: number): Set<string> {
 /** Parse a `?range=` query value into a StatsRange. */
 function parseRange(which: string, days?: number): StatsRange {
   switch (which) {
-    case 'today':
-      return { kind: 'today' };
-    case 'lastDays':
-      return { kind: 'lastDays', days: days && days > 0 ? days : 7 };
-    case 'all':
-      return { kind: 'all' };
+    case "today":
+      return { kind: "today" };
+    case "lastDays":
+      return { kind: "lastDays", days: days && days > 0 ? days : 7 };
+    case "all":
+      return { kind: "all" };
     default:
-      return { kind: 'lastDays', days: 7 };
+      return { kind: "lastDays", days: 7 };
   }
 }
 
 /** Routes that require CSRF + Origin check (mutating operations). */
-const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const WRITE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 /** Start the server and return a handle. Resolves once listening. */
-export async function startServer(opts: StartServerOptions = {}): Promise<ServerHandle> {
+export async function startServer(
+  opts: StartServerOptions = {},
+): Promise<ServerHandle> {
   const port = opts.port ?? DEFAULT_PORT;
   const host = opts.host ?? DEFAULT_HOST;
   const home = opts.home;
 
-  const serviceOptions: CreateServiceOptions = home !== undefined ? { home } : {};
+  const serviceOptions: CreateServiceOptions =
+    home !== undefined ? { home } : {};
   const service = createService(serviceOptions);
   const token = await readOrCreateToken(home);
   const csrf = new CsrfState();
@@ -114,22 +119,24 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Server
 
   // ─── Hooks: token + origin + CSRF ─────────────────────
 
-  app.addHook('onRequest', async (req, reply) => {
+  app.addHook("onRequest", async (req, reply) => {
     // Health check is unauthenticated (for "is server up?" checks).
-    if (req.url === '/health' && req.method === 'GET') return;
+    if (req.url === "/health" && req.method === "GET") return;
 
     // Token check
     const provided = req.headers[TOKEN_HEADER];
-    if (!verifyToken(typeof provided === 'string' ? provided : undefined, token)) {
-      reply.code(401).send({ error: 'unauthorized' });
+    if (
+      !verifyToken(typeof provided === "string" ? provided : undefined, token)
+    ) {
+      reply.code(401).send({ error: "unauthorized" });
       return reply;
     }
 
     // Origin + CSRF check for write methods
     if (WRITE_METHODS.has(req.method)) {
-      const origin = req.headers['origin'];
+      const origin = req.headers["origin"];
       if (origin && !allowedOrigins.has(origin)) {
-        reply.code(403).send({ error: 'forbidden: bad origin' });
+        reply.code(403).send({ error: "forbidden: bad origin" });
         return reply;
       }
       // For browser requests (Origin set), require CSRF.
@@ -137,9 +144,10 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Server
       if (origin) {
         const cookieToken = req.cookies[CSRF_COOKIE];
         const headerToken = req.headers[CSRF_HEADER];
-        const headerStr = typeof headerToken === 'string' ? headerToken : undefined;
+        const headerStr =
+          typeof headerToken === "string" ? headerToken : undefined;
         if (!csrf.verify(cookieToken, headerStr)) {
-          reply.code(403).send({ error: 'forbidden: bad csrf' });
+          reply.code(403).send({ error: "forbidden: bad csrf" });
           return reply;
         }
       }
@@ -147,12 +155,12 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Server
   });
 
   // After every response, set the CSRF token so subsequent POSTs have a valid cookie.
-  app.addHook('onSend', async (req, reply) => {
-    if (req.method === 'GET') {
+  app.addHook("onSend", async (req, reply) => {
+    if (req.method === "GET") {
       void reply.setCookie(CSRF_COOKIE, csrf.getToken(), {
-        path: '/',
+        path: "/",
         httpOnly: false, // Web UI needs to read it
-        sameSite: 'strict',
+        sameSite: "strict",
       });
       reply.header(CSRF_HEADER, csrf.getToken());
     }
@@ -160,88 +168,94 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Server
 
   // ─── Routes ─────────────────────────────────────────
 
-  app.get('/health', async () => ({
-    status: 'ok',
+  app.get("/health", async () => ({
+    status: "ok",
     version: VERSION,
     pid: process.pid,
   }));
 
-  app.get('/packs', async () => service.listPacks());
+  app.get("/packs", async () => service.listPacks());
 
-  app.get<{ Querystring: { q?: string } }>('/packs/search', async (req) => {
-    const q = (req.query.q ?? '').trim();
+  app.get<{ Querystring: { q?: string } }>("/packs/search", async (req) => {
+    const q = (req.query.q ?? "").trim();
     if (!q) return [];
     return service.searchPacks(q);
   });
 
-  app.get<{ Params: { name: string } }>('/packs/info/:name', async (req) => {
+  app.get<{ Params: { name: string } }>("/packs/info/:name", async (req) => {
     const pack = await service.getPack(req.params.name);
     if (!pack) {
-      throw Object.assign(new Error('pack not found'), { statusCode: 404 });
+      throw Object.assign(new Error("pack not found"), { statusCode: 404 });
     }
     return pack;
   });
 
-  app.post<{ Body: { source?: string } }>('/packs/install', async (req) => {
+  app.post<{ Body: { source?: string } }>("/packs/install", async (req) => {
     const source = req.body?.source;
     if (!source) {
-      throw Object.assign(new Error('missing source'), { statusCode: 400 });
+      throw Object.assign(new Error("missing source"), { statusCode: 400 });
     }
     await service.installPack(source);
     return { ok: true };
   });
 
-  app.get<{ Querystring: { model?: string; cwd?: string; sinceDays?: string } }>(
-    '/sessions',
+  app.get<{
+    Querystring: { model?: string; cwd?: string; sinceDays?: string };
+  }>("/sessions", async (req) => {
+    const filter: { model?: string; cwd?: string; sinceDays?: number } = {};
+    if (req.query.model) filter.model = req.query.model;
+    if (req.query.cwd) filter.cwd = req.query.cwd;
+    if (req.query.sinceDays) {
+      const n = Number(req.query.sinceDays);
+      if (Number.isFinite(n) && n > 0) filter.sinceDays = n;
+    }
+    return service.listSessions(filter);
+  });
+
+  app.get<{ Querystring: { q?: string; case?: string } }>(
+    "/sessions/search",
     async (req) => {
-      const filter: { model?: string; cwd?: string; sinceDays?: number } = {};
-      if (req.query.model) filter.model = req.query.model;
-      if (req.query.cwd) filter.cwd = req.query.cwd;
-      if (req.query.sinceDays) {
-        const n = Number(req.query.sinceDays);
-        if (Number.isFinite(n) && n > 0) filter.sinceDays = n;
-      }
-      return service.listSessions(filter);
+      const q = (req.query.q ?? "").trim();
+      if (!q) return [];
+      return service.searchSessions(q, {
+        caseSensitive: req.query.case === "1",
+      });
     },
   );
 
-  app.get<{ Querystring: { q?: string; case?: string } }>('/sessions/search', async (req) => {
-    const q = (req.query.q ?? '').trim();
-    if (!q) return [];
-    return service.searchSessions(q, { caseSensitive: req.query.case === '1' });
-  });
-
-  app.get<{ Params: { id: string } }>('/sessions/:id/tree', async (req) => {
+  app.get<{ Params: { id: string } }>("/sessions/:id/tree", async (req) => {
     const tree = await service.readSessionTree(req.params.id);
     return tree;
   });
 
-  app.get('/doctor', async () => service.runDoctor());
+  app.get("/doctor", async () => service.runDoctor());
 
-  app.get('/capabilities', async () => service.listCapabilities());
+  app.get("/capabilities", async () => service.listCapabilities());
 
-  app.get<{ Params: { id: string } }>('/capabilities/:id', async (req) => {
+  app.get<{ Params: { id: string } }>("/capabilities/:id", async (req) => {
     const cap = await service.getCapability(req.params.id);
     if (!cap) {
-      throw Object.assign(new Error('capability not found'), { statusCode: 404 });
+      throw Object.assign(new Error("capability not found"), {
+        statusCode: 404,
+      });
     }
     return cap;
   });
 
   // ─── Profiles (v0.3.0-b) ─────────────────────────────
 
-  app.get('/profiles', async () => service.listProfiles());
+  app.get("/profiles", async () => service.listProfiles());
 
-  app.get<{ Params: { name: string } }>('/profiles/:name', async (req) => {
+  app.get<{ Params: { name: string } }>("/profiles/:name", async (req) => {
     const profile = await service.getProfile(req.params.name);
     if (!profile) {
-      throw Object.assign(new Error('profile not found'), { statusCode: 404 });
+      throw Object.assign(new Error("profile not found"), { statusCode: 404 });
     }
     return profile;
   });
 
   app.post<{ Params: { name: string }; Body: Record<string, unknown> }>(
-    '/profiles/:name',
+    "/profiles/:name",
     async (req) => {
       // The route is the source of name truth; we don't read name from body.
       const { name: _ignore, ...input } = req.body ?? {};
@@ -250,10 +264,10 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Server
     },
   );
 
-  app.delete<{ Params: { name: string } }>('/profiles/:name', async (req) => {
+  app.delete<{ Params: { name: string } }>("/profiles/:name", async (req) => {
     const deleted = await service.deleteProfile(req.params.name);
     if (!deleted) {
-      throw Object.assign(new Error('profile not found'), { statusCode: 404 });
+      throw Object.assign(new Error("profile not found"), { statusCode: 404 });
     }
     return { ok: true };
   });
@@ -262,8 +276,8 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Server
 
   app.get<{
     Querystring: { range?: string; days?: string };
-  }>('/stats', async (req) => {
-    const which = req.query.range ?? 'week';
+  }>("/stats", async (req) => {
+    const which = req.query.range ?? "week";
     const daysRaw = req.query.days;
     const days = daysRaw ? Number(daysRaw) : undefined;
 
@@ -275,7 +289,7 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Server
   app.setErrorHandler((err: unknown, _req, reply) => {
     const e = err as { statusCode?: number; message?: string };
     const status = e.statusCode ?? 500;
-    reply.code(status).send({ error: e.message ?? 'internal error' });
+    reply.code(status).send({ error: e.message ?? "internal error" });
   });
 
   // ─── Listen ─────────────────────────────────────────

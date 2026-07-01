@@ -20,17 +20,17 @@
  * See: docs/roadmap.md §2 (v0.3.0-c).
  */
 
-import { readEntries } from './jsonl-parser.js';
-import { listAllSessions } from './sessions.js';
-import type { SessionInfo } from './types.js';
+import { readEntries } from "./jsonl-parser.js";
+import { listAllSessions } from "./sessions.js";
+import type { SessionInfo } from "./types.js";
 
 // ─── Types ──────────────────────────────────────────────────
 
 /** Range selector. */
 export type StatsRange =
-  | { kind: 'today' }
-  | { kind: 'lastDays'; days: number }
-  | { kind: 'all' };
+  | { kind: "today" }
+  | { kind: "lastDays"; days: number }
+  | { kind: "all" };
 
 /** A single bucket in the by-model / by-tool / by-day arrays. */
 export interface ModelBucket {
@@ -87,32 +87,40 @@ export async function aggregateStats(
         try {
           for await (const entry of readEntries(s.path)) {
             totalMessages++;
-            if (entry.type === 'tool') totalToolCalls++;
+            if (entry.type === "tool") totalToolCalls++;
 
-            if (entry.type === 'assistant') {
+            if (entry.type === "assistant") {
               const m = extractModel(entry.data);
               if (m) {
-                const cur = modelCounts.get(m) ?? { model: m, messages: 0, toolCalls: 0 };
+                const cur = modelCounts.get(m) ?? {
+                  model: m,
+                  messages: 0,
+                  toolCalls: 0,
+                };
                 cur.messages++;
                 modelCounts.set(m, cur);
               }
             }
 
-            if (entry.type === 'tool') {
+            if (entry.type === "tool") {
               const t = extractToolName(entry.data);
               if (t) toolCounts.set(t, (toolCounts.get(t) ?? 0) + 1);
             }
 
             if (entry.timestamp) {
               const day = localDateString(entry.timestamp);
-              const cur = dayCounts.get(day) ?? { date: day, messages: 0, toolCalls: 0 };
+              const cur = dayCounts.get(day) ?? {
+                date: day,
+                messages: 0,
+                toolCalls: 0,
+              };
               cur.messages++;
-              if (entry.type === 'tool') cur.toolCalls++;
+              if (entry.type === "tool") cur.toolCalls++;
               dayCounts.set(day, cur);
             }
 
             // Count tool calls under each model too
-            if (entry.type === 'tool' && entry.parentId) {
+            if (entry.type === "tool" && entry.parentId) {
               // Parent must be assistant; we don't have parent resolution here.
               // Skip the cross-link for now — byModel.toolCalls counts the
               // assistant messages that include at least one tool call in
@@ -140,8 +148,11 @@ export async function aggregateStats(
 
 // ─── Filtering ─────────────────────────────────────────────
 
-function filterByRange(sessions: SessionInfo[], range: StatsRange): SessionInfo[] {
-  if (range.kind === 'all') return sessions;
+function filterByRange(
+  sessions: SessionInfo[],
+  range: StatsRange,
+): SessionInfo[] {
+  if (range.kind === "all") return sessions;
   const cutoff = computeCutoff(range);
   return sessions.filter((s) => {
     const ts = s.lastUsedAt ? Date.parse(s.lastUsedAt) : 0;
@@ -158,11 +169,11 @@ function filterByRange(sessions: SessionInfo[], range: StatsRange): SessionInfo[
  */
 function computeCutoff(range: StatsRange): number {
   const now = new Date();
-  if (range.kind === 'today') {
+  if (range.kind === "today") {
     // Local midnight today. getFullYear/Month/Date use the host's TZ.
     return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   }
-  if (range.kind === 'lastDays') {
+  if (range.kind === "lastDays") {
     return now.getTime() - range.days * 24 * 60 * 60 * 1000;
   }
   return 0;
@@ -174,33 +185,33 @@ function computeCutoff(range: StatsRange): number {
 function localDateString(iso: string): string {
   const d = new Date(iso);
   const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
 
 function extractModel(data: unknown): string | undefined {
-  if (!data || typeof data !== 'object') return undefined;
+  if (!data || typeof data !== "object") return undefined;
   const obj = data as Record<string, unknown>;
-  if (typeof obj['model'] === 'string') return obj['model'];
-  const meta = obj['metadata'];
-  if (meta && typeof meta === 'object') {
-    const m = (meta as Record<string, unknown>)['model'];
-    if (typeof m === 'string') return m;
+  if (typeof obj["model"] === "string") return obj["model"];
+  const meta = obj["metadata"];
+  if (meta && typeof meta === "object") {
+    const m = (meta as Record<string, unknown>)["model"];
+    if (typeof m === "string") return m;
   }
   return undefined;
 }
 
 function extractToolName(data: unknown): string | undefined {
-  if (!data || typeof data !== 'object') return undefined;
+  if (!data || typeof data !== "object") return undefined;
   const obj = data as Record<string, unknown>;
-  if (typeof obj['name'] === 'string') return obj['name'];
+  if (typeof obj["name"] === "string") return obj["name"];
   // Some formats: { tool: "read", ... } or { function: { name: "..." } }
-  if (typeof obj['tool'] === 'string') return obj['tool'];
-  const fn = obj['function'];
-  if (fn && typeof fn === 'object') {
-    const n = (fn as Record<string, unknown>)['name'];
-    if (typeof n === 'string') return n;
+  if (typeof obj["tool"] === "string") return obj["tool"];
+  const fn = obj["function"];
+  if (fn && typeof fn === "object") {
+    const n = (fn as Record<string, unknown>)["name"];
+    if (typeof n === "string") return n;
   }
   return undefined;
 }

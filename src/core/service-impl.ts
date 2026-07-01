@@ -10,31 +10,31 @@
  * a mock.
  */
 
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-import { stat } from 'node:fs/promises';
-import { readdir } from 'node:fs/promises';
-import { join } from 'node:path';
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { stat } from "node:fs/promises";
+import { readdir } from "node:fs/promises";
+import { join } from "node:path";
 
 const execFileAsync = promisify(execFile);
 
-import { listCapabilities, tryLoadCapability } from './capability.js';
-import { readSessionTree, searchSession } from './jsonl-parser.js';
+import { listCapabilities, tryLoadCapability } from "./capability.js";
+import { readSessionTree, searchSession } from "./jsonl-parser.js";
 import {
   classifyFromManifest,
   readPackManifestCached,
-} from './pack-manifest.js';
-import { getPack, searchPacks as searchPacksNpm } from './npm-registry.js';
-import { isPiInstalled, runPiStreaming } from './pi-cli.js';
+} from "./pack-manifest.js";
+import { getPack, searchPacks as searchPacksNpm } from "./npm-registry.js";
+import { isPiInstalled, runPiStreaming } from "./pi-cli.js";
 import {
   deleteProfile,
   listProfiles,
   tryReadProfile,
   writeProfile,
-} from './profile.js';
-import { listAllSessions, sortByRecent } from './sessions.js';
-import { listSources, readSettings } from './settings.js';
-import { aggregateStats } from './stats.js';
+} from "./profile.js";
+import { listAllSessions, sortByRecent } from "./sessions.js";
+import { listSources, readSettings } from "./settings.js";
+import { aggregateStats } from "./stats.js";
 import {
   piAgentDir,
   piSettingsFile,
@@ -43,7 +43,7 @@ import {
   type Pack,
   type SessionInfo,
   type SessionTree,
-} from './types.js';
+} from "./types.js";
 
 import type {
   DoctorCheck,
@@ -51,7 +51,7 @@ import type {
   PilotService,
   SessionFilter,
   SessionSearchHit,
-} from './service.js';
+} from "./service.js";
 
 export interface CreateServiceOptions {
   /**
@@ -105,15 +105,15 @@ async function searchPacks(query: string): Promise<Pack[]> {
 }
 
 async function installPack(source: string): Promise<void> {
-  const spec = source.includes(':') ? source : `npm:${source}`;
-  await runPiStreaming(['install', spec]);
+  const spec = source.includes(":") ? source : `npm:${source}`;
+  await runPiStreaming(["install", spec]);
 }
 
 async function toInstalledPack(
   src: NonNullable<ReturnType<typeof listSources>>[number],
 ): Promise<InstalledPack> {
   const raw = src.source;
-  const colonIdx = raw.indexOf(':');
+  const colonIdx = raw.indexOf(":");
   const name = colonIdx >= 0 ? raw.slice(colonIdx + 1) : raw;
   // Read manifest (cached). Falls back to name heuristic on failure or
   // when manifest has no `pi` field.
@@ -136,7 +136,10 @@ async function listSessions(
   if (!filter) return all;
 
   return all.filter((s) => {
-    if (filter.model && !(s.model ?? '').toLowerCase().includes(filter.model.toLowerCase())) {
+    if (
+      filter.model &&
+      !(s.model ?? "").toLowerCase().includes(filter.model.toLowerCase())
+    ) {
       return false;
     }
     if (filter.cwd && s.cwd !== filter.cwd) return false;
@@ -181,7 +184,10 @@ async function searchSessions(
   return hits;
 }
 
-async function readSessionTreeById(id: string, home?: string): Promise<SessionTree> {
+async function readSessionTreeById(
+  id: string,
+  home?: string,
+): Promise<SessionTree> {
   const all = await listAllSessions(home);
   const match = all.find((s) => s.id === id);
   if (!match) {
@@ -196,42 +202,46 @@ async function runDoctor(home?: string): Promise<DoctorReport> {
   const checks: DoctorCheck[] = [];
 
   // Node version
-  const nodeMajor = Number(process.versions.node.split('.')[0]);
+  const nodeMajor = Number(process.versions.node.split(".")[0]);
   checks.push({
     ok: nodeMajor >= 20,
     message: `Node ${process.versions.node}`,
-    ...(nodeMajor < 20 ? { hint: 'Upgrade to Node 20+' } : {}),
+    ...(nodeMajor < 20 ? { hint: "Upgrade to Node 20+" } : {}),
   });
 
   // pi on PATH
   const piOk = await isPiInstalled();
   checks.push({
     ok: piOk,
-    message: piOk ? 'pi on PATH' : 'pi NOT found',
-    ...(piOk ? {} : { hint: 'Install: npm install -g @earendil-works/pi-coding-agent' }),
+    message: piOk ? "pi on PATH" : "pi NOT found",
+    ...(piOk
+      ? {}
+      : { hint: "Install: npm install -g @earendil-works/pi-coding-agent" }),
   });
 
   // fd (optional)
   let fdOk = false;
   try {
     // We only care whether the binary exists; ignore its output.
-    await execFileAsync('fd', ['--version'], { stdio: 'ignore' } as never);
+    await execFileAsync("fd", ["--version"], { stdio: "ignore" } as never);
     fdOk = true;
   } catch {
     fdOk = false;
   }
   checks.push({
     ok: fdOk,
-    message: fdOk ? 'fd installed (recommended)' : 'fd not found',
-    ...(fdOk ? {} : { hint: 'Optional: brew install fd — speeds up file search' }),
+    message: fdOk ? "fd installed (recommended)" : "fd not found",
+    ...(fdOk
+      ? {}
+      : { hint: "Optional: brew install fd — speeds up file search" }),
   });
 
   // ~/.pi/agent exists
   const dirOk = await pathExists(piAgentDir(home));
   checks.push({
     ok: dirOk,
-    message: dirOk ? '~/.pi/agent exists' : '~/.pi/agent missing',
-    ...(dirOk ? {} : { hint: 'Run `pi` once to initialize the directory' }),
+    message: dirOk ? "~/.pi/agent exists" : "~/.pi/agent missing",
+    ...(dirOk ? {} : { hint: "Run `pi` once to initialize the directory" }),
   });
 
   // settings.json
@@ -240,24 +250,27 @@ async function runDoctor(home?: string): Promise<DoctorReport> {
   if (settingsExists) {
     checks.push({
       ok: settings !== null,
-      message: settings !== null ? 'settings.json valid' : 'settings.json malformed',
+      message:
+        settings !== null ? "settings.json valid" : "settings.json malformed",
       ...(settings !== null
         ? {}
-        : { hint: 'Run `pilot doctor` to see parse details' }),
+        : { hint: "Run `pilot doctor` to see parse details" }),
     });
   } else {
-    checks.push({ ok: true, message: 'settings.json not yet created' });
+    checks.push({ ok: true, message: "settings.json not yet created" });
   }
 
   // Pack conflicts
   const sources = listSources(settings);
   if (sources.length >= 2) {
-    const subagent = sources.filter((s) => /subagent|crew|orchestr/i.test(s.source));
+    const subagent = sources.filter((s) =>
+      /subagent|crew|orchestr/i.test(s.source),
+    );
     if (subagent.length >= 2) {
       checks.push({
         ok: false,
         message: `${subagent.length} subagent packs installed (likely conflict)`,
-        hint: 'Keep only one: pilot pack uninstall <others>',
+        hint: "Keep only one: pilot pack uninstall <others>",
       });
     }
   }
@@ -271,7 +284,7 @@ async function runDoctor(home?: string): Promise<DoctorReport> {
       ok: mb < 500,
       message: `sessions: ${mb.toFixed(1)} MB total`,
       ...(mb >= 500
-        ? { hint: 'Consider: pilot session gc --older-than 30d (v0.2)' }
+        ? { hint: "Consider: pilot session gc --older-than 30d (v0.2)" }
         : {}),
     });
   }

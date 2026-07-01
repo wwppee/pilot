@@ -15,36 +15,44 @@
  * launching pi. `pilot profile share` to export a team-style TOML.
  */
 
-import kleur from 'kleur';
-import type { ProfileInput, ThinkingLevel } from '../core/profile.js';
-import type { PilotContext, Command } from '../core/types.js';
+import kleur from "kleur";
+import type { ProfileInput, ThinkingLevel } from "../core/profile.js";
+import type { PilotContext, Command } from "../core/types.js";
 
 export const manifest: Command = {
-  name: 'profile',
-  description: 'Manage named Pilot profiles',
-  subcommands: ['ls', 'show <name>', 'create <name>', 'set <name> <key>=<val>', 'delete <name>'],
+  name: "profile",
+  description: "Manage named Pilot profiles",
+  subcommands: [
+    "ls",
+    "show <name>",
+    "create <name>",
+    "set <name> <key>=<val>",
+    "delete <name>",
+  ],
 };
 
 export async function run(args: string[], ctx: PilotContext): Promise<number> {
   const sub = args[0];
 
   switch (sub) {
-    case 'ls':
+    case "ls":
       return ls(ctx);
-    case 'show':
-      return show(args[1] ?? '', ctx);
-    case 'create':
-      return create(args[1] ?? '', ctx);
-    case 'set':
-      return set(args[1] ?? '', args[2] ?? '', ctx);
-    case 'delete':
-      return del(args[1] ?? '', ctx);
-    case 'use':
-    case 'share':
+    case "show":
+      return show(args[1] ?? "", ctx);
+    case "create":
+      return create(args[1] ?? "", ctx);
+    case "set":
+      return set(args[1] ?? "", args[2] ?? "", ctx);
+    case "delete":
+      return del(args[1] ?? "", ctx);
+    case "use":
+    case "share":
       ctx.logger.warn(`\`pilot profile ${sub}\` ships in a follow-up release`);
       return 0;
     case undefined:
-      ctx.logger.error('Missing subcommand. Try: pilot profile ls|show|create|set|delete');
+      ctx.logger.error(
+        "Missing subcommand. Try: pilot profile ls|show|create|set|delete",
+      );
       return 1;
     default:
       ctx.logger.error(`Unknown subcommand: ${sub}`);
@@ -57,16 +65,18 @@ export async function run(args: string[], ctx: PilotContext): Promise<number> {
 async function ls(ctx: PilotContext): Promise<number> {
   const profiles = await ctx.service.listProfiles();
   if (profiles.length === 0) {
-    ctx.logger.info('No profiles. Create one with: pilot profile create <name>');
+    ctx.logger.info(
+      "No profiles. Create one with: pilot profile create <name>",
+    );
     return 0;
   }
 
   ctx.logger.info(`${profiles.length} profile(s):\n`);
   for (const p of profiles) {
-    const mark = kleur.cyan('●');
-    const model = p.model ? kleur.dim(` model=${p.model}`) : '';
-    const thinking = p.thinking ? kleur.dim(` thinking=${p.thinking}`) : '';
-    const team = p.team ? kleur.dim(` team=${p.team}`) : '';
+    const mark = kleur.cyan("●");
+    const model = p.model ? kleur.dim(` model=${p.model}`) : "";
+    const thinking = p.thinking ? kleur.dim(` thinking=${p.thinking}`) : "";
+    const team = p.team ? kleur.dim(` team=${p.team}`) : "";
     console.log(`  ${mark} ${kleur.bold(p.name)}${model}${thinking}${team}`);
     if (p.description) console.log(kleur.dim(`    ${p.description}`));
   }
@@ -77,7 +87,7 @@ async function ls(ctx: PilotContext): Promise<number> {
 
 async function show(name: string, ctx: PilotContext): Promise<number> {
   if (!name) {
-    ctx.logger.error('Usage: pilot profile show <name>');
+    ctx.logger.error("Usage: pilot profile show <name>");
     return 1;
   }
   const profile = await ctx.service.getProfile(name);
@@ -101,11 +111,13 @@ async function show(name: string, ctx: PilotContext): Promise<number> {
 
 async function create(name: string, ctx: PilotContext): Promise<number> {
   if (!name) {
-    ctx.logger.error('Usage: pilot profile create <name>');
+    ctx.logger.error("Usage: pilot profile create <name>");
     return 1;
   }
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(name)) {
-    ctx.logger.error('Profile name must be kebab-case (a-z, 0-9, single dashes)');
+    ctx.logger.error(
+      "Profile name must be kebab-case (a-z, 0-9, single dashes)",
+    );
     return 1;
   }
 
@@ -121,20 +133,24 @@ async function create(name: string, ctx: PilotContext): Promise<number> {
 
 // ─── set ──────────────────────────────────────────────────────────
 
-async function set(name: string, expr: string, ctx: PilotContext): Promise<number> {
+async function set(
+  name: string,
+  expr: string,
+  ctx: PilotContext,
+): Promise<number> {
   if (!name) {
-    ctx.logger.error('Usage: pilot profile set <name> <key>=<value>');
+    ctx.logger.error("Usage: pilot profile set <name> <key>=<value>");
     return 1;
   }
-  if (!expr.includes('=')) {
-    ctx.logger.error('Expected <key>=<value>');
+  if (!expr.includes("=")) {
+    ctx.logger.error("Expected <key>=<value>");
     return 1;
   }
-  const eqIdx = expr.indexOf('=');
+  const eqIdx = expr.indexOf("=");
   const key = expr.slice(0, eqIdx).trim();
   const value = expr.slice(eqIdx + 1).trim();
   if (!key) {
-    ctx.logger.error('Empty key');
+    ctx.logger.error("Empty key");
     return 1;
   }
 
@@ -176,18 +192,20 @@ function profileInputFromSet(
   if (existing.model !== undefined) base.model = existing.model;
   if (existing.thinking !== undefined) base.thinking = existing.thinking;
   if (existing.team !== undefined) base.team = existing.team;
-  if (existing.description !== undefined) base.description = existing.description;
+  if (existing.description !== undefined)
+    base.description = existing.description;
 
   switch (key) {
-    case 'model':
+    case "model":
       return { ...base, model: value };
-    case 'thinking': {
-      if (!['off', 'low', 'medium', 'high', 'xhigh'].includes(value)) return null;
+    case "thinking": {
+      if (!["off", "low", "medium", "high", "xhigh"].includes(value))
+        return null;
       return { ...base, thinking: value as ThinkingLevel };
     }
-    case 'team':
+    case "team":
       return { ...base, team: value };
-    case 'description':
+    case "description":
       return { ...base, description: value };
     default:
       return null;
@@ -198,7 +216,7 @@ function profileInputFromSet(
 
 async function del(name: string, ctx: PilotContext): Promise<number> {
   if (!name) {
-    ctx.logger.error('Usage: pilot profile delete <name>');
+    ctx.logger.error("Usage: pilot profile delete <name>");
     return 1;
   }
   const deleted = await ctx.service.deleteProfile(name);

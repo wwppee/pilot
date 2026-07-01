@@ -6,9 +6,9 @@
  * so commands can degrade gracefully.
  */
 
-import { readFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
-import { piSettingsFile, type PiSettings } from './types.js';
+import { readFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { piSettingsFile, type PiSettings } from "./types.js";
 
 /**
  * Read and parse the global pi settings file.
@@ -22,7 +22,7 @@ export async function readSettings(home?: string): Promise<PiSettings | null> {
   }
 
   try {
-    const raw = await readFile(file, 'utf-8');
+    const raw = await readFile(file, "utf-8");
     return JSON.parse(raw) as PiSettings;
   } catch (err) {
     // Malformed JSON — return null so callers can handle it.
@@ -32,7 +32,9 @@ export async function readSettings(home?: string): Promise<PiSettings | null> {
 }
 
 /** Return the list of installed sources, or [] if settings is missing. */
-export function listSources(settings: PiSettings | null): NonNullable<PiSettings['sources']> {
+export function listSources(
+  settings: PiSettings | null,
+): NonNullable<PiSettings["sources"]> {
   if (!settings || !Array.isArray(settings.sources)) return [];
   return settings.sources;
 }

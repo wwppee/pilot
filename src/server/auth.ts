@@ -11,13 +11,13 @@
  * startup; the Web UI persists it to localStorage on first load.
  */
 
-import { randomBytes } from 'node:crypto';
-import { readFile, writeFile, chmod } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
-import { pilotDir } from '../core/types.js';
+import { randomBytes } from "node:crypto";
+import { readFile, writeFile, chmod } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { pilotDir } from "../core/types.js";
 
 /** Header name carrying the auth token. */
-export const TOKEN_HEADER = 'x-pilot-token';
+export const TOKEN_HEADER = "x-pilot-token";
 
 /** Absolute path to the persisted token file. */
 export function tokenPath(home?: string): string {
@@ -26,7 +26,7 @@ export function tokenPath(home?: string): string {
 
 /** Generate a fresh 32-byte URL-safe token. */
 export function generateToken(): string {
-  return randomBytes(32).toString('base64url');
+  return randomBytes(32).toString("base64url");
 }
 
 /**
@@ -39,10 +39,10 @@ export function generateToken(): string {
 export async function readOrCreateToken(home?: string): Promise<string> {
   const file = tokenPath(home);
   if (existsSync(file)) {
-    return readFile(file, 'utf-8');
+    return readFile(file, "utf-8");
   }
   const token = generateToken();
-  await writeFile(file, token, { encoding: 'utf-8', mode: 0o600 });
+  await writeFile(file, token, { encoding: "utf-8", mode: 0o600 });
   // Mode from options isn't honored on all platforms; chmod explicitly.
   await chmod(file, 0o600);
   return token;
@@ -59,7 +59,10 @@ function timingSafeEqual(a: string, b: string): boolean {
 }
 
 /** Verify a request's token header against the expected token. */
-export function verifyToken(provided: string | undefined, expected: string): boolean {
+export function verifyToken(
+  provided: string | undefined,
+  expected: string,
+): boolean {
   if (!provided) return false;
   return timingSafeEqual(provided, expected);
 }

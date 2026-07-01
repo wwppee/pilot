@@ -12,8 +12,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Node 24 added 2026-07 — Actions platform default is moving there.
+        # Keep 20/22/24 to catch both ends of the support window.
         os: [macos-latest, ubuntu-latest]
-        node: [20, 22]
+        node: [20, 22, 24]
     steps:
       - uses: actions/checkout@v4
 
@@ -23,7 +25,9 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
 
-      - name: Install dependencies
+      # ─── Root: Pilot CLI ────────────────────────────
+
+      - name: Install root
         run: npm ci
 
       - name: Format check
@@ -39,4 +43,22 @@ jobs:
         run: npm test
 
       - name: Build
+        run: npm run build
+
+      # ─── Web: Pilot Web UI ──────────────────────────
+
+      - name: Install web
+        working-directory: web
+        run: npm ci
+
+      - name: Web typecheck
+        working-directory: web
+        run: npm run typecheck
+
+      - name: Web test
+        working-directory: web
+        run: npm test
+
+      - name: Web build
+        working-directory: web
         run: npm run build

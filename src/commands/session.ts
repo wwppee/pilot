@@ -11,31 +11,36 @@
  * All read/write paths go through `ctx.service` — no direct core imports.
  */
 
-import kleur from 'kleur';
-import type { PilotContext, Command, SessionInfo, SessionTreeNode } from '../core/types.js';
+import kleur from "kleur";
+import type {
+  PilotContext,
+  Command,
+  SessionInfo,
+  SessionTreeNode,
+} from "../core/types.js";
 
 export const manifest: Command = {
-  name: 'session',
-  description: 'Manage pi session files',
-  subcommands: ['ls', 'search <query>', 'tree <id>'],
+  name: "session",
+  description: "Manage pi session files",
+  subcommands: ["ls", "search <query>", "tree <id>"],
 };
 
 export async function run(args: string[], ctx: PilotContext): Promise<number> {
   const sub = args[0];
 
   switch (sub) {
-    case 'ls':
+    case "ls":
       return ls(ctx);
-    case 'search':
+    case "search":
       return search(args.slice(1), ctx);
-    case 'tree':
-      return tree(args[1] ?? '', ctx);
-    case 'diff':
-    case 'export':
+    case "tree":
+      return tree(args[1] ?? "", ctx);
+    case "diff":
+    case "export":
       ctx.logger.warn(`\`pilot session ${sub}\` is in v0.3.0+`);
       return 0;
     case undefined:
-      ctx.logger.error('Missing subcommand. Try: pilot session ls|search|tree');
+      ctx.logger.error("Missing subcommand. Try: pilot session ls|search|tree");
       return 1;
     default:
       ctx.logger.error(`Unknown subcommand: ${sub}`);
@@ -49,7 +54,7 @@ async function ls(ctx: PilotContext): Promise<number> {
   const sorted = await ctx.service.listSessions();
 
   if (sorted.length === 0) {
-    ctx.logger.info('No sessions found.');
+    ctx.logger.info("No sessions found.");
     return 0;
   }
 
@@ -58,7 +63,7 @@ async function ls(ctx: PilotContext): Promise<number> {
   // Group by encoded cwd
   const byCwd = new Map<string, SessionInfo[]>();
   for (const s of sorted) {
-    const key = s.cwd ?? '<unknown>';
+    const key = s.cwd ?? "<unknown>";
     const arr = byCwd.get(key) ?? [];
     arr.push(s);
     byCwd.set(key, arr);
@@ -67,10 +72,12 @@ async function ls(ctx: PilotContext): Promise<number> {
   for (const [cwd, items] of byCwd) {
     console.log(kleur.bold().underline(decodeCwd(cwd)));
     for (const s of items.slice(0, 10)) {
-      const date = (s.lastUsedAt ?? '').slice(0, 16).replace('T', ' ');
-      const model = s.model ? kleur.dim(` · ${s.model}`) : '';
+      const date = (s.lastUsedAt ?? "").slice(0, 16).replace("T", " ");
+      const model = s.model ? kleur.dim(` · ${s.model}`) : "";
       const size = formatBytes(s.sizeBytes);
-      console.log(`  ${kleur.cyan(date)}  ${s.entries} entries · ${size}${model}`);
+      console.log(
+        `  ${kleur.cyan(date)}  ${s.entries} entries · ${size}${model}`,
+      );
       console.log(`    ${kleur.dim(s.path)}`);
     }
     if (items.length > 10) {
@@ -90,24 +97,26 @@ async function search(args: string[], ctx: PilotContext): Promise<number> {
     ctx.logger.error('Usage: pilot session search "<query>"');
     return 1;
   }
-  const caseSensitive = args.includes('--case');
+  const caseSensitive = args.includes("--case");
 
   ctx.logger.info(`Searching all sessions for: ${kleur.cyan(query)}\n`);
 
   const hits = await ctx.service.searchSessions(query, { caseSensitive });
 
   if (hits.length === 0) {
-    ctx.logger.info('No matches.');
+    ctx.logger.info("No matches.");
     return 0;
   }
 
   console.log(kleur.dim(`${hits.length} session(s) contain matches.\n`));
 
   for (const { info, hits: count } of hits) {
-    const date = (info.lastUsedAt ?? '').slice(0, 16).replace('T', ' ');
-    const marker = kleur.yellow('★');
-    console.log(`  ${marker} ${kleur.cyan(date)}  ${kleur.bold(String(count))} hits`);
-    console.log(`    ${kleur.dim(decodeCwd(info.cwd ?? '<unknown>'))}`);
+    const date = (info.lastUsedAt ?? "").slice(0, 16).replace("T", " ");
+    const marker = kleur.yellow("★");
+    console.log(
+      `  ${marker} ${kleur.cyan(date)}  ${kleur.bold(String(count))} hits`,
+    );
+    console.log(`    ${kleur.dim(decodeCwd(info.cwd ?? "<unknown>"))}`);
     console.log(`    ${kleur.dim(info.path)}`);
     console.log();
   }
@@ -120,7 +129,7 @@ async function search(args: string[], ctx: PilotContext): Promise<number> {
 
 async function tree(id: string, ctx: PilotContext): Promise<number> {
   if (!id) {
-    ctx.logger.error('Usage: pilot session tree <id>');
+    ctx.logger.error("Usage: pilot session tree <id>");
     return 1;
   }
 
@@ -136,25 +145,27 @@ async function tree(id: string, ctx: PilotContext): Promise<number> {
     `Session ${kleur.cyan(tree.id)} — ${tree.totalNodes} nodes, depth ${tree.maxDepth}, ${tree.models.length} model(s)`,
   );
   if (tree.models.length > 0) {
-    console.log(kleur.dim(`  models: ${tree.models.join(', ')}`));
+    console.log(kleur.dim(`  models: ${tree.models.join(", ")}`));
   }
   if (tree.branchPoints.length > 0) {
     console.log(kleur.dim(`  branch points: ${tree.branchPoints.length}`));
   }
   console.log();
 
-  renderNode(tree.root, '', true);
+  renderNode(tree.root, "", true);
   return 0;
 }
 
 function renderNode(n: SessionTreeNode, prefix: string, isLast: boolean): void {
-  const branch = isLast ? '└─ ' : '├─ ';
+  const branch = isLast ? "└─ " : "├─ ";
   const typeTag = colorByType(`[${n.type}]`).padEnd(11);
-  const ts = n.timestamp ? kleur.dim(n.timestamp.slice(11, 19)) : kleur.dim('          ');
-  const preview = n.preview ? ` ${kleur.dim('— ' + n.preview)}` : '';
+  const ts = n.timestamp
+    ? kleur.dim(n.timestamp.slice(11, 19))
+    : kleur.dim("          ");
+  const preview = n.preview ? ` ${kleur.dim("— " + n.preview)}` : "";
   console.log(`${prefix}${branch}${ts}  ${typeTag}${preview}`);
 
-  const childPrefix = prefix + (isLast ? '   ' : '│  ');
+  const childPrefix = prefix + (isLast ? "   " : "│  ");
   for (let i = 0; i < n.children.length; i++) {
     const child = n.children[i]!;
     const last = i === n.children.length - 1;
@@ -164,13 +175,13 @@ function renderNode(n: SessionTreeNode, prefix: string, isLast: boolean): void {
 
 function colorByType(type: string): string {
   switch (type) {
-    case 'user':
+    case "user":
       return kleur.cyan(type);
-    case 'assistant':
+    case "assistant":
       return kleur.green(type);
-    case 'tool':
+    case "tool":
       return kleur.yellow(type);
-    case 'system':
+    case "system":
       return kleur.magenta(type);
     default:
       return kleur.gray(type);
@@ -188,9 +199,9 @@ function colorByType(type: string): string {
  */
 function decodeCwd(encoded: string): string {
   try {
-    const decoded = Buffer.from(encoded, 'base64').toString('utf-8');
+    const decoded = Buffer.from(encoded, "base64").toString("utf-8");
     // sanity check: should look like a path
-    if (decoded.startsWith('/') || /^[A-Z]:/.test(decoded)) return decoded;
+    if (decoded.startsWith("/") || /^[A-Z]:/.test(decoded)) return decoded;
   } catch {
     // ignore
   }

@@ -6,30 +6,32 @@
  * architecture (CLI / server / web all share one service).
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { mkdtempSync, mkdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
-import * as packCmd from '../../src/commands/pack.js';
-import * as sessionCmd from '../../src/commands/session.js';
-import * as doctorCmd from '../../src/commands/doctor.js';
-import * as profileCmd from '../../src/commands/profile.js';
+import * as packCmd from "../../src/commands/pack.js";
+import * as sessionCmd from "../../src/commands/session.js";
+import * as doctorCmd from "../../src/commands/doctor.js";
+import * as profileCmd from "../../src/commands/profile.js";
 
-import type { PilotService } from '../../src/core/service.js';
+import type { PilotService } from "../../src/core/service.js";
 import type {
   Capability,
   InstalledPack,
   Pack,
   PilotContext,
   SessionInfo,
-} from '../../src/core/types.js';
-import type { Profile, ProfileInput } from '../../src/core/profile.js';
-import type { DoctorReport } from '../../src/core/service.js';
+} from "../../src/core/types.js";
+import type { Profile, ProfileInput } from "../../src/core/profile.js";
+import type { DoctorReport } from "../../src/core/service.js";
 
 // ─── Mock factory ──────────────────────────────────────────
 
-function makeMockService(overrides: Partial<PilotService> = {}): PilotService & {
+function makeMockService(
+  overrides: Partial<PilotService> = {},
+): PilotService & {
   listPacks: ReturnType<typeof vi.fn>;
   searchPacks: ReturnType<typeof vi.fn>;
   getPack: ReturnType<typeof vi.fn>;
@@ -53,9 +55,11 @@ function makeMockService(overrides: Partial<PilotService> = {}): PilotService & 
     listSessions: vi.fn(async () => [] as SessionInfo[]),
     searchSessions: vi.fn(async () => []),
     readSessionTree: vi.fn(async () => {
-      throw new Error('not implemented in mock');
+      throw new Error("not implemented in mock");
     }),
-    runDoctor: vi.fn(async () => ({ ok: true, failed: 0, checks: [] }) as DoctorReport),
+    runDoctor: vi.fn(
+      async () => ({ ok: true, failed: 0, checks: [] }) as DoctorReport,
+    ),
     listCapabilities: vi.fn(async () => [] as Capability[]),
     getCapability: vi.fn(async () => null),
     listProfiles: vi.fn(async () => [] as Profile[]),
@@ -63,8 +67,8 @@ function makeMockService(overrides: Partial<PilotService> = {}): PilotService & 
     setProfile: vi.fn(async (name: string, input: ProfileInput) => ({
       name,
       ...input,
-      createdAt: '2026-07-01T00:00:00Z',
-      updatedAt: '2026-07-01T00:00:00Z',
+      createdAt: "2026-07-01T00:00:00Z",
+      updatedAt: "2026-07-01T00:00:00Z",
     })),
     deleteProfile: vi.fn(async () => true),
     ...overrides,
@@ -73,8 +77,8 @@ function makeMockService(overrides: Partial<PilotService> = {}): PilotService & 
 
 function makeCtx(svc: PilotService): PilotContext {
   return {
-    home: '/tmp/fake-home',
-    piAgentDir: '/tmp/fake-home/.pi/agent',
+    home: "/tmp/fake-home",
+    piAgentDir: "/tmp/fake-home/.pi/agent",
     settings: null,
     logger: {
       info: () => {},
@@ -88,15 +92,15 @@ function makeCtx(svc: PilotService): PilotContext {
   };
 }
 
-describe('commands use ctx.service (not direct core)', () => {
+describe("commands use ctx.service (not direct core)", () => {
   let origHome: string | undefined;
   let tempHome: string;
 
   beforeEach(() => {
     origHome = process.env.HOME;
-    tempHome = mkdtempSync(join(tmpdir(), 'pilot-cmd-test-'));
+    tempHome = mkdtempSync(join(tmpdir(), "pilot-cmd-test-"));
     process.env.HOME = tempHome;
-    mkdirSync(join(tempHome, '.pi/agent'), { recursive: true });
+    mkdirSync(join(tempHome, ".pi/agent"), { recursive: true });
   });
 
   afterEach(() => {
@@ -106,43 +110,60 @@ describe('commands use ctx.service (not direct core)', () => {
 
   // ─── pack ls ─────────────────────────────────────────
 
-  describe('pilot pack ls', () => {
-    it('calls ctx.service.listPacks', async () => {
+  describe("pilot pack ls", () => {
+    it("calls ctx.service.listPacks", async () => {
       const svc = makeMockService({
         listPacks: vi.fn(async () => [
-          { source: 'npm:pi-subagents', name: 'pi-subagents', enabled: true, kind: 'extension' },
-          { source: 'npm:pi-lens', name: 'pi-lens', enabled: true, kind: 'extension' },
+          {
+            source: "npm:pi-subagents",
+            name: "pi-subagents",
+            enabled: true,
+            kind: "extension",
+          },
+          {
+            source: "npm:pi-lens",
+            name: "pi-lens",
+            enabled: true,
+            kind: "extension",
+          },
         ]),
       });
-      const code = await packCmd.run(['ls'], makeCtx(svc));
+      const code = await packCmd.run(["ls"], makeCtx(svc));
       expect(code).toBe(0);
       expect(svc.listPacks).toHaveBeenCalledTimes(1);
     });
 
-    it('returns 0 with helpful message when empty', async () => {
+    it("returns 0 with helpful message when empty", async () => {
       const svc = makeMockService();
-      const code = await packCmd.run(['ls'], makeCtx(svc));
+      const code = await packCmd.run(["ls"], makeCtx(svc));
       expect(code).toBe(0);
     });
   });
 
   // ─── pack search ─────────────────────────────────────
 
-  describe('pilot pack search', () => {
-    it('calls ctx.service.searchPacks with the query', async () => {
+  describe("pilot pack search", () => {
+    it("calls ctx.service.searchPacks with the query", async () => {
       const svc = makeMockService({
-        searchPacks: vi.fn(async (q: string) => [
-          { name: q + '-hit', version: '1.0.0', description: 'A test pack' },
-        ] as Pack[]),
+        searchPacks: vi.fn(
+          async (q: string) =>
+            [
+              {
+                name: q + "-hit",
+                version: "1.0.0",
+                description: "A test pack",
+              },
+            ] as Pack[],
+        ),
       });
-      const code = await packCmd.run(['search', 'foo'], makeCtx(svc));
+      const code = await packCmd.run(["search", "foo"], makeCtx(svc));
       expect(code).toBe(0);
-      expect(svc.searchPacks).toHaveBeenCalledWith('foo');
+      expect(svc.searchPacks).toHaveBeenCalledWith("foo");
     });
 
-    it('returns 1 when no query', async () => {
+    it("returns 1 when no query", async () => {
       const svc = makeMockService();
-      const code = await packCmd.run(['search'], makeCtx(svc));
+      const code = await packCmd.run(["search"], makeCtx(svc));
       expect(code).toBe(1);
       expect(svc.searchPacks).not.toHaveBeenCalled();
     });
@@ -150,61 +171,64 @@ describe('commands use ctx.service (not direct core)', () => {
 
   // ─── pack info ───────────────────────────────────────
 
-  describe('pilot pack info', () => {
-    it('calls ctx.service.getPack', async () => {
+  describe("pilot pack info", () => {
+    it("calls ctx.service.getPack", async () => {
       const svc = makeMockService({
         getPack: vi.fn(async (name: string) => ({
           name,
-          version: '1.2.3',
-          description: 'Test',
+          version: "1.2.3",
+          description: "Test",
         })),
       });
-      const code = await packCmd.run(['info', 'foo'], makeCtx(svc));
+      const code = await packCmd.run(["info", "foo"], makeCtx(svc));
       expect(code).toBe(0);
-      expect(svc.getPack).toHaveBeenCalledWith('foo');
+      expect(svc.getPack).toHaveBeenCalledWith("foo");
     });
 
-    it('returns 1 for missing package', async () => {
+    it("returns 1 for missing package", async () => {
       const svc = makeMockService();
-      const code = await packCmd.run(['info', 'foo'], makeCtx(svc));
+      const code = await packCmd.run(["info", "foo"], makeCtx(svc));
       expect(code).toBe(1);
     });
   });
 
   // ─── pack install ────────────────────────────────────
 
-  describe('pilot pack install', () => {
-    it('calls ctx.service.installPack with the spec', async () => {
+  describe("pilot pack install", () => {
+    it("calls ctx.service.installPack with the spec", async () => {
       const svc = makeMockService();
-      const code = await packCmd.run(['install', 'pi-subagents'], makeCtx(svc));
+      const code = await packCmd.run(["install", "pi-subagents"], makeCtx(svc));
       expect(code).toBe(0);
-      expect(svc.installPack).toHaveBeenCalledWith('npm:pi-subagents');
+      expect(svc.installPack).toHaveBeenCalledWith("npm:pi-subagents");
     });
 
-    it('preserves explicit npm: prefix', async () => {
+    it("preserves explicit npm: prefix", async () => {
       const svc = makeMockService();
-      const code = await packCmd.run(['install', 'git:github.com/foo/bar'], makeCtx(svc));
+      const code = await packCmd.run(
+        ["install", "git:github.com/foo/bar"],
+        makeCtx(svc),
+      );
       expect(code).toBe(0);
-      expect(svc.installPack).toHaveBeenCalledWith('git:github.com/foo/bar');
+      expect(svc.installPack).toHaveBeenCalledWith("git:github.com/foo/bar");
     });
 
-    it('returns 1 when install throws', async () => {
+    it("returns 1 when install throws", async () => {
       const svc = makeMockService({
         installPack: vi.fn(async () => {
-          throw new Error('network fail');
+          throw new Error("network fail");
         }),
       });
-      const code = await packCmd.run(['install', 'pi-subagents'], makeCtx(svc));
+      const code = await packCmd.run(["install", "pi-subagents"], makeCtx(svc));
       expect(code).toBe(1);
     });
   });
 
   // ─── session ls ──────────────────────────────────────
 
-  describe('pilot session ls', () => {
-    it('calls ctx.service.listSessions', async () => {
+  describe("pilot session ls", () => {
+    it("calls ctx.service.listSessions", async () => {
       const svc = makeMockService();
-      const code = await sessionCmd.run(['ls'], makeCtx(svc));
+      const code = await sessionCmd.run(["ls"], makeCtx(svc));
       expect(code).toBe(0);
       expect(svc.listSessions).toHaveBeenCalledTimes(1);
     });
@@ -212,24 +236,31 @@ describe('commands use ctx.service (not direct core)', () => {
 
   // ─── session search ──────────────────────────────────
 
-  describe('pilot session search', () => {
-    it('calls ctx.service.searchSessions with caseSensitive option', async () => {
+  describe("pilot session search", () => {
+    it("calls ctx.service.searchSessions with caseSensitive option", async () => {
       const svc = makeMockService();
-      const code = await sessionCmd.run(['search', 'JWT', '--case'], makeCtx(svc));
+      const code = await sessionCmd.run(
+        ["search", "JWT", "--case"],
+        makeCtx(svc),
+      );
       expect(code).toBe(0);
-      expect(svc.searchSessions).toHaveBeenCalledWith('JWT', { caseSensitive: true });
+      expect(svc.searchSessions).toHaveBeenCalledWith("JWT", {
+        caseSensitive: true,
+      });
     });
 
-    it('defaults to case-insensitive', async () => {
+    it("defaults to case-insensitive", async () => {
       const svc = makeMockService();
-      const code = await sessionCmd.run(['search', 'jwt'], makeCtx(svc));
+      const code = await sessionCmd.run(["search", "jwt"], makeCtx(svc));
       expect(code).toBe(0);
-      expect(svc.searchSessions).toHaveBeenCalledWith('jwt', { caseSensitive: false });
+      expect(svc.searchSessions).toHaveBeenCalledWith("jwt", {
+        caseSensitive: false,
+      });
     });
 
-    it('returns 1 when no query', async () => {
+    it("returns 1 when no query", async () => {
       const svc = makeMockService();
-      const code = await sessionCmd.run(['search'], makeCtx(svc));
+      const code = await sessionCmd.run(["search"], makeCtx(svc));
       expect(code).toBe(1);
       expect(svc.searchSessions).not.toHaveBeenCalled();
     });
@@ -237,13 +268,13 @@ describe('commands use ctx.service (not direct core)', () => {
 
   // ─── doctor ──────────────────────────────────────────
 
-  describe('pilot doctor', () => {
-    it('calls ctx.service.runDoctor', async () => {
+  describe("pilot doctor", () => {
+    it("calls ctx.service.runDoctor", async () => {
       const svc = makeMockService({
         runDoctor: vi.fn(async () => ({
           ok: true,
           failed: 0,
-          checks: [{ ok: true, message: 'all good' }],
+          checks: [{ ok: true, message: "all good" }],
         })),
       });
       const code = await doctorCmd.run([], makeCtx(svc));
@@ -251,148 +282,160 @@ describe('commands use ctx.service (not direct core)', () => {
       expect(svc.runDoctor).toHaveBeenCalledTimes(1);
     });
 
-    it('returns 1 when checks fail', async () => {
+    it("returns 1 when checks fail", async () => {
       const svc = makeMockService({
         runDoctor: vi.fn(async () => ({
           ok: false,
           failed: 1,
-          checks: [{ ok: false, message: 'pi NOT found', hint: 'install pi' }],
+          checks: [{ ok: false, message: "pi NOT found", hint: "install pi" }],
         })),
       });
       const code = await doctorCmd.run([], makeCtx(svc));
       expect(code).toBe(1);
     });
 
-    it('outputs JSON with --json flag', async () => {
+    it("outputs JSON with --json flag", async () => {
       const svc = makeMockService({
         runDoctor: vi.fn(async () => ({
           ok: true,
           failed: 0,
-          checks: [{ ok: true, message: 'ok' }],
+          checks: [{ ok: true, message: "ok" }],
         })),
       });
       // Capture stdout
       const captured: string[] = [];
       const originalLog = console.log;
-      console.log = (...args) => captured.push(args.join(' '));
+      console.log = (...args) => captured.push(args.join(" "));
       try {
-        const code = await doctorCmd.run(['--json'], makeCtx(svc));
+        const code = await doctorCmd.run(["--json"], makeCtx(svc));
         expect(code).toBe(0);
       } finally {
         console.log = originalLog;
       }
       // First log should be the JSON
-      const output = captured.join('');
+      const output = captured.join("");
       expect(output).toContain('"ok": true');
     });
   });
 
   // ─── profile ──────────────────────────────────────────
 
-  describe('pilot profile ls', () => {
-    it('calls ctx.service.listProfiles', async () => {
+  describe("pilot profile ls", () => {
+    it("calls ctx.service.listProfiles", async () => {
       const svc = makeMockService();
-      const code = await profileCmd.run(['ls'], makeCtx(svc));
+      const code = await profileCmd.run(["ls"], makeCtx(svc));
       expect(code).toBe(0);
       expect(svc.listProfiles).toHaveBeenCalledTimes(1);
     });
   });
 
-  describe('pilot profile show', () => {
-    it('calls ctx.service.getProfile', async () => {
+  describe("pilot profile show", () => {
+    it("calls ctx.service.getProfile", async () => {
       const svc = makeMockService({
         getProfile: vi.fn(async () => ({
-          name: 'work',
-          model: 'claude-opus-4.6',
-          createdAt: '2026-07-01T00:00:00Z',
-          updatedAt: '2026-07-01T00:00:00Z',
+          name: "work",
+          model: "claude-opus-4.6",
+          createdAt: "2026-07-01T00:00:00Z",
+          updatedAt: "2026-07-01T00:00:00Z",
         })),
       });
-      const code = await profileCmd.run(['show', 'work'], makeCtx(svc));
+      const code = await profileCmd.run(["show", "work"], makeCtx(svc));
       expect(code).toBe(0);
-      expect(svc.getProfile).toHaveBeenCalledWith('work');
+      expect(svc.getProfile).toHaveBeenCalledWith("work");
     });
 
-    it('returns 1 for missing profile', async () => {
+    it("returns 1 for missing profile", async () => {
       const svc = makeMockService();
-      const code = await profileCmd.run(['show', 'nope'], makeCtx(svc));
+      const code = await profileCmd.run(["show", "nope"], makeCtx(svc));
       expect(code).toBe(1);
     });
   });
 
-  describe('pilot profile create', () => {
-    it('calls ctx.service.setProfile with empty input', async () => {
+  describe("pilot profile create", () => {
+    it("calls ctx.service.setProfile with empty input", async () => {
       const svc = makeMockService();
-      const code = await profileCmd.run(['create', 'work-frontend'], makeCtx(svc));
+      const code = await profileCmd.run(
+        ["create", "work-frontend"],
+        makeCtx(svc),
+      );
       expect(code).toBe(0);
-      expect(svc.setProfile).toHaveBeenCalledWith('work-frontend', {});
+      expect(svc.setProfile).toHaveBeenCalledWith("work-frontend", {});
     });
 
-    it('rejects non-kebab-case names', async () => {
+    it("rejects non-kebab-case names", async () => {
       const svc = makeMockService();
-      const code = await profileCmd.run(['create', 'BadName'], makeCtx(svc));
+      const code = await profileCmd.run(["create", "BadName"], makeCtx(svc));
       expect(code).toBe(1);
       expect(svc.setProfile).not.toHaveBeenCalled();
     });
   });
 
-  describe('pilot profile set', () => {
-    it('merges key=value into existing profile', async () => {
+  describe("pilot profile set", () => {
+    it("merges key=value into existing profile", async () => {
       const svc = makeMockService({
         getProfile: vi.fn(async () => ({
-          name: 'work',
-          model: 'old-model',
-          createdAt: '2026-07-01T00:00:00Z',
-          updatedAt: '2026-07-01T00:00:00Z',
+          name: "work",
+          model: "old-model",
+          createdAt: "2026-07-01T00:00:00Z",
+          updatedAt: "2026-07-01T00:00:00Z",
         })),
       });
-      const code = await profileCmd.run(['set', 'work', 'model=claude-opus-4.6'], makeCtx(svc));
+      const code = await profileCmd.run(
+        ["set", "work", "model=claude-opus-4.6"],
+        makeCtx(svc),
+      );
       expect(code).toBe(0);
-      expect(svc.setProfile).toHaveBeenCalledWith('work', {
-        model: 'claude-opus-4.6',
+      expect(svc.setProfile).toHaveBeenCalledWith("work", {
+        model: "claude-opus-4.6",
       });
     });
 
-    it('rejects unknown key', async () => {
+    it("rejects unknown key", async () => {
       const svc = makeMockService({
         getProfile: vi.fn(async () => ({
-          name: 'work',
-          createdAt: '2026-07-01T00:00:00Z',
-          updatedAt: '2026-07-01T00:00:00Z',
+          name: "work",
+          createdAt: "2026-07-01T00:00:00Z",
+          updatedAt: "2026-07-01T00:00:00Z",
         })),
       });
-      const code = await profileCmd.run(['set', 'work', 'unknown=val'], makeCtx(svc));
+      const code = await profileCmd.run(
+        ["set", "work", "unknown=val"],
+        makeCtx(svc),
+      );
       expect(code).toBe(1);
     });
 
-    it('rejects invalid thinking value', async () => {
+    it("rejects invalid thinking value", async () => {
       const svc = makeMockService({
         getProfile: vi.fn(async () => ({
-          name: 'work',
-          createdAt: '2026-07-01T00:00:00Z',
-          updatedAt: '2026-07-01T00:00:00Z',
+          name: "work",
+          createdAt: "2026-07-01T00:00:00Z",
+          updatedAt: "2026-07-01T00:00:00Z",
         })),
       });
-      const code = await profileCmd.run(['set', 'work', 'thinking=bogus'], makeCtx(svc));
+      const code = await profileCmd.run(
+        ["set", "work", "thinking=bogus"],
+        makeCtx(svc),
+      );
       expect(code).toBe(1);
     });
   });
 
-  describe('pilot profile delete', () => {
-    it('calls ctx.service.deleteProfile', async () => {
+  describe("pilot profile delete", () => {
+    it("calls ctx.service.deleteProfile", async () => {
       const svc = makeMockService({
         deleteProfile: vi.fn(async () => true),
       });
-      const code = await profileCmd.run(['delete', 'work'], makeCtx(svc));
+      const code = await profileCmd.run(["delete", "work"], makeCtx(svc));
       expect(code).toBe(0);
-      expect(svc.deleteProfile).toHaveBeenCalledWith('work');
+      expect(svc.deleteProfile).toHaveBeenCalledWith("work");
     });
 
-    it('returns 1 when profile did not exist', async () => {
+    it("returns 1 when profile did not exist", async () => {
       const svc = makeMockService({
         deleteProfile: vi.fn(async () => false),
       });
-      const code = await profileCmd.run(['delete', 'nope'], makeCtx(svc));
+      const code = await profileCmd.run(["delete", "nope"], makeCtx(svc));
       expect(code).toBe(1);
     });
   });

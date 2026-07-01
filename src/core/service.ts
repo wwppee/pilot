@@ -20,10 +20,10 @@
  * See: docs/architecture.md §3 for the full roadmap.
  */
 
-import type { Capability } from './capability.js';
-import type { Profile, ProfileInput } from './profile.js';
-import type { StatsRange, StatsReport } from './stats.js';
-import type { InstalledPack, Pack, SessionInfo, SessionTree } from './types.js';
+import type { Capability } from "./capability.js";
+import type { Profile, ProfileInput } from "./profile.js";
+import type { StatsRange, StatsReport } from "./stats.js";
+import type { InstalledPack, Pack, SessionInfo, SessionTree } from "./types.js";
 
 // ─── Filter / result types ──────────────────────────────────
 
