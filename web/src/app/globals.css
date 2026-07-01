@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+/* Pilot design tokens — kept here so we don't pull in a separate theme file. */
+:root {
+  --bg: #0b0d10;
+  --surface: #14171c;
+  --surface-2: #1c2128;
+  --text: #e6e7e9;
+  --text-muted: #8a9099;
+  --accent: #79c0ff;
+  --accent-2: #56d364;
+  --warn: #f0b400;
+  --error: #ff6b6b;
+  --border: #2a3038;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, "SF Pro Display", "Segoe UI", sans-serif;
+  font-feature-settings: "ss01", "cv01";
+  letter-spacing: -0.005em;
+}
+
+a { color: var(--accent); }
+a:hover { color: var(--accent-2); }
+
+.surface { background: var(--surface); border: 1px solid var(--border); }
+.surface-2 { background: var(--surface-2); }
+
+.kbd {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--surface-2);
+}

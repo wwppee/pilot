@@ -22,9 +22,10 @@ import * as doctorCmd from './commands/doctor.js';
 import * as serverCmd from './commands/server.js';
 import * as profileCmd from './commands/profile.js';
 import * as statsCmd from './commands/stats.js';
+import * as dashboardCmd from './commands/dashboard.js';
 
 /** All registered top-level commands. */
-const commands = [packCmd, sessionCmd, profileCmd, doctorCmd, serverCmd, statsCmd] as const;
+const commands = [packCmd, sessionCmd, profileCmd, doctorCmd, serverCmd, statsCmd, dashboardCmd] as const;
 
 async function main(): Promise<void> {
   const program = new Commander();

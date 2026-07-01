@@ -1,0 +1,7 @@
+node_modules
+.next
+.turbo
+.next-env.d.ts
+*.log
+.DS_Store
+coverage

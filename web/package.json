@@ -1,0 +1,31 @@
+{
+  "name": "pilot-web",
+  "version": "0.3.5",
+  "private": true,
+  "description": "Web UI for pilot — read-only dashboard over the local pilot server.",
+  "scripts": {
+    "dev": "next dev -p 17371",
+    "build": "next build",
+    "start": "next start -p 17371",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "next": "16.2.9",
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.2",
+    "@types/node": "24.10.0",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "tailwindcss": "4.3.2",
+    "typescript": "5.9.3",
+    "vitest": "2.1.8"
+  },
+  "allowScripts": {
+    "esbuild@0.21.5": true,
+    "sharp@0.34.5": true
+  }
+}
