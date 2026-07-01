@@ -20,6 +20,10 @@ const execFileAsync = promisify(execFile);
 
 import { listCapabilities, tryLoadCapability } from './capability.js';
 import { readSessionTree, searchSession } from './jsonl-parser.js';
+import {
+  classifyFromManifest,
+  readPackManifestCached,
+} from './pack-manifest.js';
 import { getPack, searchPacks as searchPacksNpm } from './npm-registry.js';
 import { isPiInstalled, runPiStreaming } from './pi-cli.js';
 import {
@@ -36,7 +40,6 @@ import {
   piSessionsDir,
   type InstalledPack,
   type Pack,
-  type PackKind,
   type SessionInfo,
   type SessionTree,
 } from './types.js';
@@ -88,7 +91,10 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
 
 async function listPacks(home?: string): Promise<InstalledPack[]> {
   const settings = await readSettings(home);
-  return listSources(settings).map(toInstalledPack);
+  const sources = listSources(settings);
+  // Enrich each source with its manifest in parallel (cached). Falls back to
+  // name heuristic when manifest is missing or has no `pi` field.
+  return Promise.all(sources.map((s) => toInstalledPack(s)));
 }
 
 async function searchPacks(query: string): Promise<Pack[]> {
@@ -100,29 +106,21 @@ async function installPack(source: string): Promise<void> {
   await runPiStreaming(['install', spec]);
 }
 
-function toInstalledPack(src: NonNullable<ReturnType<typeof listSources>>[number]): InstalledPack {
+async function toInstalledPack(
+  src: NonNullable<ReturnType<typeof listSources>>[number],
+): Promise<InstalledPack> {
   const raw = src.source;
   const colonIdx = raw.indexOf(':');
   const name = colonIdx >= 0 ? raw.slice(colonIdx + 1) : raw;
+  // Read manifest (cached). Falls back to name heuristic on failure or
+  // when manifest has no `pi` field.
+  const manifest = await readPackManifestCached(name);
   return {
     source: raw,
     name,
     enabled: src.enabled !== false,
-    kind: classifyKind(name),
+    kind: classifyFromManifest(manifest, name),
   };
-}
-
-const SKILL_HINTS = ['-skill', 'skill-', 'superpowers', 'memory'];
-const THEME_HINTS = ['-theme', 'theme-', 'footer', 'hud'];
-const PROMPT_HINTS = ['-prompt', 'prompt-'];
-
-function classifyKind(name: string): PackKind {
-  const lower = name.toLowerCase();
-  if (SKILL_HINTS.some((h) => lower.includes(h))) return 'skill';
-  if (THEME_HINTS.some((h) => lower.includes(h))) return 'theme';
-  if (PROMPT_HINTS.some((h) => lower.includes(h))) return 'prompt';
-  if (lower.endsWith('-prompt') || lower.endsWith('-theme')) return 'prompt';
-  return 'extension';
 }
 
 // ─── Sessions ──────────────────────────────────────────────
