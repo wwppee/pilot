@@ -14,6 +14,7 @@ import { logger } from './utils/logger.js';
 import { readSettings } from './core/settings.js';
 import { createService } from './core/service-impl.js';
 import { piAgentDir, type PilotContext } from './core/types.js';
+import { VERSION } from './core/version.js';
 
 import * as packCmd from './commands/pack.js';
 import * as sessionCmd from './commands/session.js';
@@ -31,7 +32,7 @@ async function main(): Promise<void> {
   program
     .name('pilot')
     .description('Pilot — management plane for pi.dev coding agent')
-    .version('0.3.0')
+    .version(VERSION)
     .showHelpAfterError();
 
   for (const c of commands) {

@@ -57,16 +57,29 @@ export type PackManifestPi = z.infer<typeof PackManifestPiSchema>;
 
 // ─── Read ──────────────────────────────────────────────────
 
+interface NpmVersionEntry {
+  name?: string;
+  version?: string;
+  description?: string;
+  pi?: unknown;
+}
 interface NpmPackageResponse {
   name: string;
   'dist-tags': { latest: string };
   description?: string;
+  versions: Record<string, NpmVersionEntry>;
+  /** Some legacy packages flatten `pi` to the top level. Tolerated. */
   pi?: unknown;
 }
 
 /**
  * Read a package's manifest from the npm registry.
  * Returns null if the package doesn't exist (404).
+ *
+ * The real package.json fields (including custom fields like `pi`) live
+ * under `versions[latest]`, not at the response top level. The top-level
+ * `pi` is included as a fallback for any package that published with it
+ * at the root, but `versions[latest].pi` wins when present.
  */
 export async function readPackManifest(name: string): Promise<PackManifest | null> {
   const url = `${REGISTRY}/${encodeURIComponent(name).replace('%40', '@')}`;
@@ -77,11 +90,22 @@ export async function readPackManifest(name: string): Promise<PackManifest | nul
   }
   const json = (await res.json()) as NpmPackageResponse;
 
+  const latest = json['dist-tags'].latest;
+  const v = json.versions[latest];
+  if (!v) {
+    throw new Error(`registry returned no version ${latest} for ${name}`);
+  }
+
+  // versions[latest] is canonical; fall back to top-level for legacy
+  // packages that published `pi` flat.
+  const pi = v.pi ?? json.pi;
+  const description = v.description ?? json.description;
+
   return PackManifestSchema.parse({
-    name: json.name,
-    version: json['dist-tags'].latest,
-    description: json.description,
-    pi: json.pi,
+    name: v.name ?? json.name,
+    version: latest,
+    description,
+    pi,
   });
 }
 

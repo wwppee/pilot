@@ -5,7 +5,12 @@
  *   - total messages / tool calls
  *   - by model (count of assistant messages, count of tool calls made)
  *   - by tool name
- *   - by day
+ *   - by day (in the user's local timezone — same as the cutoff)
+ *
+ * Time windows:
+ *   - `today`   — local midnight today → now (Asia/Shanghai if user is in CN)
+ *   - `lastDays` — now − N×24h
+ *   - `all`     — every session
  *
  * No token accounting yet — pi's session format may carry usage data
  * but we don't depend on it. Add later when we know the field shape.
@@ -99,7 +104,7 @@ export async function aggregateStats(
             }
 
             if (entry.timestamp) {
-              const day = entry.timestamp.slice(0, 10);
+              const day = localDateString(entry.timestamp);
               const cur = dayCounts.get(day) ?? { date: day, messages: 0, toolCalls: 0 };
               cur.messages++;
               if (entry.type === 'tool') cur.toolCalls++;
@@ -144,20 +149,35 @@ function filterByRange(sessions: SessionInfo[], range: StatsRange): SessionInfo[
   });
 }
 
+/**
+ * Compute the cutoff timestamp for a range, in the user's local timezone.
+ *
+ * `today` = start of local-today (matches what "today" means to a human),
+ * `lastDays` = now − N×24h (timezone-agnostic since we just want a window),
+ * `all` = 0.
+ */
 function computeCutoff(range: StatsRange): number {
-  const now = Date.now();
+  const now = new Date();
   if (range.kind === 'today') {
-    // Start of today (UTC midnight)
-    const d = new Date(now);
-    return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+    // Local midnight today. getFullYear/Month/Date use the host's TZ.
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   }
   if (range.kind === 'lastDays') {
-    return now - range.days * 24 * 60 * 60 * 1000;
+    return now.getTime() - range.days * 24 * 60 * 60 * 1000;
   }
   return 0;
 }
 
 // ─── Helpers ───────────────────────────────────────────────
+
+/** Local YYYY-MM-DD for an ISO timestamp, matching the local-tz cutoff. */
+function localDateString(iso: string): string {
+  const d = new Date(iso);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
 function extractModel(data: unknown): string | undefined {
   if (!data || typeof data !== 'object') return undefined;

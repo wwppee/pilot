@@ -16,7 +16,6 @@
  */
 
 import kleur from 'kleur';
-import { ensureProfilesDir } from '../core/profile.js';
 import type { ProfileInput, ThinkingLevel } from '../core/profile.js';
 import type { PilotContext, Command } from '../core/types.js';
 
@@ -109,8 +108,6 @@ async function create(name: string, ctx: PilotContext): Promise<number> {
     ctx.logger.error('Profile name must be kebab-case (a-z, 0-9, single dashes)');
     return 1;
   }
-
-  await ensureProfilesDir(ctx.home || undefined);
 
   try {
     const profile = await ctx.service.setProfile(name, {});

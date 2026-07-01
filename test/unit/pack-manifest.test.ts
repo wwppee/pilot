@@ -101,16 +101,71 @@ describe('readPackManifest', () => {
         json: async () => ({
           name: 'pi-subagents',
           'dist-tags': { latest: '0.31.0' },
-          description: 'Subagent delegation',
-          pi: { kind: 'extension', commands: ['delegate'] },
+          description: 'Top-level description (legacy)',
+          versions: {
+            '0.31.0': {
+              name: 'pi-subagents',
+              version: '0.31.0',
+              description: 'Subagent delegation',
+              pi: { kind: 'extension', commands: ['delegate'] },
+            },
+          },
         }),
       })) as never,
     );
     const m = await readPackManifest('pi-subagents');
     expect(m?.name).toBe('pi-subagents');
     expect(m?.version).toBe('0.31.0');
+    expect(m?.description).toBe('Subagent delegation');
     expect(m?.pi?.kind).toBe('extension');
     expect(m?.pi?.commands).toEqual(['delegate']);
+  });
+
+  it('reads pi from versions[latest] (npm canonical location)', async () => {
+    // Real npm registry puts custom fields under versions[latest], NOT
+    // at the top level. Verify we read from the right spot.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          name: 'real-pkg',
+          'dist-tags': { latest: '2.0.0' },
+          versions: {
+            '2.0.0': {
+              name: 'real-pkg',
+              version: '2.0.0',
+              pi: { kind: 'skill', skills: ['s.md'] },
+            },
+          },
+        }),
+      })) as never,
+    );
+    const m = await readPackManifest('real-pkg');
+    expect(m?.version).toBe('2.0.0');
+    expect(m?.pi?.kind).toBe('skill');
+    expect(m?.pi?.skills).toEqual(['s.md']);
+  });
+
+  it('falls back to top-level pi for legacy packages', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          name: 'legacy-flat',
+          'dist-tags': { latest: '1.0.0' },
+          versions: {
+            '1.0.0': { name: 'legacy-flat', version: '1.0.0' },
+          },
+          pi: { kind: 'theme', themes: ['t.json'] },
+        }),
+      })) as never,
+    );
+    const m = await readPackManifest('legacy-flat');
+    expect(m?.pi?.kind).toBe('theme');
   });
 
   it('handles missing pi field', async () => {
@@ -122,6 +177,7 @@ describe('readPackManifest', () => {
         json: async () => ({
           name: 'legacy-pkg',
           'dist-tags': { latest: '1.0.0' },
+          versions: { '1.0.0': { name: 'legacy-pkg', version: '1.0.0' } },
         }),
       })) as never,
     );
@@ -148,7 +204,13 @@ describe('readPackManifestCached', () => {
       json: async () => ({
         name: 'pi-x',
         'dist-tags': { latest: '1.0.0' },
-        pi: { kind: 'extension' },
+        versions: {
+          '1.0.0': {
+            name: 'pi-x',
+            version: '1.0.0',
+            pi: { kind: 'extension' },
+          },
+        },
       }),
     }));
     vi.stubGlobal('fetch', fetchMock as never);

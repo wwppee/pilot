@@ -65,7 +65,8 @@ function printStats(
   stats: StatsReport,
   ctx: PilotContext,
 ): void {
-  ctx.logger.info(`Stats — ${kleur.cyan(rangeLabel)}:`);
+  const tz = rangeLabel === 'all' ? rangeLabel : `${rangeLabel} (local TZ)`;
+  ctx.logger.info(`Stats — ${kleur.cyan(tz)}:`);
   console.log();
   console.log(`  sessions:    ${kleur.bold(String(stats.totalSessions))}`);
   console.log(`  messages:    ${kleur.bold(String(stats.totalMessages))}`);
