@@ -31,7 +31,7 @@ async function main(): Promise<void> {
   program
     .name('pilot')
     .description('Pilot — management plane for pi.dev coding agent')
-    .version('0.1.0')
+    .version('0.3.0')
     .showHelpAfterError();
 
   for (const c of commands) {
