@@ -176,6 +176,41 @@ export interface SessionInfo {
 
 import type { PilotService } from './service.js';
 
+// ─── Session tree (v0.3.0+) ──────────────────────────────────────
+
+/**
+ * A single node in a session's DAG tree.
+ *
+ * Pi sessions are stored as JSONL where each entry has an `id` and optional
+ * `parentId`. Multiple entries with the same parent form branches (e.g. when
+ * the user rewinds to fork the conversation). The root has no parent.
+ */
+export interface SessionTreeNode {
+  id: string;
+  type: string;
+  timestamp?: string;
+  /** Short text preview for display (truncated to ~100 chars). */
+  preview?: string;
+  children: SessionTreeNode[];
+}
+
+/**
+ * A session viewed as a tree. Built from the JSONL DAG.
+ */
+export interface SessionTree {
+  id: string;
+  /** Root node. If multiple roots exist (rare), this is the first. */
+  root: SessionTreeNode;
+  /** Total entries in the session. */
+  totalNodes: number;
+  /** Max depth of the tree (root = 0). */
+  maxDepth: number;
+  /** Unique model names used in the session. */
+  models: string[];
+  /** IDs of nodes with >1 child — i.e. branch points. */
+  branchPoints: string[];
+}
+
 /** Context passed to every command's `run` function. */
 export interface PilotContext {
   /** The user's home directory. */

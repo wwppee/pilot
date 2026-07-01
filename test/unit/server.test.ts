@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startServer, type ServerHandle } from '../../src/server/server.js';
@@ -139,6 +139,43 @@ describe('pilot server', () => {
       });
       expect(res.statusCode).toBe(404);
     }, 15_000);
+
+    it('GET /sessions/:id/tree returns session tree', async () => {
+      // First create a real session file in our isolated home
+      const encoded = Buffer.from('/tmp/fake-cwd').toString('base64');
+      const sessionsDir = join(tempHome, '.pi/agent/sessions', encoded);
+      mkdirSync(sessionsDir, { recursive: true });
+      const sessionId = '2026-07-01_10-00_xyz';
+      const sessionPath = join(sessionsDir, `${sessionId}.jsonl`);
+      writeFileSync(
+        sessionPath,
+        [
+          JSON.stringify({ id: 'a', type: 'user', timestamp: '2026-07-01T10:00:00Z', data: { text: 'q' } }),
+          JSON.stringify({ id: 'b', parentId: 'a', type: 'assistant', timestamp: '2026-07-01T10:00:05Z', data: { model: 'claude-opus-4.6', text: 'a' } }),
+        ].join('\n'),
+      );
+
+      const res = await handle.app.inject({
+        method: 'GET',
+        url: `/sessions/${sessionId}/tree`,
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.totalNodes).toBe(2);
+      expect(body.models).toEqual(['claude-opus-4.6']);
+      expect(body.root.id).toBe('a');
+    });
+
+    it('GET /sessions/:id/tree 500s for missing session', async () => {
+      const res = await handle.app.inject({
+        method: 'GET',
+        url: '/sessions/does-not-exist/tree',
+        headers: auth(),
+      });
+      // Service throws → server returns 500 (no custom error mapping yet)
+      expect(res.statusCode).toBe(500);
+    });
   });
 
   // ─── POST / write operations ──────────────────────

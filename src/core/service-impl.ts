@@ -19,7 +19,7 @@ import { join } from 'node:path';
 const execFileAsync = promisify(execFile);
 
 import { listCapabilities, tryLoadCapability } from './capability.js';
-import { searchSession } from './jsonl-parser.js';
+import { readSessionTree, searchSession } from './jsonl-parser.js';
 import { getPack, searchPacks as searchPacksNpm } from './npm-registry.js';
 import { isPiInstalled, runPiStreaming } from './pi-cli.js';
 import { listAllSessions, sortByRecent } from './sessions.js';
@@ -32,6 +32,7 @@ import {
   type Pack,
   type PackKind,
   type SessionInfo,
+  type SessionTree,
 } from './types.js';
 
 import type {
@@ -63,6 +64,7 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
 
     listSessions: (filter) => listSessions(filter, home),
     searchSessions: (q, options) => searchSessions(q, options, home),
+    readSessionTree: (id) => readSessionTreeById(id, home),
 
     runDoctor: () => runDoctor(home),
 
@@ -165,6 +167,15 @@ async function searchSessions(
 
   hits.sort((a, b) => b.hits - a.hits);
   return hits;
+}
+
+async function readSessionTreeById(id: string, home?: string): Promise<SessionTree> {
+  const all = await listAllSessions(home);
+  const match = all.find((s) => s.id === id);
+  if (!match) {
+    throw new Error(`session not found: ${id}`);
+  }
+  return readSessionTree(match.path, id);
 }
 
 // ─── Doctor ────────────────────────────────────────────────

@@ -196,6 +196,11 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Server
     return service.searchSessions(q, { caseSensitive: req.query.case === '1' });
   });
 
+  app.get<{ Params: { id: string } }>('/sessions/:id/tree', async (req) => {
+    const tree = await service.readSessionTree(req.params.id);
+    return tree;
+  });
+
   app.get('/doctor', async () => service.runDoctor());
 
   app.get('/capabilities', async () => service.listCapabilities());

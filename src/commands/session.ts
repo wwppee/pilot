@@ -5,18 +5,19 @@
  *   ls      List all sessions, most recent first
  *   search  Full-text search across all session entries
  *
- * v0.2: diff, tree, export, share, gc, stats.
+ * Subcommands (v0.3.0):
+ *   tree    Show a session as a DAG tree
  *
  * All read/write paths go through `ctx.service` — no direct core imports.
  */
 
 import kleur from 'kleur';
-import type { PilotContext, Command, SessionInfo } from '../core/types.js';
+import type { PilotContext, Command, SessionInfo, SessionTreeNode } from '../core/types.js';
 
 export const manifest: Command = {
   name: 'session',
   description: 'Manage pi session files',
-  subcommands: ['ls', 'search <query>'],
+  subcommands: ['ls', 'search <query>', 'tree <id>'],
 };
 
 export async function run(args: string[], ctx: PilotContext): Promise<number> {
@@ -27,13 +28,14 @@ export async function run(args: string[], ctx: PilotContext): Promise<number> {
       return ls(ctx);
     case 'search':
       return search(args.slice(1), ctx);
-    case 'diff':
     case 'tree':
+      return tree(args[1] ?? '', ctx);
+    case 'diff':
     case 'export':
-      ctx.logger.warn(`\`pilot session ${sub}\` is in v0.2`);
+      ctx.logger.warn(`\`pilot session ${sub}\` is in v0.3.0+`);
       return 0;
     case undefined:
-      ctx.logger.error('Missing subcommand. Try: pilot session ls|search');
+      ctx.logger.error('Missing subcommand. Try: pilot session ls|search|tree');
       return 1;
     default:
       ctx.logger.error(`Unknown subcommand: ${sub}`);
@@ -112,6 +114,67 @@ async function search(args: string[], ctx: PilotContext): Promise<number> {
 
   console.log(kleur.dim(`Re-open with: pi --resume ${hits[0]?.info.id}`));
   return 0;
+}
+
+// ─── tree (v0.3.0) ────────────────────────────────────────────────
+
+async function tree(id: string, ctx: PilotContext): Promise<number> {
+  if (!id) {
+    ctx.logger.error('Usage: pilot session tree <id>');
+    return 1;
+  }
+
+  let tree;
+  try {
+    tree = await ctx.service.readSessionTree(id);
+  } catch (err) {
+    ctx.logger.error((err as Error).message);
+    return 1;
+  }
+
+  ctx.logger.info(
+    `Session ${kleur.cyan(tree.id)} — ${tree.totalNodes} nodes, depth ${tree.maxDepth}, ${tree.models.length} model(s)`,
+  );
+  if (tree.models.length > 0) {
+    console.log(kleur.dim(`  models: ${tree.models.join(', ')}`));
+  }
+  if (tree.branchPoints.length > 0) {
+    console.log(kleur.dim(`  branch points: ${tree.branchPoints.length}`));
+  }
+  console.log();
+
+  renderNode(tree.root, '', true);
+  return 0;
+}
+
+function renderNode(n: SessionTreeNode, prefix: string, isLast: boolean): void {
+  const branch = isLast ? '└─ ' : '├─ ';
+  const typeTag = colorByType(`[${n.type}]`).padEnd(11);
+  const ts = n.timestamp ? kleur.dim(n.timestamp.slice(11, 19)) : kleur.dim('          ');
+  const preview = n.preview ? ` ${kleur.dim('— ' + n.preview)}` : '';
+  console.log(`${prefix}${branch}${ts}  ${typeTag}${preview}`);
+
+  const childPrefix = prefix + (isLast ? '   ' : '│  ');
+  for (let i = 0; i < n.children.length; i++) {
+    const child = n.children[i]!;
+    const last = i === n.children.length - 1;
+    renderNode(child, childPrefix, last);
+  }
+}
+
+function colorByType(type: string): string {
+  switch (type) {
+    case 'user':
+      return kleur.cyan(type);
+    case 'assistant':
+      return kleur.green(type);
+    case 'tool':
+      return kleur.yellow(type);
+    case 'system':
+      return kleur.magenta(type);
+    default:
+      return kleur.gray(type);
+  }
 }
 
 // ─── helpers ───────────────────────────────────────────────────────

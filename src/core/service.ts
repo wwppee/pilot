@@ -21,7 +21,7 @@
  */
 
 import type { Capability } from './capability.js';
-import type { InstalledPack, Pack, SessionInfo } from './types.js';
+import type { InstalledPack, Pack, SessionInfo, SessionTree } from './types.js';
 
 // ─── Filter / result types ──────────────────────────────────
 
@@ -90,6 +90,13 @@ export interface PilotService {
     query: string,
     options?: { caseSensitive?: boolean },
   ): Promise<SessionSearchHit[]>;
+
+  /**
+   * Read a session and return its DAG as a tree.
+   *
+   * @throws if no session with this id is found.
+   */
+  readSessionTree(id: string): Promise<SessionTree>;
 
   // ─── Doctor ───────────────────────────────────────────
 

@@ -234,4 +234,32 @@ describe('createService', () => {
       expect(cap?.type).toBe('workflow');
     });
   });
+
+  describe('readSessionTree', () => {
+    it('throws when session not found', async () => {
+      const svc = createService({ home: tempHome });
+      await expect(svc.readSessionTree('does-not-exist')).rejects.toThrow(/session not found/);
+    });
+
+    it('returns tree for a real session', async () => {
+      // Create a fake session file in pi's sessions dir
+      const encoded = Buffer.from('/tmp/fake-cwd').toString('base64');
+      const sessionsDir = join(tempHome, '.pi/agent/sessions', encoded);
+      mkdirSync(sessionsDir, { recursive: true });
+      const sessionId = '2026-07-01_10-00_abc';
+      const sessionPath = join(sessionsDir, `${sessionId}.jsonl`);
+      writeFileSync(
+        sessionPath,
+        [
+          JSON.stringify({ id: 'a', type: 'user', timestamp: '2026-07-01T10:00:00Z', data: { text: 'q' } }),
+          JSON.stringify({ id: 'b', parentId: 'a', type: 'assistant', timestamp: '2026-07-01T10:00:05Z', data: { model: 'claude-opus-4.6', text: 'a' } }),
+        ].join('\n'),
+      );
+      const svc = createService({ home: tempHome });
+      const tree = await svc.readSessionTree(sessionId);
+      expect(tree.id).toBe(sessionId);
+      expect(tree.totalNodes).toBe(2);
+      expect(tree.models).toEqual(['claude-opus-4.6']);
+    });
+  });
 });
