@@ -6,6 +6,7 @@
  */
 import Link from 'next/link';
 import { api } from '@/lib/pilot';
+import { AutoRefresh, LivePulse } from '@/components/AutoRefresh';
 import type { Pack, SessionInfo, StatsReport } from '@/lib/types';
 
 async function loadDashboard(): Promise<{
@@ -53,11 +54,19 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-10">
-      <header>
-        <h1 className="text-2xl font-bold mb-1">Dashboard</h1>
-        <p className="text-[var(--text-muted)] text-sm">
-          A live look at your local pi activity. Last 24 hours.
-        </p>
+      <AutoRefresh intervalMs={10_000} />
+
+      <header className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold mb-1">Dashboard</h1>
+          <p className="text-[var(--text-muted)] text-sm">
+            A live look at your local pi activity. Last 24 hours.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
+          <LivePulse live />
+          <span>auto-refresh 10s · updated now</span>
+        </div>
       </header>
 
       <section>
