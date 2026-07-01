@@ -21,6 +21,7 @@
  */
 
 import type { Capability } from './capability.js';
+import type { Profile, ProfileInput } from './profile.js';
 import type { InstalledPack, Pack, SessionInfo, SessionTree } from './types.js';
 
 // ─── Filter / result types ──────────────────────────────────
@@ -102,6 +103,20 @@ export interface PilotService {
 
   /** Run health checks. Returns a structured report — commands render it. */
   runDoctor(): Promise<DoctorReport>;
+
+  // ─── Profiles (v0.3.0+) ──────────────────────────────
+
+  /** List all named profiles. */
+  listProfiles(): Promise<Profile[]>;
+
+  /** Fetch a single profile by name. Returns null if not found. */
+  getProfile(name: string): Promise<Profile | null>;
+
+  /** Create or update a profile. */
+  setProfile(name: string, input: ProfileInput): Promise<Profile>;
+
+  /** Delete a profile. Returns true if it existed. */
+  deleteProfile(name: string): Promise<boolean>;
 
   // ─── Capabilities (v0.4+) ────────────────────────────
 

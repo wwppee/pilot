@@ -22,6 +22,12 @@ import { listCapabilities, tryLoadCapability } from './capability.js';
 import { readSessionTree, searchSession } from './jsonl-parser.js';
 import { getPack, searchPacks as searchPacksNpm } from './npm-registry.js';
 import { isPiInstalled, runPiStreaming } from './pi-cli.js';
+import {
+  deleteProfile,
+  listProfiles,
+  tryReadProfile,
+  writeProfile,
+} from './profile.js';
 import { listAllSessions, sortByRecent } from './sessions.js';
 import { listSources, readSettings } from './settings.js';
 import {
@@ -70,6 +76,11 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
 
     listCapabilities: () => listCapabilities(home),
     getCapability: (id) => tryLoadCapability(id, home),
+
+    listProfiles: () => listProfiles(home),
+    getProfile: (name) => tryReadProfile(name, home),
+    setProfile: (name, input) => writeProfile(name, input, home),
+    deleteProfile: (name) => deleteProfile(name, home),
   };
 }
 

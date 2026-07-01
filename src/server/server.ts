@@ -213,6 +213,36 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Server
     return cap;
   });
 
+  // ─── Profiles (v0.3.0-b) ─────────────────────────────
+
+  app.get('/profiles', async () => service.listProfiles());
+
+  app.get<{ Params: { name: string } }>('/profiles/:name', async (req) => {
+    const profile = await service.getProfile(req.params.name);
+    if (!profile) {
+      throw Object.assign(new Error('profile not found'), { statusCode: 404 });
+    }
+    return profile;
+  });
+
+  app.post<{ Params: { name: string }; Body: Record<string, unknown> }>(
+    '/profiles/:name',
+    async (req) => {
+      // The route is the source of name truth; we don't read name from body.
+      const { name: _ignore, ...input } = req.body ?? {};
+      const profile = await service.setProfile(req.params.name, input);
+      return profile;
+    },
+  );
+
+  app.delete<{ Params: { name: string } }>('/profiles/:name', async (req) => {
+    const deleted = await service.deleteProfile(req.params.name);
+    if (!deleted) {
+      throw Object.assign(new Error('profile not found'), { statusCode: 404 });
+    }
+    return { ok: true };
+  });
+
   // ─── Centralized error handler ──────────────────────
 
   app.setErrorHandler((err: unknown, _req, reply) => {

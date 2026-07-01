@@ -14,6 +14,7 @@ import { join } from 'node:path';
 import * as packCmd from '../../src/commands/pack.js';
 import * as sessionCmd from '../../src/commands/session.js';
 import * as doctorCmd from '../../src/commands/doctor.js';
+import * as profileCmd from '../../src/commands/profile.js';
 
 import type { PilotService } from '../../src/core/service.js';
 import type {
@@ -23,6 +24,7 @@ import type {
   PilotContext,
   SessionInfo,
 } from '../../src/core/types.js';
+import type { Profile, ProfileInput } from '../../src/core/profile.js';
 import type { DoctorReport } from '../../src/core/service.js';
 
 // ─── Mock factory ──────────────────────────────────────────
@@ -34,9 +36,14 @@ function makeMockService(overrides: Partial<PilotService> = {}): PilotService & 
   installPack: ReturnType<typeof vi.fn>;
   listSessions: ReturnType<typeof vi.fn>;
   searchSessions: ReturnType<typeof vi.fn>;
+  readSessionTree: ReturnType<typeof vi.fn>;
   runDoctor: ReturnType<typeof vi.fn>;
   listCapabilities: ReturnType<typeof vi.fn>;
   getCapability: ReturnType<typeof vi.fn>;
+  listProfiles: ReturnType<typeof vi.fn>;
+  getProfile: ReturnType<typeof vi.fn>;
+  setProfile: ReturnType<typeof vi.fn>;
+  deleteProfile: ReturnType<typeof vi.fn>;
 } {
   return {
     listPacks: vi.fn(async () => [] as InstalledPack[]),
@@ -45,9 +52,21 @@ function makeMockService(overrides: Partial<PilotService> = {}): PilotService & 
     installPack: vi.fn(async () => undefined),
     listSessions: vi.fn(async () => [] as SessionInfo[]),
     searchSessions: vi.fn(async () => []),
+    readSessionTree: vi.fn(async () => {
+      throw new Error('not implemented in mock');
+    }),
     runDoctor: vi.fn(async () => ({ ok: true, failed: 0, checks: [] }) as DoctorReport),
     listCapabilities: vi.fn(async () => [] as Capability[]),
     getCapability: vi.fn(async () => null),
+    listProfiles: vi.fn(async () => [] as Profile[]),
+    getProfile: vi.fn(async () => null),
+    setProfile: vi.fn(async (name: string, input: ProfileInput) => ({
+      name,
+      ...input,
+      createdAt: '2026-07-01T00:00:00Z',
+      updatedAt: '2026-07-01T00:00:00Z',
+    })),
+    deleteProfile: vi.fn(async () => true),
     ...overrides,
   };
 }
@@ -265,6 +284,116 @@ describe('commands use ctx.service (not direct core)', () => {
       // First log should be the JSON
       const output = captured.join('');
       expect(output).toContain('"ok": true');
+    });
+  });
+
+  // ─── profile ──────────────────────────────────────────
+
+  describe('pilot profile ls', () => {
+    it('calls ctx.service.listProfiles', async () => {
+      const svc = makeMockService();
+      const code = await profileCmd.run(['ls'], makeCtx(svc));
+      expect(code).toBe(0);
+      expect(svc.listProfiles).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('pilot profile show', () => {
+    it('calls ctx.service.getProfile', async () => {
+      const svc = makeMockService({
+        getProfile: vi.fn(async () => ({
+          name: 'work',
+          model: 'claude-opus-4.6',
+          createdAt: '2026-07-01T00:00:00Z',
+          updatedAt: '2026-07-01T00:00:00Z',
+        })),
+      });
+      const code = await profileCmd.run(['show', 'work'], makeCtx(svc));
+      expect(code).toBe(0);
+      expect(svc.getProfile).toHaveBeenCalledWith('work');
+    });
+
+    it('returns 1 for missing profile', async () => {
+      const svc = makeMockService();
+      const code = await profileCmd.run(['show', 'nope'], makeCtx(svc));
+      expect(code).toBe(1);
+    });
+  });
+
+  describe('pilot profile create', () => {
+    it('calls ctx.service.setProfile with empty input', async () => {
+      const svc = makeMockService();
+      const code = await profileCmd.run(['create', 'work-frontend'], makeCtx(svc));
+      expect(code).toBe(0);
+      expect(svc.setProfile).toHaveBeenCalledWith('work-frontend', {});
+    });
+
+    it('rejects non-kebab-case names', async () => {
+      const svc = makeMockService();
+      const code = await profileCmd.run(['create', 'BadName'], makeCtx(svc));
+      expect(code).toBe(1);
+      expect(svc.setProfile).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('pilot profile set', () => {
+    it('merges key=value into existing profile', async () => {
+      const svc = makeMockService({
+        getProfile: vi.fn(async () => ({
+          name: 'work',
+          model: 'old-model',
+          createdAt: '2026-07-01T00:00:00Z',
+          updatedAt: '2026-07-01T00:00:00Z',
+        })),
+      });
+      const code = await profileCmd.run(['set', 'work', 'model=claude-opus-4.6'], makeCtx(svc));
+      expect(code).toBe(0);
+      expect(svc.setProfile).toHaveBeenCalledWith('work', {
+        model: 'claude-opus-4.6',
+      });
+    });
+
+    it('rejects unknown key', async () => {
+      const svc = makeMockService({
+        getProfile: vi.fn(async () => ({
+          name: 'work',
+          createdAt: '2026-07-01T00:00:00Z',
+          updatedAt: '2026-07-01T00:00:00Z',
+        })),
+      });
+      const code = await profileCmd.run(['set', 'work', 'unknown=val'], makeCtx(svc));
+      expect(code).toBe(1);
+    });
+
+    it('rejects invalid thinking value', async () => {
+      const svc = makeMockService({
+        getProfile: vi.fn(async () => ({
+          name: 'work',
+          createdAt: '2026-07-01T00:00:00Z',
+          updatedAt: '2026-07-01T00:00:00Z',
+        })),
+      });
+      const code = await profileCmd.run(['set', 'work', 'thinking=bogus'], makeCtx(svc));
+      expect(code).toBe(1);
+    });
+  });
+
+  describe('pilot profile delete', () => {
+    it('calls ctx.service.deleteProfile', async () => {
+      const svc = makeMockService({
+        deleteProfile: vi.fn(async () => true),
+      });
+      const code = await profileCmd.run(['delete', 'work'], makeCtx(svc));
+      expect(code).toBe(0);
+      expect(svc.deleteProfile).toHaveBeenCalledWith('work');
+    });
+
+    it('returns 1 when profile did not exist', async () => {
+      const svc = makeMockService({
+        deleteProfile: vi.fn(async () => false),
+      });
+      const code = await profileCmd.run(['delete', 'nope'], makeCtx(svc));
+      expect(code).toBe(1);
     });
   });
 });

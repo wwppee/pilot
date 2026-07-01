@@ -95,7 +95,8 @@
 - ✅ **v0.2-d 已完**：CLI 切到 ctx.service（7 个 commands 全走 service，16 mock 测试）
 - ✅ **v0.2-e 已完**：code review 修复（version from package.json / dynamic Origin / 全 async）
 - ✅ **v0.3.0-a 已完**：Session tree — DAG 解析 + CLI + server route（11 测试）
-- **v0.3.0-b**：Profile overlay（不 patch 全局 settings）
+- ✅ **v0.3.0-b 已完**：Profile manager — TOML 存储 + CLI + server routes（22 测试）
+- **v0.3.0-c**：Stats（token / tool / model 聚合）
 - **v0.3.0-c**：Stats（token / tool / model 聚合）
 - **v0.3.0-d**：包分类重构（pack-manifest.ts，读 manifest 替代关键词）
 - **v0.3.5 必出**：Web UI v1（3 个只读页，第一张截图）
