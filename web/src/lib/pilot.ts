@@ -69,6 +69,58 @@ export async function pilot<T>(
   return (await res.json()) as T;
 }
 
+/**
+ * Fetch a pilot endpoint with full access to the response (so callers
+ * can read Set-Cookie + CSRF headers for write operations).
+ *
+ * Same as `pilot()` but returns the raw Response.
+ */
+export async function pilotRaw(
+  path: string,
+  init: RequestInit = {},
+): Promise<Response> {
+  const token = await getToken();
+  const url = `${PILOT_BASE}${path}`;
+  const headers = new Headers(init.headers);
+  headers.set('accept', 'application/json');
+  if (token) headers.set('x-pilot-token', token);
+  if (init.body && !headers.has('content-type')) {
+    headers.set('content-type', 'application/json');
+  }
+  return fetch(url, { ...init, headers, cache: 'no-store' });
+}
+
+/**
+ * Fetch with CSRF — does a cheap GET first to capture the CSRF
+ * cookie + token, then issues the actual mutating request with both
+ * forwarded. Used by Server Actions for install / profile-write.
+ *
+ * The CSRF token is stable for the lifetime of the pilot server, but
+ * we re-fetch on every call to be robust to server restarts.
+ */
+export async function pilotWithCsrf(
+  path: string,
+  init: RequestInit = {},
+): Promise<Response> {
+  // Step 1: GET to capture the CSRF cookie + token. Use the same
+  // path if it's a GET, or hit /health for the bare minimum.
+  const csrfGet = await pilotRaw('/health');
+  // Drain the body so the socket can be reused.
+  await csrfGet.text();
+
+  const cookieHeader = csrfGet.headers.get('set-cookie');
+  const csrfToken = csrfGet.headers.get('x-pilot-csrf');
+  if (!csrfToken) {
+    throw new PilotApiError('pilot server did not return a CSRF token', 0);
+  }
+
+  // Step 2: actual mutating request with cookie + header forwarded.
+  const headers = new Headers(init.headers);
+  if (cookieHeader) headers.set('cookie', cookieHeader);
+  headers.set('x-pilot-csrf', csrfToken);
+  return pilotRaw(path, { ...init, headers });
+}
+
 // ─── Typed accessors —───────────────────────────────────────────────
 
 import type {

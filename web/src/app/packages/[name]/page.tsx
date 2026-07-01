@@ -1,15 +1,17 @@
 /**
- * /packages/[name] — single pack detail.
+ * /packages/[name] — single pack detail with install form.
  */
 import Link from 'next/link';
 import { api } from '@/lib/pilot';
+import { installPackForm } from '@/lib/actions';
 
 interface PageProps {
   params: Promise<{ name: string }>;
+  searchParams: Promise<{ installed?: string; error?: string }>;
 }
 
-export default async function PackageDetailPage({ params }: PageProps) {
-  const { name } = await params;
+export default async function PackageDetailPage({ params, searchParams }: PageProps) {
+  const [{ name }, sp] = await Promise.all([params, searchParams]);
   const decoded = decodeURIComponent(name);
 
   let pack: Awaited<ReturnType<typeof api.packInfo>> | null = null;
@@ -29,6 +31,23 @@ export default async function PackageDetailPage({ params }: PageProps) {
       {error && (
         <div className="surface rounded-lg p-4 text-sm text-[var(--error)]">
           Couldn&apos;t fetch this pack: {error}
+        </div>
+      )}
+
+      {sp.installed && (
+        <div
+          className="surface rounded-lg p-3 text-sm"
+          style={{ color: 'var(--accent-2)', borderColor: 'var(--accent-2)' }}
+        >
+          ✓ Installed <code className="kbd">{decoded}</code> successfully.
+        </div>
+      )}
+      {sp.error && (
+        <div
+          className="surface rounded-lg p-3 text-sm"
+          style={{ color: 'var(--error)', borderColor: 'var(--error)' }}
+        >
+          Install failed: {sp.error}
         </div>
       )}
 
@@ -87,11 +106,23 @@ export default async function PackageDetailPage({ params }: PageProps) {
               Install
             </h2>
             <p className="text-xs text-[var(--text-muted)] mb-3">
-              v1 is read-only. Use the CLI to install/remove:
+              {pack.enabled
+                ? 'Already installed. Re-run to update.'
+                : 'Not yet installed. Install via the pilot CLI or this Web UI.'}
             </p>
-            <pre className="text-sm font-mono bg-[var(--bg)] border border-[var(--border)] rounded p-3 overflow-x-auto">
-              {`pilot pack install ${pack.name}`}
-            </pre>
+            <form action={installPackForm} className="flex items-center gap-2">
+              <input type="hidden" name="name" value={pack.name} />
+              <button
+                type="submit"
+                className="px-4 py-2 text-sm rounded text-[var(--bg)]"
+                style={{ background: 'var(--accent-2)' }}
+              >
+                {pack.enabled ? 'Update' : 'Install'} {pack.name}
+              </button>
+              <span className="text-xs text-[var(--text-muted)]">
+                runs <code className="kbd">pilot pack install {pack.name}</code> under the hood
+              </span>
+            </form>
           </div>
         </>
       )}

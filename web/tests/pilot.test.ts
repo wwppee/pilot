@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { api, PilotApiError } from '../src/lib/pilot';
+import { api, pilotWithCsrf, PilotApiError } from '../src/lib/pilot';
 
 function mockFetch(handler: (url: string, init: RequestInit) => Response | Promise<Response>) {
   const fn = vi.fn(async (url: string, init: RequestInit = {}) =>
@@ -111,5 +111,65 @@ describe('pilot client', () => {
     const d = mkdtempSync(join(tmpdir(), 'pilot-web-leak-'));
     rmSync(d, { recursive: true, force: true });
     expect(true).toBe(true);
+  });
+});
+
+describe('pilotWithCsrf', () => {
+  beforeEach(() => {
+    vi.unstubAllGlobals();
+    delete process.env['PILOT_TOKEN'];
+  });
+
+  it('does a GET first, captures Set-Cookie + X-Pilot-CSRF, then sends POST with both', async () => {
+    process.env['PILOT_TOKEN'] = 'test-token';
+
+    const calls: Array<{ url: string; method?: string; headers: Headers }> = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init: RequestInit = {}) => {
+        const headers = new Headers(init.headers);
+        calls.push({
+          url: String(url),
+          method: init.method ?? 'GET',
+          headers,
+        });
+
+        if (calls.length === 1) {
+          // First call: GET /health — return Set-Cookie + CSRF header
+          return new Response('{"ok":true}', {
+            status: 200,
+            headers: {
+              'set-cookie': 'pilot-csrf=csrf-token-abc; Path=/',
+              'x-pilot-csrf': 'csrf-token-abc',
+            },
+          });
+        }
+        // Second call: the actual POST
+        return new Response('{"ok":true}', { status: 200 });
+      }) as never,
+    );
+
+    const res = await pilotWithCsrf('/packs/install', {
+      method: 'POST',
+      body: JSON.stringify({ source: 'npm:x' }),
+    });
+    expect(res.ok).toBe(true);
+    expect(calls).toHaveLength(2);
+    expect(calls[0]?.method).toBe('GET');
+    expect(calls[1]?.method).toBe('POST');
+    expect(calls[1]?.url).toContain('/packs/install');
+    expect(calls[1]?.headers.get('x-pilot-csrf')).toBe('csrf-token-abc');
+    expect(calls[1]?.headers.get('cookie')).toContain('pilot-csrf=csrf-token-abc');
+  });
+
+  it('throws PilotApiError when no CSRF token in GET response', async () => {
+    process.env['PILOT_TOKEN'] = 'test-token';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('{}', { status: 200 })) as never,
+    );
+    await expect(
+      pilotWithCsrf('/packs/install', { method: 'POST', body: '{}' }),
+    ).rejects.toThrow(/CSRF token/);
   });
 });

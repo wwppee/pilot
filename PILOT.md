@@ -99,6 +99,7 @@
 - ✅ **v0.3.0-c 已完**：Stats — 全 session 聚合（messages / tools / models / by-day），CLI today/week/month/all + GET /stats（7 测试）
 - ✅ **v0.3.0-d 已完**：Pack manifest 分类（替代关键词启发式，19 测试）
 - ✅ **v0.3.5 已完**：Web UI v1 — Next.js 16 + Tailwind 4，4 个只读页面（dashboard / packages / sessions / profiles），7 个 web 测试。CLI `pilot dashboard` 一键起 + 打开浏览器
+- ✅ **v0.3.6 已完**：Web UI 写操作 — Server Actions（install / create / save / delete profile），CSRF 端到端跑通，9 个 web 测试
 - **v0.3.5 必出**：Web UI v1（3 个只读页，第一张截图）
 - **v0.4 必出**：Forge MVP（3 个手写能力 + eval harness）
 - **v0.5 必出**：Avatars + Session capability snapshot
