@@ -34,6 +34,7 @@ import {
 } from './profile.js';
 import { listAllSessions, sortByRecent } from './sessions.js';
 import { listSources, readSettings } from './settings.js';
+import { aggregateStats } from './stats.js';
 import {
   piAgentDir,
   piSettingsFile,
@@ -84,6 +85,8 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
     getProfile: (name) => tryReadProfile(name, home),
     setProfile: (name, input) => writeProfile(name, input, home),
     deleteProfile: (name) => deleteProfile(name, home),
+
+    getStats: (range) => aggregateStats(range, home),
   };
 }
 

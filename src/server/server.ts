@@ -25,6 +25,7 @@ import { randomUUID } from 'node:crypto';
 
 import { createService, type CreateServiceOptions } from '../core/service-impl.js';
 import type { PilotService } from '../core/service.js';
+import type { StatsRange } from '../core/stats.js';
 import { VERSION } from '../core/version.js';
 
 import { readOrCreateToken, TOKEN_HEADER, verifyToken } from './auth.js';
@@ -73,6 +74,20 @@ function allowedOriginsFor(host: string, port: number): Set<string> {
     origins.add(`http://${h}:${port}`);
   }
   return origins;
+}
+
+/** Parse a `?range=` query value into a StatsRange. */
+function parseRange(which: string, days?: number): StatsRange {
+  switch (which) {
+    case 'today':
+      return { kind: 'today' };
+    case 'lastDays':
+      return { kind: 'lastDays', days: days && days > 0 ? days : 7 };
+    case 'all':
+      return { kind: 'all' };
+    default:
+      return { kind: 'lastDays', days: 7 };
+  }
 }
 
 /** Routes that require CSRF + Origin check (mutating operations). */
@@ -241,6 +256,18 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Server
       throw Object.assign(new Error('profile not found'), { statusCode: 404 });
     }
     return { ok: true };
+  });
+
+  // ─── Stats (v0.3.0-c) ──────────────────────────────
+
+  app.get<{
+    Querystring: { range?: string; days?: string };
+  }>('/stats', async (req) => {
+    const which = req.query.range ?? 'week';
+    const daysRaw = req.query.days;
+    const days = daysRaw ? Number(daysRaw) : undefined;
+
+    return service.getStats(parseRange(which, days));
   });
 
   // ─── Centralized error handler ──────────────────────

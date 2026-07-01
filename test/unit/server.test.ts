@@ -109,6 +109,24 @@ describe('pilot server', () => {
       expect(Array.isArray(body.checks)).toBe(true);
     });
 
+    it('GET /stats returns report', async () => {
+      const res = await handle.app.inject({ method: 'GET', url: '/stats?range=lastDays&days=30', headers: auth() });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body).toHaveProperty('totalSessions');
+      expect(body).toHaveProperty('totalMessages');
+      expect(body).toHaveProperty('totalToolCalls');
+      expect(Array.isArray(body.byModel)).toBe(true);
+      expect(Array.isArray(body.byTool)).toBe(true);
+      expect(Array.isArray(body.byDay)).toBe(true);
+    });
+
+    it('GET /stats defaults to week', async () => {
+      const res = await handle.app.inject({ method: 'GET', url: '/stats', headers: auth() });
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toHaveProperty('byDay');
+    });
+
     it('GET /capabilities returns array', async () => {
       const res = await handle.app.inject({ method: 'GET', url: '/capabilities', headers: auth() });
       expect(res.statusCode).toBe(200);

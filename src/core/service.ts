@@ -22,6 +22,7 @@
 
 import type { Capability } from './capability.js';
 import type { Profile, ProfileInput } from './profile.js';
+import type { StatsRange, StatsReport } from './stats.js';
 import type { InstalledPack, Pack, SessionInfo, SessionTree } from './types.js';
 
 // ─── Filter / result types ──────────────────────────────────
@@ -117,6 +118,15 @@ export interface PilotService {
 
   /** Delete a profile. Returns true if it existed. */
   deleteProfile(name: string): Promise<boolean>;
+
+  // ─── Stats (v0.3.0+) ─────────────────────────────────
+
+  /**
+   * Aggregate usage stats across all sessions in the given range.
+   *
+   * @param range — `today` / `lastDays` / `all`. See StatsRange.
+   */
+  getStats(range: StatsRange): Promise<StatsReport>;
 
   // ─── Capabilities (v0.4+) ────────────────────────────
 

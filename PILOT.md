@@ -96,8 +96,8 @@
 - ✅ **v0.2-e 已完**：code review 修复（version from package.json / dynamic Origin / 全 async）
 - ✅ **v0.3.0-a 已完**：Session tree — DAG 解析 + CLI + server route（11 测试）
 - ✅ **v0.3.0-b 已完**：Profile manager — TOML 存储 + CLI + server routes（22 测试）
+- ✅ **v0.3.0-c 已完**：Stats — 全 session 聚合（messages / tools / models / by-day），CLI today/week/month/all + GET /stats（7 测试）
 - ✅ **v0.3.0-d 已完**：Pack manifest 分类（替代关键词启发式，19 测试）
-- **v0.3.0-c**：Stats（token / tool / model 聚合）
 - **v0.3.0-c**：Stats（token / tool / model 聚合）
 - **v0.3.0-d**：包分类重构（pack-manifest.ts，读 manifest 替代关键词）
 - **v0.3.5 必出**：Web UI v1（3 个只读页，第一张截图）
