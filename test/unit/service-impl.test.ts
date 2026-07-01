@@ -1,22 +1,49 @@
 /**
- * Tests for createService() — the default PilotService implementation.
+ * Unit tests for createService() — the default PilotService implementation.
  *
- * These tests use the **real** service against the real `~/.pi/agent/`
- * (read paths) and an isolated `~/.pilot/` (capability paths). They verify:
- *   - Packs list/search/get work without throwing
- *   - Sessions list/search respects filters
- *   - Doctor returns a structured report
- *   - Capabilities returns [] for a fresh home
+ * These tests use the **real** service against an isolated HOME, with
+ * the npm manifest reader **mocked** to return predictable fixtures.
+ * This makes the tests offline-stable: no real npm calls, no timeouts.
  *
- * We do NOT mock — these are integration-flavored tests that exercise
- * the real fs + npm network. Network tests are tagged for skip in CI
- * if needed.
+ * Tests that DO need the real npm registry (searchPacks / getPack
+ * with a real package) live in `test/integration/pack-registry.test.ts`
+ * and are excluded from the default `npm test` run.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdtempSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+
+// ─── Mock the npm manifest reader ──────────────────────────────
+//
+// We stub readPackManifestCached so listPacks classification is
+// deterministic and offline. Each test sets `mockManifestImpl` to the
+// function that returns the desired manifest.
+function classifyByName(name: string): string {
+  if (name.endsWith('-skill') || name.includes('superpowers')) return 'skill';
+  if (name.includes('hud') || name.endsWith('-theme')) return 'theme';
+  if (name.endsWith('-prompt')) return 'prompt';
+  return 'extension';
+}
+
+let mockManifestImpl: (name: string) => Promise<unknown> = async () => null;
+vi.mock('../../src/core/pack-manifest.js', () => ({
+  readPackManifestCached: (name: string) => mockManifestImpl(name),
+  clearManifestCache: () => {},
+  classifyFromManifest: (manifest: any, fallbackName: string) => {
+    if (manifest?.pi?.kind) return manifest.pi.kind;
+    if (manifest?.pi) {
+      if (manifest.pi.themes?.length) return 'theme';
+      if (manifest.pi.prompts?.length) return 'prompt';
+      if (manifest.pi.skills?.length) return 'skill';
+      if (manifest.pi.extension !== undefined) return 'extension';
+    }
+    return classifyByName(fallbackName);
+  },
+  classifyByName,
+}));
+
 import { createService } from '../../src/core/service-impl.js';
 
 describe('createService', () => {
@@ -28,6 +55,8 @@ describe('createService', () => {
     tempHome = mkdtempSync(join(tmpdir(), 'pilot-svc-test-'));
     process.env.HOME = tempHome;
     mkdirSync(join(tempHome, '.pilot/capabilities/sample'), { recursive: true });
+    // Default: no manifest available → fall through to name heuristic.
+    mockManifestImpl = async () => null;
   });
 
   afterEach(() => {
@@ -58,7 +87,6 @@ describe('createService', () => {
     });
 
     it('parses installed sources from settings.json', async () => {
-      // Fake pi's settings.json in our isolated home
       mkdirSync(join(tempHome, '.pi/agent'), { recursive: true });
       writeFileSync(
         join(tempHome, '.pi/agent/settings.json'),
@@ -78,56 +106,68 @@ describe('createService', () => {
       expect(packs[2]?.enabled).toBe(false);
     });
 
-    it('classifies skill/theme/prompt packs by name', async () => {
+    it('classifies packs via manifest (not name heuristic)', async () => {
+      // Mocked manifest returns a "skill" kind for pi-lens (real npm now
+      // publishes it as a skill, not an extension). The service should
+      // honor that, not fall back to the name.
+      mockManifestImpl = async (name: string) => {
+        if (name === 'pi-lens') {
+          return { name: 'pi-lens', version: '1.0.0', pi: { kind: 'skill', skills: ['lens.md'] } };
+        }
+        if (name === 'pi-hud-footer') {
+          return { name: 'pi-hud-footer', version: '1.0.0', pi: { kind: 'theme', themes: ['hud.json'] } };
+        }
+        if (name === 'pi-subagents') {
+          return { name: 'pi-subagents', version: '1.0.0', pi: { kind: 'extension' } };
+        }
+        return null;
+      };
+
       mkdirSync(join(tempHome, '.pi/agent'), { recursive: true });
       writeFileSync(
         join(tempHome, '.pi/agent/settings.json'),
         JSON.stringify({
           sources: [
-            { source: 'npm:pi-lens' }, // extension
-            { source: 'npm:superpowers-zh' }, // skill (contains 'superpowers')
-            { source: 'npm:pi-hud-footer' }, // theme (contains 'hud')
+            { source: 'npm:pi-lens' },         // manifest says skill
+            { source: 'npm:pi-hud-footer' },   // manifest says theme
+            { source: 'npm:pi-subagents' },    // manifest says extension
           ],
         }),
       );
       const svc = createService();
       const packs = await svc.listPacks();
       const byName = new Map(packs.map((p) => [p.name, p.kind]));
-      expect(byName.get('pi-lens')).toBe('extension');
-      expect(byName.get('superpowers-zh')).toBe('skill');
-      expect(byName.get('pi-hud-footer')).toBe('theme');
+      expect(byName.get('pi-lens')).toBe('skill');        // from manifest
+      expect(byName.get('pi-hud-footer')).toBe('theme');  // from manifest
+      expect(byName.get('pi-subagents')).toBe('extension');
     });
-  });
 
-  describe('searchPacks (network)', () => {
-    it('returns results for a common query', async () => {
-      const svc = createService();
-      const results = await svc.searchPacks('pi-subagents');
-      // Don't assert exact count — npm data changes. Just assert shape.
-      if (results.length > 0) {
-        const r = results[0]!;
-        expect(typeof r.name).toBe('string');
-        expect(typeof r.version).toBe('string');
-        expect(r.name.toLowerCase()).toContain('pi');
-      }
-    }, 15_000);
-  });
+    it('falls back to name heuristic when manifest is missing', async () => {
+      // No mockManifestImpl override → all returns null
+      mockManifestImpl = async () => null;
 
-  describe('getPack (network)', () => {
-    it('returns null for a non-existent package', async () => {
+      mkdirSync(join(tempHome, '.pi/agent'), { recursive: true });
+      writeFileSync(
+        join(tempHome, '.pi/agent/settings.json'),
+        JSON.stringify({
+          sources: [
+            { source: 'npm:pi-foo-skill' },     // name → skill
+            { source: 'npm:pi-foo-theme' },     // name → theme
+            { source: 'npm:pi-foo-prompt' },    // name → prompt
+            { source: 'npm:superpowers-zh' },   // name → skill (contains 'superpowers')
+            { source: 'npm:pi-lens' },          // name → extension (default)
+          ],
+        }),
+      );
       const svc = createService();
-      const result = await svc.getPack('this-package-does-not-exist-9999');
-      expect(result).toBeNull();
-    }, 15_000);
-
-    it('returns metadata for a real package', async () => {
-      const svc = createService();
-      const result = await svc.getPack('pi-subagents');
-      if (result) {
-        expect(result.name).toBe('pi-subagents');
-        expect(typeof result.version).toBe('string');
-      }
-    }, 15_000);
+      const packs = await svc.listPacks();
+      const byName = new Map(packs.map((p) => [p.name, p.kind]));
+      expect(byName.get('pi-foo-skill')).toBe('skill');
+      expect(byName.get('pi-foo-theme')).toBe('theme');
+      expect(byName.get('pi-foo-prompt')).toBe('prompt');
+      expect(byName.get('superpowers-zh')).toBe('skill');
+      expect(byName.get('pi-lens')).toBe('extension');
+    });
   });
 
   // ─── Sessions ───────────────────────────────────────

@@ -1,49 +1,59 @@
 /**
- * `pilot dashboard` — open the local Web UI.
+ * `pilot dashboard` — open the local Web UI in your browser.
  *
- * v0.3.5: read-only Next.js dashboard at http://127.0.0.1:17371.
- * The UI talks to the pilot server (17361) over token-authenticated
- * fetch, so the token never reaches the browser.
+ * v0.3.5+: read-only Next.js dashboard at http://127.0.0.1:17371.
+ * v0.3.7+: this command now ALSO starts the pilot server (port 17361)
+ *           in the same process, so one command brings up the whole
+ *           stack. The token is read by the Web UI from
+ *           `~/.pilot/server.token` server-side; the browser never sees it.
  *
  * Lifecycle:
  *   1. Find the web/ dir (sibling to this package)
- *   2. Ensure `npm install` has run there (look for .next/ or
- *      node_modules/ — install if missing)
- *   3. Spawn `next dev` (or `next start` after build) on a fixed
- *      port
- *   4. Open the browser unless --no-open
+ *   2. Ensure `npm install` has run there (look for node_modules/)
+ *   3. Start the pilot server in-process on 127.0.0.1:17361
+ *   4. Spawn `next dev` on 127.0.0.1:17371 with PILOT_SERVER_URL set
+ *   5. Open the browser (unless --no-open)
  *
- * For v1 we always run dev mode — fast feedback, no build cost.
- * Production builds are a follow-up.
+ * Both servers share this process so Ctrl-C cleans up everything.
+ *
+ * Flags:
+ *   --no-open    Don't open the browser
+ *   --no-server  Skip starting the pilot server (assume it's already running)
+ *   --port 17371 Override web port (pilot server port is fixed to 17361
+ *                unless the parent `pilot server` is run separately)
  */
 
-import { spawn, execFile } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { promisify } from 'node:util';
 
 import kleur from 'kleur';
+import { startServer, type ServerHandle } from '../server/server.js';
 import type { Command, PilotContext } from '../core/types.js';
-
-const execFileP = promisify(execFile);
 
 const WEB_PORT = 17371;
 const PILOT_PORT = 17361;
 
 export const manifest: Command = {
   name: 'dashboard',
-  description: 'Open the local Web UI in your browser',
+  description: 'Open the local Web UI in your browser (auto-starts the pilot server too)',
 };
 
 export async function run(args: string[], ctx: PilotContext): Promise<number> {
   const noOpen = args.includes('--no-open');
-  const devOnly = args.includes('--dev');
+  const noServer = args.includes('--no-server');
+
+  // Optional port override: --port 17400 → next dev -p 17400
+  const portIdx = args.indexOf('--port');
+  const webPort = portIdx >= 0 ? Number(args[portIdx + 1]) : WEB_PORT;
+  if (Number.isNaN(webPort)) {
+    ctx.logger.error('Invalid --port value');
+    return 1;
+  }
 
   // Locate the web/ dir (sibling of this CLI package).
   const here = dirname(fileURLToPath(import.meta.url));
-  // src/cli lives at <pkg>/src/cli.ts OR <pkg>/dist/cli.js. Both work
-  // — we walk up two levels and look for `web/`.
   const webDir = resolve(here, '..', '..', 'web');
 
   if (!existsSync(webDir)) {
@@ -53,33 +63,71 @@ export async function run(args: string[], ctx: PilotContext): Promise<number> {
 
   if (!existsSync(`${webDir}/node_modules`)) {
     ctx.logger.info('Installing web dependencies (first run)…');
-    await execFileP('npm', ['install'], { cwd: webDir });
+    const { execFile } = await import('node:child_process');
+    const { promisify } = await import('node:util');
+    await promisify(execFile)('npm', ['install'], { cwd: webDir });
   }
 
-  const url = `http://127.0.0.1:${WEB_PORT}`;
-  ctx.logger.info(`Starting Pilot dashboard on ${kleur.cyan(url)}`);
-  ctx.logger.info(`(pilot server must be running on 127.0.0.1:${PILOT_PORT})`);
-  ctx.logger.info('Press Ctrl-C to stop.\n');
+  // Step 1: start the pilot server in-process (unless --no-server).
+  let serverHandle: ServerHandle | null = null;
+  if (!noServer) {
+    try {
+      const opts: Parameters<typeof startServer>[0] = {
+        port: PILOT_PORT,
+        host: '127.0.0.1',
+        logger: false, // stay quiet so web output is readable
+      };
+      if (ctx.home) opts.home = ctx.home;
+      serverHandle = await startServer(opts);
+      ctx.logger.success(
+        `pilot server up on ${kleur.cyan(serverHandle.url)} (token: ${serverHandle.token.slice(0, 8)}…)`,
+      );
+    } catch (err) {
+      ctx.logger.error(`Failed to start pilot server: ${(err as Error).message}`);
+      ctx.logger.error(`Try \`pilot server --stop\` first, or pass --no-server if it's already running.`);
+      return 1;
+    }
+  } else {
+    ctx.logger.info(`Assuming pilot server is running on 127.0.0.1:${PILOT_PORT}`);
+  }
+
+  // Step 2: start next dev with PILOT_SERVER_URL + PORT set.
+  // The web/package.json `dev` script uses `next dev -p 17371`; we
+  // override that with PORT env so user-supplied --port wins.
+  const url = `http://127.0.0.1:${webPort}`;
+  ctx.logger.info(`Starting Web UI on ${kleur.cyan(url)}`);
+  ctx.logger.info('Press Ctrl-C to stop both servers.\n');
 
   if (!noOpen) {
-    // Small delay so the server has a chance to start listening.
     setTimeout(() => openBrowser(url), 1500);
   }
 
-  const args2 = devOnly ? ['run', 'dev'] : ['run', 'dev'];
-  const proc = spawn('npm', args2, {
+  const proc = spawn('npm', ['run', 'dev'], {
     cwd: webDir,
     stdio: 'inherit',
     env: {
       ...process.env,
+      PORT: String(webPort),
       PILOT_SERVER_URL: `http://127.0.0.1:${PILOT_PORT}`,
     },
   });
 
+  const cleanup = () => {
+    proc.kill('SIGINT');
+    if (serverHandle) {
+      serverHandle.close().catch(() => undefined);
+    }
+  };
+  process.on('SIGINT', cleanup);
+  process.on('SIGTERM', cleanup);
+
   await new Promise<number>((resolveP) => {
-    proc.on('exit', (code) => resolveP(code ?? 0));
-    process.on('SIGINT', () => proc.kill('SIGINT'));
-    process.on('SIGTERM', () => proc.kill('SIGTERM'));
+    proc.on('exit', (code) => {
+      if (serverHandle) {
+        serverHandle.close().catch(() => undefined);
+      }
+      resolveP(code ?? 0);
+    });
   });
 
   return 0;

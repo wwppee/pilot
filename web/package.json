@@ -1,12 +1,12 @@
 {
   "name": "pilot-web",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "private": true,
-  "description": "Web UI for pilot — read-only dashboard over the local pilot server.",
+  "description": "Web UI for Pilot — dashboard and management console over the local pilot server.",
   "scripts": {
-    "dev": "next dev -p 17371",
+    "dev": "next dev",
     "build": "next build",
-    "start": "next start -p 17371",
+    "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

@@ -46,7 +46,7 @@ export default async function DashboardPage() {
     return (
       <ErrorScreen
         title="Can't reach pilot server"
-        message={`${error}\n\nIs \`pilot server start\` running? Run \`pilot dashboard\` to start it for you.`}
+        message={`${error}\n\nRun \`pilot dashboard\` to start both the server and the Web UI in one go,\nor start the server alone with \`pilot server start\` if you only need the CLI.`}
       />
     );
   }
