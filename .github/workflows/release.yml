@@ -15,12 +15,19 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     steps:
-      # Note: release-please-action@v4 auto-detects the package by
-      # scanning the repo. We don't pass `package-name` (it's not a
-      # valid `with:` param and produces a warning).
+      # Pin to a specific SHA + use config file for explicit package
+      # declaration. After v0.4.0 we kept hitting 0-job failures when
+      # the action auto-detected; explicit config + token makes the
+      # PR / release path deterministic.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: googleapis/release-please-action@v4
         id: release
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
           release-type: node
 
       - uses: actions/checkout@v4
