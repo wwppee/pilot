@@ -19,14 +19,8 @@
 import kleur from "kleur";
 import { writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import {
-  readPackManifest,
-  type PackManifest,
-} from "../core/pack-manifest.js";
-import {
-  CapabilitySchema,
-  type Capability,
-} from "../core/capability.js";
+import { readPackManifest, type PackManifest } from "../core/pack-manifest.js";
+import { CapabilitySchema, type Capability } from "../core/capability.js";
 import { pilotCapabilitiesDir } from "../core/types.js";
 import type { Command, PilotContext } from "../core/types.js";
 
@@ -50,9 +44,7 @@ export async function run(args: string[], ctx: PilotContext): Promise<number> {
     return runAbsorb(args, ctx);
   }
   if (sub === undefined) {
-    ctx.logger.error(
-      "Usage: pilot forge <search|inspect|absorb> [args]",
-    );
+    ctx.logger.error("Usage: pilot forge <search|inspect|absorb> [args]");
     return 1;
   }
   ctx.logger.error(`Unknown subcommand: ${sub}`);
@@ -61,10 +53,7 @@ export async function run(args: string[], ctx: PilotContext): Promise<number> {
 
 // ─── search ──────────────────────────────────────────────────
 
-async function runSearch(
-  args: string[],
-  ctx: PilotContext,
-): Promise<number> {
+async function runSearch(args: string[], ctx: PilotContext): Promise<number> {
   const q = args[1];
   if (!q || q.length < 2) {
     ctx.logger.error("Usage: pilot forge search <query>  (min 2 chars)");
@@ -81,7 +70,9 @@ async function runSearch(
       const desc = r.description
         ? `  ${kleur.dim(r.description.slice(0, 60))}`
         : "";
-      console.log(`  ${kleur.cyan(r.name.padEnd(28))} ${kleur.cyan(r.version)}${desc}`);
+      console.log(
+        `  ${kleur.cyan(r.name.padEnd(28))} ${kleur.cyan(r.version)}${desc}`,
+      );
     }
     return 0;
   } catch (e) {
@@ -92,10 +83,7 @@ async function runSearch(
 
 // ─── inspect ─────────────────────────────────────────────────
 
-async function runInspect(
-  args: string[],
-  ctx: PilotContext,
-): Promise<number> {
+async function runInspect(args: string[], ctx: PilotContext): Promise<number> {
   const name = args[1];
   if (!name) {
     ctx.logger.error("Usage: pilot forge inspect <name>");
@@ -116,7 +104,9 @@ function printManifest(m: PackManifest): void {
   if (m.pi) {
     const p = m.pi;
     console.log(kleur.bold("Manifest (`pi` field)"));
-    console.log(`  kind:        ${p.kind ?? kleur.dim("(unset — falling back to name heuristic)")}`);
+    console.log(
+      `  kind:        ${p.kind ?? kleur.dim("(unset — falling back to name heuristic)")}`,
+    );
     console.log(
       `  sources:     ${p.extension !== undefined ? "1 extension" : kleur.dim("none")}`,
     );
@@ -127,7 +117,9 @@ function printManifest(m: PackManifest): void {
       console.log(`  themes:      ${p.themes.length} (${p.themes.join(", ")})`);
     }
     if (p.prompts && p.prompts.length > 0) {
-      console.log(`  prompts:     ${p.prompts.length} (${p.prompts.join(", ")})`);
+      console.log(
+        `  prompts:     ${p.prompts.length} (${p.prompts.join(", ")})`,
+      );
     }
     if (p.commands && p.commands.length > 0) {
       console.log(`  commands:    ${p.commands.join(", ")}`);
@@ -136,23 +128,23 @@ function printManifest(m: PackManifest): void {
       console.log(`  keybindings: ${p.keybindings.length}`);
     }
     console.log();
-    const inferredMode = p.extension !== undefined ? "L1-referenced" : "L1-referenced (skill/theme/prompt)";
+    const inferredMode =
+      p.extension !== undefined
+        ? "L1-referenced"
+        : "L1-referenced (skill/theme/prompt)";
     console.log(
-      kleur.dim(
-        `Absorb would create a Capability with mode: ${inferredMode}`,
-      ),
+      kleur.dim(`Absorb would create a Capability with mode: ${inferredMode}`),
     );
   } else {
-    console.log(kleur.dim("No `pi` field — would absorb as L1-referenced only."));
+    console.log(
+      kleur.dim("No `pi` field — would absorb as L1-referenced only."),
+    );
   }
 }
 
 // ─── absorb ──────────────────────────────────────────────────
 
-async function runAbsorb(
-  args: string[],
-  ctx: PilotContext,
-): Promise<number> {
+async function runAbsorb(args: string[], ctx: PilotContext): Promise<number> {
   const name = args[1];
   const asFlag = args.indexOf("--as");
   const asId = asFlag >= 0 ? args[asFlag + 1] : undefined;
@@ -190,7 +182,11 @@ async function runAbsorb(
   const capDir = join(pilotCapabilitiesDir(home), id);
   const capFile = join(capDir, "capability.json");
   await mkdir(capDir, { recursive: true });
-  await writeFile(capFile, JSON.stringify(validation.data, null, 2) + "\n", "utf-8");
+  await writeFile(
+    capFile,
+    JSON.stringify(validation.data, null, 2) + "\n",
+    "utf-8",
+  );
 
   ctx.logger.success(`Absorbed ${kleur.cyan(name)} as ${kleur.green(id)}`);
   ctx.logger.info(`  ${capFile}`);
@@ -204,10 +200,7 @@ async function runAbsorb(
  * Capability type taxonomy (workflow/tool/integration/safety). Defaults
  * to "integration" when the kind is unset.
  */
-function buildCapability(
-  id: string,
-  pack: PackManifest,
-): Capability {
+function buildCapability(id: string, pack: PackManifest): Capability {
   const p = pack.pi ?? {};
   const mode = p.extension !== undefined ? "L2-wrapped" : "L1-referenced";
   const now = new Date().toISOString();
@@ -215,7 +208,8 @@ function buildCapability(
     id,
     title: pack.name,
     type: mapKindToType(p.kind),
-    description: pack.description ?? `Absorbed from ${pack.name}@${pack.version}`,
+    description:
+      pack.description ?? `Absorbed from ${pack.name}@${pack.version}`,
     sources: [
       {
         type: "npm",
@@ -236,9 +230,7 @@ function buildCapability(
 }
 
 /** Map a pack's `pi.kind` onto the Capability `type` enum. */
-function mapKindToType(
-  kind: string | undefined,
-): Capability["type"] {
+function mapKindToType(kind: string | undefined): Capability["type"] {
   // Pack kinds: extension, skill, theme, prompt
   // Capability types: workflow, tool, integration, safety
   switch (kind) {
