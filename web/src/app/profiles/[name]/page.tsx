@@ -1,18 +1,21 @@
 /**
  * /profiles/[name] — read-only profile detail with edit form.
  */
-import Link from 'next/link';
-import { api } from '@/lib/pilot';
-import { saveProfileForm, deleteProfileForm } from '@/lib/actions';
-import { SubmitButton, DeleteButton } from '@/components/Buttons';
-import type { Profile } from '@/lib/types';
+import Link from "next/link";
+import { api } from "@/lib/pilot";
+import { saveProfileForm, deleteProfileForm } from "@/lib/actions";
+import { SubmitButton, DeleteButton } from "@/components/Buttons";
+import type { Profile } from "@/lib/types";
 
 interface PageProps {
   params: Promise<{ name: string }>;
   searchParams: Promise<{ saved?: string; created?: string; error?: string }>;
 }
 
-export default async function ProfileDetailPage({ params, searchParams }: PageProps) {
+export default async function ProfileDetailPage({
+  params,
+  searchParams,
+}: PageProps) {
   const [{ name }, sp] = await Promise.all([params, searchParams]);
   const decoded = decodeURIComponent(name);
 
@@ -22,8 +25,8 @@ export default async function ProfileDetailPage({ params, searchParams }: PagePr
     profile = await api.profile(decoded);
   } catch (e) {
     const msg = (e as Error).message;
-    if (msg.includes('404') || msg.includes('not found')) {
-      error = 'not found';
+    if (msg.includes("404") || msg.includes("not found")) {
+      error = "not found";
     } else {
       error = msg;
     }
@@ -38,7 +41,7 @@ export default async function ProfileDetailPage({ params, searchParams }: PagePr
       {sp.created && (
         <div
           className="surface rounded-lg p-3 text-sm"
-          style={{ color: 'var(--accent-2)' }}
+          style={{ color: "var(--accent-2)" }}
         >
           ✓ Created <code className="kbd">{decoded}</code>.
         </div>
@@ -46,18 +49,21 @@ export default async function ProfileDetailPage({ params, searchParams }: PagePr
       {sp.saved && (
         <div
           className="surface rounded-lg p-3 text-sm"
-          style={{ color: 'var(--accent-2)' }}
+          style={{ color: "var(--accent-2)" }}
         >
           ✓ Saved <code className="kbd">{decoded}</code>.
         </div>
       )}
       {sp.error && (
-        <div className="surface rounded-lg p-3 text-sm" style={{ color: 'var(--error)' }}>
+        <div
+          className="surface rounded-lg p-3 text-sm"
+          style={{ color: "var(--error)" }}
+        >
           {sp.error}
         </div>
       )}
 
-      {error === 'not found' && (
+      {error === "not found" && (
         <div className="surface rounded-lg p-4 text-sm text-[var(--error)]">
           Profile <code className="kbd">{decoded}</code> not found.
         </div>
@@ -68,12 +74,17 @@ export default async function ProfileDetailPage({ params, searchParams }: PagePr
           <header className="surface rounded-lg p-4">
             <h1 className="text-xl font-bold">{profile.name}</h1>
             {profile.notes && (
-              <p className="text-sm text-[var(--text-muted)] mt-2">{profile.notes}</p>
+              <p className="text-sm text-[var(--text-muted)] mt-2">
+                {profile.notes}
+              </p>
             )}
           </header>
 
           {/* Edit form */}
-          <form action={saveProfileForm} className="surface rounded-lg p-4 space-y-3">
+          <form
+            action={saveProfileForm}
+            className="surface rounded-lg p-4 space-y-3"
+          >
             <h2 className="text-xs uppercase tracking-wide text-[var(--text-muted)]">
               Edit
             </h2>
@@ -81,22 +92,22 @@ export default async function ProfileDetailPage({ params, searchParams }: PagePr
             <Field
               label="model"
               placeholder="e.g. claude-opus-4.6"
-              defaultValue={profile.model ?? ''}
+              defaultValue={profile.model ?? ""}
             />
             <Field
               label="thinking"
               placeholder="low / medium / high"
-              defaultValue={profile.thinking ?? ''}
+              defaultValue={profile.thinking ?? ""}
             />
             <Field
               label="packages (comma-separated)"
               placeholder="npm:pi-lens, npm:pi-subagents"
-              defaultValue={(profile.packages ?? []).join(', ')}
+              defaultValue={(profile.packages ?? []).join(", ")}
             />
             <Field
               label="notes"
               placeholder="What is this profile for?"
-              defaultValue={profile.notes ?? ''}
+              defaultValue={profile.notes ?? ""}
               multiline
             />
             <div className="flex gap-2 pt-2">
@@ -119,7 +130,7 @@ export default async function ProfileDetailPage({ params, searchParams }: PagePr
               <pre className="text-xs font-mono bg-[var(--bg)] border border-[var(--border)] rounded p-2 overflow-x-auto">
                 {Object.entries(profile.env)
                   .map(([k, v]) => `${k}=${v}`)
-                  .join('\n')}
+                  .join("\n")}
               </pre>
             </div>
           )}
@@ -156,7 +167,7 @@ function Field({
       </span>
       {multiline ? (
         <textarea
-          name={label.split(' ')[0]}
+          name={label.split(" ")[0]}
           defaultValue={defaultValue}
           placeholder={placeholder}
           rows={3}
@@ -164,7 +175,7 @@ function Field({
         />
       ) : (
         <input
-          name={label.split(' ')[0]}
+          name={label.split(" ")[0]}
           defaultValue={defaultValue}
           placeholder={placeholder}
           className="mt-1 w-full surface-2 rounded px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"

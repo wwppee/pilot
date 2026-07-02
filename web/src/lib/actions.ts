@@ -1,4 +1,4 @@
-'use server';
+"use server";
 
 /**
  * Pilot server actions — for Web UI write operations.
@@ -12,26 +12,26 @@
  * handler.
  */
 
-import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
-import { pilotWithCsrf } from './pilot';
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { pilotWithCsrf } from "./pilot";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
 /** Install a pack by npm name. */
 export async function installPack(name: string): Promise<ActionResult> {
   try {
-    const res = await pilotWithCsrf('/packs/install', {
-      method: 'POST',
+    const res = await pilotWithCsrf("/packs/install", {
+      method: "POST",
       body: JSON.stringify({ source: `npm:${name}` }),
     });
     if (!res.ok) {
       const text = await res.text();
       return { ok: false, error: text || res.statusText };
     }
-    revalidatePath('/packages');
+    revalidatePath("/packages");
     revalidatePath(`/packages/${name}`);
-    revalidatePath('/');
+    revalidatePath("/");
     return { ok: true };
   } catch (e) {
     return { ok: false, error: (e as Error).message };
@@ -44,15 +44,18 @@ export async function saveProfile(
   input: Record<string, unknown>,
 ): Promise<ActionResult> {
   try {
-    const res = await pilotWithCsrf(`/profiles/${encodeURIComponent(name).replace(/%40/g, '@')}`, {
-      method: 'POST',
-      body: JSON.stringify(input),
-    });
+    const res = await pilotWithCsrf(
+      `/profiles/${encodeURIComponent(name).replace(/%40/g, "@")}`,
+      {
+        method: "POST",
+        body: JSON.stringify(input),
+      },
+    );
     if (!res.ok) {
       const text = await res.text();
       return { ok: false, error: text || res.statusText };
     }
-    revalidatePath('/profiles');
+    revalidatePath("/profiles");
     revalidatePath(`/profiles/${name}`);
     return { ok: true };
   } catch (e) {
@@ -64,15 +67,15 @@ export async function saveProfile(
 export async function deleteProfile(name: string): Promise<ActionResult> {
   try {
     const res = await pilotWithCsrf(
-      `/profiles/${encodeURIComponent(name).replace(/%40/g, '@')}`,
-      { method: 'DELETE' },
+      `/profiles/${encodeURIComponent(name).replace(/%40/g, "@")}`,
+      { method: "DELETE" },
     );
     if (!res.ok) {
       const text = await res.text();
       return { ok: false, error: text || res.statusText };
     }
-    revalidatePath('/profiles');
-    revalidatePath('/');
+    revalidatePath("/profiles");
+    revalidatePath("/");
     return { ok: true };
   } catch (e) {
     return { ok: false, error: (e as Error).message };
@@ -82,8 +85,8 @@ export async function deleteProfile(name: string): Promise<ActionResult> {
 /** Form-friendly wrappers — accept FormData, used by <form action={…}>. */
 
 export async function installPackForm(formData: FormData): Promise<void> {
-  const name = formData.get('name');
-  if (typeof name !== 'string') return;
+  const name = formData.get("name");
+  if (typeof name !== "string") return;
   const result = await installPack(name);
   if (result.ok) {
     redirect(`/packages/${name}?installed=1`);
@@ -93,28 +96,28 @@ export async function installPackForm(formData: FormData): Promise<void> {
 }
 
 export async function saveProfileForm(formData: FormData): Promise<void> {
-  const name = formData.get('name');
-  if (typeof name !== 'string') return;
+  const name = formData.get("name");
+  if (typeof name !== "string") return;
 
   const input: Record<string, unknown> = {};
-  const model = formData.get('model');
-  if (typeof model === 'string' && model.trim().length > 0) {
-    input['model'] = model.trim();
+  const model = formData.get("model");
+  if (typeof model === "string" && model.trim().length > 0) {
+    input["model"] = model.trim();
   }
-  const thinking = formData.get('thinking');
-  if (typeof thinking === 'string' && thinking.trim().length > 0) {
-    input['thinking'] = thinking.trim();
+  const thinking = formData.get("thinking");
+  if (typeof thinking === "string" && thinking.trim().length > 0) {
+    input["thinking"] = thinking.trim();
   }
-  const packages = formData.get('packages');
-  if (typeof packages === 'string' && packages.trim().length > 0) {
-    input['packages'] = packages
-      .split(',')
+  const packages = formData.get("packages");
+  if (typeof packages === "string" && packages.trim().length > 0) {
+    input["packages"] = packages
+      .split(",")
       .map((p) => p.trim())
       .filter((p) => p.length > 0);
   }
-  const notes = formData.get('notes');
-  if (typeof notes === 'string' && notes.trim().length > 0) {
-    input['notes'] = notes.trim();
+  const notes = formData.get("notes");
+  if (typeof notes === "string" && notes.trim().length > 0) {
+    input["notes"] = notes.trim();
   }
 
   const result = await saveProfile(name, input);
@@ -126,8 +129,8 @@ export async function saveProfileForm(formData: FormData): Promise<void> {
 }
 
 export async function createProfileForm(formData: FormData): Promise<void> {
-  const name = formData.get('name');
-  if (typeof name !== 'string') return;
+  const name = formData.get("name");
+  if (typeof name !== "string") return;
   const result = await saveProfile(name, {});
   if (result.ok) {
     redirect(`/profiles/${name}?created=1`);
@@ -137,9 +140,8 @@ export async function createProfileForm(formData: FormData): Promise<void> {
 }
 
 export async function deleteProfileForm(formData: FormData): Promise<void> {
-  const name = formData.get('name');
-  if (typeof name !== 'string') return;
+  const name = formData.get("name");
+  if (typeof name !== "string") return;
   await deleteProfile(name);
-  redirect('/profiles');
+  redirect("/profiles");
 }
-

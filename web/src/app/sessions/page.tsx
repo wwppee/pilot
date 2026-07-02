@@ -1,9 +1,9 @@
 /**
  * /sessions — list all sessions.
  */
-import Link from 'next/link';
-import { api } from '@/lib/pilot';
-import type { SessionInfo } from '@/lib/types';
+import Link from "next/link";
+import { api } from "@/lib/pilot";
+import type { SessionInfo } from "@/lib/types";
 
 export default async function SessionsPage() {
   const result = await api.sessions().catch(() => null as SessionInfo[] | null);
@@ -14,7 +14,8 @@ export default async function SessionsPage() {
       <header>
         <h1 className="text-2xl font-bold mb-1">Sessions</h1>
         <p className="text-[var(--text-muted)] text-sm">
-          {sessions.length} session{sessions.length === 1 ? '' : 's'} · most recent first
+          {sessions.length} session{sessions.length === 1 ? "" : "s"} · most
+          recent first
         </p>
       </header>
 
@@ -37,25 +38,30 @@ export default async function SessionsPage() {
             </thead>
             <tbody>
               {sessions.map((s) => (
-                <tr key={s.id} className="border-t border-[var(--border)] hover:bg-[var(--surface-2)]">
+                <tr
+                  key={s.id}
+                  className="border-t border-[var(--border)] hover:bg-[var(--surface-2)]"
+                >
                   <td className="px-3 py-2">
                     <Link href={`/sessions/${s.id}`} className="kbd">
                       {s.id.slice(0, 20)}
-                      {s.id.length > 20 ? '…' : ''}
+                      {s.id.length > 20 ? "…" : ""}
                     </Link>
                   </td>
                   <td className="px-3 py-2 font-mono text-xs text-[var(--text-muted)] max-w-xs truncate">
                     {s.cwd}
                   </td>
                   <td className="px-3 py-2 text-xs text-[var(--text-muted)] whitespace-nowrap">
-                    {s.lastUsedAt ?? '—'}
+                    {s.lastUsedAt ?? "—"}
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums">{s.entries}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {s.entries}
+                  </td>
                   <td className="px-3 py-2 text-right tabular-nums text-[var(--text-muted)]">
                     {prettyBytes(s.size)}
                   </td>
                   <td className="px-3 py-2 text-xs">
-                    {s.model ? <code className="kbd">{s.model}</code> : '—'}
+                    {s.model ? <code className="kbd">{s.model}</code> : "—"}
                   </td>
                 </tr>
               ))}

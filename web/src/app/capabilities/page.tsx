@@ -1,10 +1,10 @@
 /**
  * /capabilities — list installed Capabilities (read-only).
  */
-import Link from 'next/link';
-import { api } from '@/lib/pilot';
-import { AutoRefresh, LivePulse } from '@/components/AutoRefresh';
-import type { Capability } from '@/lib/types';
+import Link from "next/link";
+import { api } from "@/lib/pilot";
+import { AutoRefresh, LivePulse } from "@/components/AutoRefresh";
+import type { Capability } from "@/lib/types";
 
 export default async function CapabilitiesPage() {
   const list = await api.listCapabilities().catch(() => [] as Capability[]);
@@ -17,7 +17,8 @@ export default async function CapabilitiesPage() {
         <div>
           <h1 className="text-2xl font-bold mb-1">Capabilities</h1>
           <p className="text-[var(--text-muted)] text-sm">
-            {list.length} capability/capabilities installed · Forge ships in v0.4.
+            {list.length} capability/capabilities installed · Forge ships in
+            v0.4.
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
@@ -28,10 +29,10 @@ export default async function CapabilitiesPage() {
 
       {list.length === 0 ? (
         <div className="surface rounded-lg px-3 py-6 text-sm text-[var(--text-muted)] italic text-center">
-          No capabilities installed yet.{' '}
+          No capabilities installed yet.{" "}
           <Link href="https://github.com/wwppee/pilot" className="text-xs">
             Forge
-          </Link>{' '}
+          </Link>{" "}
           ships in v0.4.
         </div>
       ) : (
@@ -48,8 +49,8 @@ export default async function CapabilitiesPage() {
                   <span
                     className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded shrink-0"
                     style={{
-                      color: 'var(--accent)',
-                      border: '1px solid var(--border)',
+                      color: "var(--accent)",
+                      border: "1px solid var(--border)",
                     }}
                   >
                     {c.type}
@@ -68,7 +69,7 @@ export default async function CapabilitiesPage() {
                   <span>requires {c.compatibility.requires.length}</span>
                 )}
                 {c.compatibility.conflicts.length > 0 && (
-                  <span style={{ color: 'var(--warn)' }}>
+                  <span style={{ color: "var(--warn)" }}>
                     conflicts {c.compatibility.conflicts.length}
                   </span>
                 )}

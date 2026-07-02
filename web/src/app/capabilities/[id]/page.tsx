@@ -1,9 +1,9 @@
 /**
  * /capabilities/[id] — single Capability detail (read-only).
  */
-import Link from 'next/link';
-import { api } from '@/lib/pilot';
-import type { Capability } from '@/lib/types';
+import Link from "next/link";
+import { api } from "@/lib/pilot";
+import type { Capability } from "@/lib/types";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -18,7 +18,7 @@ export default async function CapabilityDetailPage({ params }: PageProps) {
   try {
     cap = await api.getCapability(decoded);
   } catch (e) {
-    if (!(e as Error).message?.includes('404')) {
+    if (!(e as Error).message?.includes("404")) {
       error = (e as Error).message;
     }
   }
@@ -62,8 +62,8 @@ function Detail({ cap }: { cap: Capability }) {
             <span
               className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded shrink-0"
               style={{
-                color: 'var(--accent)',
-                border: '1px solid var(--border)',
+                color: "var(--accent)",
+                border: "1px solid var(--border)",
               }}
             >
               {cap.type}
@@ -86,13 +86,14 @@ function Detail({ cap }: { cap: Capability }) {
             {cap.sources.map((s, i) => (
               <li key={i} className="flex items-center gap-2">
                 <span className="kbd text-[10px]">{s.type}</span>
-                <code className="kbd text-[10px] flex-1 truncate">
-                  {s.ref}
-                </code>
+                <code className="kbd text-[10px] flex-1 truncate">{s.ref}</code>
                 {s.mode && (
                   <span
                     className="text-[10px] px-1.5 py-0.5 rounded shrink-0"
-                    style={{ color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+                    style={{
+                      color: "var(--text-muted)",
+                      border: "1px solid var(--border)",
+                    }}
                   >
                     {s.mode}
                   </span>
@@ -128,7 +129,7 @@ function Detail({ cap }: { cap: Capability }) {
               <div>
                 <dt
                   className="text-[10px] uppercase tracking-wide"
-                  style={{ color: 'var(--warn)' }}
+                  style={{ color: "var(--warn)" }}
                 >
                   conflicts
                 </dt>
@@ -137,7 +138,7 @@ function Detail({ cap }: { cap: Capability }) {
                     <code
                       key={r}
                       className="kbd text-[10px]"
-                      style={{ color: 'var(--warn)' }}
+                      style={{ color: "var(--warn)" }}
                     >
                       {r}
                     </code>

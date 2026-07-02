@@ -9,12 +9,11 @@
  * so React server components and route handlers can `.catch()` cleanly.
  */
 
-import { readFile } from 'node:fs/promises';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { readFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join } from "node:path";
 
-const PILOT_BASE =
-  process.env['PILOT_SERVER_URL'] ?? 'http://127.0.0.1:17361';
+const PILOT_BASE = process.env["PILOT_SERVER_URL"] ?? "http://127.0.0.1:17361";
 
 export class PilotApiError extends Error {
   constructor(
@@ -22,7 +21,7 @@ export class PilotApiError extends Error {
     readonly status: number,
   ) {
     super(message);
-    this.name = 'PilotApiError';
+    this.name = "PilotApiError";
   }
 }
 
@@ -32,16 +31,16 @@ export class PilotApiError extends Error {
  */
 function tokenFilePath(): string {
   // Prefer HOME env (tests use it); fall back to Node's homedir().
-  const home = process.env['HOME'] ?? homedir();
-  return join(home, '.pilot', 'server.token');
+  const home = process.env["HOME"] ?? homedir();
+  return join(home, ".pilot", "server.token");
 }
 
 /** Read the pilot token from env or fall back to the on-disk token file. */
 async function getToken(): Promise<string | null> {
-  const env = process.env['PILOT_TOKEN'];
+  const env = process.env["PILOT_TOKEN"];
   if (env) return env;
   try {
-    const buf = await readFile(tokenFilePath(), 'utf-8');
+    const buf = await readFile(tokenFilePath(), "utf-8");
     return buf.trim();
   } catch {
     return null;
@@ -56,12 +55,12 @@ export async function pilot<T>(
   const token = await getToken();
   const url = `${PILOT_BASE}${path}`;
   const headers = new Headers(init.headers);
-  headers.set('accept', 'application/json');
-  if (token) headers.set('x-pilot-token', token);
-  if (init.body && !headers.has('content-type')) {
-    headers.set('content-type', 'application/json');
+  headers.set("accept", "application/json");
+  if (token) headers.set("x-pilot-token", token);
+  if (init.body && !headers.has("content-type")) {
+    headers.set("content-type", "application/json");
   }
-  const res = await fetch(url, { ...init, headers, cache: 'no-store' });
+  const res = await fetch(url, { ...init, headers, cache: "no-store" });
   if (!res.ok) {
     const text = await res.text();
     throw new PilotApiError(text || res.statusText, res.status);
@@ -82,12 +81,12 @@ export async function pilotRaw(
   const token = await getToken();
   const url = `${PILOT_BASE}${path}`;
   const headers = new Headers(init.headers);
-  headers.set('accept', 'application/json');
-  if (token) headers.set('x-pilot-token', token);
-  if (init.body && !headers.has('content-type')) {
-    headers.set('content-type', 'application/json');
+  headers.set("accept", "application/json");
+  if (token) headers.set("x-pilot-token", token);
+  if (init.body && !headers.has("content-type")) {
+    headers.set("content-type", "application/json");
   }
-  return fetch(url, { ...init, headers, cache: 'no-store' });
+  return fetch(url, { ...init, headers, cache: "no-store" });
 }
 
 /**
@@ -104,20 +103,20 @@ export async function pilotWithCsrf(
 ): Promise<Response> {
   // Step 1: GET to capture the CSRF cookie + token. Use the same
   // path if it's a GET, or hit /health for the bare minimum.
-  const csrfGet = await pilotRaw('/health');
+  const csrfGet = await pilotRaw("/health");
   // Drain the body so the socket can be reused.
   await csrfGet.text();
 
-  const cookieHeader = csrfGet.headers.get('set-cookie');
-  const csrfToken = csrfGet.headers.get('x-pilot-csrf');
+  const cookieHeader = csrfGet.headers.get("set-cookie");
+  const csrfToken = csrfGet.headers.get("x-pilot-csrf");
   if (!csrfToken) {
-    throw new PilotApiError('pilot server did not return a CSRF token', 0);
+    throw new PilotApiError("pilot server did not return a CSRF token", 0);
   }
 
   // Step 2: actual mutating request with cookie + header forwarded.
   const headers = new Headers(init.headers);
-  if (cookieHeader) headers.set('cookie', cookieHeader);
-  headers.set('x-pilot-csrf', csrfToken);
+  if (cookieHeader) headers.set("cookie", cookieHeader);
+  headers.set("x-pilot-csrf", csrfToken);
   return pilotRaw(path, { ...init, headers });
 }
 
@@ -126,47 +125,76 @@ export async function pilotWithCsrf(
 import type {
   StatsReport,
   StatsRange,
+  UsageRange,
+  UsageReport,
   Pack,
   SessionInfo,
   SessionTree,
   Profile,
   Capability,
-} from './types.js';
+  ToolInventoryItem,
+  ProjectContextRef,
+} from "./types.js";
 
 export const api = {
-  health: () => pilot<{ ok: true; version: string; uptimeSec: number }>('/health'),
+  health: () =>
+    pilot<{ ok: true; version: string; uptimeSec: number }>("/health"),
 
-  packs: () => pilot<Pack[]>('/packs'),
+  packs: () => pilot<Pack[]>("/packs"),
   packInfo: (name: string) => pilot<Pack>(`/packs/info/${encodeName(name)}`),
   packSearch: (q: string) =>
-    pilot<{ query: string; results: Array<{ name: string; version: string; description?: string; pi?: unknown }> }>(
-      `/packs/search?q=${encodeURIComponent(q)}`,
-    ),
+    pilot<{
+      query: string;
+      results: Array<{
+        name: string;
+        version: string;
+        description?: string;
+        pi?: unknown;
+      }>;
+    }>(`/packs/search?q=${encodeURIComponent(q)}`),
   packInstall: (name: string) =>
     pilot<unknown>(`/packs/install`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      method: "POST",
+      headers: { "content-type": "application/json" },
       body: JSON.stringify({ source: `npm:${name}` }),
     }),
 
-  sessions: () => pilot<SessionInfo[]>('/sessions'),
-  sessionTree: (id: string) => pilot<SessionTree>(`/sessions/${encodeName(id)}/tree`),
+  sessions: () => pilot<SessionInfo[]>("/sessions"),
+  sessionTree: (id: string) =>
+    pilot<SessionTree>(`/sessions/${encodeName(id)}/tree`),
 
   stats: (range: StatsRange, days?: number) => {
     const params = new URLSearchParams({ range: range.kind });
-    if (days) params.set('days', String(days));
+    if (days) params.set("days", String(days));
     return pilot<StatsReport>(`/stats?${params}`);
   },
 
-  profiles: () => pilot<Profile[]>('/profiles'),
+  // ─── Usage (v0.4.2+) ─────────────────────────────────────
+  usage: (range: UsageRange, days?: number) => {
+    const params = new URLSearchParams({ range: range.kind });
+    if (days) params.set("days", String(days));
+    return pilot<UsageReport>(`/usage?${params}`);
+  },
+
+  // ─── Tools (v0.4.2+) ─────────────────────────────────────
+  tools: () => pilot<ToolInventoryItem[]>("/tools"),
+
+  // ─── Project context (v0.4.2+) ───────────────────────────
+  context: (cwd?: string) => {
+    const params = new URLSearchParams();
+    if (cwd) params.set("cwd", cwd);
+    return pilot<ProjectContextRef[]>(`/context?${params}`);
+  },
+
+  profiles: () => pilot<Profile[]>("/profiles"),
   profile: (name: string) => pilot<Profile>(`/profiles/${encodeName(name)}`),
 
   // ─── Capabilities (v0.3.9+) ───────────────────────────────
-  listCapabilities: () => pilot<Capability[]>('/capabilities'),
+  listCapabilities: () => pilot<Capability[]>("/capabilities"),
   getCapability: (id: string) =>
     pilot<Capability>(`/capabilities/${encodeName(id)}`),
 };
 
 function encodeName(name: string): string {
-  return encodeURIComponent(name).replace(/%40/g, '@');
+  return encodeURIComponent(name).replace(/%40/g, "@");
 }

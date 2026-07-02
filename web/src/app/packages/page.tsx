@@ -4,9 +4,9 @@
  * Read-only in v1 (no install button). Install still goes through
  * `pilot pack install` CLI until we wire POST + CSRF in the UI.
  */
-import Link from 'next/link';
-import { api } from '@/lib/pilot';
-import type { Pack } from '@/lib/types';
+import Link from "next/link";
+import { api } from "@/lib/pilot";
+import type { Pack } from "@/lib/types";
 
 interface SearchPageProps {
   searchParams: Promise<{ q?: string }>;
@@ -14,24 +14,25 @@ interface SearchPageProps {
 
 export default async function PackagesPage({ searchParams }: SearchPageProps) {
   const { q } = await searchParams;
-  const query = (q ?? '').trim();
+  const query = (q ?? "").trim();
 
   const [installed, searchResults] = await Promise.allSettled([
     api.packs(),
-    query.length >= 2
-      ? api.packSearch(query)
-      : Promise.resolve(null),
+    query.length >= 2 ? api.packSearch(query) : Promise.resolve(null),
   ]);
 
-  const installedList: Pack[] = installed.status === 'fulfilled' ? installed.value : [];
-  const searchList = searchResults.status === 'fulfilled' ? searchResults.value : null;
+  const installedList: Pack[] =
+    installed.status === "fulfilled" ? installed.value : [];
+  const searchList =
+    searchResults.status === "fulfilled" ? searchResults.value : null;
 
   return (
     <div className="space-y-8">
       <header>
         <h1 className="text-2xl font-bold mb-1">Package Center</h1>
         <p className="text-[var(--text-muted)] text-sm">
-          {installedList.length} installed · search npm without leaving the dashboard.
+          {installedList.length} installed · search npm without leaving the
+          dashboard.
         </p>
       </header>
 
@@ -47,7 +48,7 @@ export default async function PackagesPage({ searchParams }: SearchPageProps) {
         <button
           type="submit"
           className="px-4 py-2 text-sm rounded text-[var(--bg)]"
-          style={{ background: 'var(--accent)' }}
+          style={{ background: "var(--accent)" }}
         >
           Search
         </button>
@@ -94,7 +95,8 @@ export default async function PackagesPage({ searchParams }: SearchPageProps) {
         </h2>
         {installedList.length === 0 ? (
           <div className="surface rounded-lg px-3 py-6 text-sm text-[var(--text-muted)] italic text-center">
-            No packs installed yet. Try <code className="kbd">pilot pack search subagent</code>.
+            No packs installed yet. Try{" "}
+            <code className="kbd">pilot pack search subagent</code>.
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -110,8 +112,8 @@ export default async function PackagesPage({ searchParams }: SearchPageProps) {
                     <span
                       className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded"
                       style={{
-                        color: 'var(--accent)',
-                        border: '1px solid var(--border)',
+                        color: "var(--accent)",
+                        border: "1px solid var(--border)",
                       }}
                     >
                       {p.kind}
@@ -125,7 +127,7 @@ export default async function PackagesPage({ searchParams }: SearchPageProps) {
                 )}
                 <div className="flex justify-between text-[10px] text-[var(--text-muted)] font-mono">
                   <span>v{p.version}</span>
-                  <span>{p.enabled ? 'enabled' : 'disabled'}</span>
+                  <span>{p.enabled ? "enabled" : "disabled"}</span>
                 </div>
               </Link>
             ))}

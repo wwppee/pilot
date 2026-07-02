@@ -5,9 +5,9 @@
  * We render it as nested ordered lists with depth-indent and type
  * coloring (user/assistant/tool/system).
  */
-import Link from 'next/link';
-import { api } from '@/lib/pilot';
-import type { SessionInfo, SessionTree, SessionTreeNode } from '@/lib/types';
+import Link from "next/link";
+import { api } from "@/lib/pilot";
+import type { SessionInfo, SessionTree, SessionTreeNode } from "@/lib/types";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -67,12 +67,12 @@ export default async function SessionTreePage({ params }: PageProps) {
           <code className="kbd">{tree.id}</code>
         </h1>
         <div className="text-xs text-[var(--text-muted)] mt-2 grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Stat label="cwd" value={session?.cwd ?? '—'} mono />
+          <Stat label="cwd" value={session?.cwd ?? "—"} mono />
           <Stat label="total nodes" value={String(tree.totalNodes)} />
           <Stat label="max depth" value={String(tree.maxDepth)} />
           <Stat
             label="models"
-            value={tree.models.length === 0 ? '—' : tree.models.join(', ')}
+            value={tree.models.length === 0 ? "—" : tree.models.join(", ")}
             mono
           />
         </div>
@@ -92,13 +92,13 @@ export default async function SessionTreePage({ params }: PageProps) {
 
 function NodeRow({ node, depth }: { node: SessionTreeNode; depth: number }) {
   const color =
-    node.type === 'user'
-      ? 'var(--accent)'
-      : node.type === 'assistant'
-      ? 'var(--accent-2)'
-      : node.type === 'tool'
-      ? 'var(--warn)'
-      : 'var(--text-muted)';
+    node.type === "user"
+      ? "var(--accent)"
+      : node.type === "assistant"
+        ? "var(--accent-2)"
+        : node.type === "tool"
+          ? "var(--warn)"
+          : "var(--text-muted)";
 
   return (
     <li>
@@ -108,16 +108,14 @@ function NodeRow({ node, depth }: { node: SessionTreeNode; depth: number }) {
       >
         <span
           className="uppercase tracking-wide text-[10px]"
-          style={{ color, minWidth: '64px' }}
+          style={{ color, minWidth: "64px" }}
         >
           {node.type}
         </span>
         <span className="flex-1 text-[var(--text-muted)] line-clamp-2">
           {node.preview}
         </span>
-        {node.model && (
-          <code className="kbd text-[10px]">{node.model}</code>
-        )}
+        {node.model && <code className="kbd text-[10px]">{node.model}</code>}
       </div>
       {node.children.length > 0 && (
         <ol>
@@ -144,7 +142,7 @@ function Stat({
       <div className="text-[10px] uppercase tracking-wide text-[var(--text-muted)]">
         {label}
       </div>
-      <div className={`text-sm mt-0.5 ${mono ? 'font-mono text-xs' : ''}`}>
+      <div className={`text-sm mt-0.5 ${mono ? "font-mono text-xs" : ""}`}>
         {value}
       </div>
     </div>

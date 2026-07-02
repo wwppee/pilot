@@ -1,21 +1,25 @@
-import './globals.css';
-import type { Metadata, Viewport } from 'next';
-import type { ReactNode } from 'react';
-import Link from 'next/link';
-import { api } from '@/lib/pilot';
+import "./globals.css";
+import type { Metadata, Viewport } from "next";
+import type { ReactNode } from "react";
+import Link from "next/link";
+import { api } from "@/lib/pilot";
 
 export const metadata: Metadata = {
-  title: 'Pilot — pi.dev management plane',
-  description: 'Local dashboard for pi sessions, packs, profiles, and stats.',
+  title: "Pilot — pi.dev management plane",
+  description: "Local dashboard for pi sessions, packs, profiles, and stats.",
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0b0d10',
+  themeColor: "#0b0d10",
 };
 
-export default async function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   let serverOk = false;
-  let version = '?';
+  let version = "?";
   try {
     const h = await api.health();
     serverOk = true;
@@ -34,39 +38,78 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
               <Link
                 href="/"
                 className="text-lg font-semibold tracking-tight"
-                style={{ color: 'var(--text)' }}
+                style={{ color: "var(--text)" }}
               >
                 🛰 pilot
               </Link>
               <nav className="flex gap-4 text-sm">
-                <Link href="/" className="text-[var(--text-muted)] hover:text-[var(--text)]">
+                <Link
+                  href="/"
+                  className="text-[var(--text-muted)] hover:text-[var(--text)]"
+                >
                   Dashboard
                 </Link>
-                <Link href="/packages" className="text-[var(--text-muted)] hover:text-[var(--text)]">
+                <Link
+                  href="/packages"
+                  className="text-[var(--text-muted)] hover:text-[var(--text)]"
+                >
                   Packages
                 </Link>
-                <Link href="/sessions" className="text-[var(--text-muted)] hover:text-[var(--text)]">
+                <Link
+                  href="/sessions"
+                  className="text-[var(--text-muted)] hover:text-[var(--text)]"
+                >
                   Sessions
                 </Link>
-                <Link href="/profiles" className="text-[var(--text-muted)] hover:text-[var(--text)]">
+                <Link
+                  href="/usage"
+                  className="text-[var(--text-muted)] hover:text-[var(--text)]"
+                >
+                  Usage
+                </Link>
+                <Link
+                  href="/tools"
+                  className="text-[var(--text-muted)] hover:text-[var(--text)]"
+                >
+                  Tools
+                </Link>
+                <Link
+                  href="/context"
+                  className="text-[var(--text-muted)] hover:text-[var(--text)]"
+                >
+                  Context
+                </Link>
+                <Link
+                  href="/profiles"
+                  className="text-[var(--text-muted)] hover:text-[var(--text)]"
+                >
                   Profiles
                 </Link>
-                <Link href="/capabilities" className="text-[var(--text-muted)] hover:text-[var(--text)]">
+                <Link
+                  href="/capabilities"
+                  className="text-[var(--text-muted)] hover:text-[var(--text)]"
+                >
                   Capabilities
                 </Link>
               </nav>
               <div className="ml-auto text-xs text-[var(--text-muted)] flex items-center gap-2">
                 <span
                   className="inline-block w-2 h-2 rounded-full"
-                  style={{ background: serverOk ? 'var(--accent-2)' : 'var(--error)' }}
+                  style={{
+                    background: serverOk ? "var(--accent-2)" : "var(--error)",
+                  }}
                 />
                 <span>
-                  {serverOk ? `pilot server · v${version}` : 'server not running'}
+                  {serverOk
+                    ? `pilot server · v${version}`
+                    : "server not running"}
                 </span>
               </div>
             </div>
           </header>
-          <main className="flex-1 mx-auto max-w-6xl w-full px-6 py-8">{children}</main>
+          <main className="flex-1 mx-auto max-w-6xl w-full px-6 py-8">
+            {children}
+          </main>
           <footer className="border-t border-[var(--border)] mt-auto">
             <div className="mx-auto max-w-6xl px-6 py-3 text-xs text-[var(--text-muted)] flex items-center justify-between">
               <span>pilot-web v0.3.5 · reads-only UI over pilot server</span>

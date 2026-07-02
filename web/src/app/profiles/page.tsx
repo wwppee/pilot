@@ -1,11 +1,11 @@
 /**
  * /profiles — list all named profiles + create form.
  */
-import Link from 'next/link';
-import { api } from '@/lib/pilot';
-import { createProfileForm, deleteProfileForm } from '@/lib/actions';
-import { DeleteButton } from '@/components/Buttons';
-import type { Profile } from '@/lib/types';
+import Link from "next/link";
+import { api } from "@/lib/pilot";
+import { createProfileForm, deleteProfileForm } from "@/lib/actions";
+import { DeleteButton } from "@/components/Buttons";
+import type { Profile } from "@/lib/types";
 
 interface PageProps {
   searchParams: Promise<{ error?: string }>;
@@ -21,13 +21,16 @@ export default async function ProfilesPage({ searchParams }: PageProps) {
       <header>
         <h1 className="text-2xl font-bold mb-1">Profiles</h1>
         <p className="text-[var(--text-muted)] text-sm">
-          {profiles.length} profile{profiles.length === 1 ? '' : 's'} · stored under{' '}
-          <code className="kbd">~/.pilot/profiles/</code>
+          {profiles.length} profile{profiles.length === 1 ? "" : "s"} · stored
+          under <code className="kbd">~/.pilot/profiles/</code>
         </p>
       </header>
 
       {sp.error && (
-        <div className="surface rounded-lg p-3 text-sm" style={{ color: 'var(--error)' }}>
+        <div
+          className="surface rounded-lg p-3 text-sm"
+          style={{ color: "var(--error)" }}
+        >
           {sp.error}
         </div>
       )}
@@ -52,7 +55,7 @@ export default async function ProfilesPage({ searchParams }: PageProps) {
         <button
           type="submit"
           className="px-4 py-2 text-sm rounded text-[var(--bg)]"
-          style={{ background: 'var(--accent)' }}
+          style={{ background: "var(--accent)" }}
         >
           Create
         </button>

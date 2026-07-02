@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 /**
  * AutoRefresh — calls `router.refresh()` every `intervalMs` to refetch
@@ -34,8 +34,8 @@ export function LivePulse({ live }: { live: boolean }) {
   return (
     <span
       className="inline-block w-2 h-2 rounded-full"
-      style={{ background: live ? 'var(--accent-2)' : 'var(--text-muted)' }}
-      aria-label={live ? 'live' : 'idle'}
+      style={{ background: live ? "var(--accent-2)" : "var(--text-muted)" }}
+      aria-label={live ? "live" : "idle"}
     />
   );
 }

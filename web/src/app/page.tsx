@@ -4,36 +4,39 @@
  * Server Component. Reads three endpoints in parallel; renders empty
  * states for whatever is missing.
  */
-import Link from 'next/link';
-import { api } from '@/lib/pilot';
-import { AutoRefresh, LivePulse } from '@/components/AutoRefresh';
-import type { Pack, SessionInfo, StatsReport } from '@/lib/types';
+import Link from "next/link";
+import { api } from "@/lib/pilot";
+import { AutoRefresh, LivePulse } from "@/components/AutoRefresh";
+import type { Pack, SessionInfo, StatsReport, UsageReport } from "@/lib/types";
 
 async function loadDashboard(): Promise<{
   stats: StatsReport | null;
+  usage: UsageReport | null;
   packs: Pack[] | null;
   sessions: SessionInfo[] | null;
   error: string | null;
 }> {
-  const [statsR, packsR, sessionsR] = await Promise.allSettled([
-    api.stats({ kind: 'lastDays', days: 1 }),
+  const [statsR, usageR, packsR, sessionsR] = await Promise.allSettled([
+    api.stats({ kind: "lastDays", days: 1 }),
+    api.usage({ kind: "lastDays", days: 1 }),
     api.packs(),
     api.sessions(),
   ]);
 
   const unwrap = <T,>(r: PromiseSettledResult<T>): T | null =>
-    r.status === 'fulfilled' ? r.value : null;
+    r.status === "fulfilled" ? r.value : null;
 
   let error: string | null = null;
-  const errs = [statsR, packsR, sessionsR].filter(
-    (r): r is PromiseRejectedResult => r.status === 'rejected',
+  const errs = [statsR, usageR, packsR, sessionsR].filter(
+    (r): r is PromiseRejectedResult => r.status === "rejected",
   );
   if (errs.length > 0) {
-    error = (errs[0]?.reason as Error)?.message ?? 'unknown error';
+    error = (errs[0]?.reason as Error)?.message ?? "unknown error";
   }
 
   return {
     stats: unwrap(statsR),
+    usage: unwrap(usageR),
     packs: unwrap(packsR),
     sessions: unwrap(sessionsR),
     error,
@@ -41,7 +44,7 @@ async function loadDashboard(): Promise<{
 }
 
 export default async function DashboardPage() {
-  const { stats, packs, sessions, error } = await loadDashboard();
+  const { stats, usage, packs, sessions, error } = await loadDashboard();
 
   if (error) {
     return (
@@ -73,7 +76,7 @@ export default async function DashboardPage() {
         <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)] mb-3">
           Today
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           <StatCard
             label="Sessions"
             value={stats?.totalSessions ?? 0}
@@ -88,6 +91,18 @@ export default async function DashboardPage() {
             label="Tool calls"
             value={stats?.totalToolCalls ?? 0}
             accent="accent-2"
+          />
+          <StatCard
+            label="Tokens"
+            value={usage?.totalTokens ?? 0}
+            accent="accent-2"
+            isTokens
+          />
+          <StatCard
+            label="Cost (USD)"
+            value={usage ? Math.round(usage.totalCost * 10000) / 10000 : 0}
+            accent="warn"
+            isFloat
           />
         </div>
       </section>
@@ -135,13 +150,15 @@ export default async function DashboardPage() {
           <Link
             href="/sessions"
             className="text-xs"
-            style={{ color: 'var(--text-muted)' }}
+            style={{ color: "var(--text-muted)" }}
           >
             See all →
           </Link>
         </div>
         <div className="surface rounded-lg overflow-hidden">
-          {sessions && sessions.length === 0 && <Empty msg="No sessions yet." />}
+          {sessions && sessions.length === 0 && (
+            <Empty msg="No sessions yet." />
+          )}
           {sessions && sessions.length > 0 && (
             <table className="w-full text-sm">
               <thead className="surface-2 text-left">
@@ -165,11 +182,13 @@ export default async function DashboardPage() {
                       {shorten(s.cwd, 30)}
                     </td>
                     <td className="px-3 py-2 text-xs text-[var(--text-muted)]">
-                      {s.lastUsedAt ?? '—'}
+                      {s.lastUsedAt ?? "—"}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums">{s.entries}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">
+                      {s.entries}
+                    </td>
                     <td className="px-3 py-2 text-xs">
-                      {s.model ? <code className="kbd">{s.model}</code> : '—'}
+                      {s.model ? <code className="kbd">{s.model}</code> : "—"}
                     </td>
                   </tr>
                 ))}
@@ -187,14 +206,15 @@ export default async function DashboardPage() {
           <Link
             href="/packages"
             className="text-xs"
-            style={{ color: 'var(--text-muted)' }}
+            style={{ color: "var(--text-muted)" }}
           >
             Manage →
           </Link>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {packs && packs.length === 0 && <Empty msg="No packs installed." />}
-          {packs && packs.slice(0, 6).map((p) => <PackCard key={p.name} pack={p} />)}
+          {packs &&
+            packs.slice(0, 6).map((p) => <PackCard key={p.name} pack={p} />)}
         </div>
       </section>
     </div>
@@ -207,11 +227,23 @@ function StatCard({
   label,
   value,
   accent,
+  isTokens,
+  isFloat,
 }: {
   label: string;
   value: number;
-  accent: 'accent' | 'accent-2' | 'warn';
+  accent: "accent" | "accent-2" | "warn";
+  isTokens?: boolean;
+  isFloat?: boolean;
 }) {
+  let display: string;
+  if (isFloat) {
+    display = `$${value.toFixed(4)}`;
+  } else if (isTokens) {
+    display = value.toLocaleString();
+  } else {
+    display = value.toLocaleString();
+  }
   return (
     <div className="surface rounded-lg p-4">
       <div className="text-xs uppercase tracking-wide text-[var(--text-muted)]">
@@ -221,7 +253,7 @@ function StatCard({
         className="text-3xl font-semibold mt-1 tabular-nums"
         style={{ color: `var(--${accent})` }}
       >
-        {value.toLocaleString()}
+        {display}
       </div>
     </div>
   );
@@ -239,8 +271,8 @@ function PackCard({ pack }: { pack: Pack }) {
           <span
             className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded"
             style={{
-              color: 'var(--accent)',
-              border: '1px solid var(--border)',
+              color: "var(--accent)",
+              border: "1px solid var(--border)",
             }}
           >
             {pack.kind}
@@ -253,7 +285,7 @@ function PackCard({ pack }: { pack: Pack }) {
         </p>
       )}
       <div className="text-[10px] text-[var(--text-muted)] mt-2 font-mono">
-        v{pack.version} · {!pack.enabled && 'disabled'}
+        v{pack.version} · {!pack.enabled && "disabled"}
       </div>
     </Link>
   );
@@ -270,7 +302,10 @@ function Empty({ msg }: { msg: string }) {
 function ErrorScreen({ title, message }: { title: string; message: string }) {
   return (
     <div className="surface rounded-lg p-6 my-12 max-w-xl mx-auto">
-      <h2 className="text-lg font-semibold mb-2" style={{ color: 'var(--error)' }}>
+      <h2
+        className="text-lg font-semibold mb-2"
+        style={{ color: "var(--error)" }}
+      >
         {title}
       </h2>
       <pre className="text-sm text-[var(--text-muted)] whitespace-pre-wrap font-mono">
@@ -282,5 +317,5 @@ function ErrorScreen({ title, message }: { title: string; message: string }) {
 
 function shorten(s: string, n: number): string {
   if (s.length <= n) return s;
-  return '…' + s.slice(-(n - 1));
+  return "…" + s.slice(-(n - 1));
 }
