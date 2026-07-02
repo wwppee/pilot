@@ -3,29 +3,44 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Pilot — Agent 操作系统</title>
+<title>Pilot — 你的 Agent 小世界</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --bg: #f7f5f0;
-    --card: #ffffff;
-    --line: #e9e3d6;
-    --line-soft: #f0eadf;
-    --text: #14171e;
-    --muted: #7c7a72;
-    --primary: #2f6f5e;          /* cozy green (visual-style.md 主色) */
-    --primary-soft: #c8dcd4;
-    --primary-bg: rgba(47,111,94,0.08);
-    --warn: #c97b3f;
-    --warn-bg: rgba(201,123,63,0.10);
-    --accent: #b06367;
-    --accent-bg: rgba(176,99,103,0.10);
-    --iso: #2a2e36;
-    --iso-light: #5a6172;
-    --iso-midtone: #d8d2c4;
-    --radius: 14px;
+    /* Cozy sandbox palette — warm, inviting, not corporate */
+    --bg: #faf6ee;             /* warm cream (paper) */
+    --bg-deep: #f3ecdf;         /* recessed */
+    --bg-iso: #2d3140;          /* isometric scene background (twilight) */
+    --bg-iso-2: #3d4254;
+    --card: #ffffff;            /* lifted tile */
+    --card-tint: #fefcf6;       /* warm white */
+    --line: #e8e0cc;
+    --line-soft: #f0e9d6;
+    --text: #2a2520;
+    --text-2: #5a4f42;
+    --muted: #998b75;
+    --primary: #4f7a64;         /* sage / cozy green */
+    --primary-deep: #3d5e4d;
+    --primary-soft: #c2d4c7;
+    --primary-bg: rgba(79,122,100,0.10);
+    --amber: #d49050;           /* warm orange — highlight / selection */
+    --amber-bg: rgba(212,144,80,0.14);
+    --rust: #b46a4d;            /* secondary accent */
+    --iso-cobble: #c9b994;      /* ground tile */
+    --iso-grass: #88a878;       /* grass top */
+    --iso-grass-deep: #6a8a5a;
+    --iso-roof: #c2553f;        /* building roof red */
+    --iso-roof-2: #d99050;      /* orange roof */
+    --iso-roof-3: #4f7a64;      /* green roof */
+    --iso-wall: #fef5e0;        /* cream wall */
+    --iso-wall-2: #f0e0c4;
+    --iso-stone: #8b8378;
+    --shadow-lift: 0 6px 16px -4px rgba(74, 53, 30, 0.10), 0 2px 4px -1px rgba(74,53,30,0.06);
+    --shadow-deep: 0 10px 30px -6px rgba(74, 53, 30, 0.18);
+    --radius: 12px;
+    --radius-lg: 18px;
     --radius-sm: 8px;
   }
   * { box-sizing: border-box; }
@@ -38,311 +53,624 @@
     font-size: 14.5px;
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
+    background-image:
+      radial-gradient(circle at 20% 0%, rgba(212, 144, 80, 0.06), transparent 50%),
+      radial-gradient(circle at 80% 100%, rgba(79, 122, 100, 0.07), transparent 50%);
   }
-  /* 角落微渐变 */
-  body::before {
-    content: "";
-    position: fixed;
-    top: -200px; right: -200px;
-    width: 600px; height: 600px;
-    background: radial-gradient(circle, var(--primary-bg) 0%, transparent 70%);
-    pointer-events: none;
-    z-index: 0;
-  }
-  body::after {
-    content: "";
-    position: fixed;
-    bottom: -200px; left: -200px;
-    width: 600px; height: 600px;
-    background: radial-gradient(circle, var(--warn-bg) 0%, transparent 70%);
-    pointer-events: none;
-    z-index: 0;
-  }
-  main { position: relative; z-index: 1; }
+  main { position: relative; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 28px; }
 
-  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 28px; }
-
-  /* ──── Hero ──── */
-  .hero {
-    padding: 80px 0 64px;
-    text-align: left;
+  /* ─── Top Command Bar ─── */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(250, 246, 238, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+    padding: 12px 0;
   }
-  .hero .badge {
-    display: inline-flex;
+  .topbar-inner {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--text);
+  }
+  .brand-mark {
+    width: 26px; height: 26px;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--amber) 100%);
+    border-radius: 7px;
+    display: grid; place-items: center;
+    color: white;
+    box-shadow: 0 2px 6px rgba(79,122,100,0.3);
+  }
+  .crumbs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .crumbs .here { color: var(--text); font-weight: 500; }
+  .cmd-bar {
+    margin-left: auto;
+    display: flex;
     align-items: center;
     gap: 8px;
     padding: 6px 12px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .cmd-bar:hover { border-color: var(--primary-soft); }
+  .cmd-bar .kbd {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--bg-deep);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    color: var(--text-2);
+    border: 1px solid var(--line);
+  }
+
+  /* ─── Hero ─── */
+  .hero {
+    padding: 56px 0 40px;
+    position: relative;
+  }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 48px;
+    align-items: center;
+  }
+  .hero-text .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px;
     background: var(--primary-bg);
-    color: var(--primary);
+    color: var(--primary-deep);
     border-radius: 100px;
     font-size: 12.5px;
     font-weight: 600;
-    margin-bottom: 20px;
+    margin-bottom: 18px;
   }
-  .hero .badge-dot {
+  .hero-text .badge-dot {
     width: 6px; height: 6px;
     background: var(--primary);
     border-radius: 50%;
     animation: pulse 2.4s ease-in-out infinite;
   }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.5; transform: scale(1.3); }
-  }
-  h1 {
-    font-family: 'DM Serif Display', serif;
-    font-weight: normal;
-    font-size: 60px;
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.4)} }
+  .hero-text h1 {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 800;
+    font-size: 52px;
     line-height: 1.05;
     margin: 0 0 16px;
-    letter-spacing: -0.01em;
-  }
-  h1 .accent { color: var(--primary); font-style: italic; }
-  .hero .lede {
-    font-size: 18px;
-    color: var(--muted);
-    max-width: 640px;
-    margin: 0 0 28px;
-  }
-  .hero .stats {
-    display: flex;
-    gap: 28px;
-    padding-top: 20px;
-    border-top: 1px dashed var(--line);
-    max-width: 600px;
-  }
-  .hero .stat .num {
-    font-family: 'DM Serif Display', serif;
-    font-size: 32px;
+    letter-spacing: -0.025em;
     color: var(--text);
-    display: block;
-    line-height: 1;
   }
-  .hero .stat .label {
-    font-size: 12.5px;
-    color: var(--muted);
-    margin-top: 4px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
+  .hero-text h1 .accent { color: var(--primary); }
+  .hero-text h1 .accent-warm { color: var(--amber); }
+  .hero-text .lede {
+    font-size: 16px;
+    color: var(--text-2);
+    margin: 0 0 24px;
+    max-width: 540px;
+  }
+  .hero-text .lede strong {
+    background: linear-gradient(180deg, transparent 60%, var(--amber-bg) 60%);
+    padding: 0 2px;
+    font-weight: 600;
+  }
+  .hero-text .ctas {
+    display: flex;
+    gap: 10px;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 14px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+  }
+  .btn-primary {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 4px 10px rgba(79,122,100,0.25);
+  }
+  .btn-primary:hover {
+    background: var(--primary-deep);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(79,122,100,0.35);
+  }
+  .btn-ghost {
+    background: var(--card);
+    color: var(--text);
+    border-color: var(--line);
+  }
+  .btn-ghost:hover { border-color: var(--primary-soft); }
+
+  /* Hero isometric scene (right side) */
+  .hero-iso {
+    position: relative;
+    height: 320px;
+    background: linear-gradient(160deg, #4a4f63 0%, #2d3140 100%);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-deep);
+  }
+  .hero-iso::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 30% 20%, rgba(255, 235, 180, 0.18), transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(255, 180, 130, 0.10), transparent 50%);
+  }
+  .hero-iso .moon {
+    position: absolute;
+    top: 30px; right: 40px;
+    width: 32px; height: 32px;
+    background: radial-gradient(circle at 35% 35%, #fff8e0, #f5d790);
+    border-radius: 50%;
+    box-shadow: 0 0 40px rgba(255, 220, 140, 0.4);
+  }
+  .hero-iso-label {
+    position: absolute;
+    bottom: 16px; left: 18px;
+    color: rgba(255, 245, 220, 0.7);
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.05em;
+  }
+  .iso-scene {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 40px;
+  }
+  .iso-tower {
+    transform: rotateX(50deg) rotateZ(-30deg);
+    transform-style: preserve-3d;
+    position: relative;
+  }
+  /* tile = each isometric building */
+  .iso-tile {
+    position: absolute;
+    transform-style: preserve-3d;
+  }
+  .iso-tile .top {
+    width: 60px; height: 60px;
+    background: var(--iso-cobble);
+    border: 2px solid #9a8b6a;
+    transform: rotateX(90deg) translateZ(0px);
+    position: absolute;
+    background-image:
+      linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 30%);
+  }
+  .iso-tile .face {
+    width: 60px; height: 60px;
+    background: var(--iso-wall);
+    border: 2px solid #b8a280;
+    transform-origin: top;
+    position: absolute;
+    background-image:
+      linear-gradient(180deg, rgba(255,255,255,0.3) 0%, transparent 40%);
+  }
+  /* Side faces (right + left) with depth */
+  .iso-tile .face-right {
+    height: 60px;
+    transform: rotateX(90deg) translateZ(60px) translateY(60px) rotate(90deg);
+    transform-origin: top left;
+    background: var(--iso-wall-2);
+  }
+  .iso-tile .face-left {
+    height: 60px;
+    transform: rotateX(90deg) translateZ(60px) translateY(60px);
+    transform-origin: top left;
+    background: var(--iso-wall);
+  }
+  /* Roof */
+  .iso-tile .roof {
+    width: 0; height: 0;
+    border-left: 38px solid transparent;
+    border-right: 38px solid transparent;
+    border-bottom: 50px solid var(--iso-roof);
+    transform: translateX(11px) translateY(-30px);
+  }
+  .iso-tile.green .roof { border-bottom-color: var(--iso-roof-3); }
+  .iso-tile.amber .roof { border-bottom-color: var(--iso-roof-2); }
+  .iso-tile.cyan .roof { border-bottom-color: #5b8a96; }
+  .iso-tile .door {
+    width: 12px; height: 18px;
+    background: #6a4830;
+    border-radius: 6px 6px 0 0;
+    position: absolute;
+    left: 24px; top: 36px;
   }
 
-  /* ──── Section ──── */
-  section { padding: 48px 0; }
+  /* Hero ground tiles grid */
+  .hero-ground {
+    position: absolute;
+    bottom: 0;
+    left: 0; right: 0;
+    height: 50%;
+    background-image:
+      linear-gradient(transparent 24px, rgba(255,235,180,0.04) 24px),
+      linear-gradient(90deg, transparent 24px, rgba(255,235,180,0.04) 24px);
+    background-size: 24px 24px;
+    transform: skewY(-12deg) translateY(20%);
+    transform-origin: top;
+  }
+  .hero-ground-glow {
+    position: absolute;
+    bottom: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 200px;
+    background: radial-gradient(ellipse, rgba(212,144,80,0.3), transparent 70%);
+  }
+
+  /* Numbers strip below hero */
+  .hero-stats {
+    margin-top: 32px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    box-shadow: var(--shadow-lift);
+  }
+  .stat .num {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 800;
+    font-size: 32px;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .stat .num .small {
+    font-size: 18px;
+    color: var(--muted);
+    margin-left: 2px;
+  }
+  .stat .label {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 500;
+  }
+  .stat .icon {
+    width: 32px; height: 32px;
+    background: var(--primary-bg);
+    border-radius: 8px;
+    display: grid; place-items: center;
+    color: var(--primary);
+    margin-bottom: 10px;
+  }
+  .stat.warm .icon { background: var(--amber-bg); color: var(--amber); }
+
+  /* ─── Section ─── */
+  section { padding: 56px 0; }
   .sec-head {
-    margin-bottom: 32px;
     display: flex;
-    align-items: baseline;
-    gap: 16px;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 32px;
   }
   .sec-num {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    color: var(--primary);
-    font-weight: 600;
-    padding: 4px 8px;
-    background: var(--primary-bg);
-    border-radius: 4px;
+    width: 36px; height: 36px;
+    background: var(--primary);
+    color: white;
+    border-radius: 10px;
+    display: grid; place-items: center;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 800;
+    font-size: 14px;
+    box-shadow: 0 4px 8px rgba(79,122,100,0.25);
   }
   h2 {
-    font-family: 'DM Serif Display', serif;
-    font-weight: normal;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 800;
     font-size: 36px;
     margin: 0;
-    letter-spacing: -0.005em;
-  }
-  h3 {
-    font-family: 'DM Serif Display', serif;
-    font-weight: normal;
-    font-size: 22px;
-    margin: 0 0 8px;
+    letter-spacing: -0.02em;
   }
   .sec-tag {
     color: var(--muted);
-    font-size: 14px;
+    font-size: 13.5px;
+    margin-left: auto;
+    font-weight: 500;
   }
-  p.lead {
-    font-size: 16px;
-    color: var(--muted);
+  .sec-lead {
+    font-size: 15px;
+    color: var(--text-2);
     max-width: 720px;
     margin: -16px 0 32px;
   }
 
-  /* ──── Card ──── */
-  .card {
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 22px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    transition: transform 0.2s, box-shadow 0.2s;
-  }
-  .card.hoverable:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.06);
-  }
-
-  /* ──── 3 Layers ──── */
-  .layers {
+  /* ─── 3 Layers (isometric buildings) ─── */
+  .layers-row {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
     gap: 16px;
   }
-  .layer {
-    padding: 28px 24px;
+  .layer-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 22px;
+    box-shadow: var(--shadow-lift);
+    position: relative;
+    overflow: hidden;
   }
-  .layer .lbl {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
-    color: var(--primary);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-bottom: 8px;
+  .layer-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--amber));
+    opacity: 0.7;
   }
-  .layer h3 {
+  .layer-card.warm::before {
+    background: linear-gradient(90deg, var(--amber), var(--rust));
+  }
+  .layer-card.cool::before {
+    background: linear-gradient(90deg, #5b8a96, var(--primary));
+  }
+  .layer-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     margin-bottom: 14px;
   }
-  .layer .desc {
+  .layer-iso {
+    width: 56px; height: 56px;
+    background: var(--bg-deep);
+    border-radius: 12px;
+    display: grid; place-items: center;
+    flex-shrink: 0;
+    border: 1px solid var(--line);
+  }
+  .layer-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
     color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .layer-card h3 {
+    margin: 4px 0 0;
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .layer-card .desc {
+    color: var(--text-2);
     font-size: 13.5px;
-    margin-bottom: 16px;
+    margin: 0 0 16px;
   }
-  .layer .swaps {
-    border-top: 1px dashed var(--line);
-    padding-top: 14px;
-  }
-  .layer .swap-title {
+  .layer-card .mocks-label {
     font-size: 11.5px;
     color: var(--muted);
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
+    font-weight: 600;
   }
-  .layer .swap-list {
+  .chip-list {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 5px;
+    margin-bottom: 14px;
   }
   .chip {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    padding: 3px 9px;
+    padding: 4px 9px;
     font-size: 12px;
-    font-family: 'JetBrains Mono', monospace;
     background: var(--bg);
-    color: var(--text);
+    color: var(--text-2);
     border: 1px solid var(--line);
     border-radius: 100px;
+    font-family: 'JetBrains Mono', monospace;
+    transition: all 0.15s;
   }
-  .chip.native { background: var(--primary-bg); border-color: var(--primary-soft); color: var(--primary); }
-  .chip.swap   { background: var(--warn-bg); border-color: rgba(201,123,63,0.3); color: var(--warn); }
-  .chip.disabled { opacity: 0.45; }
-  .chip .dot {
-    width: 5px; height: 5px;
-    border-radius: 50%;
-    background: currentColor;
-  }
+  .chip.on { background: var(--primary-bg); border-color: var(--primary-soft); color: var(--primary-deep); }
+  .chip.swap { background: var(--amber-bg); border-color: rgba(212,144,80,0.3); color: var(--amber); }
+  .chip.off { opacity: 0.5; }
+  .chip .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 
-  /* ──── 6 Stages pipeline ──── */
-  .pipeline {
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 32px 24px 24px;
-    overflow-x: auto;
-  }
-  .stages {
-    display: flex;
-    align-items: stretch;
-    gap: 0;
-    min-width: 920px;
-  }
-  .stage {
-    flex: 1;
-    min-width: 0;
+  /* ─── 6 Stages (isometric staircase) ─── */
+  .sandbox-frame {
+    background: linear-gradient(160deg, #4a4f63 0%, #2d3140 100%);
+    border-radius: var(--radius-lg);
+    padding: 36px 28px 28px;
+    box-shadow: var(--shadow-deep);
     position: relative;
+    overflow: hidden;
   }
-  .stage:not(:last-child)::after {
-    content: "";
+  .sandbox-frame::before {
+    content: "SANDBOX · v0.4.2 preview";
     position: absolute;
-    right: -10px; top: 50%;
-    transform: translateY(-50%);
-    width: 20px; height: 2px;
-    background: var(--line);
-    z-index: 1;
-  }
-  .stage:not(:last-child)::before {
-    content: "";
-    position: absolute;
-    right: -14px; top: 50%;
-    transform: translateY(-50%);
-    width: 0; height: 0;
-    border-top: 5px solid transparent;
-    border-bottom: 5px solid transparent;
-    border-left: 6px solid var(--muted);
-    z-index: 2;
-  }
-  .stage .box {
-    background: var(--bg);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-    padding: 14px;
-    margin: 0 5px;
-    height: 100%;
-  }
-  .stage .id {
+    top: 12px; left: 16px;
+    color: rgba(255,240,200,0.5);
     font-family: 'JetBrains Mono', monospace;
     font-size: 10.5px;
-    color: var(--primary);
-    text-transform: uppercase;
     letter-spacing: 0.08em;
   }
-  .stage .name {
-    font-weight: 600;
-    font-size: 14px;
-    margin: 4px 0 6px;
-  }
-  .stage .ctrl {
-    font-size: 11.5px;
-    color: var(--muted);
-    line-height: 1.45;
-  }
-  .stage .default {
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px dashed var(--line-soft);
+  .sandbox-frame::after {
+    content: "⌘ drag · scroll to zoom";
+    position: absolute;
+    top: 12px; right: 16px;
+    color: rgba(255,240,200,0.5);
     font-family: 'JetBrains Mono', monospace;
     font-size: 10.5px;
+  }
+  .pipeline {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+  }
+  .stage {
+    position: relative;
+    perspective: 800px;
+  }
+  .stage-card {
+    background: linear-gradient(180deg, rgba(255, 235, 200, 0.95) 0%, rgba(245, 220, 175, 0.95) 100%);
+    border: 1.5px solid rgba(120, 90, 50, 0.4);
+    border-radius: 10px;
+    padding: 14px 12px;
+    color: #2a2520;
+    position: relative;
+    transform: rotateX(8deg);
+    box-shadow:
+      0 4px 0 rgba(120, 90, 50, 0.3),
+      0 6px 16px rgba(0,0,0,0.3);
+    transition: all 0.2s;
+  }
+  .stage-card:hover {
+    transform: rotateX(0deg) translateY(-2px);
+    box-shadow:
+      0 6px 0 rgba(120, 90, 50, 0.3),
+      0 10px 24px rgba(0,0,0,0.4);
+  }
+  .stage-card .id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--rust);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+  }
+  .stage-card .name {
+    font-weight: 700;
+    font-size: 14px;
+    margin: 4px 0;
     color: var(--text);
   }
+  .stage-card .ctrl {
+    font-size: 11.5px;
+    color: var(--text-2);
+    line-height: 1.45;
+  }
+  .stage-card .default {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(120, 90, 50, 0.25);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .stage-card .status {
+    position: absolute;
+    top: 8px; right: 8px;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--primary);
+    box-shadow: 0 0 8px var(--primary);
+  }
+  .stage-card.wip .status { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+  .stage-card.future .status { background: var(--muted); box-shadow: none; }
+  /* arrow connectors */
+  .stage:not(:last-child)::after {
+    content: "›";
+    position: absolute;
+    top: 50%;
+    right: -10px;
+    transform: translateY(-50%);
+    color: rgba(255,240,200,0.5);
+    font-size: 24px;
+    z-index: 5;
+    font-weight: 600;
+  }
 
-  /* ──── 7 Slots ──── */
-  .slots {
+  /* ─── 7 Slots grid (mini isometric tiles) ─── */
+  .slots-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 14px;
   }
   .slot {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
     padding: 18px;
+    box-shadow: var(--shadow-lift);
+    transition: all 0.2s;
+    cursor: default;
   }
-  .slot .id {
+  .slot:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-deep);
+  }
+  .slot-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .slot-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    background: var(--primary-bg);
+    color: var(--primary);
+    display: grid; place-items: center;
+    flex-shrink: 0;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 10.5px;
-    color: var(--muted);
-    margin-bottom: 4px;
+    font-weight: 700;
+    font-size: 11px;
+    border: 1px solid var(--primary-soft);
   }
-  .slot h4 {
-    margin: 0 0 6px;
-    font-size: 15.5px;
-    font-weight: 600;
+  .slot-icon.warm { background: var(--amber-bg); color: var(--amber); border-color: rgba(212,144,80,0.3); }
+  .slot-icon.cool { background: rgba(91,138,150,0.12); color: #5b8a96; border-color: rgba(91,138,150,0.3); }
+  .slot-icon.meta {
+    background: linear-gradient(135deg, var(--primary-bg), var(--amber-bg));
+    color: var(--primary-deep);
+    border-color: var(--primary-soft);
+  }
+  .slot-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
   }
   .slot .what {
-    color: var(--muted);
+    color: var(--text-2);
     font-size: 12.5px;
-    margin-bottom: 10px;
+    margin: 0 0 10px;
     line-height: 1.5;
   }
-  .slot .ctrl-row {
+  .slot .ctrls {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
@@ -350,89 +678,113 @@
   .slot .ctrl {
     font-family: 'JetBrains Mono', monospace;
     font-size: 10.5px;
-    padding: 2px 6px;
-    background: var(--bg);
+    padding: 2px 7px;
+    background: var(--bg-deep);
     border-radius: 4px;
-    color: var(--text);
-    border: 1px solid var(--line-soft);
+    color: var(--text-2);
+    border: 1px solid var(--line);
+  }
+  .slot .v0-tag {
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    align-self: flex-start;
   }
 
-  /* ──── Switch Board ──── */
-  .board {
+  /* ─── Switch Board (control panel) ─── */
+  .board-card {
     background: var(--card);
     border: 1px solid var(--line);
-    border-radius: var(--radius);
+    border-radius: var(--radius-lg);
     overflow: hidden;
+    box-shadow: var(--shadow-lift);
   }
   .board-section {
-    padding: 18px 22px;
-    border-bottom: 1px solid var(--line-soft);
+    border-bottom: 1px solid var(--line);
   }
   .board-section:last-child { border-bottom: none; }
-  .board-title {
+  .board-section-head {
     display: flex;
     align-items: center;
     gap: 10px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--primary);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin-bottom: 12px;
+    padding: 16px 22px;
+    background: linear-gradient(180deg, rgba(248,243,232,0.5), transparent);
+    border-bottom: 1px dashed var(--line);
   }
-  .board-title .num {
-    width: 22px; height: 22px;
-    background: var(--primary-bg);
-    border-radius: 5px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    font-family: 'JetBrains Mono', monospace;
-    color: var(--primary);
+  .board-num {
+    width: 28px; height: 28px;
+    background: var(--primary);
+    color: white;
+    border-radius: 8px;
+    display: grid; place-items: center;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 800;
+    font-size: 13px;
+  }
+  .board-num.warm { background: var(--amber); }
+  .board-num.cool { background: #5b8a96; }
+  .board-num.rust { background: var(--rust); }
+  .board-num.dim { background: var(--muted); }
+  .board-cat {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .board-cat-cn {
+    font-size: 12px;
+    color: var(--muted);
+    margin-left: 4px;
   }
   .switch-row {
     display: grid;
-    grid-template-columns: 32px 1fr 60px 80px 90px;
+    grid-template-columns: 36px 1fr 96px 80px 64px;
     align-items: center;
     gap: 14px;
-    padding: 8px 0;
+    padding: 10px 22px;
     border-bottom: 1px dashed var(--line-soft);
+    transition: background 0.15s;
   }
   .switch-row:last-child { border-bottom: none; }
+  .switch-row:hover { background: var(--bg-deep); }
   .switch-row .ico {
     color: var(--muted);
     display: flex;
     align-items: center;
+    width: 36px;
   }
   .switch-row .name {
     font-weight: 500;
     font-size: 13.5px;
+    color: var(--text);
   }
   .switch-row .name .hint {
     color: var(--muted);
     font-size: 11.5px;
-    font-weight: normal;
-    margin-left: 6px;
+    margin-left: 4px;
   }
   .switch-row .stat {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11.5px;
+    font-size: 11px;
     color: var(--muted);
     text-align: right;
   }
   .switch-row .since {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
+    font-size: 10.5px;
     color: var(--muted);
     text-align: right;
+    padding: 3px 6px;
+    background: var(--bg-deep);
+    border-radius: 4px;
+    border: 1px solid var(--line-soft);
   }
-  /* Toggle switch */
+  /* Toggle — chunky, friendly */
   .switch {
     position: relative;
     display: inline-block;
-    width: 40px;
-    height: 22px;
+    width: 44px;
+    height: 24px;
     justify-self: end;
   }
   .switch input { opacity: 0; width: 0; height: 0; }
@@ -441,47 +793,68 @@
     cursor: pointer;
     inset: 0;
     background: var(--line);
-    border-radius: 22px;
-    transition: 0.2s;
+    border-radius: 24px;
+    transition: 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
   }
   .slider::before {
     content: "";
     position: absolute;
-    height: 16px;
-    width: 16px;
+    height: 18px;
+    width: 18px;
     left: 3px;
     top: 3px;
-    background: white;
+    background: linear-gradient(180deg, #fff, #f0e9d6);
     border-radius: 50%;
-    transition: 0.2s;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    transition: 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
   }
-  input:checked + .slider { background: var(--primary); }
-  input:checked + .slider::before { transform: translateX(18px); }
+  input:checked + .slider {
+    background: var(--primary);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1), 0 0 12px rgba(79,122,100,0.3);
+  }
+  input:checked + .slider::before { transform: translateX(20px); }
 
-  /* ──── Adapter Matrix ──── */
-  .matrix {
+  /* ─── Adapter Matrix ─── */
+  .matrix-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 18px;
+    gap: 16px;
   }
-  .matrix-card { padding: 22px; }
-  .matrix-card .layer-tag {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px;
+  .matrix-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    box-shadow: var(--shadow-lift);
+  }
+  .matrix-card-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .matrix-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: grid; place-items: center;
+    background: var(--primary-bg);
     color: var(--primary);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 4px;
   }
+  .matrix-icon.warm { background: var(--amber-bg); color: var(--amber); }
   .matrix-card h4 {
-    margin: 0 0 8px;
-    font-size: 17px;
-    font-weight: 600;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .matrix-card .sub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
   }
   .adapter-row {
     display: grid;
-    grid-template-columns: 1fr 100px 1fr;
+    grid-template-columns: 1fr 76px 1fr;
     align-items: center;
     gap: 14px;
     padding: 10px 0;
@@ -490,411 +863,675 @@
   }
   .adapter-row:last-child { border-bottom: none; }
   .adapter-row .name {
-    font-weight: 500;
+    font-weight: 600;
+    color: var(--text);
   }
-  .adapter-row .status {
+  .adapter-row .badge {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 11.5px;
-    color: var(--muted);
+    font-size: 11px;
     text-align: center;
-    padding: 3px 8px;
-    border-radius: 4px;
-    background: var(--bg);
-  }
-  .adapter-row .status.native { color: var(--primary); background: var(--primary-bg); }
-  .adapter-row .status.swap   { color: var(--warn); background: var(--warn-bg); }
-  .adapter-row .note {
-    font-size: 12.5px;
+    padding: 4px 8px;
+    border-radius: 5px;
+    background: var(--bg-deep);
     color: var(--muted);
+    border: 1px solid var(--line);
   }
+  .adapter-row .badge.native { color: var(--primary-deep); background: var(--primary-bg); border-color: var(--primary-soft); }
+  .adapter-row .badge.swap { color: var(--amber); background: var(--amber-bg); border-color: rgba(212,144,80,0.3); }
+  .adapter-row .badge.future { color: var(--muted); background: var(--bg-deep); }
+  .adapter-row .note { font-size: 12px; color: var(--text-2); }
 
-  /* ──── Self-iteration flow ──── */
-  .meta {
+  /* ─── Self-iteration flow ─── */
+  .meta-frame {
     background: var(--card);
     border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 32px;
-    text-align: center;
+    border-radius: var(--radius-lg);
+    padding: 28px;
+    box-shadow: var(--shadow-lift);
   }
   .meta-flow {
     display: flex;
     align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
     gap: 0;
-    margin: 18px 0;
+    overflow-x: auto;
+    padding: 8px 0;
   }
   .meta-node {
-    padding: 8px 14px;
-    background: var(--bg);
+    padding: 9px 14px;
+    background: var(--bg-deep);
     border: 1px solid var(--line);
     border-radius: 100px;
     font-size: 13px;
     font-family: 'JetBrains Mono', monospace;
+    color: var(--text);
+    white-space: nowrap;
+    transition: all 0.2s;
   }
-  .meta-node.user { background: var(--primary); color: white; border-color: var(--primary); }
-  .meta-arrow { padding: 0 10px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+  .meta-node:hover {
+    background: var(--primary-bg);
+    border-color: var(--primary-soft);
+    color: var(--primary-deep);
+    transform: translateY(-1px);
+  }
+  .meta-node.user {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    box-shadow: 0 4px 8px rgba(79,122,100,0.25);
+  }
+  .meta-arrow {
+    padding: 0 8px;
+    color: var(--muted);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .meta-hint {
+    margin-top: 14px;
+    padding: 14px;
+    background: var(--bg-deep);
+    border-radius: var(--radius);
+    font-size: 13px;
+    color: var(--text-2);
+    border-left: 3px solid var(--amber);
+  }
+  .meta-hint code {
+    background: var(--card);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--rust);
+    border: 1px solid var(--line);
+  }
 
-  /* ──── Roadmap Timeline ──── */
-  .timeline { list-style: none; padding: 0; margin: 0; position: relative; }
+  /* ─── Roadmap Timeline ─── */
+  .timeline {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    position: relative;
+  }
   .timeline::before {
     content: "";
     position: absolute;
     left: 100px;
-    top: 8px;
-    bottom: 8px;
+    top: 12px;
+    bottom: 12px;
     width: 2px;
-    background: var(--line);
+    background: linear-gradient(180deg, var(--primary-soft), var(--line));
   }
   .timeline li {
     display: grid;
     grid-template-columns: 100px 1fr;
     align-items: start;
     gap: 24px;
-    padding: 0 0 24px 0;
+    padding: 0 0 16px 0;
     position: relative;
   }
+  .timeline li:last-child { padding-bottom: 0; }
   .timeline li::before {
     content: "";
     position: absolute;
-    left: 96px;
+    left: 95px;
     top: 8px;
-    width: 10px;
-    height: 10px;
+    width: 12px;
+    height: 12px;
     border-radius: 50%;
     background: var(--card);
-    border: 2px solid var(--primary);
+    border: 2px solid var(--line);
+    transition: all 0.2s;
+  }
+  .timeline li.done::before {
+    background: var(--primary);
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px var(--primary-bg);
+  }
+  .timeline li.next::before {
+    background: var(--amber);
+    border-color: var(--amber);
+    box-shadow: 0 0 0 4px var(--amber-bg);
+    animation: pulse 2.4s ease-in-out infinite;
   }
   .timeline .ver {
     font-family: 'JetBrains Mono', monospace;
-    font-weight: 600;
+    font-weight: 700;
     font-size: 14px;
-    color: var(--primary);
-    padding-top: 4px;
+    color: var(--muted);
+    padding-top: 3px;
+    text-align: right;
   }
-  .timeline .ver.tag-done { color: var(--muted); }
-  .timeline .ver.tag-done::after { content: " ✓"; color: var(--primary); }
+  .timeline li.done .ver { color: var(--primary); }
+  .timeline li.next .ver { color: var(--amber); }
   .timeline .body {
     background: var(--card);
     border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius);
     padding: 14px 18px;
+    box-shadow: var(--shadow-lift);
+  }
+  .timeline li.next .body {
+    border-color: var(--amber);
+    background: linear-gradient(180deg, var(--amber-bg) 0%, var(--card) 30%);
   }
   .timeline .body .heading {
-    font-weight: 600;
+    font-weight: 700;
     font-size: 14.5px;
     margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .timeline .body .heading .arrow {
+    color: var(--muted);
+    font-size: 12px;
   }
   .timeline .body .bullets {
     margin: 0;
     padding-left: 18px;
-    color: var(--muted);
+    color: var(--text-2);
     font-size: 13px;
   }
-  .timeline .body .bullets li { margin-bottom: 2px; }
-  .timeline li.next::before {
-    background: var(--primary);
-    box-shadow: 0 0 0 4px var(--primary-bg);
-  }
-  .timeline li.next .body {
-    border-color: var(--primary-soft);
-    background: linear-gradient(180deg, var(--primary-bg) 0%, var(--card) 30%);
-  }
+  .timeline .body .bullets li { padding: 0; margin: 0; }
+  .timeline .body .bullets li::before { display: none; }
 
-  /* ──── Footer ──── */
+  /* ─── Footer ─── */
   footer {
-    padding: 48px 0 32px;
+    padding: 56px 0 32px;
     border-top: 1px solid var(--line);
     margin-top: 32px;
   }
-  footer .meta-info {
+  .footer-info {
     display: flex;
     justify-content: space-between;
     align-items: center;
     color: var(--muted);
-    font-size: 12.5px;
+    font-size: 13px;
   }
-  footer a {
+  .footer-info a {
     color: var(--primary);
     text-decoration: none;
-    border-bottom: 1px dashed var(--primary-soft);
+    font-weight: 600;
   }
+  .footer-info a:hover { color: var(--amber); }
 
-  /* ──── Responsive ──── */
+  /* ─── Responsive ─── */
   @media (max-width: 900px) {
-    h1 { font-size: 44px; }
+    .hero-grid, .hero-stats, .layers-row, .slots-grid, .matrix-grid { grid-template-columns: 1fr; }
+    .hero-grid { gap: 24px; }
+    .pipeline { grid-template-columns: 1fr; }
+    .stage:not(:last-child)::after { display: none; }
+    h1 { font-size: 38px; }
     h2 { font-size: 28px; }
-    .layers, .slots { grid-template-columns: 1fr; }
-    .matrix { grid-template-columns: 1fr; }
-    .hero .stats { flex-wrap: wrap; gap: 16px; }
     .timeline::before { left: 16px; }
     .timeline li { grid-template-columns: 1fr; gap: 4px; padding-left: 32px; }
     .timeline li::before { left: 12px; top: 4px; }
+    .timeline .ver { text-align: left; }
   }
 </style>
 </head>
 <body>
-<main>
 
+<!-- ─── Top Command Bar ─── -->
+<div class="topbar">
+  <div class="wrap topbar-inner">
+    <div class="brand">
+      <span class="brand-mark">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+      </span>
+      Pilot
+    </div>
+    <div class="crumbs">
+      <span>about</span>
+      <span>›</span>
+      <span class="here">cockpit overview</span>
+    </div>
+    <div class="cmd-bar">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <span>Find anything</span>
+      <span class="kbd">⌘K</span>
+    </div>
+  </div>
+</div>
+
+<main>
 <div class="wrap">
 
   <!-- ─── Hero ─── -->
-  <header class="hero">
-    <div class="badge">
-      <span class="badge-dot"></span>
-      <span>Pilot — Agent Operating System</span>
+  <section class="hero">
+    <div class="hero-grid">
+      <div class="hero-text">
+        <div class="badge">
+          <span class="badge-dot"></span>
+          <span>Pilot · Agent 操作系统</span>
+        </div>
+        <h1>
+          你的 agent<br/>
+          是一个<strong><span class="accent">小世界</span></strong>。<br/>
+          每一块地，<span class="accent-warm">都能掀开</span>。
+        </h1>
+        <p class="lede">
+          三层架构，七个槽，六个阶段。所有常见的"参考"——Hermes、OpenClaw、MCP、Skills、Memory、Workflow、Guardrails——都摊平在控制面板上，<strong>一个个独立的开关</strong>。你可以挑、可以换、可以关。
+        </p>
+        <div class="ctas">
+          <a class="btn btn-primary" href="#board">
+            打开开关面板
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </a>
+          <a class="btn btn-ghost" href="#roadmap">
+            v0.4.2 → v1.0
+          </a>
+        </div>
+      </div>
+      <!-- Isometric preview scene -->
+      <div class="hero-iso">
+        <div class="moon"></div>
+        <div class="hero-ground-glow"></div>
+        <div class="iso-scene">
+          <svg viewBox="0 0 380 280" style="width:100%;height:100%;display:block">
+            <!-- ground tiles 4x4 -->
+            <g transform="translate(190, 220)">
+              <!-- tile 1 -->
+              <g transform="translate(-120, 0)">
+                <polygon points="0,-25 30,-10 0,5 -30,-10" fill="#9a8a68" stroke="#6a5a3a" stroke-width="1"/>
+                <polygon points="0,5 30,-10 30,15 0,30" fill="#a89478" stroke="#6a5a3a" stroke-width="1"/>
+                <polygon points="0,5 -30,-10 -30,15 0,30" fill="#8a7a58" stroke="#6a5a3a" stroke-width="1"/>
+              </g>
+              <g transform="translate(-60, -25)">
+                <polygon points="0,-25 30,-10 0,5 -30,-10" fill="#a89478" stroke="#6a5a3a" stroke-width="1"/>
+                <polygon points="0,5 30,-10 30,15 0,30" fill="#b8a488" stroke="#6a5a3a" stroke-width="1"/>
+                <polygon points="0,5 -30,-10 -30,15 0,30" fill="#988466" stroke="#6a5a3a" stroke-width="1"/>
+              </g>
+              <g transform="translate(0, -50)">
+                <polygon points="0,-25 30,-10 0,5 -30,-10" fill="#b8a488" stroke="#6a5a3a" stroke-width="1"/>
+                <polygon points="0,5 30,-10 30,15 0,30" fill="#c8b498" stroke="#6a5a3a" stroke-width="1"/>
+                <polygon points="0,5 -30,-10 -30,15 0,30" fill="#a89478" stroke="#6a5a3a" stroke-width="1"/>
+                <!-- building on this tile -->
+                <g transform="translate(0, 0)">
+                  <rect x="-12" y="-32" width="24" height="28" fill="#fef5e0" stroke="#b8a280" stroke-width="1"/>
+                  <polygon points="0,-44 16,-32 -16,-32" fill="#c2553f" stroke="#8a3a28" stroke-width="1"/>
+                  <rect x="-4" y="-18" width="8" height="14" fill="#6a4830"/>
+                  <rect x="-9" y="-30" width="5" height="5" fill="#88a8c0"/>
+                  <rect x="4" y="-30" width="5" height="5" fill="#88a8c0"/>
+                </g>
+              </g>
+              <g transform="translate(60, -25)">
+                <polygon points="0,-25 30,-10 0,5 -30,-10" fill="#a89478" stroke="#6a5a3a" stroke-width="1"/>
+                <polygon points="0,5 30,-10 30,15 0,30" fill="#b8a488" stroke="#6a5a3a" stroke-width="1"/>
+                <polygon points="0,5 -30,-10 -30,15 0,30" fill="#988466" stroke="#6a5a3a" stroke-width="1"/>
+                <!-- tower -->
+                <g transform="translate(0, 0)">
+                  <rect x="-12" y="-44" width="24" height="40" fill="#fef5e0" stroke="#b8a280" stroke-width="1"/>
+                  <polygon points="0,-54 14,-44 -14,-44" fill="#d99050" stroke="#8a5a2a" stroke-width="1"/>
+                  <rect x="-4" y="-22" width="8" height="18" fill="#6a4830"/>
+                  <rect x="-9" y="-40" width="5" height="5" fill="#88a8c0"/>
+                  <rect x="4" y="-40" width="5" height="5" fill="#88a8c0"/>
+                  <rect x="-9" y="-30" width="5" height="5" fill="#88a8c0"/>
+                  <rect x="4" y="-30" width="5" height="5" fill="#88a8c0"/>
+                </g>
+              </g>
+              <g transform="translate(120, 0)">
+                <polygon points="0,-25 30,-10 0,5 -30,-10" fill="#9a8a68" stroke="#6a5a3a" stroke-width="1"/>
+                <polygon points="0,5 30,-10 30,15 0,30" fill="#a89478" stroke="#6a5a3a" stroke-width="1"/>
+                <polygon points="0,5 -30,-10 -30,15 0,30" fill="#8a7a58" stroke="#6a5a3a" stroke-width="1"/>
+                <!-- dome building (sage) -->
+                <g transform="translate(0, 0)">
+                  <rect x="-10" y="-28" width="20" height="24" fill="#fef5e0" stroke="#b8a280" stroke-width="1"/>
+                  <ellipse cx="0" cy="-28" rx="12" ry="8" fill="#4f7a64" stroke="#2a4a3a" stroke-width="1"/>
+                  <ellipse cx="0" cy="-30" rx="6" ry="4" fill="#6a9a84"/>
+                  <rect x="-3" y="-14" width="6" height="10" fill="#6a4830"/>
+                </g>
+              </g>
+              <!-- back tiles (smaller, darker) -->
+              <g transform="translate(-60, -75)" opacity="0.5">
+                <polygon points="0,-25 30,-10 0,5 -30,-10" fill="#6a5a3a" stroke="#3a2a1a" stroke-width="1"/>
+                <polygon points="0,5 30,-10 30,15 0,30" fill="#7a6a4a" stroke="#3a2a1a" stroke-width="1"/>
+                <polygon points="0,5 -30,-10 -30,15 0,30" fill="#5a4a2a" stroke="#3a2a1a" stroke-width="1"/>
+              </g>
+              <g transform="translate(0, -100)" opacity="0.4">
+                <polygon points="0,-25 30,-10 0,5 -30,-10" fill="#5a4a2a" stroke="#3a2a1a" stroke-width="1"/>
+                <polygon points="0,5 30,-10 30,15 0,30" fill="#6a5a3a" stroke="#3a2a1a" stroke-width="1"/>
+                <polygon points="0,5 -30,-10 -30,15 0,30" fill="#4a3a1a" stroke="#3a2a1a" stroke-width="1"/>
+              </g>
+              <g transform="translate(60, -75)" opacity="0.5">
+                <polygon points="0,-25 30,-10 0,5 -30,-10" fill="#6a5a3a" stroke="#3a2a1a" stroke-width="1"/>
+                <polygon points="0,5 30,-10 30,15 0,30" fill="#7a6a4a" stroke="#3a2a1a" stroke-width="1"/>
+                <polygon points="0,5 -30,-10 -30,15 0,30" fill="#5a4a2a" stroke="#3a2a1a" stroke-width="1"/>
+              </g>
+            </g>
+            <!-- ambient particles -->
+            <circle cx="80" cy="60" r="1.2" fill="rgba(255,235,180,0.6)"/>
+            <circle cx="280" cy="80" r="1.2" fill="rgba(255,235,180,0.5)"/>
+            <circle cx="320" cy="40" r="0.8" fill="rgba(255,235,180,0.4)"/>
+            <circle cx="50" cy="100" r="0.8" fill="rgba(255,235,180,0.5)"/>
+          </svg>
+        </div>
+        <div class="hero-iso-label">your agent town · preview</div>
+      </div>
     </div>
-    <h1>每一层，<span class="accent">每一个开关</span><br/>都可被看见、可被替换。</h1>
-    <p class="lede">
-      3 层架构（Gateway / Agent Runtime / Tool Calling）、7 槽配置、6 阶段流水线——所有 Hermes / OpenClaw / MCP / Skills / Memory / Workflow / Guardrails / HITL 都不是绑定死的关系，而是<strong>你可以一个个打开 / 关掉 / 替换的开关</strong>。
-    </p>
-    <div class="stats">
-      <div class="stat">
-        <span class="num">3</span>
-        <span class="label">架构层</span>
-      </div>
-      <div class="stat">
-        <span class="num">7</span>
-        <span class="label">配置槽</span>
-      </div>
-      <div class="stat">
-        <span class="num">8</span>
-        <span class="label">干预点</span>
-      </div>
-      <div class="stat">
-        <span class="num">∞</span>
-        <span class="label">可替换实现</span>
-      </div>
-    </div>
-  </header>
 
-  <!-- ──── 1. Three Layers ──── -->
+    <!-- Numbers -->
+    <div class="hero-stats">
+      <div class="stat">
+        <div class="icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        </div>
+        <div class="num">3<span class="small">层</span></div>
+        <div class="label">Gateway · Runtime · Tool</div>
+      </div>
+      <div class="stat">
+        <div class="icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+        </div>
+        <div class="num">7<span class="small">槽</span></div>
+        <div class="label">Agent System 7 slots</div>
+      </div>
+      <div class="stat">
+        <div class="icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </div>
+        <div class="num">6<span class="small">阶段</span></div>
+        <div class="label">Pipeline stages</div>
+      </div>
+      <div class="stat warm">
+        <div class="icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v6m0 0a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/><path d="M5 12h2m10 0h2M12 19v3"/></svg>
+        </div>
+        <div class="num">∞</div>
+        <div class="label">可替换实现</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── 1. Three Layers ─── -->
   <section>
     <div class="sec-head">
-      <span class="sec-num">01</span>
+      <div class="sec-num">1</div>
       <h2>三层架构</h2>
-      <span class="sec-tag">Gateway / Agent Runtime / Tool Calling</span>
+      <span class="sec-tag">Gateway · Agent Runtime · Tool Calling</span>
     </div>
-    <p class="lead">
-      把 agent 系统拆成 3 层。每一层都有自己的 adapter 接口——Pilot 提供原生实现，但 OpenClaw / Hermes / MCP 等可以<em>作为可选替换</em>挂进来。
+    <p class="sec-lead">
+      每一层都有自己的 adapter 接口——Pilot 自带实现，OpenClaw / Hermes / MCP 等作为可选的<em>替换实现</em>挂进来。锁不死你的栈。
     </p>
-    <div class="layers">
+    <div class="layers-row">
       <!-- Layer 1 -->
-      <div class="card layer hoverable">
-        <div class="lbl">Layer 1</div>
-        <h3>Gateway</h3>
-        <p class="desc">多入口与会话路由。多 agent 路由、权限、审计。决定谁能用什么 agent 做什么。</p>
-        <div class="swaps">
-          <div class="swap-title">原生实现</div>
-          <div class="swap-list">
-            <span class="chip native"><span class="dot"></span>CLI</span>
-            <span class="chip native"><span class="dot"></span>Web UI</span>
+      <div class="layer-card cool">
+        <div class="layer-head">
+          <div class="layer-iso">
+            <svg viewBox="0 0 56 56" width="38" height="38">
+              <!-- mini isometric gateway -->
+              <polygon points="28,8 50,20 28,32 6,20" fill="#88a8c0" stroke="#3a5a72" stroke-width="1.5"/>
+              <polygon points="6,20 28,32 28,52 6,40" fill="#6890a8" stroke="#3a5a72" stroke-width="1.5"/>
+              <polygon points="50,20 28,32 28,52 50,40" fill="#4878a0" stroke="#3a5a72" stroke-width="1.5"/>
+            </svg>
           </div>
-          <div class="swap-title" style="margin-top:10px">可替换</div>
-          <div class="swap-list">
-            <span class="chip swap"><span class="dot"></span>OpenClaw</span>
-            <span class="chip disabled">Telegram</span>
-            <span class="chip disabled">Slack</span>
-            <span class="chip disabled">Feishu</span>
+          <div>
+            <div class="layer-num">Layer 1</div>
+            <h3>Gateway</h3>
           </div>
+        </div>
+        <p class="desc">多入口与会话路由。多 agent 路由、权限矩阵、审计日志。</p>
+        <div class="mocks-label">原生</div>
+        <div class="chip-list">
+          <span class="chip on"><span class="dot"></span>CLI</span>
+          <span class="chip on"><span class="dot"></span>Web UI</span>
+        </div>
+        <div class="mocks-label">可替换</div>
+        <div class="chip-list">
+          <span class="chip swap"><span class="dot"></span>OpenClaw</span>
+          <span class="chip off">Telegram</span>
+          <span class="chip off">Slack</span>
+          <span class="chip off">Feishu</span>
         </div>
       </div>
       <!-- Layer 2 -->
-      <div class="card layer hoverable">
-        <div class="lbl">Layer 2</div>
-        <h3>Agent Runtime</h3>
-        <p class="desc">6 阶段流水线 + 7 配置槽。决定 agent 怎么思考、什么时候用什么工具、什么时候要用户确认。</p>
-        <div class="swaps">
-          <div class="swap-title">7 配置槽（每个都可独立启停）</div>
-          <div class="swap-list">
-            <span class="chip native"><span class="dot"></span>Instruction</span>
-            <span class="chip native"><span class="dot"></span>Guardrails</span>
-            <span class="chip native"><span class="dot"></span>Workflow</span>
-            <span class="chip native"><span class="dot"></span>Memory</span>
-            <span class="chip native"><span class="dot"></span>Skills</span>
-            <span class="chip native"><span class="dot"></span>Tools</span>
-            <span class="chip native"><span class="dot"></span>Reasoning</span>
+      <div class="layer-card">
+        <div class="layer-head">
+          <div class="layer-iso">
+            <svg viewBox="0 0 56 56" width="38" height="38">
+              <polygon points="28,4 50,16 28,28 6,16" fill="#5b8a96" stroke="#3a5a72" stroke-width="1.5"/>
+              <polygon points="6,16 28,28 28,52 6,40" fill="#5b8a96" stroke="#3a5a72" stroke-width="1.5"/>
+              <polygon points="50,16 28,28 28,52 50,40" fill="#3a6878" stroke="#3a5a72" stroke-width="1.5"/>
+              <!-- inner block (city) -->
+              <rect x="22" y="30" width="12" height="14" fill="#fef5e0" stroke="#b8a280" stroke-width="1"/>
+              <polygon points="28,26 36,32 20,32" fill="#d99050"/>
+            </svg>
           </div>
-          <div class="swap-title" style="margin-top:10px">可覆盖 reasoning 风格</div>
-          <div class="swap-list">
-            <span class="chip swap"><span class="dot"></span>Hermes-style</span>
-            <span class="chip disabled">Plain prompt</span>
+          <div>
+            <div class="layer-num">Layer 2</div>
+            <h3>Agent Runtime</h3>
           </div>
+        </div>
+        <p class="desc">6 阶段流水线 + 7 配置槽。决定 agent 怎么思考、什么时候用什么、什么时候要你确认。</p>
+        <div class="mocks-label">7 槽（都可独立编辑）</div>
+        <div class="chip-list">
+          <span class="chip on"><span class="dot"></span>Instruction</span>
+          <span class="chip on"><span class="dot"></span>Guardrails</span>
+          <span class="chip on"><span class="dot"></span>Workflow</span>
+          <span class="chip on"><span class="dot"></span>Memory</span>
+          <span class="chip on"><span class="dot"></span>Skills</span>
+          <span class="chip on"><span class="dot"></span>Tools</span>
+          <span class="chip on"><span class="dot"></span>Reasoning</span>
         </div>
       </div>
       <!-- Layer 3 -->
-      <div class="card layer hoverable">
-        <div class="lbl">Layer 3</div>
-        <h3>Tool Calling</h3>
-        <p class="desc">工具 schema 注册、调用协议、执行环境、沙箱与校验。每种协议可独立切换。</p>
-        <div class="swaps">
-          <div class="swap-title">原生实现</div>
-          <div class="swap-list">
-            <span class="chip native"><span class="dot"></span>OpenAI fn</span>
-            <span class="chip native"><span class="dot"></span>Anthropic tool_use</span>
+      <div class="layer-card warm">
+        <div class="layer-head">
+          <div class="layer-iso">
+            <svg viewBox="0 0 56 56" width="38" height="38">
+              <polygon points="28,4 50,16 28,28 6,16" fill="#88a878" stroke="#4a6a48" stroke-width="1.5"/>
+              <polygon points="6,16 28,28 28,52 6,40" fill="#6a8a5a" stroke="#4a6a48" stroke-width="1.5"/>
+              <polygon points="50,16 28,28 28,52 50,40" fill="#4a6a3a" stroke="#4a6a48" stroke-width="1.5"/>
+              <!-- hammer icon (tool) -->
+              <rect x="22" y="14" width="14" height="6" fill="#b8a280" transform="rotate(-15 28 17)"/>
+              <rect x="32" y="20" width="3" height="20" fill="#6a4830" transform="rotate(-15 33 30)"/>
+            </svg>
           </div>
-          <div class="swap-title" style="margin-top:10px">可替换</div>
-          <div class="swap-list">
-            <span class="chip swap"><span class="dot"></span>Hermes XML</span>
-            <span class="chip swap"><span class="dot"></span>MCP</span>
-            <span class="chip disabled">Custom</span>
+          <div>
+            <div class="layer-num">Layer 3</div>
+            <h3>Tool Calling</h3>
           </div>
+        </div>
+        <p class="desc">工具 schema、调用协议、执行环境、沙箱、校验。每种协议独立切换。</p>
+        <div class="mocks-label">原生</div>
+        <div class="chip-list">
+          <span class="chip on"><span class="dot"></span>OpenAI fn</span>
+          <span class="chip on"><span class="dot"></span>Anthropic</span>
+        </div>
+        <div class="mocks-label">可替换</div>
+        <div class="chip-list">
+          <span class="chip swap"><span class="dot"></span>Hermes XML</span>
+          <span class="chip swap"><span class="dot"></span>MCP</span>
+          <span class="chip off">Custom</span>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ──── 2. Six-Stage Pipeline ──── -->
+  <!-- ─── 2. Six Stages ─── -->
   <section>
     <div class="sec-head">
-      <span class="sec-num">02</span>
+      <div class="sec-num">2</div>
       <h2>六阶段流水线</h2>
-      <span class="sec-tag">Layer 2 的实现</span>
+      <span class="sec-tag">Layer 2 的实现 · 沙盆里走过</span>
     </div>
-    <p class="lead">
-      任何请求走完这 6 个阶段。每个阶段都是一个<strong>可观察、可注入 policy / hook 的方块</strong>。每一步都可以打开看、可替换实现、可以加 HITL。
+    <p class="sec-lead">
+      每个请求穿过这 6 个阶段——每个都是<strong>可观察、可注入、可换实现</strong>的方块。在 v0.4.2 的 preview 里它们已经是可见的"建筑"，等着被配置。
     </p>
-    <div class="pipeline">
-      <div class="stages">
+    <div class="sandbox-frame">
+      <div class="pipeline">
         <div class="stage">
-          <div class="box">
-            <div class="id">Stage 1</div>
+          <div class="stage-card wip">
+            <span class="status"></span>
+            <div class="id">Step 1</div>
             <div class="name">策略 Gate</div>
-            <div class="ctrl">拦截高风险任务、过滤敏感关键词、检查路径黑名单</div>
-            <div class="default">policy: keyword + path denylist</div>
+            <div class="ctrl">拦截高风险、过滤关键词、检查路径黑名单</div>
+            <div class="default">v0.4.3 — keyword + path denylist</div>
           </div>
         </div>
         <div class="stage">
-          <div class="box">
-            <div class="id">Stage 2</div>
+          <div class="stage-card future">
+            <span class="status"></span>
+            <div class="id">Step 2</div>
             <div class="name">规划器</div>
-            <div class="ctrl">把任务拆步骤（单步 / CoT / ToT / ReAct）</div>
-            <div class="default">policy: single-step (override 可换)</div>
+            <div class="ctrl">把任务拆步骤（单步 / CoT / ReAct）</div>
+            <div class="default">v0.4.4 — single-step (override 可换)</div>
           </div>
         </div>
         <div class="stage">
-          <div class="box">
-            <div class="id">Stage 3</div>
+          <div class="stage-card">
+            <span class="status"></span>
+            <div class="id">Step 3</div>
             <div class="name">上下文检索</div>
-            <div class="ctrl">加载 CLAUDE.md / AGENTS.md / 历史 / RAG</div>
-            <div class="default">v0.4.2 auto-discover 已实装</div>
+            <div class="ctrl">CLAUDE.md / AGENTS.md / 历史 / RAG</div>
+            <div class="default">v0.4.2 — auto-discover 已实装</div>
           </div>
         </div>
         <div class="stage">
-          <div class="box">
-            <div class="id">Stage 4</div>
+          <div class="stage-card">
+            <span class="status"></span>
+            <div class="id">Step 4</div>
             <div class="name">工具选择</div>
             <div class="ctrl">从启用的工具池按 policy 选本次调用</div>
-            <div class="default">v0.4.2 read-only inventory；v0.4.3 UI</div>
+            <div class="default">v0.4.2 — read-only inventory</div>
           </div>
         </div>
         <div class="stage">
-          <div class="box">
-            <div class="id">Stage 5</div>
+          <div class="stage-card future">
+            <span class="status"></span>
+            <div class="id">Step 5</div>
             <div class="name">执行器</div>
-            <div class="ctrl">沙箱运行 tool、HITL 节点、重试与错误恢复</div>
-            <div class="default">sandbox: none；v0.5+ 可挂 worktree / container</div>
+            <div class="ctrl">沙箱运行、HITL 节点、重试与错误恢复</div>
+            <div class="default">v0.5+ — worktree / container</div>
           </div>
         </div>
         <div class="stage">
-          <div class="box">
-            <div class="id">Stage 6</div>
+          <div class="stage-card future">
+            <span class="status"></span>
+            <div class="id">Step 6</div>
             <div class="name">校验器</div>
-            <div class="ctrl">跑测试 / 审计 / 用户确认 / 失败反思 prompt</div>
-            <div class="default">trust-model；v0.5+ Hermes errorReflect</div>
+            <div class="ctrl">测试 / 审计 / 用户确认 / 失败反思</div>
+            <div class="default">v0.5+ — Hermes errorReflect</div>
           </div>
         </div>
       </div>
     </div>
-    <p style="margin-top:16px;color:var(--muted);font-size:12.5px">
-      ※ 最终输出阶段（第 7 段 Output Formatter）由 ReAct loop 隐含控制，未单列。
+    <p style="margin-top:18px;color:var(--muted);font-size:13px">
+      <strong style="color:var(--text)">状态指示灯</strong>　<span style="color:var(--primary)">●</span> 已实装 · <span style="color:var(--amber)">●</span> 进行中 · <span style="color:var(--muted)">●</span> 路线图
     </p>
   </section>
 
-  <!-- ──── 3. Seven Slots ──── -->
+  <!-- ─── 3. Seven Slots ─── -->
   <section>
     <div class="sec-head">
-      <span class="sec-num">03</span>
+      <div class="sec-num">3</div>
       <h2>七槽配置</h2>
-      <span class="sec-tag">AgentSystem 的可编辑面</span>
+      <span class="sec-tag">每个 AgentSystem 的可编辑面</span>
     </div>
-    <p class="lead">
-      每个 AgentSystem 由 7 个槽组成。每个槽独立可编辑、可启停、可替换——借鉴 Hermes 的"分槽注入"，每面都不互相耦合。
+    <p class="sec-lead">
+      一个 AgentSystem 由 7 个槽组成。借鉴 Hermes 的"分槽注入"思路——每面独立可编辑、可启停、可替换。
     </p>
-    <div class="slots">
-      <div class="card slot">
-        <div class="id">slot 01</div>
-        <h4>Instruction</h4>
-        <p class="what">多版本系统提示，可热切换。Role / Boundaries / Format / Prohibitions 分层。</p>
-        <div class="ctrl-row">
+    <div class="slots-grid">
+      <div class="slot">
+        <div class="slot-head">
+          <div class="slot-icon">01</div>
+          <div class="slot-title">Instruction</div>
+          <span class="v0-tag">v0.4.4</span>
+        </div>
+        <p class="what">多版本系统提示，可热切换。Role / Boundaries / Format 分层。</p>
+        <div class="ctrls">
           <span class="ctrl">role</span>
           <span class="ctrl">boundaries</span>
           <span class="ctrl">format</span>
         </div>
       </div>
-      <div class="card slot">
-        <div class="id">slot 02</div>
-        <h4>Guardrails</h4>
+      <div class="slot">
+        <div class="slot-head">
+          <div class="slot-icon warm">02</div>
+          <div class="slot-title">Guardrails</div>
+          <span class="v0-tag">v0.4.3</span>
+        </div>
         <p class="what">路径 / 命令 / 敏感数据黑名单，输出脱敏规则。</p>
-        <div class="ctrl-row">
+        <div class="ctrls">
           <span class="ctrl">deny_path</span>
           <span class="ctrl">deny_cmd</span>
           <span class="ctrl">redact</span>
         </div>
       </div>
-      <div class="card slot">
-        <div class="id">slot 03</div>
-        <h4>Workflow</h4>
-        <p class="what">执行步骤与 HITL 节点。强制先搜索再分析再验证。</p>
-        <div class="ctrl-row">
+      <div class="slot">
+        <div class="slot-head">
+          <div class="slot-icon">03</div>
+          <div class="slot-title">Workflow</div>
+          <span class="v0-tag">v0.4.5</span>
+        </div>
+        <p class="what">执行步骤与 HITL 节点。强制先搜再分析再验证。</p>
+        <div class="ctrls">
           <span class="ctrl">steps</span>
           <span class="ctrl">approval_at</span>
         </div>
       </div>
-      <div class="card slot">
-        <div class="id">slot 04</div>
-        <h4>Memory</h4>
+      <div class="slot">
+        <div class="slot-head">
+          <div class="slot-icon cool">04</div>
+          <div class="slot-title">Memory</div>
+          <span class="v0-tag">v0.4.6</span>
+        </div>
         <p class="what">多层记忆 + 压缩策略。working / episode / semantic。</p>
-        <div class="ctrl-row">
+        <div class="ctrls">
           <span class="ctrl">tier</span>
           <span class="ctrl">compression</span>
         </div>
       </div>
-      <div class="card slot">
-        <div class="id">slot 05</div>
-        <h4>Skills</h4>
-        <p class="what">稳定任务封装：写报告 / 处理表格 / 生成 PPT 等可复用单元。</p>
-        <div class="ctrl-row">
+      <div class="slot">
+        <div class="slot-head">
+          <div class="slot-icon warm">05</div>
+          <div class="slot-title">Skills</div>
+          <span class="v0-tag">v0.4.6</span>
+        </div>
+        <p class="what">稳定任务封装：写报告、处理表格、生成 PPT 等。</p>
+        <div class="ctrls">
           <span class="ctrl">example</span>
           <span class="ctrl">+</span>
         </div>
       </div>
-      <div class="card slot">
-        <div class="id">slot 06</div>
-        <h4>Tools</h4>
+      <div class="slot">
+        <div class="slot-head">
+          <div class="slot-icon">06</div>
+          <div class="slot-title">Tools</div>
+          <span class="v0-tag">v0.4.2 ✓</span>
+        </div>
         <p class="what">工具白/黑名单 + policy + few-shot。详见下方开关面板。</p>
-        <div class="ctrl-row">
+        <div class="ctrls">
           <span class="ctrl">bash</span>
           <span class="ctrl">read</span>
           <span class="ctrl">edit</span>
           <span class="ctrl">+</span>
         </div>
       </div>
-      <div class="card slot">
-        <div class="id">slot 07</div>
-        <h4>Reasoning</h4>
+      <div class="slot">
+        <div class="slot-head">
+          <div class="slot-icon warm">07</div>
+          <div class="slot-title">Reasoning</div>
+          <span class="v0-tag">v0.4.6</span>
+        </div>
         <p class="what">scratch_pad 模板：plan → act → observe → reflect。失败反思 prompt。</p>
-        <div class="ctrl-row">
+        <div class="ctrls">
           <span class="ctrl">plan-act</span>
           <span class="ctrl">reflect</span>
         </div>
       </div>
-      <!-- 8th: meta -->
-      <div class="card slot" style="background:var(--primary-bg);border-color:var(--primary-soft)">
-        <div class="id">meta</div>
-        <h4>Self-Iteration</h4>
-        <p class="what">v0.7+ meta-agent。用户一句话，agent 自己改自己的 7 槽配置。</p>
-        <div class="ctrl-row">
+      <div class="slot" style="background:linear-gradient(180deg, var(--primary-bg), var(--card));border-color:var(--primary-soft)">
+        <div class="slot-head">
+          <div class="slot-icon meta">∞</div>
+          <div class="slot-title">Self-Iteration <span style="font-size:12px;color:var(--primary)">·meta</span></div>
+          <span class="v0-tag">v0.7</span>
+        </div>
+        <p class="what">用户一句话 → meta-agent 提议改 7 槽 → dry-run → apply。</p>
+        <div class="ctrls">
           <span class="ctrl">propose</span>
           <span class="ctrl">dryrun</span>
           <span class="ctrl">apply</span>
@@ -903,456 +1540,499 @@
     </div>
   </section>
 
-  <!-- ──── 4. Switch Board ──── -->
-  <section>
+  <!-- ─── 4. Switch Board ─── -->
+  <section id="board">
     <div class="sec-head">
-      <span class="sec-num">04</span>
+      <div class="sec-num">4</div>
       <h2>扩展开关面板</h2>
-      <span class="sec-tag">一切都是 toggle</span>
+      <span class="sec-tag">每个参考都是一个 toggle</span>
     </div>
-    <p class="lead">
-      所有的"参考"——Hermes / OpenClaw / MCP / Skills / Memory / Workflow / Guardrails / HITL——都展平为一张开关清单。每个都能独立启停。
+    <p class="sec-lead">
+      把 Hermes、OpenClaw、MCP、Skills、Memory、Workflow、Guardrails、HITL 摊平——<strong>每一个都是可以独立打开 / 关掉 / 换实现的开关</strong>。下面的 toggle 真的能切（localStorage 记住）。
     </p>
 
-    <div class="board">
-      <!-- 8.1 Models -->
+    <div class="board-card">
+
+      <!-- Models -->
       <div class="board-section">
-        <div class="board-title">
-          <span class="num">M</span>
-          <span>Models（选哪个模型）</span>
+        <div class="board-section-head">
+          <div class="board-num">M</div>
+          <div>
+            <span class="board-cat">Models</span>
+            <span class="board-cat-cn">选定模型</span>
+          </div>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6M9 13h6M9 17h4"/></svg></span>
           <span class="name">opus-4 <span class="hint">默认主模型</span></span>
           <span class="stat">$15/M</span>
           <span class="since">v0.1</span>
-          <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox" checked/><span class="slider"></span></label>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6M9 13h6"/></svg></span>
           <span class="name">sonnet-4.5 <span class="hint">性价比</span></span>
           <span class="stat">$3/M</span>
           <span class="since">v0.1</span>
-          <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox" checked/><span class="slider"></span></label>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 9h6"/></svg></span>
           <span class="name">haiku-4 <span class="hint">轻量任务</span></span>
           <span class="stat">$0.8/M</span>
           <span class="since">v0.1</span>
-          <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox" checked/><span class="slider"></span></label>
         </div>
         <div class="switch-row">
-          <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M12 6v6M12 18h.01"/></svg></span>
+          <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/></svg></span>
           <span class="name">local-llama-3 <span class="hint">本地推理</span></span>
           <span class="stat">免费</span>
           <span class="since">—</span>
-          <label class="switch"><input type="checkbox" /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox"/><span class="slider"></span></label>
         </div>
       </div>
 
-      <!-- 8.2 Tools -->
+      <!-- Tools -->
       <div class="board-section">
-        <div class="board-title">
-          <span class="num">T</span>
-          <span>Tools（启用的工具 + policy）</span>
+        <div class="board-section-head">
+          <div class="board-num warm">T</div>
+          <div>
+            <span class="board-cat">Tools</span>
+            <span class="board-cat-cn">启用的工具 + policy</span>
+          </div>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></span>
           <span class="name">bash <span class="hint">exec</span></span>
           <span class="stat">42 calls/w</span>
-          <span class="since">HITL</span>
-          <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+          <span class="since" style="background:var(--amber-bg);color:var(--amber);border-color:rgba(212,144,80,0.3)">HITL</span>
+          <label class="switch"><input type="checkbox" checked/><span class="slider"></span></label>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
           <span class="name">read_file <span class="hint">read</span></span>
           <span class="stat">312 calls/w</span>
           <span class="since">v0.1</span>
-          <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox" checked/><span class="slider"></span></label>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z"/></svg></span>
           <span class="name">apply_patch <span class="hint">write</span></span>
           <span class="stat">88 calls/w</span>
-          <span class="since">HITL</span>
-          <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+          <span class="since" style="background:var(--amber-bg);color:var(--amber);border-color:rgba(212,144,80,0.3)">HITL</span>
+          <label class="switch"><input type="checkbox" checked/><span class="slider"></span></label>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
           <span class="name">search_text</span>
-          <span class="stat">124 calls/w</span>
+          <span class="stat">124/w</span>
           <span class="since">v0.1</span>
-          <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox" checked/><span class="slider"></span></label>
         </div>
         <div class="switch-row">
-          <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></span>
+          <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg></span>
           <span class="name">webfetch</span>
-          <span class="stat">9 calls/w</span>
+          <span class="stat">9/w</span>
           <span class="since">network</span>
-          <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox" checked/><span class="slider"></span></label>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18l6-6-6-6"/><path d="M8 6l-6 6 6 6"/></svg></span>
           <span class="name">subagent</span>
-          <span class="stat">3 calls/w</span>
+          <span class="stat">3/w</span>
           <span class="since">—</span>
-          <label class="switch"><input type="checkbox" /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox"/><span class="slider"></span></label>
         </div>
       </div>
 
-      <!-- 8.3 Skills -->
+      <!-- Skills -->
       <div class="board-section">
-        <div class="board-title">
-          <span class="num">S</span>
-          <span>Skills（稳定任务封装）</span>
+        <div class="board-section-head">
+          <div class="board-num warm">S</div>
+          <div>
+            <span class="board-cat">Skills</span>
+            <span class="board-cat-cn">稳定任务封装</span>
+          </div>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span>
           <span class="name">write-report</span>
-          <span class="stat">2 calls/w</span>
+          <span class="stat">2/w</span>
           <span class="since">stable</span>
-          <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox" checked/><span class="slider"></span></label>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg></span>
           <span class="name">process-table</span>
           <span class="stat">—</span>
           <span class="since">—</span>
-          <label class="switch"><input type="checkbox" /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox"/><span class="slider"></span></label>
         </div>
         <div class="switch-row">
-          <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h20"/><path d="M21 3v11a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V3"/><line x1="12" y1="18" x2="12" y2="22"/></svg></span>
+          <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h20"/><path d="M21 3v11a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V3"/></svg></span>
           <span class="name">generate-ppt</span>
           <span class="stat">—</span>
           <span class="since">—</span>
-          <label class="switch"><input type="checkbox" /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox"/><span class="slider"></span></label>
         </div>
       </div>
 
-      <!-- 8.4 Project Context -->
+      <!-- Project Context -->
       <div class="board-section">
-        <div class="board-title">
-          <span class="num">C</span>
-          <span>Project Context（项目级上下文）</span>
+        <div class="board-section-head">
+          <div class="board-num">C</div>
+          <div>
+            <span class="board-cat">Project Context</span>
+            <span class="board-cat-cn">项目级上下文（你说的 CLAUDE.md）</span>
+          </div>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg></span>
-          <span class="name">CLAUDE.md <span class="hint">~/  2.1KB</span></span>
+          <span class="name">CLAUDE.md <span class="hint">~ 2.1KB</span></span>
           <span class="stat">auto-loaded</span>
           <span class="since">v0.4.2</span>
-          <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox" checked/><span class="slider"></span></label>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg></span>
-          <span class="name">AGENTS.md <span class="hint">~/  1.4KB</span></span>
+          <span class="name">AGENTS.md <span class="hint">~ 1.4KB</span></span>
           <span class="stat">auto-loaded</span>
           <span class="since">v0.4.2</span>
-          <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox" checked/><span class="slider"></span></label>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>
           <span class="name">README.md</span>
           <span class="stat">auto-loaded</span>
           <span class="since">v0.4.2</span>
-          <label class="switch"><input type="checkbox" /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox"/><span class="slider"></span></label>
         </div>
         <div class="switch-row">
-          <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+          <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="19" r="2"/></svg></span>
           <span class="name">.cursor/rules</span>
           <span class="stat">auto-loaded</span>
           <span class="since">v0.4.2</span>
-          <label class="switch"><input type="checkbox" /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox"/><span class="slider"></span></label>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
           <span class="name">自定义 instructions</span>
           <span class="stat">+ add</span>
           <span class="since">v0.4.3</span>
-          <label class="switch"><input type="checkbox" /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox"/><span class="slider"></span></label>
         </div>
       </div>
 
-      <!-- 8.5 Memory tiers -->
+      <!-- Memory Tiers -->
       <div class="board-section">
-        <div class="board-title">
-          <span class="num">M</span>
-          <span>Memory Tiers（多层记忆）</span>
+        <div class="board-section-head">
+          <div class="board-num cool">M</div>
+          <div>
+            <span class="board-cat">Memory Tiers</span>
+            <span class="board-cat-cn">多层记忆 + 压缩</span>
+          </div>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0"/><circle cx="12" cy="8" r="2"/><path d="M9 18v-3a3 3 0 0 1 6 0v3"/></svg></span>
           <span class="name">working memory <span class="hint">当前 session</span></span>
           <span class="stat">8 KB</span>
           <span class="since">v0.1</span>
-          <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox" checked/><span class="slider"></span></label>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3-9 4 18 3-9h4"/></svg></span>
-          <span class="name">episode memory <span class="hint">近 N 天的 session 摘要</span></span>
+          <span class="name">episode memory <span class="hint">近 N 天摘要</span></span>
           <span class="stat">2.3 MB</span>
           <span class="since">v0.4.6</span>
-          <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox" checked/><span class="slider"></span></label>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>
-          <span class="name">semantic memory <span class="hint">向量索引，长期 recall</span></span>
+          <span class="name">semantic memory <span class="hint">向量索引</span></span>
           <span class="stat">— KB</span>
           <span class="since">v0.4.6</span>
-          <label class="switch"><input type="checkbox" /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox"/><span class="slider"></span></label>
         </div>
       </div>
 
-      <!-- 8.6 Workflow -->
+      <!-- Workflow -->
       <div class="board-section">
-        <div class="board-title">
-          <span class="num">W</span>
-          <span>Workflow（步骤编排）</span>
+        <div class="board-section-head">
+          <div class="board-num">W</div>
+          <div>
+            <span class="board-cat">Workflow</span>
+            <span class="board-cat-cn">步骤编排</span>
+          </div>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
           <span class="name">require plan first</span>
           <span class="stat">step 1</span>
           <span class="since">v0.4.5</span>
-          <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox" checked/><span class="slider"></span></label>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
           <span class="name">verify after edit</span>
           <span class="stat">step last</span>
           <span class="since">v0.4.5</span>
-          <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox" checked/><span class="slider"></span></label>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
-          <span class="name">explicit approval <span class="hint">人类确认节点</span></span>
+          <span class="name">explicit approval</span>
           <span class="stat">on step 3</span>
           <span class="since">v0.4.3</span>
-          <label class="switch"><input type="checkbox" /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox"/><span class="slider"></span></label>
         </div>
       </div>
 
-      <!-- 8.7 Guardrails -->
+      <!-- Guardrails -->
       <div class="board-section">
-        <div class="board-title">
-          <span class="num">G</span>
-          <span>Guardrails（边界与禁止）</span>
+        <div class="board-section-head">
+          <div class="board-num rust">G</div>
+          <div>
+            <span class="board-cat">Guardrails</span>
+            <span class="board-cat-cn">边界与禁止</span>
+          </div>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></span>
           <span class="name">deny /etc, /System, ~/.ssh</span>
           <span class="stat">3 paths</span>
           <span class="since">v0.4.3</span>
-          <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox" checked/><span class="slider"></span></label>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"/><path d="M9 9h6v6H9z"/></svg></span>
           <span class="name">deny rm -rf, dd, mkfs</span>
           <span class="stat">12 cmds</span>
           <span class="since">v0.4.3</span>
-          <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox" checked/><span class="slider"></span></label>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
           <span class="name">redact API keys, tokens</span>
           <span class="stat">5 patterns</span>
           <span class="since">v0.4.3</span>
-          <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox" checked/><span class="slider"></span></label>
         </div>
         <div class="switch-row">
-          <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
-          <span class="name">rate limit <span class="hint">50 calls/min</span></span>
+          <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+          <span class="name">rate limit <span class="hint">50/min</span></span>
           <span class="stat">active</span>
           <span class="since">v0.4.3</span>
-          <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox" checked/><span class="slider"></span></label>
         </div>
       </div>
 
-      <!-- 8.8 HITL -->
+      <!-- HITL -->
       <div class="board-section">
-        <div class="board-title">
-          <span class="num">H</span>
-          <span>Human-in-the-loop（人工确认）</span>
+        <div class="board-section-head">
+          <div class="board-num">H</div>
+          <div>
+            <span class="board-cat">Human-in-the-loop</span>
+            <span class="board-cat-cn">人工确认节点</span>
+          </div>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
           <span class="name">approve bash / write tool</span>
           <span class="stat">—</span>
           <span class="since">v0.4.3</span>
-          <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox" checked/><span class="slider"></span></label>
         </div>
         <div class="switch-row">
-          <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg></span>
+          <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><path d="M11 18H8a2 2 0 0 1-2-2V9"/></svg></span>
           <span class="name">approve before git commit</span>
           <span class="stat">—</span>
           <span class="since">v0.4.5</span>
-          <label class="switch"><input type="checkbox" checked /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox" checked/><span class="slider"></span></label>
         </div>
         <div class="switch-row">
-          <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8l7.89 5.26a2 2 0 0 0 2.22 0L21 8M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z"/></svg></span>
+          <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg></span>
           <span class="name">approve before send email</span>
           <span class="stat">—</span>
           <span class="since">v0.4.5</span>
-          <label class="switch"><input type="checkbox" /><span class="slider"></span></label>
+          <label class="switch"><input type="checkbox"/><span class="slider"></span></label>
         </div>
       </div>
 
-      <!-- 8.9 Adapters -->
+      <!-- Adapters (the plug-in matrix) -->
       <div class="board-section">
-        <div class="board-title">
-          <span class="num">A</span>
-          <span>Adapters（可替换实现）</span>
+        <div class="board-section-head">
+          <div class="board-num warm">A</div>
+          <div>
+            <span class="board-cat">Adapters</span>
+            <span class="board-cat-cn">可替换实现 — OpenClaw / Hermes / MCP</span>
+          </div>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span>
-          <span class="name">Gateway: OpenClaw</span>
-          <span class="stat">Layer 1 swap</span>
-          <span class="since">v0.4.5</span>
-          <label class="switch"><input type="checkbox" /><span class="slider"></span></label>
+          <span class="name">Gateway: OpenClaw <span class="hint">Layer 1 swap</span></span>
+          <span class="stat">v0.4.5</span>
+          <span class="since">swap</span>
+          <label class="switch"><input type="checkbox"/><span class="slider"></span></label>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></span>
-          <span class="name">Protocol: Hermes XML</span>
-          <span class="stat">Layer 3 swap</span>
-          <span class="since">v0.4.3</span>
-          <label class="switch"><input type="checkbox" /><span class="slider"></span></label>
+          <span class="name">Protocol: Hermes XML <span class="hint">Layer 3 swap</span></span>
+          <span class="stat">v0.4.3</span>
+          <span class="since">swap</span>
+          <label class="switch"><input type="checkbox"/><span class="slider"></span></label>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>
-          <span class="name">MCP servers</span>
-          <span class="stat">Layer 3 bridge</span>
-          <span class="since">v0.4.5</span>
-          <label class="switch"><input type="checkbox" /><span class="slider"></span></label>
+          <span class="name">MCP servers <span class="hint">Layer 3 bridge</span></span>
+          <span class="stat">v0.4.5</span>
+          <span class="since">swap</span>
+          <label class="switch"><input type="checkbox"/><span class="slider"></span></label>
         </div>
         <div class="switch-row">
           <span class="ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg></span>
-          <span class="name">Reasoning: Hermes-style</span>
-          <span class="stat">slot 7 swap</span>
-          <span class="since">v0.4.6</span>
-          <label class="switch"><input type="checkbox" /><span class="slider"></span></label>
+          <span class="name">Reasoning: Hermes-style <span class="hint">slot 7 swap</span></span>
+          <span class="stat">v0.4.6</span>
+          <span class="since">swap</span>
+          <label class="switch"><input type="checkbox"/><span class="slider"></span></label>
         </div>
       </div>
+
     </div>
   </section>
 
-  <!-- ──── 5. Adapter Matrix ──── -->
+  <!-- ─── 5. Adapter Matrix ─── -->
   <section>
     <div class="sec-head">
-      <span class="sec-num">05</span>
+      <div class="sec-num">5</div>
       <h2>Adapter 替换矩阵</h2>
-      <span class="sec-tag">不锁死栈</span>
+      <span class="sec-tag">原生 + 可替换</span>
     </div>
-    <p class="lead">
+    <p class="sec-lead">
       Pilot 自带完整实现，下面这些是<em>可替换</em>的适配器。哪天你想从 OpenClaw 切到自建网关，只要换一个 adapter 就行。
     </p>
-    <div class="matrix">
-      <div class="card matrix-card">
-        <div class="layer-tag">Layer 1</div>
-        <h4>Gateway Adapter</h4>
+    <div class="matrix-grid">
+      <div class="matrix-card">
+        <div class="matrix-card-head">
+          <div class="matrix-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
+          <div>
+            <h4>Layer 1 — Gateway Adapter</h4>
+            <div class="sub">多入口、会话路由、权限矩阵</div>
+          </div>
+        </div>
         <div class="adapter-row">
           <span class="name">CLIGatewayAdapter</span>
-          <span class="status native">native</span>
+          <span class="badge native">native</span>
           <span class="note">pilot 命令行</span>
         </div>
         <div class="adapter-row">
           <span class="name">WebGatewayAdapter</span>
-          <span class="status native">native</span>
+          <span class="badge native">native</span>
           <span class="note">Next.js UI</span>
         </div>
         <div class="adapter-row">
           <span class="name">OpenClawAdapter</span>
-          <span class="status swap">swap</span>
+          <span class="badge swap">swap</span>
           <span class="note">注册为 OpenClaw agent</span>
         </div>
         <div class="adapter-row">
           <span class="name">TelegramAdapter</span>
-          <span class="status swap">v0.7+</span>
+          <span class="badge future">v0.7+</span>
           <span class="note">Bot webhook 入口</span>
         </div>
       </div>
-      <div class="card matrix-card">
-        <div class="layer-tag">Layer 3</div>
-        <h4>ToolCall Protocol</h4>
+      <div class="matrix-card">
+        <div class="matrix-card-head">
+          <div class="matrix-icon warm">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          </div>
+          <div>
+            <h4>Layer 3 — ToolCall Protocol</h4>
+            <div class="sub">schema 序列化 / 解析 / 沙箱</div>
+          </div>
+        </div>
         <div class="adapter-row">
           <span class="name">OpenAIToolProtocol</span>
-          <span class="status native">native</span>
+          <span class="badge native">native</span>
           <span class="note">function_call JSON</span>
         </div>
         <div class="adapter-row">
           <span class="name">AnthropicToolProtocol</span>
-          <span class="status native">native</span>
+          <span class="badge native">native</span>
           <span class="note">tool_use blocks</span>
         </div>
         <div class="adapter-row">
           <span class="name">HermesToolProtocol</span>
-          <span class="status swap">swap</span>
-          <span class="note">&lt;tools&gt; /  tool_call XML</span>
+          <span class="badge swap">swap</span>
+          <span class="note">&lt;tools&gt; / tool_call XML</span>
         </div>
         <div class="adapter-row">
           <span class="name">MCPToolProtocol</span>
-          <span class="status swap">v0.4.5</span>
+          <span class="badge future">v0.4.5</span>
           <span class="note">MCP server 桥接</span>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ──── 6. Self-iteration ──── -->
+  <!-- ─── 6. Self-iteration ─── -->
   <section>
     <div class="sec-head">
-      <span class="sec-num">06</span>
+      <div class="sec-num">6</div>
       <h2>自我迭代</h2>
       <span class="sec-tag">v0.7+ meta-agent</span>
     </div>
-    <p class="lead">
+    <p class="sec-lead">
       你只说一句话。Pilot 的 meta-agent 自己读 session、定位要改的槽、提议改动、跑 dry-run、apply——你只需 approve 或 revert。
     </p>
-    <div class="meta">
-      <p style="margin:0 0 8px;color:var(--muted);font-size:13px">一个例子：「以后不要用 bash 改 .ts 文件」</p>
+    <div class="meta-frame">
+      <p style="margin:0 0 14px;color:var(--text-2);font-size:13.5px"><strong style="color:var(--text)">例子</strong>：<code style="background:var(--bg-deep);padding:2px 8px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--rust);border:1px solid var(--line)">"以后不要用 bash 改 .ts 文件"</code></p>
       <div class="meta-flow">
-        <span class="meta-node user">用户说一句话</span>
-        <span class="meta-arrow">→</span>
+        <span class="meta-node user">你说一句话</span>
+        <span class="meta-arrow">›</span>
         <span class="meta-node">interpret</span>
-        <span class="meta-arrow">→</span>
+        <span class="meta-arrow">›</span>
         <span class="meta-node">locate slot</span>
-        <span class="meta-arrow">→</span>
+        <span class="meta-arrow">›</span>
         <span class="meta-node">propose diff</span>
-        <span class="meta-arrow">→</span>
+        <span class="meta-arrow">›</span>
         <span class="meta-node">dry-run eval</span>
-        <span class="meta-arrow">→</span>
+        <span class="meta-arrow">›</span>
         <span class="meta-node user">user approve</span>
-        <span class="meta-arrow">→</span>
+        <span class="meta-arrow">›</span>
         <span class="meta-node">apply</span>
       </div>
-      <p style="margin:14px 0 0;color:var(--muted);font-size:12.5px">
-        找到 Tool Selector + Executor 阶段 → 提议 policy 改动 → dry-run 跑 N 个 session → 等 approve → 写到 Capability.lessons。
-      </p>
+      <div class="meta-hint">
+        找到 <strong>Tool Selector</strong> + <strong>Executor</strong> 阶段 → 提议 policy 改动 → dry-run 跑 N 个 session → 等 <code>approve</code> → 写到 <code>Capability.lessons</code>。出错可一键 <code>revert</code>。
+      </div>
     </div>
   </section>
 
-  <!-- ──── 7. Roadmap ──── -->
-  <section>
+  <!-- ─── 7. Roadmap ─── -->
+  <section id="roadmap">
     <div class="sec-head">
-      <span class="sec-num">07</span>
+      <div class="sec-num">7</div>
       <h2>开发计划</h2>
       <span class="sec-tag">v0.4.2 → v1.0</span>
     </div>
-    <p class="lead">
-      <strong>原则</strong>：先建数据骨架 + 协议无关 core，让 v0.4.x 的每个版本都在为 v1.0 的"完整 agent 操作系统"铺路。
+    <p class="sec-lead">
+      <strong>原则</strong>：先建数据骨架 + 协议无关 core，让 v0.4.x 每一步都在为 v1.0 的"完整 agent 操作系统"铺路。
     </p>
     <ol class="timeline">
-      <li class="tag-done">
-        <span class="ver tag-done">v0.4.0</span>
+      <li class="done">
+        <span class="ver">v0.4.0</span>
         <div class="body">
-          <div class="heading">首次 release</div>
+          <div class="heading"><span class="arrow">▸</span>首次 release</div>
           <ul class="bullets">
             <li>npm publish via release-please</li>
           </ul>
         </div>
       </li>
-      <li class="tag-done">
-        <span class="ver tag-done">v0.4.1</span>
+      <li class="done">
+        <span class="ver">v0.4.1</span>
         <div class="body">
-          <div class="heading">Forge MVP</div>
+          <div class="heading"><span class="arrow">▸</span>Forge MVP</div>
           <ul class="bullets">
             <li>pilot forge search / inspect / absorb</li>
             <li>npm &amp; local packs 的 L1 / L2 模式</li>
@@ -1360,9 +2040,12 @@
         </div>
       </li>
       <li class="next">
-        <span class="ver tag-done">v0.4.2</span>
+        <span class="ver">v0.4.2</span>
         <div class="body">
-          <div class="heading">可见性起步 <span style="color:var(--primary);font-size:11px;font-family:'JetBrains Mono',monospace">← 下一个</span></div>
+          <div class="heading">
+            <span class="arrow">▸</span>可见性起步
+            <span style="margin-left:auto;color:var(--amber);font-size:11px;font-family:'JetBrains Mono',monospace">← next</span>
+          </div>
           <ul class="bullets">
             <li>Project Context Auto-loader（CLAUDE.md / AGENTS.md / README）</li>
             <li>Tool Inventory（read-only）</li>
@@ -1374,7 +2057,7 @@
       <li>
         <span class="ver">v0.4.3</span>
         <div class="body">
-          <div class="heading">管 + 看见</div>
+          <div class="heading"><span class="arrow">▸</span>管 + 看见</div>
           <ul class="bullets">
             <li>Tool Policy UI（白/黑名单）+ Tool Call Trace</li>
             <li>Strategy Gate（关键词 / path 黑名单）</li>
@@ -1385,9 +2068,9 @@
       <li>
         <span class="ver">v0.4.4</span>
         <div class="body">
-          <div class="heading">箱庭 Compose MVP</div>
+          <div class="heading"><span class="arrow">▸</span>箱庭 Compose MVP</div>
           <ul class="bullets">
-            <li>现代 SaaS canvas 骨架（无 2.5D 皮肤）</li>
+            <li>现代 canvas 骨架（无 2.5D 皮肤）</li>
             <li>5 类方块 + 7 槽配置面板</li>
             <li>Model / Instruction 方块</li>
           </ul>
@@ -1396,10 +2079,10 @@
       <li>
         <span class="ver">v0.4.5</span>
         <div class="body">
-          <div class="heading">箱庭有功能 + 跨栈兼容</div>
+          <div class="heading"><span class="arrow">▸</span>箱庭有功能 + 跨栈兼容</div>
           <ul class="bullets">
             <li>Compose → Save as Profile</li>
-            <li>2.5D isometric skin</li>
+            <li>2.5D isometric skin（再来一轮 2.5D 实装）</li>
             <li>Run 模式（方块实时亮起）</li>
             <li>OpenClawAdapter + MCP bridge</li>
           </ul>
@@ -1408,17 +2091,17 @@
       <li>
         <span class="ver">v0.4.6</span>
         <div class="body">
-          <div class="heading">Memory + Skills</div>
+          <div class="heading"><span class="arrow">▸</span>Memory + Skills</div>
           <ul class="bullets">
             <li>MemorySlot（三层记忆 + 压缩策略）</li>
-            <li>SkillSlot + Hermes reasoning 模板（plan-act-observe-reflect）</li>
+            <li>SkillSlot + Hermes reasoning 模板</li>
           </ul>
         </div>
       </li>
       <li>
         <span class="ver">v0.5</span>
         <div class="body">
-          <div class="heading">回放 + per-stage 可观测</div>
+          <div class="heading"><span class="arrow">▸</span>回放 + per-stage 可观测</div>
           <ul class="bullets">
             <li>Replay mode + A/B diff</li>
             <li>Subagent tree 可视化</li>
@@ -1430,7 +2113,7 @@
       <li>
         <span class="ver">v0.6</span>
         <div class="body">
-          <div class="heading">可视化收尾</div>
+          <div class="heading"><span class="arrow">▸</span>可视化收尾</div>
           <ul class="bullets">
             <li>Stats heatmap + Tool 编排</li>
             <li>Humane UX（suggestions / ⌘K / onboarding）</li>
@@ -1440,7 +2123,7 @@
       <li>
         <span class="ver">v0.7</span>
         <div class="body">
-          <div class="heading">自我迭代 meta-agent</div>
+          <div class="heading"><span class="arrow">▸</span>自我迭代 meta-agent</div>
           <ul class="bullets">
             <li>"说一句话" → 提议改动 → dry-run → apply</li>
             <li>修改历史 + diff + revert</li>
@@ -1450,11 +2133,10 @@
       <li>
         <span class="ver">v1.0</span>
         <div class="body">
-          <div class="heading">完整 agent 操作系统 GA</div>
+          <div class="heading"><span class="arrow">▸</span>完整 agent 操作系统 GA</div>
           <ul class="bullets">
             <li>3 层完整 + 7 槽完整 + 8 干预点完整</li>
             <li>Hermes-equivalent + 自迭代 + 全栈适配</li>
-            <li>2.5D 皮肤全应用 + 现代 SaaS 操作</li>
           </ul>
         </div>
       </li>
@@ -1463,14 +2145,15 @@
 
   <footer>
     <div class="wrap">
-      <div class="meta-info">
+      <div class="footer-info">
         <div>
-          <strong style="color:var(--text)">Pilot v1.0 Roadmap</strong>
+          <strong style="color:var(--text)">Pilot · Agent 操作系统</strong>
           · 3 layers · 7 slots · 8 intervention points · ∞ adapters
         </div>
         <div>
           <a href="https://github.com/wwppee/pilot">github.com/wwppee/pilot</a>
-          · <a href="docs/roadmap-v1.0.md">docs/roadmap-v1.0.md</a>
+          · <a href="docs/roadmap-v1.0.md">roadmap</a>
+          · <a href="docs/architecture-3layers.md">architecture</a>
         </div>
       </div>
     </div>
@@ -1482,7 +2165,8 @@
 <script>
   // Toggle persistence (localStorage)
   document.querySelectorAll('.switch input[type="checkbox"]').forEach(el => {
-    const key = 'pilot-toggle-' + (el.closest('.switch-row')?.querySelector('.name')?.textContent?.trim() || Math.random());
+    const row = el.closest('.switch-row');
+    const key = 'pilot-toggle-' + (row?.querySelector('.name')?.textContent?.trim() || Math.random());
     const saved = localStorage.getItem(key);
     if (saved !== null) el.checked = saved === 'true';
     el.addEventListener('change', () => localStorage.setItem(key, String(el.checked)));
