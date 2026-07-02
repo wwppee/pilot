@@ -1,21 +1,21 @@
 /**
  * Tool inventory — list every tool available to pi.
  *
- * v0.4.2: read-only enumeration of:
+ * v0.4.3: read-only enumeration of:
  *   1. Built-in tools (hardcoded — the 7 names documented in `pi --help`)
- *   2. npm-installed extensions under `~/.pi/agent/npm/`
+ *   2. npm-installed extensions under `~/.pi/agent/npm/` (one entry per package)
+ *   3. Project-local extensions under `~/.pi/agent/extensions/` and
+ *      `.pi/extensions/` — parsed via `extension-scanner.ts` to extract
+ *      actual `pi.registerTool()` calls. Each registered tool is its
+ *      own inventory entry with the extension's source file.
  *
- * For v0.4.2 we don't yet parse extension .ts files to extract
- * `pi.registerTool()` calls — that's a v0.4.3 AST scan. We just
- * surface the extension names that are *available* (installed and
- * enabled in settings).
- *
- * See: docs/v0.4.2-dev-plan.md §4.
+ * See: docs/roadmap-pi-grounded.md (Layer 7 tool inventory).
  */
 
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { piAgentDir } from "./types.js";
+import { scanExtensionDir, mergeScannedTools } from "./extension-scanner.js";
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -47,6 +47,11 @@ export interface ToolInventoryItem {
   enabled: boolean;
   /** Whether the tool is registered (npm-installed) or just available. */
   installed: boolean;
+  /**
+   * For source-discovered extensions: the .ts file that registered
+   * this tool. Useful for the UI to link "click here to see the source".
+   */
+  extensionFile?: string;
 }
 
 // ─── Built-in tool catalog ──────────────────────────────────
@@ -98,8 +103,8 @@ const BUILT_INS: BuiltInDef[] = [
  *
  * Built-ins are always included. npm-installed extensions are pulled
  * from `~/.pi/agent/npm/package.json`. Project-local extensions under
- * `~/.pi/agent/extensions/*.ts` are not parsed in v0.4.2 (would
- * require AST scan) — they show up only if registered through npm.
+ * `~/.pi/agent/extensions/*.ts` (and `.pi/extensions/`) are scanned
+ * with `extension-scanner.ts` to extract real `pi.registerTool()` calls.
  */
 export async function listToolInventory(
   home?: string,
@@ -118,13 +123,13 @@ export async function listToolInventory(
     });
   }
 
-  // 2. npm-installed extensions
+  // 2. npm-installed extensions (one entry per package)
   const npm = await loadNpmPackages(home);
   for (const pkg of npm) {
     out.push({
       name: pkg.name,
       source: "npm",
-      safety: "exec", // conservative default; refine in v0.4.3
+      safety: "exec", // conservative default; refine when AST scan finds real tools
       description: pkg.description ?? `npm package ${pkg.name}@${pkg.version}`,
       packageName: pkg.name,
       enabled: pkg.enabled,
@@ -132,6 +137,60 @@ export async function listToolInventory(
     });
   }
 
+  // 3. Project-local extensions (v0.4.3) — AST scan to find real tools
+  const extDirs = [
+    join(piAgentDir(home), "extensions"),
+    // Project-local `.pi/extensions/` is read relative to cwd by the caller.
+    // We don't know cwd here; the server adds it explicitly.
+  ];
+  for (const dir of extDirs) {
+    const scanned = await scanExtensionDir(dir, { recursive: true });
+    const merged = mergeScannedTools(scanned, dir);
+    for (const m of merged) {
+      // If a scanned tool name collides with an npm package name,
+      // prefer the npm entry (it has version + description). The
+      // extension file's tool is the same logic exposed differently.
+      if (out.some((o) => o.name === m.name)) continue;
+      out.push({
+        name: m.name,
+        source: "extension",
+        safety: m.safety,
+        description: `Registered by extension: ${m.source}`,
+        enabled: true,
+        installed: true,
+        ...(m.extensionFile ? { extensionFile: m.extensionFile } : {}),
+      });
+    }
+  }
+
+  return out;
+}
+
+/**
+ * Like `listToolInventory` but also scans a project-local `.pi/extensions/`
+ * directory. Used by the server to surface tools available in the
+ * user's working directory.
+ */
+export async function listToolInventoryWithProject(
+  home: string | undefined,
+  projectExtDir: string | undefined,
+): Promise<ToolInventoryItem[]> {
+  const out = await listToolInventory(home);
+  if (!projectExtDir) return out;
+  const scanned = await scanExtensionDir(projectExtDir, { recursive: true });
+  const merged = mergeScannedTools(scanned, projectExtDir);
+  for (const m of merged) {
+    if (out.some((o) => o.name === m.name)) continue;
+    out.push({
+      name: m.name,
+      source: "extension",
+      safety: m.safety,
+      description: `Registered by extension: ${m.source}`,
+      enabled: true,
+      installed: true,
+      ...(m.extensionFile ? { extensionFile: m.extensionFile } : {}),
+    });
+  }
   return out;
 }
 

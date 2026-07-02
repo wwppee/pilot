@@ -307,6 +307,48 @@ export async function startServer(
     return service.discoverProjectContext(cwd);
   });
 
+  // ─── Tool policies (v0.4.3) ─────────────────────────
+
+  app.get("/policies", async () => service.listPolicies());
+
+  app.get<{ Params: { name: string } }>("/policies/:name", async (req) => {
+    const policy = await service.getPolicy(req.params.name);
+    if (!policy) {
+      throw Object.assign(new Error("policy not found"), { statusCode: 404 });
+    }
+    return policy;
+  });
+
+  app.put<{ Params: { name: string }; Body: Record<string, unknown> }>(
+    "/policies/:name",
+    async (req) => {
+      const { name: _name, ...input } = req.body;
+      return service.setPolicy(req.params.name, input as never);
+    },
+  );
+
+  app.delete<{ Params: { name: string } }>("/policies/:name", async (req) => {
+    const removed = await service.deletePolicy(req.params.name);
+    return { removed };
+  });
+
+  app.post<{ Params: { name: string } }>("/policies/:name/apply", async (req) =>
+    service.applyPolicy(req.params.name),
+  );
+
+  app.post<{ Params: { name: string } }>(
+    "/policies/:name/unapply",
+    async (req) => service.unapplyPolicy(req.params.name),
+  );
+
+  app.post<{
+    Params: { name: string };
+    Body: { tool: string; args?: Record<string, unknown> };
+  }>("/policies/:name/check", async (req) => {
+    const { tool, args = {} } = req.body;
+    return service.checkPolicyCall(req.params.name, { name: tool, args });
+  });
+
   // ─── Centralized error handler ──────────────────────
 
   app.setErrorHandler((err: unknown, _req, reply) => {

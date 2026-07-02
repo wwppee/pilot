@@ -1,8 +1,8 @@
-import type { NextConfig } from 'next';
-import { fileURLToPath } from 'node:url';
-import { dirname } from 'node:path';
+import type { NextConfig } from "next";
+import { fileURLToPath } from "node:url";
+import { dirname } from "node:path";
 
-const PILOT_SERVER = process.env.PILOT_SERVER_URL ?? 'http://127.0.0.1:17361';
+const PILOT_SERVER = process.env.PILOT_SERVER_URL ?? "http://127.0.0.1:17361";
 
 // Silence "multiple lockfiles" warning — we have a nested lockfile for
 // pilot-web and one for the parent CLI. Tell Turbopack the web/ tree
@@ -23,7 +23,7 @@ const config: NextConfig = {
   async rewrites() {
     return [
       {
-        source: '/api/pilot/:path*',
+        source: "/api/pilot/:path*",
         destination: `${PILOT_SERVER}/:path*`,
       },
     ];

@@ -22,12 +22,16 @@
 
 import type { Capability } from "./capability.js";
 import type { Profile, ProfileInput } from "./profile.js";
+import type { ToolPolicy, ToolPolicyInput } from "./policy.js";
+import { checkPolicy, type ToolCallInfo } from "./policy-engine.js";
 import type { ProjectContextRef } from "./project-context.js";
 import type { StatsRange, StatsReport } from "./stats.js";
 import type { ToolInventoryItem } from "./tool-inventory.js";
 import type { ToolTraceFilter } from "./tool-trace.js";
 import type { UsageRange, UsageReport } from "./usage.js";
 import type { InstalledPack, Pack, SessionInfo, SessionTree } from "./types.js";
+
+export type PolicyDecision = ReturnType<typeof checkPolicy>;
 
 // ─── Filter / result types ──────────────────────────────────
 
@@ -157,6 +161,39 @@ export interface PilotService {
 
   /** Project context files visible from `cwd` (mirrors pi's discovery). */
   discoverProjectContext(cwd: string): Promise<ProjectContextRef[]>;
+
+  // ─── Tool policies (v0.4.3) ──────────────────────────
+
+  /** List all tool policies in `~/.pilot/policy/`. */
+  listPolicies(): Promise<ToolPolicy[]>;
+
+  /** Fetch a single policy by name. Returns null if not found. */
+  getPolicy(name: string): Promise<ToolPolicy | null>;
+
+  /** Create or update a policy. */
+  setPolicy(name: string, input: ToolPolicyInput): Promise<ToolPolicy>;
+
+  /** Delete a policy. Returns true if it existed. */
+  deletePolicy(name: string): Promise<boolean>;
+
+  /**
+   * Apply a policy by generating a `pilot-policy-<name>.ts`
+   * extension and writing it to `~/.pilot/extensions/`.
+   * Returns the absolute path to the generated file.
+   */
+  applyPolicy(name: string): Promise<{ path: string }>;
+
+  /** Remove the generated extension for a policy. Idempotent. */
+  unapplyPolicy(name: string): Promise<{ removed: boolean }>;
+
+  /**
+   * Dry-run a tool call against a policy. Used by `pilot policy check`
+   * and the Web UI "test a rule" form.
+   */
+  checkPolicyCall(
+    name: string,
+    call: ToolCallInfo,
+  ): Promise<{ policy: ToolPolicy; decision: PolicyDecision }>;
 
   // ─── Capabilities (v0.4+) ────────────────────────────
 

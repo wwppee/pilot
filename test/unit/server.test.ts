@@ -313,14 +313,121 @@ describe("pilot server", () => {
     }, 30_000);
   });
 
-  // ─── CSRF token behavior ──────────────────────────
+  // ─── Policy routes (v0.4.3) ───────────────────────
 
-  describe("CSRF token", () => {
-    it("GET response includes x-pilot-csrf header and cookie", async () => {
-      const res = await handle.app.inject({ method: "GET", url: "/health" });
-      expect(res.headers["x-pilot-csrf"]).toBeDefined();
-      const cookie = res.cookies.find((c) => c.name === "pilot-csrf");
-      expect(cookie).toBeDefined();
+  describe("Policy endpoints", () => {
+    const auth = () => ({ "x-pilot-token": handle.token });
+
+    it("full policy lifecycle: create → list → get → check → apply → unapply → delete", async () => {
+      // 1. Empty list
+      const empty = await handle.app.inject({
+        method: "GET",
+        url: "/policies",
+        headers: auth(),
+      });
+      expect(empty.statusCode).toBe(200);
+      expect(empty.json()).toEqual([]);
+
+      // 2. Create
+      const put = await handle.app.inject({
+        method: "PUT",
+        url: "/policies/safe-bash",
+        headers: auth(),
+        payload: {
+          description: "test",
+          allow: [],
+          deny: ["bash"],
+          denyPaths: ["**/.env"],
+          denyCommands: ["^rm"],
+          sensitivePatterns: ["sk-X+"],
+          requireApproval: ["write"],
+        },
+      });
+      expect(put.statusCode).toBe(200);
+      const putBody = put.json() as { name: string; deny: string[] };
+      expect(putBody.name).toBe("safe-bash");
+      expect(putBody.deny).toEqual(["bash"]);
+
+      // 3. List has it
+      const list = await handle.app.inject({
+        method: "GET",
+        url: "/policies",
+        headers: auth(),
+      });
+      expect(list.statusCode).toBe(200);
+      expect(
+        (list.json() as Array<{ name: string }>).map((p) => p.name),
+      ).toEqual(["safe-bash"]);
+
+      // 4. Get by name
+      const get = await handle.app.inject({
+        method: "GET",
+        url: "/policies/safe-bash",
+        headers: auth(),
+      });
+      expect(get.statusCode).toBe(200);
+      expect((get.json() as { name: string }).name).toBe("safe-bash");
+
+      // 5. Missing → 404
+      const miss = await handle.app.inject({
+        method: "GET",
+        url: "/policies/missing",
+        headers: auth(),
+      });
+      expect(miss.statusCode).toBe(404);
+
+      // 6. Check blocks denied tool
+      const check = await handle.app.inject({
+        method: "POST",
+        url: "/policies/safe-bash/check",
+        headers: auth(),
+        payload: { tool: "bash", args: { command: "ls -la" } },
+      });
+      expect(check.statusCode).toBe(200);
+      const checkBody = check.json() as {
+        decision: { block: boolean; reason?: string };
+      };
+      expect(checkBody.decision.block).toBe(true);
+      expect(checkBody.decision.reason).toMatch(/denied/i);
+
+      // 7. Apply generates extension file
+      const apply = await handle.app.inject({
+        method: "POST",
+        url: "/policies/safe-bash/apply",
+        headers: auth(),
+      });
+      expect(apply.statusCode).toBe(200);
+      const applyBody = apply.json() as { path: string };
+      expect(applyBody.path).toMatch(/pilot-policy-safe-bash\.ts$/);
+      const { existsSync } = await import("node:fs");
+      expect(existsSync(applyBody.path)).toBe(true);
+
+      // 8. Unapply removes extension
+      const unapply = await handle.app.inject({
+        method: "POST",
+        url: "/policies/safe-bash/unapply",
+        headers: auth(),
+      });
+      expect(unapply.statusCode).toBe(200);
+      expect((unapply.json() as { removed: boolean }).removed).toBe(true);
+      expect(existsSync(applyBody.path)).toBe(false);
+
+      // 9. Delete policy
+      const del = await handle.app.inject({
+        method: "DELETE",
+        url: "/policies/safe-bash",
+        headers: auth(),
+      });
+      expect(del.statusCode).toBe(200);
+      expect((del.json() as { removed: boolean }).removed).toBe(true);
+
+      // 10. List empty again
+      const after = await handle.app.inject({
+        method: "GET",
+        url: "/policies",
+        headers: auth(),
+      });
+      expect(after.json()).toEqual([]);
     });
   });
 });

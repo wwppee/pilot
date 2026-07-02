@@ -57,9 +57,30 @@ import type {
   DoctorCheck,
   DoctorReport,
   PilotService,
+  PolicyDecision,
   SessionFilter,
   SessionSearchHit,
 } from "./service.js";
+import {
+  deletePolicy as deletePolicyFromHome,
+  ensurePoliciesDir,
+  listPolicies as listPoliciesFromFs,
+  policyExtensionPath,
+  readPolicy as readPolicyFromHome,
+  tryReadPolicy,
+  writePolicy as writePolicyToHome,
+  type ToolPolicyInput,
+} from "./policy.js";
+import {
+  checkPolicy as checkPolicyInEngine,
+  type ToolCallInfo,
+} from "./policy-engine.js";
+import { generatePolicyExtension } from "./policy-extension.js";
+import {
+  writeFile,
+  unlink as unlinkFile,
+  stat as statFile,
+} from "node:fs/promises";
 
 export interface CreateServiceOptions {
   /**
@@ -100,6 +121,14 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
 
     listTools: () => listToolInventory(home),
     discoverProjectContext: (cwd) => discoverProjectContext(cwd, home),
+
+    listPolicies: () => listPoliciesFromHome(home),
+    getPolicy: (name) => tryReadPolicy(name, home),
+    setPolicy: (name, input) => writePolicyWithHome(name, input, home),
+    deletePolicy: (name) => deletePolicyByName(name, home),
+    applyPolicy: (name) => applyPolicyByName(name, home),
+    unapplyPolicy: (name) => unapplyPolicyByName(name, home),
+    checkPolicyCall: (name, call) => checkPolicyCallByName(name, call, home),
   };
 }
 
@@ -356,4 +385,67 @@ async function pathExists(p: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+// ─── Policy (v0.4.3) ───────────────────────────────────────
+
+async function listPoliciesFromHome(
+  home?: string,
+): Promise<import("./policy.js").ToolPolicy[]> {
+  await ensurePoliciesDir(home);
+  return listPoliciesFromFs(home);
+}
+
+async function writePolicyWithHome(
+  name: string,
+  input: ToolPolicyInput,
+  home?: string,
+): Promise<import("./policy.js").ToolPolicy> {
+  await ensurePoliciesDir(home);
+  return writePolicyToHome(name, input, home);
+}
+
+async function deletePolicyByName(
+  name: string,
+  home?: string,
+): Promise<boolean> {
+  return deletePolicyFromHome(name, home);
+}
+
+async function applyPolicyByName(
+  name: string,
+  home?: string,
+): Promise<{ path: string }> {
+  const policy = await readPolicyFromHome(name, home);
+  await ensurePoliciesDir(home);
+  const file = policyExtensionPath(name, home);
+  const source = generatePolicyExtension(policy);
+  await writeFile(file, source, "utf-8");
+  return { path: file };
+}
+
+async function unapplyPolicyByName(
+  name: string,
+  home?: string,
+): Promise<{ removed: boolean }> {
+  const file = policyExtensionPath(name, home);
+  try {
+    await statFile(file);
+  } catch {
+    return { removed: false };
+  }
+  await unlinkFile(file);
+  return { removed: true };
+}
+
+async function checkPolicyCallByName(
+  name: string,
+  call: ToolCallInfo,
+  home?: string,
+): Promise<{
+  policy: import("./policy.js").ToolPolicy;
+  decision: PolicyDecision;
+}> {
+  const policy = await readPolicyFromHome(name, home);
+  return { policy, decision: checkPolicyInEngine(call, policy) };
 }

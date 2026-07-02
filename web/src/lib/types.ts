@@ -182,3 +182,38 @@ export interface ProjectContextRef {
   mtime: string;
   preview: string;
 }
+
+// ─── Tool policies (v0.4.3+) ───────────────────────────────────
+
+/**
+ * A `ToolPolicy` is a named bundle of allow/deny/path/command rules
+ * for pi. Stored in `~/.pilot/policy/<name>.toml`. Mirrors
+ * `core/policy.ts`.
+ */
+export interface ToolPolicy {
+  name: string;
+  description?: string;
+  allow: string[];
+  deny: string[];
+  denyPaths: string[];
+  denyCommands: string[];
+  sensitivePatterns: string[];
+  requireApproval: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Input shape for `setPolicy` — timestamps are server-managed. */
+export type ToolPolicyInput = Omit<
+  ToolPolicy,
+  "name" | "createdAt" | "updatedAt"
+>;
+
+/** Decision returned by `pilot policy check`. */
+export interface PolicyDecision {
+  block: boolean;
+  reason?: string;
+  rule?: string;
+  requireApproval?: boolean;
+  approvalPrompt?: string;
+}

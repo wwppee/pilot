@@ -134,6 +134,9 @@ import type {
   Capability,
   ToolInventoryItem,
   ProjectContextRef,
+  ToolPolicy,
+  ToolPolicyInput,
+  PolicyDecision,
 } from "./types.js";
 
 export const api = {
@@ -193,6 +196,39 @@ export const api = {
   listCapabilities: () => pilot<Capability[]>("/capabilities"),
   getCapability: (id: string) =>
     pilot<Capability>(`/capabilities/${encodeName(id)}`),
+
+  // ─── Policies (v0.4.3+) ────────────────────────────────────
+  policies: () => pilot<ToolPolicy[]>("/policies"),
+  policy: (name: string) => pilot<ToolPolicy>(`/policies/${encodeName(name)}`),
+  setPolicy: (name: string, input: ToolPolicyInput) =>
+    pilot<ToolPolicy>(`/policies/${encodeName(name)}`, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    }),
+  deletePolicy: (name: string) =>
+    pilot<{ removed: boolean }>(`/policies/${encodeName(name)}`, {
+      method: "DELETE",
+    }),
+  applyPolicy: (name: string) =>
+    pilot<{ path: string }>(`/policies/${encodeName(name)}/apply`, {
+      method: "POST",
+    }),
+  unapplyPolicy: (name: string) =>
+    pilot<{ removed: boolean }>(`/policies/${encodeName(name)}/unapply`, {
+      method: "POST",
+    }),
+  checkPolicy: (
+    name: string,
+    tool: string,
+    args: Record<string, unknown> = {},
+  ) =>
+    pilot<{ policy: ToolPolicy; decision: PolicyDecision }>(
+      `/policies/${encodeName(name)}/check`,
+      {
+        method: "POST",
+        body: JSON.stringify({ tool, args }),
+      },
+    ),
 };
 
 function encodeName(name: string): string {
