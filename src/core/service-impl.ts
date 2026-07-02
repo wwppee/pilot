@@ -32,9 +32,11 @@ import {
   tryReadProfile,
   writeProfile,
 } from "./profile.js";
+import { discoverProjectContext } from "./project-context.js";
 import { listAllSessions, sortByRecent } from "./sessions.js";
 import { listSources, readSettings } from "./settings.js";
 import { aggregateStats } from "./stats.js";
+import { listToolInventory } from "./tool-inventory.js";
 import {
   traceToolCalls,
   type ToolCallEvent,
@@ -95,6 +97,9 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
 
     getStats: (range) => aggregateStats(range, home),
     getUsage: (range) => aggregateUsage(range, home),
+
+    listTools: () => listToolInventory(home),
+    discoverProjectContext: (cwd) => discoverProjectContext(cwd, home),
   };
 }
 

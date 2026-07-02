@@ -22,7 +22,9 @@
 
 import type { Capability } from "./capability.js";
 import type { Profile, ProfileInput } from "./profile.js";
+import type { ProjectContextRef } from "./project-context.js";
 import type { StatsRange, StatsReport } from "./stats.js";
+import type { ToolInventoryItem } from "./tool-inventory.js";
 import type { ToolTraceFilter } from "./tool-trace.js";
 import type { UsageRange, UsageReport } from "./usage.js";
 import type { InstalledPack, Pack, SessionInfo, SessionTree } from "./types.js";
@@ -147,6 +149,14 @@ export interface PilotService {
    * empty report when no sessions are present.
    */
   getUsage(range: UsageRange): Promise<UsageReport>;
+
+  // ─── Tool inventory & project context (v0.4.2) ──────
+
+  /** All tools available to pi (built-in + npm-installed extensions). */
+  listTools(): Promise<ToolInventoryItem[]>;
+
+  /** Project context files visible from `cwd` (mirrors pi's discovery). */
+  discoverProjectContext(cwd: string): Promise<ProjectContextRef[]>;
 
   // ─── Capabilities (v0.4+) ────────────────────────────
 

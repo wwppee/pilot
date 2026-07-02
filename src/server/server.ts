@@ -296,6 +296,17 @@ export async function startServer(
     return service.getUsage(parseRange(which, days));
   });
 
+  // ─── Tools (v0.4.2) ─────────────────────────────────
+
+  app.get("/tools", async () => service.listTools());
+
+  // ─── Project context (v0.4.2) ────────────────────────
+
+  app.get<{ Querystring: { cwd?: string } }>("/context", async (req) => {
+    const cwd = req.query.cwd ?? process.cwd();
+    return service.discoverProjectContext(cwd);
+  });
+
   // ─── Centralized error handler ──────────────────────
 
   app.setErrorHandler((err: unknown, _req, reply) => {
