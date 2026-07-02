@@ -1,6 +1,6 @@
 {
   "name": "pilot",
-  "version": "0.3.9",
+  "version": "0.3.10",
   "description": "Pilot — management plane for pi.dev coding agent. Pack manager, session manager, profile manager, stats, and doctor.",
   "type": "module",
   "main": "./dist/cli.js",
@@ -17,7 +17,7 @@
     "dev": "tsx src/cli.ts",
     "start": "node dist/cli.js",
     "test": "vitest run",
-    "test:integration": "vitest run test/integration/",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src test --max-warnings 0",

@@ -3,6 +3,10 @@ on:
   push:
     branches: [main]
 
+# release-please-action needs both write scopes to create the release PR
+# and (after merge) the GitHub release itself. The repository-level
+# "Workflow permissions" setting in GitHub must also be set to
+# "Read and write permissions" — see docs/releasing.md.
 permissions:
   contents: write
   pull-requests: write
@@ -11,11 +15,13 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     steps:
+      # Note: release-please-action@v4 auto-detects the package by
+      # scanning the repo. We don't pass `package-name` (it's not a
+      # valid `with:` param and produces a warning).
       - uses: googleapis/release-please-action@v4
         id: release
         with:
           release-type: node
-          package-name: pilot
 
       - uses: actions/checkout@v4
 
@@ -26,6 +32,7 @@ jobs:
           cache: npm
 
       - name: Install & Build
+        if: steps.release.outputs.release_created
         run: |
           npm ci
           npm run build

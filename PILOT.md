@@ -103,6 +103,7 @@
 - ✅ **v0.3.7 已完**：hygiene 收尾 — 版本号统一 0.3.6、service-impl 测试离线（mock manifest，不再 real npm）、build warning 清零（移除 Next 16 不识别的 eslint config + turbopack.root 锁定）、`pilot dashboard` 自动拉起 pilot server（`--no-server` 可选）
 - ✅ **v0.3.8 已完**：release 收尾 — RELEASE-v0.3.6.md（给 GitHub release 页面贴）、Dashboard auto-refresh（10s `router.refresh()`）+ LivePulse 状态点；版本号同时升 0.3.8
 - ✅ **v0.3.9 已完**：Capabilities（read-only）— `pilot capability ls/show` CLI；Web `/capabilities` + `/capabilities/[id]` 列表+详情页；server 已有的 GET endpoints 复用。**完整 lifecycle（forge/eval/install/publish）留 v0.4**
+- ✅ **v0.3.10 已完**：release 流程清理 — `.github/workflows/release.yml` 删无效的 `package-name`（v4 action 不接受）；新增 `vitest.integration.config.ts` 让 `npm run test:integration` 真正跑 integration；integration 测试断言放宽（kind 由 npm 决定，不强加值）。**v0.3 line 完整 release-ready**
 - **v0.3.5 必出**：Web UI v1（3 个只读页，第一张截图）
 - **v0.4 必出**：Forge MVP（3 个手写能力 + eval harness）
 - **v0.5 必出**：Avatars + Session capability snapshot
