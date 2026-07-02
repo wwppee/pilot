@@ -1,0 +1,29 @@
+name: ci-alert
+# Alert when the Release workflow runs into 0-job failure (a known
+# GitHub Actions dispatch issue on this repo as of 2026-07-02).
+# We can't fix the dispatch from the repo side; we surface it loudly
+# so the maintainer knows to cut a release manually.
+
+on:
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+
+jobs:
+  alert-on-0-jobs:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'failure'
+    steps:
+      - name: Check job count
+        id: jobs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          count=$(curl -s -H "Authorization: token $GH_TOKEN" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/jobs" \
+            | python3 -c "import json,sys; print(json.load(sys.stdin)['total_count'])")
+          echo "job_count=$count" >> "$GITHUB_OUTPUT"
+          if [[ "$count" == "0" ]]; then
+            echo "::warning::Release workflow returned 0 jobs — release-please is not running. Use scripts/make-release.sh to cut a release manually."
+          fi
