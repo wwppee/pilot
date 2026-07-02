@@ -452,7 +452,13 @@ describe("v3 format (pi v3 JSONL)", () => {
             cacheRead: 0,
             cacheWrite: 0,
             totalTokens: 150,
-            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+            cost: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              total: 0,
+            },
           },
           stopReason: "stop",
           timestamp: 1720423201000,
@@ -513,8 +519,9 @@ describe("v3 format (pi v3 JSONL)", () => {
     try {
       let sawAssistant = false;
       let sawNonAssistant = false;
-      for await (const entry of (await import("../../src/core/jsonl-parser.js"))
-        .readEntries(path)) {
+      for await (const entry of (
+        await import("../../src/core/jsonl-parser.js")
+      ).readEntries(path)) {
         if (isAssistantEntry(entry)) {
           expect(entry.message.model).toBeDefined();
           expect(entry.message.usage).toBeDefined();
@@ -534,10 +541,14 @@ describe("v3 format (pi v3 JSONL)", () => {
     const path = buildV3({ toolName: "bash", isError: true });
     try {
       let found: { toolName: string; isError: boolean } | null = null;
-      for await (const entry of (await import("../../src/core/jsonl-parser.js"))
-        .readEntries(path)) {
+      for await (const entry of (
+        await import("../../src/core/jsonl-parser.js")
+      ).readEntries(path)) {
         if (isToolResultEntry(entry)) {
-          found = { toolName: entry.message.toolName, isError: entry.message.isError };
+          found = {
+            toolName: entry.message.toolName,
+            isError: entry.message.isError,
+          };
         }
       }
       expect(found).toEqual({ toolName: "bash", isError: true });

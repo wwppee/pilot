@@ -70,15 +70,17 @@ function printUsage(
   console.log();
 
   if (u.totalAssistantMessages === 0) {
-    console.log(kleur.dim("  No usage data yet (no sessions with AssistantMessage.usage)"));
+    console.log(
+      kleur.dim(
+        "  No usage data yet (no sessions with AssistantMessage.usage)",
+      ),
+    );
     return;
   }
 
   console.log(`  sessions:    ${kleur.bold(String(u.totalSessions))}`);
   console.log(`  messages:    ${kleur.bold(String(u.totalAssistantMessages))}`);
-  console.log(
-    `  total tokens: ${kleur.bold(formatInt(u.totalTokens))}`,
-  );
+  console.log(`  total tokens: ${kleur.bold(formatInt(u.totalTokens))}`);
   console.log(
     `  total cost:   ${kleur.bold("$" + u.totalCost.toFixed(4))} ${kleur.dim("USD")}`,
   );

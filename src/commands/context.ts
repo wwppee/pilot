@@ -98,7 +98,9 @@ function printList(refs: ProjectContextRef[], cwd: string): void {
 
 async function printShow(r: ProjectContextRef): Promise<void> {
   console.log(kleur.bold(r.path));
-  console.log(`  ${formatBytes(r.bytes)}  mtime: ${r.mtime}  loaded: ${r.loaded}`);
+  console.log(
+    `  ${formatBytes(r.bytes)}  mtime: ${r.mtime}  loaded: ${r.loaded}`,
+  );
   console.log();
   try {
     const content = await readFile(r.path, "utf-8");

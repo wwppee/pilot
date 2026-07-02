@@ -63,12 +63,32 @@ interface BuiltInDef {
 
 const BUILT_INS: BuiltInDef[] = [
   { name: "read", safety: "read", description: "Read file contents" },
-  { name: "write", safety: "write", description: "Write files (creates/overwrites)" },
-  { name: "edit", safety: "write", description: "Edit files with find/replace" },
+  {
+    name: "write",
+    safety: "write",
+    description: "Write files (creates/overwrites)",
+  },
+  {
+    name: "edit",
+    safety: "write",
+    description: "Edit files with find/replace",
+  },
   { name: "bash", safety: "exec", description: "Execute bash commands" },
-  { name: "grep", safety: "read", description: "Search file contents (off by default)" },
-  { name: "find", safety: "read", description: "Find files by glob pattern (off by default)" },
-  { name: "ls", safety: "read", description: "List directory contents (off by default)" },
+  {
+    name: "grep",
+    safety: "read",
+    description: "Search file contents (off by default)",
+  },
+  {
+    name: "find",
+    safety: "read",
+    description: "Find files by glob pattern (off by default)",
+  },
+  {
+    name: "ls",
+    safety: "read",
+    description: "List directory contents (off by default)",
+  },
 ];
 
 // ─── Inventory ──────────────────────────────────────────────
@@ -81,7 +101,9 @@ const BUILT_INS: BuiltInDef[] = [
  * `~/.pi/agent/extensions/*.ts` are not parsed in v0.4.2 (would
  * require AST scan) — they show up only if registered through npm.
  */
-export async function listToolInventory(home?: string): Promise<ToolInventoryItem[]> {
+export async function listToolInventory(
+  home?: string,
+): Promise<ToolInventoryItem[]> {
   const out: ToolInventoryItem[] = [];
 
   // 1. Built-ins — always available, always enabled

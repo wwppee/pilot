@@ -22,7 +22,11 @@ function buildV3Session(
     cwd: string;
     startedAt: string;
     models: Array<{ model: string; usage: object; atOffset?: number }>;
-    toolResults?: Array<{ toolName: string; isError?: boolean; atOffset?: number }>;
+    toolResults?: Array<{
+      toolName: string;
+      isError?: boolean;
+      atOffset?: number;
+    }>;
   },
 ): string {
   mkdirSync(join(dir, opts.cwd), { recursive: true });
@@ -121,7 +125,13 @@ describe("usage (v0.4.2)", () => {
                 cacheRead: 0,
                 cacheWrite: 0,
                 totalTokens: 1500,
-                cost: { input: 0.04, output: 0.01, cacheRead: 0, cacheWrite: 0, total: 0.05 },
+                cost: {
+                  input: 0.04,
+                  output: 0.01,
+                  cacheRead: 0,
+                  cacheWrite: 0,
+                  total: 0.05,
+                },
               },
             },
             {
@@ -132,7 +142,13 @@ describe("usage (v0.4.2)", () => {
                 cacheRead: 100,
                 cacheWrite: 50,
                 totalTokens: 2950,
-                cost: { input: 0.08, output: 0.016, cacheRead: 0.001, cacheWrite: 0.0005, total: 0.0975 },
+                cost: {
+                  input: 0.08,
+                  output: 0.016,
+                  cacheRead: 0.001,
+                  cacheWrite: 0.0005,
+                  total: 0.0975,
+                },
               },
             },
           ],
@@ -151,7 +167,13 @@ describe("usage (v0.4.2)", () => {
                 cacheRead: 0,
                 cacheWrite: 0,
                 totalTokens: 700,
-                cost: { input: 0.002, output: 0.001, cacheRead: 0, cacheWrite: 0, total: 0.003 },
+                cost: {
+                  input: 0.002,
+                  output: 0.001,
+                  cacheRead: 0,
+                  cacheWrite: 0,
+                  total: 0.003,
+                },
               },
             },
           ],
@@ -174,7 +196,9 @@ describe("usage (v0.4.2)", () => {
         expect(opus?.cacheWrite).toBe(50);
         expect(opus?.cost).toBeCloseTo(0.1475, 6);
 
-        const sonnet = report.byModel.find((b) => b.model === "claude-sonnet-4-5");
+        const sonnet = report.byModel.find(
+          (b) => b.model === "claude-sonnet-4-5",
+        );
         expect(sonnet).toBeDefined();
         expect(sonnet?.messages).toBe(1);
         expect(sonnet?.cost).toBeCloseTo(0.003, 6);
@@ -205,7 +229,13 @@ describe("usage (v0.4.2)", () => {
                 cacheRead: 0,
                 cacheWrite: 0,
                 totalTokens: 150,
-                cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+                cost: {
+                  input: 0,
+                  output: 0,
+                  cacheRead: 0,
+                  cacheWrite: 0,
+                  total: 0,
+                },
               },
             },
           ],
@@ -222,7 +252,13 @@ describe("usage (v0.4.2)", () => {
                 cacheRead: 0,
                 cacheWrite: 0,
                 totalTokens: 300,
-                cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+                cost: {
+                  input: 0,
+                  output: 0,
+                  cacheRead: 0,
+                  cacheWrite: 0,
+                  total: 0,
+                },
               },
             },
           ],
@@ -239,7 +275,13 @@ describe("usage (v0.4.2)", () => {
                 cacheRead: 0,
                 cacheWrite: 0,
                 totalTokens: 75,
-                cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+                cost: {
+                  input: 0,
+                  output: 0,
+                  cacheRead: 0,
+                  cacheWrite: 0,
+                  total: 0,
+                },
               },
             },
           ],
@@ -290,7 +332,13 @@ describe("usage (v0.4.2)", () => {
                 cacheRead: 0,
                 cacheWrite: 0,
                 totalTokens: 150,
-                cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+                cost: {
+                  input: 0,
+                  output: 0,
+                  cacheRead: 0,
+                  cacheWrite: 0,
+                  total: 0,
+                },
               },
             },
           ],
@@ -312,7 +360,13 @@ describe("usage (v0.4.2)", () => {
                 cacheRead: 0,
                 cacheWrite: 0,
                 totalTokens: 300,
-                cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+                cost: {
+                  input: 0,
+                  output: 0,
+                  cacheRead: 0,
+                  cacheWrite: 0,
+                  total: 0,
+                },
               },
             },
           ],
@@ -402,7 +456,13 @@ describe("usage (v0.4.2)", () => {
                 cacheRead: 0,
                 cacheWrite: 0,
                 totalTokens: 150,
-                cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+                cost: {
+                  input: 0,
+                  output: 0,
+                  cacheRead: 0,
+                  cacheWrite: 0,
+                  total: 0,
+                },
               },
               stopReason: "stop",
               timestamp: Date.parse("2026-07-01T10:00:01Z"),

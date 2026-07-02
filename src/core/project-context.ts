@@ -46,7 +46,12 @@ export interface ProjectContextRef {
 // ─── Discovery ──────────────────────────────────────────────
 
 /** Filenames pi searches for, in priority order. */
-const PI_CONTEXT_FILENAMES = ["AGENTS.md", "AGENTS.MD", "CLAUDE.md", "CLAUDE.MD"];
+const PI_CONTEXT_FILENAMES = [
+  "AGENTS.md",
+  "AGENTS.MD",
+  "CLAUDE.md",
+  "CLAUDE.MD",
+];
 
 /**
  * Discover project context files visible from `cwd`.

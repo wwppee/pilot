@@ -217,7 +217,9 @@ function extractModel(data: unknown): string | undefined {
   return undefined;
 }
 
-function extractModelFromEntry(entry: import("./types.js").SessionEntry): string | undefined {
+function extractModelFromEntry(
+  entry: import("./types.js").SessionEntry,
+): string | undefined {
   // v3: assistant message carries model directly
   if (entry.type === "message" && entry.message) {
     const m = (entry.message as Record<string, unknown>)["model"];
@@ -234,7 +236,9 @@ function extractModelFromEntry(entry: import("./types.js").SessionEntry): string
   return undefined;
 }
 
-function messageRole(entry: import("./types.js").SessionEntry): string | undefined {
+function messageRole(
+  entry: import("./types.js").SessionEntry,
+): string | undefined {
   if (entry.type === "message" && entry.message) {
     return (entry.message as { role?: string }).role;
   }

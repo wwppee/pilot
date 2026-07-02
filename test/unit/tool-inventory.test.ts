@@ -3,12 +3,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import {
-  mkdtempSync,
-  mkdirSync,
-  writeFileSync,
-  rmSync,
-} from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { listToolInventory } from "../../src/core/tool-inventory.js";
@@ -26,7 +21,9 @@ function buildHomeWithNpm(
     JSON.stringify({
       name: "pi-extensions",
       private: true,
-      dependencies: Object.fromEntries(pkgs.map((p) => [p.name, `^${p.version}`])),
+      dependencies: Object.fromEntries(
+        pkgs.map((p) => [p.name, `^${p.version}`]),
+      ),
     }),
   );
   for (const p of pkgs) {
@@ -121,9 +118,7 @@ describe("tool-inventory (v0.4.2)", () => {
   });
 
   it("strips version range prefixes (^, ~)", async () => {
-    const home = buildHomeWithNpm([
-      { name: "foo", version: "1.2.3" },
-    ]);
+    const home = buildHomeWithNpm([{ name: "foo", version: "1.2.3" }]);
     try {
       const items = await listToolInventory(home);
       const foo = items.find((t) => t.name === "foo");

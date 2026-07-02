@@ -73,8 +73,18 @@ function buildV3Session(
           provider: "anthropic",
           model: "m1",
           usage: {
-            input: 10, output: 5, cacheRead: 0, cacheWrite: 0, totalTokens: 15,
-            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+            input: 10,
+            output: 5,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 15,
+            cost: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              total: 0,
+            },
           },
           stopReason: "toolUse",
           timestamp: aTs,
@@ -174,9 +184,21 @@ describe("tool-trace (v0.4.2)", () => {
       const path = buildV3Session(dir, {
         cwd: "--test--filter",
         calls: [
-          { toolName: "read", args: { path: "a" }, result: { text: "x", isError: false } },
-          { toolName: "bash", args: { command: "ls" }, result: { text: "y", isError: false } },
-          { toolName: "read", args: { path: "b" }, result: { text: "z", isError: false } },
+          {
+            toolName: "read",
+            args: { path: "a" },
+            result: { text: "x", isError: false },
+          },
+          {
+            toolName: "bash",
+            args: { command: "ls" },
+            result: { text: "y", isError: false },
+          },
+          {
+            toolName: "read",
+            args: { path: "b" },
+            result: { text: "z", isError: false },
+          },
         ],
       });
 
@@ -194,9 +216,21 @@ describe("tool-trace (v0.4.2)", () => {
       const path = buildV3Session(dir, {
         cwd: "--test--errs",
         calls: [
-          { toolName: "read", args: {}, result: { text: "ok", isError: false } },
-          { toolName: "bash", args: {}, result: { text: "fail", isError: true } },
-          { toolName: "write", args: {}, result: { text: "ok2", isError: false } },
+          {
+            toolName: "read",
+            args: {},
+            result: { text: "ok", isError: false },
+          },
+          {
+            toolName: "bash",
+            args: {},
+            result: { text: "fail", isError: true },
+          },
+          {
+            toolName: "write",
+            args: {},
+            result: { text: "ok2", isError: false },
+          },
         ],
       });
 
@@ -266,7 +300,11 @@ describe("tool-trace (v0.4.2)", () => {
       const path = buildV3Session(dir, {
         cwd: "--test--long",
         calls: [
-          { toolName: "read", args: {}, result: { text: long, isError: false } },
+          {
+            toolName: "read",
+            args: {},
+            result: { text: long, isError: false },
+          },
         ],
       });
 

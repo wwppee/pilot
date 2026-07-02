@@ -286,7 +286,9 @@ function extractPreviewFromEntry(entry: SessionEntry): string | undefined {
   return undefined;
 }
 
-function extractPreviewFromMessage(msg: AgentMessage | unknown): string | undefined {
+function extractPreviewFromMessage(
+  msg: AgentMessage | unknown,
+): string | undefined {
   if (!msg || typeof msg !== "object") return undefined;
   const m = msg as Record<string, unknown>;
 

@@ -69,18 +69,28 @@ export async function* traceToolCalls(
   // First pass: build a map of toolCallId → arguments from assistant
   // messages. This is needed because pi stores the call in the assistant
   // message and the result in a separate toolResult message.
-  const argsByCallId = new Map<string, { args: Record<string, unknown>; ts: number }>();
+  const argsByCallId = new Map<
+    string,
+    { args: Record<string, unknown>; ts: number }
+  >();
   for await (const entry of readEntries(filePath)) {
     if (entry.type !== "message" || !entry.message) continue;
     const msg = entry.message as Record<string, unknown>;
     if (msg["role"] !== "assistant") continue;
     const c = msg["content"];
     if (!Array.isArray(c)) continue;
-    const ts = typeof msg["timestamp"] === "number" ? (msg["timestamp"] as number) : Date.now();
+    const ts =
+      typeof msg["timestamp"] === "number"
+        ? (msg["timestamp"] as number)
+        : Date.now();
     for (const block of c) {
       if (!block || typeof block !== "object") continue;
       const b = block as Record<string, unknown>;
-      if (b["type"] === "toolCall" && typeof b["id"] === "string" && b["arguments"]) {
+      if (
+        b["type"] === "toolCall" &&
+        typeof b["id"] === "string" &&
+        b["arguments"]
+      ) {
         argsByCallId.set(b["id"] as string, {
           args: b["arguments"] as Record<string, unknown>,
           ts,
@@ -94,16 +104,15 @@ export async function* traceToolCalls(
   for await (const entry of readEntries(filePath)) {
     if (filter.limit !== undefined && emitted >= filter.limit) return;
     if (!isToolResultEntry(entry)) continue;
-    const tr = (entry.message as ToolResultMessage);
+    const tr = entry.message as ToolResultMessage;
     if (filter.toolName && tr.toolName !== filter.toolName) continue;
     if (filter.onlyErrors && !tr.isError) continue;
 
-    const ts = entry.timestamp ?? new Date(tr.timestamp ?? Date.now()).toISOString();
+    const ts =
+      entry.timestamp ?? new Date(tr.timestamp ?? Date.now()).toISOString();
     const args = argsByCallId.get(tr.toolCallId);
     const latency =
-      args && tr.timestamp
-        ? Math.max(0, tr.timestamp - args.ts)
-        : undefined;
+      args && tr.timestamp ? Math.max(0, tr.timestamp - args.ts) : undefined;
 
     emitted++;
     yield {

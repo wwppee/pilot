@@ -69,7 +69,11 @@ function printList(items: ToolInventoryItem[]): void {
     console.log(kleur.underline("Built-in"));
     for (const t of builtIns) {
       const safetyColor =
-        t.safety === "exec" ? kleur.red : t.safety === "write" ? kleur.yellow : kleur.cyan;
+        t.safety === "exec"
+          ? kleur.red
+          : t.safety === "write"
+            ? kleur.yellow
+            : kleur.cyan;
       console.log(
         `  ${kleur.cyan(t.name.padEnd(10))} ${safetyColor(t.safety.padEnd(8))} ${kleur.dim(t.description)}`,
       );

@@ -3,7 +3,13 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from "node:fs";
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  rmSync,
+  symlinkSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { discoverProjectContext } from "../../src/core/project-context.js";
@@ -13,7 +19,10 @@ describe("project-context (v0.4.2)", () => {
   it("finds AGENTS.md in cwd", async () => {
     const cwd = mkdtempSync(join(tmpdir(), "pilot-pc-"));
     try {
-      writeFileSync(join(cwd, "AGENTS.md"), "# Project agents\nUse TypeScript.\n");
+      writeFileSync(
+        join(cwd, "AGENTS.md"),
+        "# Project agents\nUse TypeScript.\n",
+      );
       const refs = await discoverProjectContext(cwd, "/nonexistent-home");
       const agents = refs.find((r) => r.filename === "AGENTS.md");
       expect(agents).toBeDefined();
