@@ -13,7 +13,10 @@ permissions:
 
 jobs:
   release-please:
-    runs-on: ubuntu-latest
+    # Pin to ubuntu-22.04 instead of ubuntu-latest — the latter has
+    # been hitting runner-dispatch timeouts on this repo's release
+    # workflow (every push since v0.4.0 returns 0-job failure).
+    runs-on: ubuntu-22.04
     steps:
       # Pin to a specific SHA + use config file for explicit package
       # declaration. After v0.4.0 we kept hitting 0-job failures when
