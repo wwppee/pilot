@@ -523,3 +523,97 @@ describe("commands use ctx.service (not direct core) > pilot capability", () => 
     expect(code).toBe(1);
   });
 });
+
+// ─── Forge command (v0.4.1+) ────────────────────────────────────
+
+import * as forgeCmd from "../../src/commands/forge.js";
+
+describe("commands use ctx.service (not direct core) > pilot forge", () => {
+  function makeForge(service: any) {
+    const logger = {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      success: vi.fn(),
+    };
+    return { logger, service, home: "/tmp/pilot-forge-test" } as any;
+  }
+
+  it("prints usage when called with no subcommand", async () => {
+    const code = await forgeCmd.run([], makeForge({}));
+    expect(code).toBe(1);
+    expect(forgeCmd.manifest.name).toBe("forge");
+  });
+
+  it("search returns 1 when query is too short", async () => {
+    const code = await forgeCmd.run(["search", "a"], makeForge({}));
+    expect(code).toBe(1);
+  });
+
+  it("search returns 1 when no query", async () => {
+    const code = await forgeCmd.run(["search"], makeForge({}));
+    expect(code).toBe(1);
+  });
+
+  it("search returns results from service", async () => {
+    const svc = {
+      searchPacks: async (q: string) => [
+        { name: q + "-foo", version: "1.0.0", description: "x" },
+        { name: "bar", version: "0.1.0", description: "y" },
+      ],
+    };
+    const code = await forgeCmd.run(["search", "pi"], makeForge(svc));
+    expect(code).toBe(0);
+  });
+
+  it("search handles 0 results cleanly", async () => {
+    const svc = { searchPacks: async () => [] };
+    const ctx = makeForge(svc);
+    const code = await forgeCmd.run(["search", "nothing"], ctx);
+    expect(code).toBe(0);
+    expect(ctx.logger.info).toHaveBeenCalled();
+  });
+
+  it("inspect returns 1 when no name", async () => {
+    const code = await forgeCmd.run(["inspect"], makeForge({}));
+    expect(code).toBe(1);
+  });
+
+  it("inspect returns 1 when pack not found", async () => {
+    // Use a name that's guaranteed not on npm (random suffix, no real hits)
+    const code = await forgeCmd.run(
+      ["inspect", "definitely-not-real-zzz-xyz-987654321"],
+      makeForge({}),
+    );
+    expect(code).toBe(1);
+  });
+
+  it("absorb returns 1 when no name", async () => {
+    const code = await forgeCmd.run(["absorb"], makeForge({}));
+    expect(code).toBe(1);
+  });
+
+  it("absorb returns 1 when pack not found", async () => {
+    const code = await forgeCmd.run(
+      ["absorb", "definitely-not-real-zzz-xyz-987654321"],
+      makeForge({}),
+    );
+    expect(code).toBe(1);
+  });
+
+  it("unknown subcommand returns 1", async () => {
+    const code = await forgeCmd.run(["delete"], makeForge({}));
+    expect(code).toBe(1);
+  });
+
+  it("internal helpers map kinds correctly", async () => {
+    const { __test__ } = forgeCmd as any;
+    // deriveCapabilityId strips npm scope
+    expect(__test__.deriveCapabilityId({ name: "@wwppee/foo" })).toBe("foo");
+    expect(__test__.deriveCapabilityId({ name: "bar" })).toBe("bar");
+    // isValidCapabilityId enforces kebab-case
+    expect(__test__.isValidCapabilityId("foo-bar")).toBe(true);
+    expect(__test__.isValidCapabilityId("FooBar")).toBe(false);
+    expect(__test__.isValidCapabilityId("foo--bar")).toBe(false);
+  });
+});

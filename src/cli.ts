@@ -24,6 +24,7 @@ import * as profileCmd from "./commands/profile.js";
 import * as statsCmd from "./commands/stats.js";
 import * as dashboardCmd from "./commands/dashboard.js";
 import * as capabilityCmd from "./commands/capability.js";
+import * as forgeCmd from "./commands/forge.js";
 
 /** All registered top-level commands. */
 const commands = [
@@ -35,6 +36,7 @@ const commands = [
   statsCmd,
   dashboardCmd,
   capabilityCmd,
+  forgeCmd,
 ] as const;
 
 async function main(): Promise<void> {
