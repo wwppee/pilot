@@ -142,14 +142,150 @@ export interface PackTeam {
 
 // ─── Session types ──────────────────────────────────────────────────
 
-/** A single entry in a JSONL session file. */
+/**
+ * A single entry in a JSONL session file (pi v3 format).
+ *
+ * v3 is the current format produced by `@earendil-works/pi-coding-agent`:
+ * the session file starts with a `{type: "session", version: 3, ...}` header,
+ * followed by entries with `type: "message" | "model_change" | "thinking_level_change" |
+ * "compaction" | "branch_summary" | "custom" | "custom_message" | "label" | "session_info"`.
+ *
+ * For backward compat with the original (pre-v0.4.2) pilot code which
+ * assumed a flat `{type: "user" | "assistant" | ...}` shape, we accept
+ * those types as well. The shape is "wide" — fields are at the top level
+ * for legacy types, or nested under `message` for v3.
+ *
+ * See: `node_modules/@earendil-works/pi-coding-agent/docs/session-format.md`
+ */
 export interface SessionEntry {
-  id: string;
-  parentId?: string;
-  type: "user" | "assistant" | "tool" | "system";
+  id?: string;
+  parentId?: string | null;
   timestamp?: string;
-  /** Entry-specific data. Shape varies by type. */
+  /**
+   * Entry type.
+   * - v3 format: "session" | "message" | "model_change" | "thinking_level_change" |
+   *   "compaction" | "branch_summary" | "custom" | "custom_message" | "label" | "session_info"
+   * - legacy (pre-v0.4.2): "user" | "assistant" | "tool" | "system"
+   */
+  type: string;
+  /** v3 message payload (only for `type: "message"`). */
+  message?: AgentMessage;
+  /** Legacy payload (pre-v0.4.2). */
   data?: unknown;
+  /** v3 model_change payload. */
+  model?: string;
+  /** v3 thinking_level_change payload. */
+  level?: string;
+  /** v3 session header (only for first line). */
+  version?: number;
+  cwd?: string;
+}
+
+/**
+ * v3 message payload (the `message` field of a `{type: "message"}` entry).
+ *
+ * Discriminated by `role`. We model the variants Pilot actually reads:
+ * - user: text prompt
+ * - assistant: model response with usage/cost
+ * - toolResult: tool execution result with isError
+ * - bashExecution, custom, branchSummary, compactionSummary: passed through
+ *   as opaque JSON for v0.4.2 — Pilot surfaces them later if needed.
+ */
+export type AgentMessage =
+  | { role: "user"; content: string | unknown[]; timestamp?: number }
+  | AssistantMessage
+  | ToolResultMessage
+  | BashExecutionMessage
+  | CustomAgentMessage
+  | BranchSummaryMessage
+  | CompactionSummaryMessage
+  | { role: string; [key: string]: unknown };
+
+/** Pi v3 AssistantMessage — carries token usage and cost. */
+export interface AssistantMessage {
+  role: "assistant";
+  /** Inline content blocks (text / thinking / tool calls). */
+  content: unknown[];
+  /** Provider API identifier (e.g. "anthropic-messages"). */
+  api: string;
+  /** Provider name (e.g. "anthropic"). */
+  provider: string;
+  /** Model name (e.g. "claude-opus-4-6"). */
+  model: string;
+  /** Token usage and cost — pilot's `usage.ts` reads this. */
+  usage: Usage;
+  stopReason: "stop" | "length" | "toolUse" | "error" | "aborted";
+  errorMessage?: string;
+  timestamp: number;
+}
+
+/** Pi v3 ToolResultMessage — tool call outcome. */
+export interface ToolResultMessage {
+  role: "toolResult";
+  toolCallId: string;
+  toolName: string;
+  content: unknown[];
+  details?: unknown;
+  isError: boolean;
+  timestamp: number;
+}
+
+/** Pi v3 BashExecutionMessage — user-triggered `!` commands. */
+export interface BashExecutionMessage {
+  role: "bashExecution";
+  command: string;
+  output: string;
+  exitCode: number | undefined;
+  cancelled: boolean;
+  truncated: boolean;
+  fullOutputPath?: string;
+  excludeFromContext?: boolean;
+  timestamp: number;
+}
+
+/** Pi v3 CustomMessage — extension-injected message. */
+export interface CustomAgentMessage {
+  role: "custom";
+  customType: string;
+  content: string | unknown[];
+  display: boolean;
+  details?: unknown;
+  timestamp: number;
+}
+
+export interface BranchSummaryMessage {
+  role: "branchSummary";
+  summary: string;
+  fromId: string;
+  timestamp: number;
+}
+
+export interface CompactionSummaryMessage {
+  role: "compactionSummary";
+  summary: string;
+  tokensBefore: number;
+  timestamp: number;
+}
+
+/**
+ * Pi v3 token usage and cost.
+ * `cost` is in USD; `cacheRead`/`cacheWrite` are 5-min cache unless `cacheWrite1h`
+ * is set (Anthropic-only), in which case it tracks 1-hour cache write separately.
+ */
+export interface Usage {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
+  cacheWrite1h?: number;
+  totalTokens: number;
+  cost: {
+    input: number;
+    output: number;
+    cacheRead: number;
+    cacheWrite: number;
+    total: number;
+  };
 }
 
 /** Metadata about a session file (no full content). */

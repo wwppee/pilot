@@ -36,6 +36,12 @@ import { listAllSessions, sortByRecent } from "./sessions.js";
 import { listSources, readSettings } from "./settings.js";
 import { aggregateStats } from "./stats.js";
 import {
+  traceToolCalls,
+  type ToolCallEvent,
+  type ToolTraceFilter,
+} from "./tool-trace.js";
+import { aggregateUsage } from "./usage.js";
+import {
   piAgentDir,
   piSettingsFile,
   piSessionsDir,
@@ -75,6 +81,7 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
     listSessions: (filter) => listSessions(filter, home),
     searchSessions: (q, options) => searchSessions(q, options, home),
     readSessionTree: (id) => readSessionTreeById(id, home),
+    traceSessionTools: (id, filter) => traceSessionTools(id, home, filter),
 
     runDoctor: () => runDoctor(home),
 
@@ -87,6 +94,7 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
     deleteProfile: (name) => deleteProfile(name, home),
 
     getStats: (range) => aggregateStats(range, home),
+    getUsage: (range) => aggregateUsage(range, home),
   };
 }
 
@@ -194,6 +202,19 @@ async function readSessionTreeById(
     throw new Error(`session not found: ${id}`);
   }
   return readSessionTree(match.path, id);
+}
+
+async function* traceSessionTools(
+  id: string,
+  home: string | undefined,
+  filter: ToolTraceFilter | undefined,
+): AsyncIterable<ToolCallEvent> {
+  const all = await listAllSessions(home);
+  const match = all.find((s) => s.id === id);
+  if (!match) {
+    throw new Error(`session not found: ${id}`);
+  }
+  yield* traceToolCalls(match.path, filter ?? {});
 }
 
 // ─── Doctor ────────────────────────────────────────────────

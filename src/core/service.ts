@@ -23,6 +23,8 @@
 import type { Capability } from "./capability.js";
 import type { Profile, ProfileInput } from "./profile.js";
 import type { StatsRange, StatsReport } from "./stats.js";
+import type { ToolTraceFilter } from "./tool-trace.js";
+import type { UsageRange, UsageReport } from "./usage.js";
 import type { InstalledPack, Pack, SessionInfo, SessionTree } from "./types.js";
 
 // ─── Filter / result types ──────────────────────────────────
@@ -100,6 +102,16 @@ export interface PilotService {
    */
   readSessionTree(id: string): Promise<SessionTree>;
 
+  /**
+   * Stream tool call events from a session. Each `ToolResultMessage`
+   * yields one event with name, args, isError, latency, and content
+   * preview. v0.4.2.
+   */
+  traceSessionTools(
+    id: string,
+    filter?: ToolTraceFilter,
+  ): AsyncIterable<import("./tool-trace.js").ToolCallEvent>;
+
   // ─── Doctor ───────────────────────────────────────────
 
   /** Run health checks. Returns a structured report — commands render it. */
@@ -127,6 +139,14 @@ export interface PilotService {
    * @param range — `today` / `lastDays` / `all`. See StatsRange.
    */
   getStats(range: StatsRange): Promise<StatsReport>;
+
+  /**
+   * Aggregate token usage and cost across all sessions in the given range.
+   *
+   * v0.4.2: reads `AssistantMessage.usage` from pi v3 JSONL. Returns an
+   * empty report when no sessions are present.
+   */
+  getUsage(range: UsageRange): Promise<UsageReport>;
 
   // ─── Capabilities (v0.4+) ────────────────────────────
 

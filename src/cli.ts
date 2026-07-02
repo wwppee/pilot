@@ -22,6 +22,7 @@ import * as doctorCmd from "./commands/doctor.js";
 import * as serverCmd from "./commands/server.js";
 import * as profileCmd from "./commands/profile.js";
 import * as statsCmd from "./commands/stats.js";
+import * as usageCmd from "./commands/usage.js";
 import * as dashboardCmd from "./commands/dashboard.js";
 import * as capabilityCmd from "./commands/capability.js";
 import * as forgeCmd from "./commands/forge.js";
@@ -34,6 +35,7 @@ const commands = [
   doctorCmd,
   serverCmd,
   statsCmd,
+  usageCmd,
   dashboardCmd,
   capabilityCmd,
   forgeCmd,

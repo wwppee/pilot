@@ -6,6 +6,8 @@ import {
   readSessionInfo,
   readSessionTree,
   searchSession,
+  isAssistantEntry,
+  isToolResultEntry,
 } from "../../src/core/jsonl-parser.js";
 
 describe("jsonl-parser", () => {
@@ -399,6 +401,148 @@ describe("readSessionTree", () => {
       expect(tree.models.sort()).toEqual(["claude-opus-4.6", "gpt-5"]);
     } finally {
       rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+// ─── v3 format (pi v3 JSONL) ─────────────────────────────────
+
+describe("v3 format (pi v3 JSONL)", () => {
+  /** Build a v3 session with header + 1 user + 1 assistant + 1 tool result. */
+  function buildV3(opts: {
+    model?: string;
+    toolName?: string;
+    isError?: boolean;
+  }): string {
+    const dir = mkdtempSync(join(tmpdir(), "pilot-v3-"));
+    const path = join(dir, "session.jsonl");
+    const lines = [
+      JSON.stringify({
+        type: "session",
+        version: 3,
+        id: "abc",
+        timestamp: "2026-07-01T10:00:00Z",
+        cwd: "/Users/test/proj",
+      }),
+      JSON.stringify({
+        type: "message",
+        id: "u1",
+        parentId: null,
+        timestamp: "2026-07-01T10:00:00Z",
+        message: {
+          role: "user",
+          content: "hello",
+          timestamp: 1720423200000,
+        },
+      }),
+      JSON.stringify({
+        type: "message",
+        id: "a1",
+        parentId: "u1",
+        timestamp: "2026-07-01T10:00:01Z",
+        message: {
+          role: "assistant",
+          content: [{ type: "text", text: "hi back" }],
+          api: "anthropic-messages",
+          provider: "anthropic",
+          model: opts.model ?? "claude-opus-4-6",
+          usage: {
+            input: 100,
+            output: 50,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 150,
+            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+          },
+          stopReason: "stop",
+          timestamp: 1720423201000,
+        },
+      }),
+    ];
+    if (opts.toolName) {
+      lines.push(
+        JSON.stringify({
+          type: "message",
+          id: "t1",
+          parentId: "a1",
+          timestamp: "2026-07-01T10:00:02Z",
+          message: {
+            role: "toolResult",
+            toolCallId: "tc1",
+            toolName: opts.toolName,
+            content: [{ type: "text", text: "ok" }],
+            isError: opts.isError ?? false,
+            timestamp: 1720423202000,
+          },
+        }),
+      );
+    }
+    writeFileSync(path, lines.join("\n") + "\n");
+    return path;
+  }
+
+  it("readSessionInfo extracts model from v3 message.assistant", async () => {
+    const path = buildV3({ model: "claude-sonnet-4-5" });
+    try {
+      const info = await readSessionInfo(path, "session");
+      expect(info.model).toBe("claude-sonnet-4-5");
+      expect(info.entries).toBe(3); // session + u1 + a1
+    } finally {
+      rmSync(join(path, ".."), { recursive: true, force: true });
+    }
+  });
+
+  it("readSessionTree builds tree with role-refined display types", async () => {
+    const path = buildV3({ toolName: "read" });
+    try {
+      const tree = await readSessionTree(path, "session");
+      expect(tree.totalNodes).toBe(3); // u1, a1, t1 (session header is skipped)
+      expect(tree.root.id).toBe("u1");
+      expect(tree.root.type).toBe("user");
+      expect(tree.root.children[0]?.id).toBe("a1");
+      expect(tree.root.children[0]?.type).toBe("assistant");
+      expect(tree.root.children[0]?.children[0]?.id).toBe("t1");
+      expect(tree.root.children[0]?.children[0]?.type).toBe("toolResult");
+    } finally {
+      rmSync(join(path, ".."), { recursive: true, force: true });
+    }
+  });
+
+  it("isAssistantEntry narrows correctly", async () => {
+    const path = buildV3({ toolName: "read" });
+    try {
+      let sawAssistant = false;
+      let sawNonAssistant = false;
+      for await (const entry of (await import("../../src/core/jsonl-parser.js"))
+        .readEntries(path)) {
+        if (isAssistantEntry(entry)) {
+          expect(entry.message.model).toBeDefined();
+          expect(entry.message.usage).toBeDefined();
+          sawAssistant = true;
+        } else {
+          sawNonAssistant = true;
+        }
+      }
+      expect(sawAssistant).toBe(true);
+      expect(sawNonAssistant).toBe(true);
+    } finally {
+      rmSync(join(path, ".."), { recursive: true, force: true });
+    }
+  });
+
+  it("isToolResultEntry exposes toolName and isError", async () => {
+    const path = buildV3({ toolName: "bash", isError: true });
+    try {
+      let found: { toolName: string; isError: boolean } | null = null;
+      for await (const entry of (await import("../../src/core/jsonl-parser.js"))
+        .readEntries(path)) {
+        if (isToolResultEntry(entry)) {
+          found = { toolName: entry.message.toolName, isError: entry.message.isError };
+        }
+      }
+      expect(found).toEqual({ toolName: "bash", isError: true });
+    } finally {
+      rmSync(join(path, ".."), { recursive: true, force: true });
     }
   });
 });

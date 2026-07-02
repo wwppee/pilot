@@ -284,6 +284,18 @@ export async function startServer(
     return service.getStats(parseRange(which, days));
   });
 
+  // ─── Usage (v0.4.2) ─────────────────────────────────
+
+  app.get<{
+    Querystring: { range?: string; days?: string };
+  }>("/usage", async (req) => {
+    const which = req.query.range ?? "week";
+    const daysRaw = req.query.days;
+    const days = daysRaw ? Number(daysRaw) : undefined;
+
+    return service.getUsage(parseRange(which, days));
+  });
+
   // ─── Centralized error handler ──────────────────────
 
   app.setErrorHandler((err: unknown, _req, reply) => {

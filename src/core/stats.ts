@@ -86,11 +86,30 @@ export async function aggregateStats(
         if (!s) return;
         try {
           for await (const entry of readEntries(s.path)) {
-            totalMessages++;
-            if (entry.type === "tool") totalToolCalls++;
+            const role = messageRole(entry);
+            const isAssistant = role === "assistant";
+            const isToolResult = role === "toolResult";
+            const isUser = role === "user";
+            const isMessage = entry.type === "message";
 
-            if (entry.type === "assistant") {
-              const m = extractModel(entry.data);
+            // Skip session header, model_change, label, etc.
+            if (!isMessage && !isUser && !isAssistant && !isToolResult) {
+              // Still count "user"/"assistant"/"tool"/"system" legacy types
+              if (
+                entry.type !== "user" &&
+                entry.type !== "assistant" &&
+                entry.type !== "tool" &&
+                entry.type !== "system"
+              ) {
+                continue;
+              }
+            }
+
+            totalMessages++;
+            if (isToolResult || entry.type === "tool") totalToolCalls++;
+
+            if (isAssistant) {
+              const m = extractModelFromEntry(entry);
               if (m) {
                 const cur = modelCounts.get(m) ?? {
                   model: m,
@@ -102,7 +121,11 @@ export async function aggregateStats(
               }
             }
 
-            if (entry.type === "tool") {
+            if (isToolResult) {
+              const t = extractToolNameFromEntry(entry);
+              if (t) toolCounts.set(t, (toolCounts.get(t) ?? 0) + 1);
+            } else if (entry.type === "tool") {
+              // legacy
               const t = extractToolName(entry.data);
               if (t) toolCounts.set(t, (toolCounts.get(t) ?? 0) + 1);
             }
@@ -115,16 +138,8 @@ export async function aggregateStats(
                 toolCalls: 0,
               };
               cur.messages++;
-              if (entry.type === "tool") cur.toolCalls++;
+              if (isToolResult || entry.type === "tool") cur.toolCalls++;
               dayCounts.set(day, cur);
-            }
-
-            // Count tool calls under each model too
-            if (entry.type === "tool" && entry.parentId) {
-              // Parent must be assistant; we don't have parent resolution here.
-              // Skip the cross-link for now — byModel.toolCalls counts the
-              // assistant messages that include at least one tool call in
-              // their tree is added in a follow-up if needed.
             }
           }
         } catch {
@@ -202,6 +217,30 @@ function extractModel(data: unknown): string | undefined {
   return undefined;
 }
 
+function extractModelFromEntry(entry: import("./types.js").SessionEntry): string | undefined {
+  // v3: assistant message carries model directly
+  if (entry.type === "message" && entry.message) {
+    const m = (entry.message as Record<string, unknown>)["model"];
+    if (typeof m === "string") return m;
+  }
+  // v3: model_change entry carries model
+  if (entry.type === "model_change" && typeof entry.model === "string") {
+    return entry.model;
+  }
+  // Legacy
+  if (entry.type === "assistant" && entry.data) {
+    return extractModel(entry.data);
+  }
+  return undefined;
+}
+
+function messageRole(entry: import("./types.js").SessionEntry): string | undefined {
+  if (entry.type === "message" && entry.message) {
+    return (entry.message as { role?: string }).role;
+  }
+  return entry.type;
+}
+
 function extractToolName(data: unknown): string | undefined {
   if (!data || typeof data !== "object") return undefined;
   const obj = data as Record<string, unknown>;
@@ -212,6 +251,19 @@ function extractToolName(data: unknown): string | undefined {
   if (fn && typeof fn === "object") {
     const n = (fn as Record<string, unknown>)["name"];
     if (typeof n === "string") return n;
+  }
+  return undefined;
+}
+
+function extractToolNameFromEntry(
+  entry: import("./types.js").SessionEntry,
+): string | undefined {
+  // v3 tool result
+  if (entry.type === "message" && entry.message) {
+    const m = entry.message as Record<string, unknown>;
+    if (m["role"] === "toolResult" && typeof m["toolName"] === "string") {
+      return m["toolName"];
+    }
   }
   return undefined;
 }
