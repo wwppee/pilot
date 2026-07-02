@@ -37,8 +37,14 @@ jobs:
           npm ci
           npm run build
 
+      # npm publish is OPTIONAL — only runs if NPM_TOKEN is set in
+      # repo secrets. Without it, the release still completes
+      # successfully (the GitHub release is the source of truth),
+      # and you can publish from your machine later:
+      #   npm publish --access public
       - name: Publish to npm
-        if: steps.release.outputs.release_created
-        run: npm publish
+        if: steps.release.outputs.release_created && secrets.NPM_TOKEN != ''
+        continue-on-error: true
+        run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
