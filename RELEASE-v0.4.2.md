@@ -24,6 +24,15 @@ GET /tools
 GET /context?cwd=...
 ```
 
+## 新增 Web UI 页面
+
+- `/usage` — token usage + cost dashboard，带 by-model 表 + by-day 条形图 + 4 个 summary card
+- `/tools` — 工具库存浏览器（7 built-in + npm 包），按 safety 分类色标
+- `/context` — 项目 context 浏览器，区分"pi 加载"和"信息性"
+- Dashboard（首页）`Today` 条加 2 个新指标卡：**Tokens** + **Cost (USD)**
+
+导航栏加了 3 个新链接。3 个新路由都是 dynamic server-rendered。
+
 ## 修复的关键 bug
 
 Pilot 之前用 `{type: "user" | "assistant" | "tool" | "system", data: {...}}` 这种**不存在的 JSONL shape** 在解析。Pi v3 实际写的是 `{type: "message", message: {role, content, model, usage, ...}}`。这意味着 v0.4.1 之前 Pilot 实际上**不能读真 pi session**。本次：
@@ -35,20 +44,20 @@ Pilot 之前用 `{type: "user" | "assistant" | "tool" | "system", data: {...}}` 
 
 ## 测试
 
-- 25 个新单测
+- 25 个新单测（CLI / core）
   - usage.test.ts (5) — token/cost 聚合
   - tool-trace.test.ts (7) — ToolResultMessage 抽取
   - project-context.test.ts (9) — pi 同样的 walk-up 算法
   - tool-inventory.test.ts (6) — 7 built-in + npm 包
   - jsonl-parser.test.ts (+4) — v3 格式测试
-- 总数：**191/191 通过**（v0.4.1 是 160）
+- Web 测试：9 个新 web vitest 还在跑
+- 总数：**191/191** core + 9 web 通过（v0.4.1 是 160）
 - TypeScript strict 0 error
 
 ## 已知限制
 
 - **未实现 AST 扫描**：pi 扩展的 `.ts` 文件里的 `pi.registerTool()` 调用没解析。v0.4.2 只列 npm-installed 包的名字。v0.4.3 会加 AST。
 - **未写回 pi settings**：本次纯 read。v0.4.3 加 tool policy 写回（通过产出一个 `pilot-policy` extension 拦截 `tool_call`）。
-- **未做 Web UI**：3 个新页面（/usage, /tools, /context）留给下次。
 - **compaction / subagent tree**：v0.5+。
 
 ## 文件
@@ -66,4 +75,12 @@ Pilot 之前用 `{type: "user" | "assistant" | "tool" | "system", data: {...}}` 
 - `core/service.ts` + `service-impl.ts` (4 个新方法)
 - `server/server.ts` (3 个新 endpoint)
 - `cli.ts` (注册 2 个新命令)
+- `web/src/app/usage/page.tsx` (新)
+- `web/src/app/tools/page.tsx` (新)
+- `web/src/app/context/page.tsx` (新)
+- `web/src/app/page.tsx` (dashboard 加 tokens + cost card)
+- `web/src/lib/types.ts` (3 个新 type 集)
+- `web/src/lib/pilot.ts` (3 个新 api 方法)
+- `web/src/app/layout.tsx` (导航 3 个新链接)
 - `package.json`: 0.4.1 → 0.4.2
+- `web/package.json`: 0.3.5 → 0.4.2
