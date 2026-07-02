@@ -6,6 +6,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Node ≥ 20](https://img.shields.io/badge/node-%E2%89%A520-green.svg)](https://nodejs.org)
+[![CI](https://github.com/wwppee/pilot/actions/workflows/ci.yml/badge.svg)](https://github.com/wwppee/pilot/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/wwppee/pilot)](https://github.com/wwppee/pilot/releases/latest)
 
 [Pi](https://pi.dev) 是极简终端编码 agent。**Pilot 是 Pi 的管理平面**——它不运行 agent，只管理 Pi：包、会话、profile、消耗、健康状态。
 
