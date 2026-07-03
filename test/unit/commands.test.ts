@@ -579,7 +579,8 @@ describe("commands use ctx.service (not direct core) > pilot forge", () => {
     expect(code).toBe(1);
   });
 
-  it("inspect returns 1 when pack not found", async () => {
+  it("[network] inspect returns 1 when pack not found", async () => {
+    if (process.env["PILOT_SKIP_NETWORK"] === "1") return;
     // Use a name that's guaranteed not on npm (random suffix, no real hits)
     const code = await forgeCmd.run(
       ["inspect", "definitely-not-real-zzz-xyz-987654321"],
@@ -593,7 +594,8 @@ describe("commands use ctx.service (not direct core) > pilot forge", () => {
     expect(code).toBe(1);
   });
 
-  it("absorb returns 1 when pack not found", async () => {
+  it("[network] absorb returns 1 when pack not found", async () => {
+    if (process.env["PILOT_SKIP_NETWORK"] === "1") return;
     const code = await forgeCmd.run(
       ["absorb", "definitely-not-real-zzz-xyz-987654321"],
       makeForge({}),

@@ -459,14 +459,6 @@
   font-size: 10px;
 }
 
-/* Cozy sidebar — same warm palette */
-.compose-canvas[data-mode="cozy"] ~ * .compose-sidebar,
-.compose-canvas[data-mode="cozy"] + aside {
-  /* Note: this won't actually target inspector — kept for reference.
-     Sidebar/inspector stay modern since they're not part of the
-     sandbox itself. Only the canvas + blocks go cozy. */
-}
-
 /* Toggle button highlight when in cozy */
 .compose-inspector-footer .btn[data-active="true"] {
   background: var(--cozy-accent);
