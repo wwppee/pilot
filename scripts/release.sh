@@ -185,17 +185,24 @@ else
     else
       warn "gh CLI not found; falling back to curl + GH_TOKEN"
       PAYLOAD=$(mktemp)
-      node -e "
-        const fs = require('fs');
-        const p = {
-          tag_name: '$TAG',
-          name: '$NAME — release',
-          body: fs.readFileSync('$NOTES_FILE', 'utf8'),
-          draft: false,
-          prerelease: false,
-        };
-        fs.writeFileSync('$PAYLOAD', JSON.stringify(p));
-      "
+      # Build the JSON payload via Python so the release-notes body
+      # (which contains triple-quoted ``` fences, newlines, em-dashes,
+      # etc.) is safely JSON-encoded. node -e with a heredoc string
+      # mangles those characters and produces invalid JSON.
+      python3 -c "
+import json, sys
+with open('$NOTES_FILE', 'r', encoding='utf-8') as f:
+    body = f.read()
+payload = {
+    'tag_name': '$TAG',
+    'name': '$NAME — release',
+    'body': body,
+    'draft': False,
+    'prerelease': False,
+}
+with open('$PAYLOAD', 'w', encoding='utf-8') as f:
+    json.dump(payload, f, ensure_ascii=False)
+"
       HTTP_CODE=$(curl -s -o /tmp/release-resp.json -w '%{http_code}' \
         -X POST \
         -H "Authorization: token $GH_TOKEN" \
