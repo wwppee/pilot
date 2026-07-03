@@ -52,15 +52,16 @@ export default async function ComposePage() {
       </p>
       {error ? (
         <section className="card error">
-          <h2>Couldn&apos;t load catalog</h2>
+          <h2>
+            <T k="error.couldntLoad.title" />: catalog
+          </h2>
           <pre>{error}</pre>
           <p className="hint">
-            Is <code>pilot server</code> running? Try{" "}
-            <code>pilot server start</code>.
+            <T k="error.couldntLoad.body" />
           </p>
         </section>
       ) : catalog ? (
-        <Suspense fallback={<p>Loading catalog…</p>}>
+        <Suspense fallback={<p><T k="loading.catalog" /></p>}>
           <ComposeBoard initialCatalog={catalog} />
         </Suspense>
       ) : null}

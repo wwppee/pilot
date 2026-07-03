@@ -72,7 +72,7 @@ export default async function UsagePage({
             <T k="usage.subtitle" />
           </p>
         </div>
-        <nav className="flex gap-1 text-xs" aria-label="Range">
+        <nav className="flex gap-1 text-xs" aria-label={renderT(locale, "btn.ariaRange")}>
           {RANGES.map((r) => (
             <Link
               key={r.key}

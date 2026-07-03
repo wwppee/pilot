@@ -31,16 +31,19 @@ export function DeleteButton({
   name,
   label,
   action,
+  confirmMessage,
 }: {
   name: string;
   label: string;
   action: (data: FormData) => void;
+  confirmMessage?: string;
 }) {
+  const fallback = `Delete "${name}"? This cannot be undone.`;
   return (
     <form
       action={action}
       onSubmit={(e) => {
-        if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) {
+        if (!window.confirm(confirmMessage ?? fallback)) {
           e.preventDefault();
         }
       }}

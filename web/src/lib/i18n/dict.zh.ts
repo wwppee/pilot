@@ -50,14 +50,93 @@ const zh: Dict = {
   "btn.refresh": "刷新",
   "btn.export": "导出",
   "btn.import": "导入",
+  "btn.clear": "清空",
   "btn.add": "添加",
   "btn.remove": "移除",
   "btn.create": "创建",
+  "btn.edit": "编辑",
+  "btn.filter": "筛选",
+  "btn.submit": "提交",
   "btn.ariaConfirmDelete": "确认删除策略（再点一次即删除）",
   "btn.ariaDelete": "删除该策略",
+  "btn.ariaDeleteProfile": "删除该配置",
   "btn.ariaApplyTitle":
     "生成 ~/.pilot/extensions/pilot-policy-<name>.ts 并让 pi 加载",
   "btn.ariaUnapplyTitle": "移除已生成的扩展",
+  "btn.ariaEditPolicy": "编辑策略 {name}",
+  "btn.ariaFormActions": "表单操作",
+  "btn.ariaRange": "时间范围",
+  "btn.ariaSearch": "搜索",
+  "btn.ariaSearchCatalog": "搜索目录",
+  "btn.ariaComposeCanvas":
+    "编排画布。选中方块后，用方向键移动，Delete 删除，Escape 取消选中。",
+  "btn.ariaRemoveBlock": "移除方块",
+
+  // Loading / empty / errors
+  "loading.generic": "加载中…",
+  "loading.form": "加载表单中…",
+  "loading.catalog": "加载目录中…",
+  "loading.policies": "加载中…",
+  "loading.policyForm": "加载表单中…",
+  "error.couldntLoad.title": "加载失败",
+  "error.couldntLoad.body": "是否 `pilot server` 没在跑？试试 `pilot server start`。",
+  "status.unsaved": "有未保存的修改",
+  "status.saving": "保存中…",
+
+  // Policy list / edit
+  "policy.edit.h1": "编辑策略",
+  "policy.edit.backToList": "← 返回策略列表",
+  "policy.edit.backToListAria": "返回策略列表",
+  "policy.edit.ariaEdit": "编辑策略 {name}",
+  "policy.descriptionLabel": "描述",
+  "policy.empty.title": "暂无策略",
+  "policy.empty.body":
+    "用 `pilot policy new <name>` 创建，或 `pilot policy apply` 应用。",
+  "policy.serverHint": "是否 `pilot server` 没在跑？试试 `pilot server start`。",
+  "policy.tryRule.h2": "试着跑一条规则",
+  "policy.tryRule.noPolicies": "暂无可测试的策略。",
+  "policy.tryRule.policyLabel": "策略",
+  "policy.tryRule.toolLabel": "工具",
+  "policy.tryRule.argsLabel": "参数 (JSON)",
+  "policy.tryRule.runCheck": "检查",
+  "policy.check": "检查",
+  "policy.allowBadge": "允许",
+  "policy.denyBadge": "拒绝",
+  "policy.warnBadge": "警告",
+  "policy.hitlBadge": "需确认",
+  "policy.hitlDesc": "会话暂停，通过 `ctx.ui.confirm()` 询问用户后再执行。",
+  "policy.applyFailed": "应用失败：{msg}",
+  "policy.unapplyFailed": "取消应用失败：{msg}",
+  "policy.confirmDeleteProfile": "删除 \"{name}\"？此操作不可恢复。",
+
+  // Compose
+  "compose.searchPlaceholder": "搜索…",
+  "compose.emptySearch": "无匹配。调整筛选或搜索条件。",
+  "compose.dragHint": "拖到画布，或按 Enter 添加到中央",
+  "compose.canvasAria":
+    "编排画布。选中方块后，用方向键移动，Delete 删除，Escape 取消选中。",
+  "compose.canvasEmpty": "画布为空 — 选中侧栏项后按 {key} 添加。",
+  "compose.canvasSelectBlock":
+    "点击画布上的方块查看详情。按 {del} 删除，按 {esc} 取消选中。",
+  "compose.removeBlock": "移除方块",
+
+  // Packages
+  "packages.noPacksHint": "还没装包。试试 `pilot pack search subagent`。",
+
+  // Profiles [name]
+  "profiles.editHeading": "编辑",
+  "profiles.descriptionPlaceholder": "这份配置用来做什么？",
+  "profiles.saved": "配置已更新。",
+  "profiles.model": "模型",
+  "profiles.thinking": "思考",
+  "profiles.packages": "包",
+
+  // Context
+  "context.loadedTitle": "Pi 已加载",
+  "context.infoTitle": "仅供查看",
+
+  // Range nav
+  "range.today": "今天",
 
   // Home (dashboard)
   "home.h1": "概览",

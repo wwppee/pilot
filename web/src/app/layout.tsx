@@ -7,6 +7,7 @@ import { Outfit, JetBrains_Mono } from "next/font/google";
 import { api } from "@/lib/pilot";
 import { negotiateLocale, type Locale } from "@/lib/i18n";
 import { I18nProvider, T } from "@/components/I18n";
+import { NavLinks } from "@/components/NavLinks";
 import { renderT } from "@/lib/i18n";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
@@ -32,19 +33,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: "#0b0d10",
 };
-
-const NAV_KEYS = [
-  { href: "/", labelKey: "nav.dashboard" as const },
-  { href: "/packages", labelKey: "nav.packages" as const },
-  { href: "/sessions", labelKey: "nav.sessions" as const },
-  { href: "/usage", labelKey: "nav.usage" as const },
-  { href: "/tools", labelKey: "nav.tools" as const },
-  { href: "/context", labelKey: "nav.context" as const },
-  { href: "/policy", labelKey: "nav.policy" as const },
-  { href: "/compose", labelKey: "nav.compose" as const },
-  { href: "/profiles", labelKey: "nav.profiles" as const },
-  { href: "/capabilities", labelKey: "nav.capabilities" as const },
-];
 
 export default async function RootLayout({
   children,
@@ -90,8 +78,6 @@ export default async function RootLayout({
 
   // Pre-render static strings server-side so we don't depend on the
   // client provider for SSR output (avoids layout shift).
-  const skipToMain = renderT(locale, "skip.toMain");
-  const navAriaLabel = renderT(locale, "nav.ariaLabel");
   const brandAria = renderT(locale, "brand.ariaHome");
   const serverUpText = renderT(locale, "server.up", { version });
   const serverDownText = renderT(locale, "server.down");
@@ -105,10 +91,14 @@ export default async function RootLayout({
     >
       <body>
         <I18nProvider initialLocale={locale}>
+          {/* Skip link + nav aria-label live INSIDE the I18nProvider so
+              they re-render when the user toggles language. Previously
+              they were pre-rendered server-side and never updated on
+              client-side locale change. */}
           {/* Skip link: invisible until focused. Lets keyboard users jump
               straight to main content instead of tabbing through nav. */}
           <a href="#main-content" className="skip-link">
-            {skipToMain}
+            <T k="skip.toMain" />
           </a>
 
           <div className="min-h-screen flex flex-col">
@@ -125,30 +115,7 @@ export default async function RootLayout({
                 >
                   🛰 <T k="brand.name" />
                 </Link>
-                <nav
-                  className="flex gap-4 text-sm"
-                  role="navigation"
-                  aria-label={navAriaLabel}
-                >
-                  {NAV_KEYS.map((item) => {
-                    const active =
-                      item.href === "/"
-                        ? currentPath === "/"
-                        : currentPath === item.href ||
-                          currentPath.startsWith(item.href + "/");
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className="text-[var(--text-muted)] hover:text-[var(--text)]"
-                        aria-current={active ? "page" : undefined}
-                        data-active={active ? "true" : undefined}
-                      >
-                        <T k={item.labelKey} />
-                      </Link>
-                    );
-                  })}
-                </nav>
+                <NavLinks currentPath={currentPath} />
                 <div className="ml-auto flex items-center gap-3">
                   <LanguageSwitcher />
                   <div

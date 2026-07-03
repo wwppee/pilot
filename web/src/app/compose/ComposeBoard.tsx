@@ -37,6 +37,7 @@ import type {
   ComposeEntityKind,
   ComposeState,
 } from "../../lib/types";
+import { useT } from "@/components/I18n";
 
 const KIND_META: Record<
   ComposeEntityKind,
@@ -142,6 +143,7 @@ export default function ComposeBoard({
 }: {
   initialCatalog: ComposeCatalog;
 }) {
+  const t = useT();
   const [state, setState] = useState<ComposeState>(() => loadState());
   const [viewMode, setViewMode] = useState<ViewMode>(() => loadViewMode());
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -462,11 +464,11 @@ export default function ComposeBoard({
         <div className="compose-sidebar-header">
           <input
             type="text"
-            placeholder="Search…"
+            placeholder={t("compose.searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="compose-search"
-            aria-label="Search catalog"
+            aria-label={t("btn.ariaSearchCatalog")}
           />
           <div className="compose-kind-filter">
             <button
@@ -492,7 +494,7 @@ export default function ComposeBoard({
         <div className="compose-sidebar-body">
           {filteredCatalog.length === 0 ? (
             <p className="muted small">
-              No matches. Adjust the filter or search.
+              {t("compose.emptySearch")}
             </p>
           ) : (
             filteredCatalog.map((sec) => (
@@ -509,7 +511,7 @@ export default function ComposeBoard({
                     onPointerDown={(ev) => startSidebarDrag(e, ev)}
                     onClick={() => addBlockAtCenter(e)}
                     aria-label={`Add ${sec.label.toLowerCase()} "${e.label}" to canvas`}
-                    title="Drag to canvas, or press Enter to add to center"
+                    title={t("compose.dragHint")}
                   >
                     <div className="compose-sidebar-label">{e.label}</div>
                     {e.sublabel ? (
@@ -535,14 +537,13 @@ export default function ComposeBoard({
         data-pending={pendingDrop !== null}
         data-mode={viewMode}
         role="region"
-        aria-label="Compose canvas. When a block is selected, use arrow keys to move it, Delete to remove, Escape to deselect."
+        aria-label={t("btn.ariaComposeCanvas")}
         tabIndex={0}
       >
         {state.blocks.length === 0 && !pendingDrop ? (
           <div className="compose-empty">
             <p>
-              👆 Drag from the sidebar to add blocks. Keyboard users: Tab to a
-              sidebar item and press <kbd>Enter</kbd>.
+              👆 {t("compose.canvasEmpty", { key: "Enter" })}
             </p>
           </div>
         ) : null}
@@ -571,7 +572,7 @@ export default function ComposeBoard({
       {/* ─── Inspector ───────────────────────────────────── */}
       <aside className="compose-inspector">
         <div className="compose-inspector-header">
-          <h3>Inspector</h3>
+          <h3>{t("compose.inspector")}</h3>
           <span className="muted small">
             {state.blocks.length} block
             {state.blocks.length === 1 ? "" : "s"}
@@ -588,8 +589,10 @@ export default function ComposeBoard({
         ) : (
           <div className="compose-inspector-empty">
             <p className="muted">
-              Click a block on the canvas to inspect it. Press <kbd>Delete</kbd>{" "}
-              to remove the selected one.
+              {t("compose.canvasSelectBlock", {
+                del: "Delete",
+                esc: "Escape",
+              })}
             </p>
           </div>
         )}
@@ -611,10 +614,10 @@ export default function ComposeBoard({
           </button>
           <span className="compose-inspector-divider" />
           <button type="button" onClick={exportJson} className="btn small">
-            Export
+            {t("btn.export")}
           </button>
           <label className="btn small secondary">
-            Import
+            {t("btn.import")}
             <input
               type="file"
               accept="application/json"
@@ -632,7 +635,7 @@ export default function ComposeBoard({
             className="btn small danger"
             disabled={state.blocks.length === 0}
           >
-            Clear
+            {t("btn.clear")}
           </button>
         </div>
       </aside>
@@ -657,6 +660,7 @@ function ComposeBlockView({
   onPointerDown: (e: React.PointerEvent) => void;
   onDelete: () => void;
 }) {
+  const t = useT();
   const meta = KIND_META[block.kind];
   // In cozy mode we override the border tint per kind with the warm
   // palette so blocks read as "cubes" against cream sand.
@@ -694,8 +698,8 @@ function ComposeBlockView({
           e.stopPropagation();
           onDelete();
         }}
-        aria-label="Remove block"
-        title="Remove block"
+        aria-label={t("btn.ariaRemoveBlock")}
+        title={t("compose.removeBlock")}
       >
         ×
       </button>

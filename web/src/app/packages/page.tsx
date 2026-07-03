@@ -59,7 +59,7 @@ export default async function PackagesPage({ searchParams }: SearchPageProps) {
           name="q"
           defaultValue={query}
           placeholder={searchPlaceholder}
-          aria-label="Search"
+          aria-label={renderT(locale, "btn.ariaSearch")}
           className="flex-1 surface rounded px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
           autoFocus
         />
@@ -113,8 +113,7 @@ export default async function PackagesPage({ searchParams }: SearchPageProps) {
         </h2>
         {installedList.length === 0 ? (
           <div className="surface rounded-lg px-3 py-6 text-sm text-[var(--text-muted)] italic text-center">
-            No packs installed yet. Try{" "}
-            <code className="kbd">pilot pack search subagent</code>.
+            <T k="packages.noPacksHint" />
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

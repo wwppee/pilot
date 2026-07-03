@@ -73,7 +73,7 @@ export default function PolicyPage() {
       <p className="subtitle">
         <T k="policy.subtitle" />
       </p>
-      <Suspense fallback={<p>Loading…</p>}>
+      <Suspense fallback={<p><T k="loading.policies" /></p>}>
         <PolicyList />
       </Suspense>
       <hr />
@@ -87,11 +87,12 @@ async function PolicyList() {
   if (error) {
     return (
       <section className="card error">
-        <h2>Couldn&apos;t load policies</h2>
+        <h2>
+          <T k="error.couldntLoad.title" />: policies
+        </h2>
         <pre>{error}</pre>
         <p className="hint">
-          Is <code>pilot server</code> running? Try{" "}
-          <code>pilot server start</code>.
+          <T k="policy.serverHint" />
         </p>
       </section>
     );
@@ -99,17 +100,20 @@ async function PolicyList() {
   if (policies.length === 0) {
     return (
       <section className="card empty">
-        <h2>No policies yet</h2>
+        <h2>
+          <T k="policy.empty.title" />
+        </h2>
         <p>
-          Create one with <code>pilot policy new &lt;name&gt;</code>, then{" "}
-          <code>pilot policy apply &lt;name&gt;</code> to install it.
+          <T k="policy.empty.body" />
         </p>
       </section>
     );
   }
   return (
     <section>
-      <h2>Installed policies ({policies.length})</h2>
+      <h2>
+        <T k="policy.h1" /> ({policies.length})
+      </h2>
       <div className="card-grid">
         {policies.map((p) => {
           const a = applyState[p.name];
@@ -136,13 +140,17 @@ async function PolicyList() {
               <ul className="rule-list">
                 {p.deny.length > 0 && (
                   <li>
-                    <span className="rule-name">deny</span>{" "}
+                    <span className="rule-name">
+                      <T k="policy.denyBadge" />
+                    </span>{" "}
                     <code>{p.deny.join(", ")}</code>
                   </li>
                 )}
                 {p.allow.length > 0 && (
                   <li>
-                    <span className="rule-name">allow</span>{" "}
+                    <span className="rule-name">
+                      <T k="policy.allowBadge" />
+                    </span>{" "}
                     <code>{p.allow.join(", ")}</code>
                   </li>
                 )}
@@ -166,7 +174,9 @@ async function PolicyList() {
                 )}
                 {p.requireApproval.length > 0 && (
                   <li>
-                    <span className="rule-name">HITL</span>{" "}
+                    <span className="rule-name">
+                      <T k="policy.hitlBadge" />
+                    </span>{" "}
                     <code>{p.requireApproval.join(", ")}</code>
                   </li>
                 )}
@@ -176,8 +186,9 @@ async function PolicyList() {
                 <a
                   href={`/policy/${encodeURIComponent(p.name)}/edit`}
                   className="policy-card-edit-link"
+                  aria-label={undefined}
                 >
-                  edit →
+                  <T k="btn.edit" /> →
                 </a>
               </footer>
             </article>
@@ -202,7 +213,9 @@ async function DryRun() {
 
   return (
     <section>
-      <h2>Try a rule</h2>
+      <h2>
+        <T k="policy.tryRule.h2" />
+      </h2>
       <p className="subtitle">
         Run a dry-run check: which policy rule fires (if any) for a given tool
         call?
@@ -210,11 +223,15 @@ async function DryRun() {
       {error ? (
         <p className="error">{error}</p>
       ) : policies.length === 0 ? (
-        <p className="muted">No policies to test against.</p>
+        <p className="muted">
+          <T k="policy.tryRule.noPolicies" />
+        </p>
       ) : (
         <form action="/api/policy-check" method="post" className="form">
           <div className="form-row">
-            <label htmlFor="policy">Policy</label>
+            <label htmlFor="policy">
+              <T k="policy.tryRule.policyLabel" />
+            </label>
             <select
               id="policy"
               name="name"
@@ -229,7 +246,9 @@ async function DryRun() {
             </select>
           </div>
           <div className="form-row">
-            <label htmlFor="tool">Tool</label>
+            <label htmlFor="tool">
+              <T k="policy.tryRule.toolLabel" />
+            </label>
             <select id="tool" name="tool" defaultValue="bash">
               <option value="bash">bash</option>
               <option value="read">read</option>
@@ -238,7 +257,9 @@ async function DryRun() {
             </select>
           </div>
           <div className="form-row">
-            <label htmlFor="args">Args (JSON)</label>
+            <label htmlFor="args">
+              <T k="policy.tryRule.argsLabel" />
+            </label>
             <input
               id="args"
               name="args"
@@ -248,7 +269,7 @@ async function DryRun() {
             />
           </div>
           <button type="submit" className="btn">
-            Run check
+            <T k="policy.tryRule.runCheck" />
           </button>
         </form>
       )}

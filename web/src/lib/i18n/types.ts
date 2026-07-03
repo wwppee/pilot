@@ -70,13 +70,88 @@ export type Dict = {
   "btn.refresh": string;
   "btn.export": string;
   "btn.import": string;
+  "btn.clear": string;
   "btn.add": string;
   "btn.remove": string;
   "btn.create": string;
+  "btn.edit": string;
+  "btn.filter": string;
+  "btn.submit": string;
   "btn.ariaConfirmDelete": string;
   "btn.ariaDelete": string;
+  "btn.ariaDeleteProfile": string;
   "btn.ariaApplyTitle": string;
   "btn.ariaUnapplyTitle": string;
+  "btn.ariaEditPolicy": string;
+  "btn.ariaFormActions": string;
+  "btn.ariaRange": string;
+  "btn.ariaSearch": string;
+  "btn.ariaSearchCatalog": string;
+  "btn.ariaComposeCanvas": string;
+  "btn.ariaRemoveBlock": string;
+
+  // ─── Loading / empty / errors ────────────────────────────────
+  "loading.generic": string;
+  "loading.form": string;
+  "loading.catalog": string;
+  "loading.policies": string;
+  "loading.policyForm": string;
+  "error.couldntLoad.title": string;
+  "error.couldntLoad.body": string;
+  "status.unsaved": string;
+  "status.saving": string;
+
+  // ─── Policy list / edit ─────────────────────────────────────
+  "policy.edit.h1": string;
+  "policy.edit.backToList": string;
+  "policy.edit.backToListAria": string;
+  "policy.edit.ariaEdit": string;
+  "policy.descriptionLabel": string;
+  "policy.empty.title": string;
+  "policy.empty.body": string;
+  "policy.serverHint": string;
+  "policy.tryRule.h2": string;
+  "policy.tryRule.noPolicies": string;
+  "policy.tryRule.policyLabel": string;
+  "policy.tryRule.toolLabel": string;
+  "policy.tryRule.argsLabel": string;
+  "policy.tryRule.runCheck": string;
+  "policy.check": string;
+  "policy.allowBadge": string;
+  "policy.denyBadge": string;
+  "policy.warnBadge": string;
+  "policy.hitlBadge": string;
+  "policy.hitlDesc": string;
+  "policy.applyFailed": string;
+  "policy.unapplyFailed": string;
+  "policy.confirmDeleteProfile": string;
+
+  // ─── Compose ────────────────────────────────────────────────
+  "compose.searchPlaceholder": string;
+  "compose.emptySearch": string;
+  "compose.dragHint": string;
+  "compose.canvasAria": string;
+  "compose.canvasEmpty": string;
+  "compose.canvasSelectBlock": string;
+  "compose.removeBlock": string;
+
+  // ─── Packages ───────────────────────────────────────────────
+  "packages.noPacksHint": string;
+
+  // ─── Profiles [name] ────────────────────────────────────────
+  "profiles.editHeading": string;
+  "profiles.descriptionPlaceholder": string;
+  "profiles.saved": string;
+  "profiles.model": string;
+  "profiles.thinking": string;
+  "profiles.packages": string;
+
+  // ─── Context ────────────────────────────────────────────────
+  "context.loadedTitle": string;
+  "context.infoTitle": string;
+
+  // ─── Range nav ──────────────────────────────────────────────
+  "range.today": string;
 
   // ─── Pages ───────────────────────────────────────────────────
   // home (dashboard)

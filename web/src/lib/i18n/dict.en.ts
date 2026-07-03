@@ -51,14 +51,99 @@ const en: Dict = {
   "btn.refresh": "Refresh",
   "btn.export": "Export",
   "btn.import": "Import",
+  "btn.clear": "Clear",
   "btn.add": "Add",
   "btn.remove": "Remove",
   "btn.create": "Create",
+  "btn.edit": "Edit",
+  "btn.filter": "Filter",
+  "btn.submit": "Submit",
   "btn.ariaConfirmDelete": "Confirm delete policy (click again to delete)",
   "btn.ariaDelete": "Delete this policy",
+  "btn.ariaDeleteProfile": "Delete this profile",
   "btn.ariaApplyTitle":
     "Generate ~/.pilot/extensions/pilot-policy-<name>.ts and have pi load it",
   "btn.ariaUnapplyTitle": "Remove the generated extension",
+  "btn.ariaEditPolicy": "Edit policy {name}",
+  "btn.ariaFormActions": "Form actions",
+  "btn.ariaRange": "Range",
+  "btn.ariaSearch": "Search",
+  "btn.ariaSearchCatalog": "Search catalog",
+  "btn.ariaComposeCanvas":
+    "Compose canvas. When a block is selected, use arrow keys to move it, Delete to remove, Escape to deselect.",
+  "btn.ariaRemoveBlock": "Remove block",
+
+  // Loading / empty / errors
+  "loading.generic": "Loading…",
+  "loading.form": "Loading form…",
+  "loading.catalog": "Loading catalog…",
+  "loading.policies": "Loading…",
+  "loading.policyForm": "Loading form…",
+  "error.couldntLoad.title": "Couldn't load",
+  "error.couldntLoad.body":
+    "Is `pilot server` running? Try `pilot server start`.",
+  "status.unsaved": "Unsaved changes",
+  "status.saving": "Saving…",
+
+  // Policy list / edit
+  "policy.edit.h1": "Edit policy",
+  "policy.edit.backToList": "← back to policies",
+  "policy.edit.backToListAria": "Back to policy list",
+  "policy.edit.ariaEdit": "Edit policy {name}",
+  "policy.descriptionLabel": "Description",
+  "policy.empty.title": "No policies yet",
+  "policy.empty.body":
+    "Create one with `pilot policy new <name>` or `pilot policy apply`.",
+  "policy.serverHint":
+    "Is `pilot server` running? Try `pilot server start`.",
+  "policy.tryRule.h2": "Try a rule",
+  "policy.tryRule.noPolicies": "No policies to test against.",
+  "policy.tryRule.policyLabel": "Policy",
+  "policy.tryRule.toolLabel": "Tool",
+  "policy.tryRule.argsLabel": "Args (JSON)",
+  "policy.tryRule.runCheck": "Check",
+  "policy.check": "Check",
+  "policy.allowBadge": "allow",
+  "policy.denyBadge": "deny",
+  "policy.warnBadge": "warn",
+  "policy.hitlBadge": "HITL",
+  "policy.hitlDesc":
+    "Pauses the session and asks the user via `ctx.ui.confirm()` before the tool runs.",
+  "policy.applyFailed": "Apply failed: {msg}",
+  "policy.unapplyFailed": "Unapply failed: {msg}",
+  "policy.confirmDeleteProfile": "Delete \"{name}\"? This cannot be undone.",
+
+  // Compose
+  "compose.searchPlaceholder": "Search…",
+  "compose.emptySearch": "No matches. Adjust the filter or search.",
+  "compose.dragHint":
+    "Drag to canvas, or press Enter to add to center",
+  "compose.canvasAria":
+    "Compose canvas. When a block is selected, use arrow keys to move it, Delete to remove, Escape to deselect.",
+  "compose.canvasEmpty":
+    "Empty canvas — pick a sidebar item and press {key}.",
+  "compose.canvasSelectBlock":
+    "Click a block on the canvas to inspect it. Press {del} to remove it, or {esc} to deselect.",
+  "compose.removeBlock": "Remove block",
+
+  // Packages
+  "packages.noPacksHint":
+    "No packs installed yet. Try `pilot pack search subagent`.",
+
+  // Profiles [name]
+  "profiles.editHeading": "Edit",
+  "profiles.descriptionPlaceholder": "What is this profile for?",
+  "profiles.saved": "Profile updated.",
+  "profiles.model": "model",
+  "profiles.thinking": "thinking",
+  "profiles.packages": "package(s)",
+
+  // Context
+  "context.loadedTitle": "Loaded by pi",
+  "context.infoTitle": "Informational only",
+
+  // Range nav
+  "range.today": "Today",
 
   // Home (dashboard)
   "home.h1": "Dashboard",

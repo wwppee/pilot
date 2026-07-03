@@ -160,11 +160,8 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
       const { path } = await api.applyPolicy(initialPolicy.name);
       setApplyMessage(`Extension written to ${path}`);
     } catch (err) {
-      setApplyMessage(
-        `Apply failed: ${
-          err instanceof PilotApiError ? err.message : (err as Error).message
-        }`,
-      );
+      const msg = err instanceof PilotApiError ? err.message : (err as Error).message;
+      setApplyMessage(t("policy.applyFailed", { msg }));
     } finally {
       setBusy(false);
     }
@@ -179,11 +176,8 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
         removed ? "Extension removed" : "Extension was not applied",
       );
     } catch (err) {
-      setApplyMessage(
-        `Unapply failed: ${
-          err instanceof PilotApiError ? err.message : (err as Error).message
-        }`,
-      );
+      const msg = err instanceof PilotApiError ? err.message : (err as Error).message;
+      setApplyMessage(t("policy.unapplyFailed", { msg }));
     } finally {
       setBusy(false);
     }
@@ -217,7 +211,7 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
     <form
       onSubmit={onSave}
       className="policy-edit-form"
-      aria-label={`Edit policy ${initialPolicy.name}`}
+      aria-label={t("policy.edit.ariaEdit", { name: initialPolicy.name })}
     >
       {/* ─── Status bar (live region) ────────────────────── */}
       <div className="policy-edit-status" data-state={saveState.kind}>
@@ -242,10 +236,10 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
             </span>
           )}
           {!applyMessage && saveState.kind === "idle" && isDirty && (
-            <span className="warn small">Unsaved changes</span>
+            <span className="warn small">{t("status.unsaved")}</span>
           )}
           {!applyMessage && saveState.kind === "saving" && (
-            <span className="muted small">Saving…</span>
+            <span className="muted small">{t("status.saving")}</span>
           )}
           {!applyMessage && saveState.kind === "saved" && (
             <span className="ok small">
@@ -262,7 +256,7 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
 
       {/* ─── Description ─────────────────────────────────── */}
       <div className="policy-edit-section">
-        <label htmlFor="policy-description">Description</label>
+        <label htmlFor="policy-description">{t("policy.descriptionLabel")}</label>
         <input
           id="policy-description"
           type="text"
@@ -320,7 +314,7 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
       <div
         className="policy-edit-actions"
         role="group"
-        aria-label="Form actions"
+        aria-label={t("btn.ariaFormActions")}
       >
         <button
           type="submit"

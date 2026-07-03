@@ -22,13 +22,14 @@
 import { Suspense } from "react";
 import { api, PilotApiError } from "../../../../lib/pilot";
 import type { ToolPolicy } from "../../../../lib/types";
+import { T } from "@/components/I18n";
 import PolicyForm from "./PolicyForm";
 import "./policy-form.module.css";
 
 export const dynamic = "force-dynamic";
 
 interface PageProps {
-  params: { name: string };
+  params: Promise<{ name: string }>;
 }
 
 async function loadPolicy(name: string): Promise<{
@@ -50,34 +51,39 @@ async function loadPolicy(name: string): Promise<{
 }
 
 export default async function EditPolicyPage({ params }: PageProps) {
-  const decoded = decodeURIComponent(params.name);
+  const { name } = await params;
+  const decoded = decodeURIComponent(name);
   const { policy, error } = await loadPolicy(decoded);
 
   return (
     <main>
       <header className="policy-edit-header">
         <h1>
-          Edit policy <code>{decoded}</code>
+          <T k="policy.edit.h1" /> <code>{decoded}</code>
         </h1>
         <a href="/policy" className="muted small">
-          ← back to policies
+          <T k="policy.edit.backToList" />
         </a>
       </header>
 
       {error ? (
         <section className="card error">
-          <h2>Couldn&apos;t load policy</h2>
+          <h2>
+            <T k="error.couldntLoad.title" />: policy
+          </h2>
           <pre>{error}</pre>
         </section>
       ) : !policy ? (
         <section className="card empty">
           <p>
             Policy <code>{decoded}</code> not found.{" "}
-            <a href="/policy">Back to list</a>
+            <a href="/policy">
+              <T k="btn.backToList" />
+            </a>
           </p>
         </section>
       ) : (
-        <Suspense fallback={<p>Loading form…</p>}>
+        <Suspense fallback={<p><T k="loading.policyForm" /></p>}>
           <PolicyForm initialPolicy={policy} />
         </Suspense>
       )}

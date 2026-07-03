@@ -40,6 +40,8 @@ export default async function ContextPage({
   }
   const locale = negotiateLocale(acceptLanguage);
   const subtitle = renderT(locale, "context.subtitle", { cwd });
+  const loadedTitle = renderT(locale, "context.loadedTitle");
+  const infoTitle = renderT(locale, "context.infoTitle");
 
   const loaded = refs.filter((r) => r.loaded);
   const info = refs.filter((r) => !r.loaded);
@@ -69,6 +71,8 @@ export default async function ContextPage({
               subtitle={renderT(locale, "context.section.loaded.subtitle")}
               refs={loaded}
               loaded
+              loadedTitle={loadedTitle}
+              infoTitle={infoTitle}
             />
           )}
           {info.length > 0 && (
@@ -76,6 +80,8 @@ export default async function ContextPage({
               title={renderT(locale, "context.section.info.title")}
               subtitle={renderT(locale, "context.section.info.subtitle")}
               refs={info}
+              loadedTitle={loadedTitle}
+              infoTitle={infoTitle}
             />
           )}
         </>
@@ -89,11 +95,15 @@ function ContextSection({
   subtitle,
   refs,
   loaded,
+  loadedTitle,
+  infoTitle,
 }: {
   title: string;
   subtitle: string;
   refs: ProjectContextRef[];
   loaded?: boolean;
+  loadedTitle: string;
+  infoTitle: string;
 }) {
   return (
     <div className="surface rounded-lg overflow-hidden">
@@ -109,14 +119,16 @@ function ContextSection({
                 {loaded ? (
                   <span
                     className="text-[var(--accent-2)] flex-shrink-0"
-                    title="Loaded by pi"
+                    title={loadedTitle}
+                    aria-label={loadedTitle}
                   >
                     ●
                   </span>
                 ) : (
                   <span
                     className="text-[var(--text-muted)] flex-shrink-0"
-                    title="Informational only"
+                    title={infoTitle}
+                    aria-label={infoTitle}
                   >
                     ○
                   </span>
