@@ -7,6 +7,9 @@
  *
  * All public helpers throw a typed `PilotApiError` on non-2xx,
  * so React server components and route handlers can `.catch()` cleanly.
+ *
+ * Browser-safe variant: `browserApi` in `./pilot-browser.ts` uses the
+ * Next.js /api/pilot/* rewrite proxy so the token stays server-side.
  */
 
 import { readFile } from "node:fs/promises";

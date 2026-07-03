@@ -1,0 +1,158 @@
+/**
+ * Edit-policy page styles — form-based editor with 7 sections.
+ */
+
+.policy-edit-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.policy-edit-header h1 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.policy-edit-form {
+  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.policy-edit-status {
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.policy-edit-status[data-state="saved"] {
+  border-color: var(--accent-2);
+}
+
+.policy-edit-status[data-state="error"] {
+  border-color: var(--error);
+}
+
+.policy-edit-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.policy-edit-section legend {
+  font-weight: 600;
+  font-size: 13px;
+  padding: 0 6px;
+  color: var(--text);
+}
+
+.policy-edit-section legend code {
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--surface-2);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.policy-edit-input {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 14px;
+  width: 100%;
+  font-family: inherit;
+}
+
+.policy-edit-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.policy-edit-textarea {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  line-height: 1.5;
+  width: 100%;
+  resize: vertical;
+  min-height: 80px;
+}
+
+.policy-edit-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.policy-edit-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.policy-edit-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+/* Inline rule-name labels for legends */
+.rule-name {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.rule-name.deny {
+  background: rgba(255, 107, 107, 0.15);
+  color: var(--error);
+}
+
+.rule-name.allow {
+  background: rgba(86, 211, 100, 0.15);
+  color: var(--accent-2);
+}
+
+.rule-name.paths {
+  background: rgba(121, 192, 255, 0.15);
+  color: var(--accent);
+}
+
+.rule-name.cmds {
+  background: rgba(212, 144, 80, 0.15);
+  color: #d49050;
+}
+
+.rule-name.redact {
+  background: rgba(240, 180, 0, 0.15);
+  color: var(--warn);
+}
+
+.rule-name.HITL {
+  background: rgba(156, 95, 187, 0.15);
+  color: #9c5fbb;
+}

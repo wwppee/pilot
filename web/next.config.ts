@@ -2,8 +2,6 @@ import type { NextConfig } from "next";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
 
-const PILOT_SERVER = process.env.PILOT_SERVER_URL ?? "http://127.0.0.1:17361";
-
 // Silence "multiple lockfiles" warning — we have a nested lockfile for
 // pilot-web and one for the parent CLI. Tell Turbopack the web/ tree
 // is its own root so it doesn't get confused.
@@ -17,17 +15,10 @@ const config: NextConfig = {
     root: here,
   },
 
-  // Same-origin proxy: the browser hits /api/* on this Next.js server,
-  // and Next forwards to the pilot server with the token injected
-  // server-side. The pilot token never reaches the browser.
-  async rewrites() {
-    return [
-      {
-        source: "/api/pilot/:path*",
-        destination: `${PILOT_SERVER}/:path*`,
-      },
-    ];
-  },
+  // Browser → Next.js proxy is implemented as a route handler at
+  // /app/api/pilot/[...path]/route.ts (v0.4.7+). It reads the
+  // pilot token from the file system server-side and forwards the
+  // request to the pilot server with the right headers + CSRF.
 
   // Standalone output: produces a self-contained `web/.next/standalone/`
   // directory with only what's needed to run in production.

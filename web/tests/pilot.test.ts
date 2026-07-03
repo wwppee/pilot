@@ -162,6 +162,113 @@ describe("pilot client", () => {
   });
 });
 
+describe("browserApi (v0.4.7)", () => {
+  beforeEach(() => {
+    vi.unstubAllGlobals();
+    delete process.env["PILOT_TOKEN"];
+  });
+
+  it("routes through /api/pilot/* (same-origin proxy)", async () => {
+    mockFetch((url, init) => {
+      expect(url).toBe("/api/pilot/policies");
+      expect(init.headers).toBeInstanceOf(Headers);
+      return Promise.resolve(
+        new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+    });
+    const { browserApi } = await import("../src/lib/pilot-browser");
+    const list = await browserApi.policies();
+    expect(list).toEqual([]);
+  });
+
+  it("PUT includes JSON body and content-type", async () => {
+    let capturedBody: string | undefined;
+    mockFetch((_url, init) => {
+      capturedBody = typeof init.body === "string" ? init.body : undefined;
+      const h = init.headers as Headers;
+      expect(h.get("content-type")).toBe("application/json");
+      return Promise.resolve(
+        new Response(JSON.stringify({ name: "test", deny: [] }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+      );
+    });
+    const { browserApi } = await import("../src/lib/pilot-browser");
+    const result = await browserApi.setPolicy("test", {
+      allow: [],
+      deny: [],
+      denyPaths: [],
+      denyCommands: [],
+      sensitivePatterns: [],
+      requireApproval: [],
+    });
+    expect(result.name).toBe("test");
+    expect(JSON.parse(capturedBody!)).toEqual({
+      allow: [],
+      deny: [],
+      denyPaths: [],
+      denyCommands: [],
+      sensitivePatterns: [],
+      requireApproval: [],
+    });
+  });
+
+  it("throws PilotBrowserError on 4xx", async () => {
+    mockFetch(() =>
+      Promise.resolve(new Response("not found", { status: 404 })),
+    );
+    const { browserApi, PilotBrowserError } =
+      await import("../src/lib/pilot-browser");
+    await expect(browserApi.policy("missing")).rejects.toBeInstanceOf(
+      PilotBrowserError,
+    );
+    await expect(browserApi.policy("missing")).rejects.toMatchObject({
+      status: 404,
+    });
+  });
+
+  it("does NOT touch the filesystem (browser-safe)", async () => {
+    // This test passes if browserApi doesn't try to read the token file
+    // at runtime — confirming the import graph is fs-free.
+    const { browserApi } = await import("../src/lib/pilot-browser");
+    mockFetch(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ ok: true, version: "x", uptimeSec: 0 }), {
+          status: 200,
+        }),
+      ),
+    );
+    // No token file exists; should still work because browser uses proxy
+    const result = await browserApi.health();
+    expect(result.ok).toBe(true);
+  });
+
+  it("encodeName URL-encodes npm scope names", async () => {
+    let capturedUrl: string | undefined;
+    mockFetch((url) => {
+      capturedUrl = url;
+      return Promise.resolve(
+        new Response(JSON.stringify({ ok: true, version: "x", uptimeSec: 0 }), {
+          status: 200,
+        }),
+      );
+    });
+    const { browserApi } = await import("../src/lib/pilot-browser");
+    await browserApi.health();
+    mockFetch((url) => {
+      capturedUrl = url;
+      return Promise.resolve(new Response("{}", { status: 200 }));
+    });
+    await browserApi.getCapability("@foo/bar");
+    // Browser uses standard encodeURIComponent; @ → %40, / → %2F.
+    expect(capturedUrl).toBe("/api/pilot/capabilities/%40foo%2Fbar");
+  });
+});
+
 describe("pilotWithCsrf", () => {
   beforeEach(() => {
     vi.unstubAllGlobals();

@@ -171,8 +171,14 @@ async function PolicyList(): Promise<JSX.Element> {
                   </li>
                 )}
               </ul>
-              <footer className="muted mono">
-                ext: {a?.installed ? `${a.bytes}B` : "—"}
+              <footer className="muted mono policy-card-footer">
+                <span>ext: {a?.installed ? `${a.bytes}B` : "—"}</span>
+                <a
+                  href={`/policy/${encodeURIComponent(p.name)}/edit`}
+                  className="policy-card-edit-link"
+                >
+                  edit →
+                </a>
               </footer>
             </article>
           );

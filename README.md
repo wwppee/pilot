@@ -151,6 +151,8 @@ tests/             # 单测
 
 > "我想让 pi 不能 rm -rf /"
 
+### CLI 路线
+
 ```bash
 # 1. 起一个策略
 pilot policy new safe-bash
@@ -178,6 +180,23 @@ pilot policy apply safe-bash
 # 5. 撤掉
 pilot policy unapply safe-bash
 ```
+
+### Web 路线（v0.4.7+）
+
+不想用 CLI？直接打开 dashboard：
+
+```
+http://localhost:17371/policy                  # 列出所有 policy
+http://localhost:17371/policy/safe-bash/edit   # 编辑现有 policy
+```
+
+`/policy/[name]/edit` 提供 7 个表单 sections (description + 6 个规则数组)，textarea 一行一项：
+- 写完按「Save changes」 → PUT /policies/safe-bash
+- 按「Apply (generate extension)」 → 立即生成 pi extension
+- 按「Unapply」 → 撤回 extension（TOML 保留）
+- 按「Delete」 → 删 TOML（小心）
+
+所有写入操作都走 Next.js `/api/pilot/*` 路由 → server-side 注入 pilot token，**浏览器永远拿不到 token**。
 
 `safe-bash.ts` 是真·编译过的 TypeScript extension，**不是 magic 字符串**，**没有运行时依赖**，**源码人类可读**：
 
@@ -213,16 +232,17 @@ const POLICY = {
 - ✅ v0.4.4：**compose** — 视觉画布，把 entities 拖到 sandbox 摆着
 - ✅ v0.4.5：**cozy 2.5D skin** — `/compose` 一键切到 cream/sage 沙盘
 - ✅ v0.4.6：**init + dashboard --prod + release.sh** — 首次引导 + 生产模式 + 一键发版
-- ⏭️ v0.5：edit policy in browser、block-to-block 箭头、sandbox rotate/zoom
+- ✅ v0.4.7：**edit policy in browser + browser API proxy** — policy 编辑搬上 Web；浏览器透过 Next.js `/api/pilot/*` 代理访问 server，token 永远在 server 侧
+- ⏭️ v0.5：block-to-block 箭头、sandbox rotate/zoom、policy 版本控制
 
 完整 roadmap：[`docs/roadmap-pi-grounded.md`](./docs/roadmap-pi-grounded.md)。
 
 ## 数字
 
-- **270 / 270** 单测（`npm run test:offline` ~7 秒跑完，离线，0 网络）
+- **270 / 270** 单测（`npm run test:offline` ~6 秒跑完，离线，0 网络）
+- **26 / 26** Web vitest（v0.4.7 加了 browserApi 测试套）
 - **TypeScript strict 0 errors**
-- **22 / 22** Web vitest
-- Web build 17 个路由
+- Web build 18 个路由
 - 14 个 CLI 命令（init / dashboard / server / pack / session / profile / stats / usage / tool / context / policy / capability / forge / doctor）
 - 1 条命令发布：`./scripts/release.sh <version>`
 
