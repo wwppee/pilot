@@ -28,6 +28,25 @@ const config: NextConfig = {
       },
     ];
   },
+
+  // Standalone output: produces a self-contained `web/.next/standalone/`
+  // directory with only what's needed to run in production.
+  //
+  // Usage:
+  //   $ cd web && npm run build       # produces .next/standalone/
+  //   $ cp -r .next/static .next/standalone/web/.next/static
+  //   $ cp -r public .next/standalone/web/public   # if you have static assets
+  //   $ PORT=17371 PILOT_SERVER_URL=http://127.0.0.1:17361 \
+  //     node .next/standalone/web/server.js
+  //
+  // The standalone build is ~10x smaller than the full project tree and
+  // is what gets shipped in Docker images.
+  //
+  // Enable with: `NEXT_OUTPUT_STANDALONE=1 npm run build` (env-based so
+  // dev builds don't pay the cost).
+  ...(process.env.NEXT_OUTPUT_STANDALONE === "1"
+    ? { output: "standalone" as const }
+    : {}),
 };
 
 export default config;

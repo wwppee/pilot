@@ -6,12 +6,16 @@
  *           in the same process, so one command brings up the whole
  *           stack. The token is read by the Web UI from
  *           `~/.pilot/server.token` server-side; the browser never sees it.
+ * v0.4.6+: `--prod` runs `next build && next start` instead of `next dev`
+ *           for a real production-mode web build (no Turbopack/HMR,
+ *           no source maps, faster startup, suitable for sharing).
  *
  * Lifecycle:
  *   1. Find the web/ dir (sibling to this package)
  *   2. Ensure `npm install` has run there (look for node_modules/)
  *   3. Start the pilot server in-process on 127.0.0.1:17361
- *   4. Spawn `next dev` on 127.0.0.1:17371 with PILOT_SERVER_URL set
+ *   4. Spawn `next dev` (default) or `next build && next start` (--prod)
+ *      on 127.0.0.1:17371 with PILOT_SERVER_URL set
  *   5. Open the browser (unless --no-open)
  *
  * Both servers share this process so Ctrl-C cleans up everything.
@@ -19,8 +23,9 @@
  * Flags:
  *   --no-open    Don't open the browser
  *   --no-server  Skip starting the pilot server (assume it's already running)
- *   --port 17371 Override web port (pilot server port is fixed to 17361
- *                unless the parent `pilot server` is run separately)
+ *   --port N     Override web port (default 17371; pilot server fixed 17361)
+ *   --prod       Production build: `next build && next start` (default: dev mode)
+ *   --no-build   With --prod, skip the build step (use existing .next/)
  */
 
 import { spawn } from "node:child_process";
@@ -44,6 +49,8 @@ export const manifest: Command = {
 export async function run(args: string[], ctx: PilotContext): Promise<number> {
   const noOpen = args.includes("--no-open");
   const noServer = args.includes("--no-server");
+  const prod = args.includes("--prod");
+  const noBuild = args.includes("--no-build");
 
   // Optional port override: --port 17400 → next dev -p 17400
   const portIdx = args.indexOf("--port");
@@ -100,18 +107,40 @@ export async function run(args: string[], ctx: PilotContext): Promise<number> {
     );
   }
 
-  // Step 2: start next dev with PILOT_SERVER_URL + PORT set.
-  // The web/package.json `dev` script uses `next dev -p 17371`; we
-  // override that with PORT env so user-supplied --port wins.
+  // Step 2: build (prod only) then start next.
   const url = `http://127.0.0.1:${webPort}`;
-  ctx.logger.info(`Starting Web UI on ${kleur.cyan(url)}`);
+  const mode = prod ? "production" : "dev";
+  ctx.logger.info(
+    `Starting Web UI in ${kleur.yellow(mode)} mode on ${kleur.cyan(url)}`,
+  );
   ctx.logger.info("Press Ctrl-C to stop both servers.\n");
+
+  // Pre-build for prod unless --no-build
+  if (prod && !noBuild) {
+    const buildMarker = `${webDir}/.next/BUILD_ID`;
+    if (!existsSync(buildMarker)) {
+      ctx.logger.info("Building web (first time)…");
+      const { execFile } = await import("node:child_process");
+      const { promisify } = await import("node:util");
+      try {
+        await promisify(execFile)("npm", ["run", "build"], {
+          cwd: webDir,
+        });
+      } catch (err) {
+        ctx.logger.error(`Web build failed: ${(err as Error).message}`);
+        return 1;
+      }
+    } else {
+      ctx.logger.dim("  (using existing .next/ build)");
+    }
+  }
 
   if (!noOpen) {
     setTimeout(() => openBrowser(url), 1500);
   }
 
-  const proc = spawn("npm", ["run", "dev"], {
+  const script = prod ? "start" : "dev";
+  const proc = spawn("npm", ["run", script], {
     cwd: webDir,
     stdio: "inherit",
     env: {

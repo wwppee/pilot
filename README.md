@@ -27,14 +27,19 @@ npm install -g pilot
 # 或开发版
 npm install -g wwppee/pilot
 
-# 2. 体检
+# 2. 首次引导（探测环境 + 创建 ~/.pilot/ + 打印 cheatsheet）
+pilot init
+# 或直接起 + 引导（后台跑 server）
+pilot init --start
+
+# 3. 体检
 pilot doctor
 # → 7 项检查：Node / pi / fd / ~/.pi/agent / settings / sessions / etc.
 
-# 3. 一键起 dashboard（同时启动 server + Web UI）
+# 4. 一键起 dashboard（同时启动 server + Web UI）
 pilot dashboard
-# → pilot server  : http://127.0.0.1:17361  (token 在 ~/.pilot/server.token)
-# → web UI        : http://localhost:17371
+# 生产模式（先 next build，再 next start）
+pilot dashboard --prod
 ```
 
 打开浏览器 → 看到 Dashboard（今日消耗） / Packages / Sessions / Usage / Tools / Context / Policy / Compose 8 个页面。
@@ -45,8 +50,11 @@ pilot dashboard
 
 | 命令 | 一句话 | 何时用 |
 |---|---|---|
-| `pilot doctor` | 健康检查 | 装完之后第一件事 |
-| `pilot dashboard` | 起 server + Web UI | 想看 dashboard |
+| `pilot init` | 首次引导（探测 + 建目录 + 打印 cheatsheet） | **装完第一件事** |
+| `pilot init --start` | 引导 + 后台起 server | 想要 token 但不想开 dashboard |
+| `pilot doctor` | 健康检查 | 排查奇怪行为 |
+| `pilot dashboard` | 起 server + Web UI (dev mode) | 自己用 |
+| `pilot dashboard --prod` | 生产模式：先 build 再 start | 跟别人分享、自托管 |
 | `pilot server start` | 只起 server（CLI 用） | 自动化、远程访问 |
 | `pilot pack ls` | 列出已装的包 | 看现在装了啥 |
 | `pilot pack search <q>` | 搜 npm 包 | 找新工具 |
@@ -65,6 +73,69 @@ pilot dashboard
 | `pilot capability ls` | 看本地 capability 库（v0.4+ 沉淀的资产） | 复用以前的探索 |
 
 > 网络测试 (`pilot pack install`、`pilot pack search`、forge 等) 在 sandbox/CI 里设 `PILOT_SKIP_NETWORK=1` 可以跳过；本地跑不需要。
+
+## 给别人用：dashboard --prod + standalone build
+
+`pilot dashboard` 默认是 `next dev`（hot-reload，适合自己）。要给别人用：
+
+```bash
+# 选项 1：dev build 跑生产模式（推荐个人分享）
+pilot dashboard --prod
+# → 自动 next build（首次），然后 next start
+# → 比 next dev 启动快 3-5 倍
+
+# 选项 2：standalone Docker build（推荐 server 部署）
+NEXT_OUTPUT_STANDALONE=1 npm run build --prefix web
+cp -r web/.next/static web/.next/standalone/web/.next/static
+cp -r web/public web/.next/standalone/web/public   # if applicable
+
+# 启动（约 10x 小于完整项目）
+PORT=17371 PILOT_SERVER_URL=http://127.0.0.1:17361 \
+  node web/.next/standalone/web/server.js
+```
+
+`pilot dashboard --prod` 额外 flags：
+- `--port N`：改 web 端口（默认 17371）
+- `--no-open`：不开浏览器
+- `--no-server`：假设 server 已在跑（自动化部署时用）
+- `--no-build`：跳过 build，用现有 `.next/`（快速重启）
+
+## 开发者入门
+
+```bash
+git clone https://github.com/wwppee/pilot.git
+cd pilot
+npm install
+npm run dev -- doctor        # tsx 直接跑 src/cli.ts
+npm run test:offline         # 全部单测，离线 1.6 秒，270 tests
+npm run build                # tsc → dist/
+```
+
+发版（v0.4.6+ 一条命令）：
+
+```bash
+./scripts/release.sh 0.4.6            # 自动 bump + test + tag + GitHub release
+./scripts/release.sh patch            # 自动 bump patch
+./scripts/release.sh --dry-run 0.4.6 # 看流程不真改
+```
+
+目录结构（5 秒看懂）：
+
+```
+src/
+  core/        # PilotService + 所有数据模型（policy / tool / session / …）
+  commands/    # CLI 子命令；每个文件 export {manifest, run}
+  server/      # Fastify HTTP API（127.0.0.1:17361）
+  utils/       # logger / io / net / shell helpers
+  cli.ts       # 入口
+web/
+  src/app/     # Next.js App Router 页面（/ /compose /policy / …）
+  src/lib/     # 类型 + pilot client helper
+scripts/
+  release.sh        # 一键发版（v0.4.6+）
+  make-release.sh   # 老的手工发版（保留兼容）
+tests/             # 单测
+```
 
 ## 5 个核心概念
 
@@ -141,17 +212,19 @@ const POLICY = {
 - ✅ v0.4.3：**policy** — 真·能 enforce 的策略，TOML → pi extension 闭环
 - ✅ v0.4.4：**compose** — 视觉画布，把 entities 拖到 sandbox 摆着
 - ✅ v0.4.5：**cozy 2.5D skin** — `/compose` 一键切到 cream/sage 沙盘
+- ✅ v0.4.6：**init + dashboard --prod + release.sh** — 首次引导 + 生产模式 + 一键发版
 - ⏭️ v0.5：edit policy in browser、block-to-block 箭头、sandbox rotate/zoom
 
 完整 roadmap：[`docs/roadmap-pi-grounded.md`](./docs/roadmap-pi-grounded.md)。
 
 ## 数字
 
-- **260 / 260** 单测（`npm run test:offline` ~2 秒跑完）
+- **270 / 270** 单测（`npm run test:offline` ~7 秒跑完，离线，0 网络）
 - **TypeScript strict 0 errors**
 - **22 / 22** Web vitest
 - Web build 17 个路由
-- 0 网络依赖（CI 全 green 用 `PILOT_SKIP_NETWORK=1`）
+- 14 个 CLI 命令（init / dashboard / server / pack / session / profile / stats / usage / tool / context / policy / capability / forge / doctor）
+- 1 条命令发布：`./scripts/release.sh <version>`
 
 ## 开发者入门
 
@@ -160,8 +233,16 @@ git clone https://github.com/wwppee/pilot.git
 cd pilot
 npm install
 npm run dev -- doctor        # tsx 直接跑 src/cli.ts
-npm run test:offline         # 全部单测，离线 1.6 秒
+npm run test:offline         # 全部单测，离线 ~7 秒
 npm run build                # tsc → dist/
+```
+
+发版（v0.4.6+ 一条命令）：
+
+```bash
+./scripts/release.sh 0.4.6            # 自动 bump + test + tag + GitHub release
+./scripts/release.sh patch            # 自动 bump patch
+./scripts/release.sh --dry-run 0.4.6 # 看流程不真改
 ```
 
 目录结构（5 秒看懂）：
@@ -171,13 +252,15 @@ src/
   core/        # PilotService + 所有数据模型（policy / tool / session / …）
   commands/    # CLI 子命令；每个文件 export {manifest, run}
   server/      # Fastify HTTP API（127.0.0.1:17361）
-  utils/       # logger / io / shell helpers
+  utils/       # logger / io / net / shell helpers
   cli.ts       # 入口
 web/
   src/app/     # Next.js App Router 页面（/ /compose /policy / …）
   src/lib/     # 类型 + pilot client helper
-tests/
-  setup.ts     # jsdom + localStorage polyfill
+scripts/
+  release.sh        # 一键发版（v0.4.6+）
+  make-release.sh   # 老的手工发版（保留兼容）
+tests/             # 单测
 ```
 
 ## 文档
@@ -193,7 +276,7 @@ tests/
 [`CONTRIBUTING.md`](./CONTRIBUTING.md) 说了流程。简单版：
 
 1. `npm run dev -- <cmd>` 验证 CLI 工作
-2. `npm run test:offline` 全过
+2. `npm run test:offline` 全过（**必须** — 这是 CI 的命令）
 3. `npm run format` + `npm run lint` 全过
 4. PR 描述里写「为什么」「怎么测」
 

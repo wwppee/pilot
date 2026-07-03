@@ -29,6 +29,7 @@ import * as forgeCmd from "./commands/forge.js";
 import * as toolListCmd from "./commands/tool-list.js";
 import * as contextCmd from "./commands/context.js";
 import * as policyCmd from "./commands/policy.js";
+import * as initCmd from "./commands/init.js";
 
 /** All registered top-level commands. */
 const commands = [
@@ -45,6 +46,7 @@ const commands = [
   toolListCmd,
   contextCmd,
   policyCmd,
+  initCmd,
 ] as const;
 
 async function main(): Promise<void> {
