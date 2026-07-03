@@ -174,7 +174,7 @@ if $SKIP_GH_RELEASE; then
   warn "Skipping GitHub release (no $NOTES_FILE)"
 else
   step "Create GitHub release"
-  REPO=$(node -p "const url=require('./package.json').repository?.url||''; url.replace(/^git\+/,'').replace(/\.git\$/,'')")
+  REPO=$(node -p "const url=require('./package.json').repository?.url||''; url.replace(/^git\\+/,'').replace(/\\.git\$/,'').replace(/^https?:\\/\\/github\\.com\\//,'')")
   NAME=$(node -p "require('./package.json').version")
   if $DRY_RUN; then
     echo "  dry-run: gh release create $TAG --repo $REPO --title \"$NAME — release\" --notes-file $NOTES_FILE"
