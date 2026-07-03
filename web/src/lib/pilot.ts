@@ -150,15 +150,7 @@ export const api = {
   packs: () => pilot<Pack[]>("/packs"),
   packInfo: (name: string) => pilot<Pack>(`/packs/info/${encodeName(name)}`),
   packSearch: (q: string) =>
-    pilot<{
-      query: string;
-      results: Array<{
-        name: string;
-        version: string;
-        description?: string;
-        pi?: unknown;
-      }>;
-    }>(`/packs/search?q=${encodeURIComponent(q)}`),
+    pilot<Pack[]>(`/packs/search?q=${encodeURIComponent(q)}`),
   packInstall: (name: string) =>
     pilot<unknown>(`/packs/install`, {
       method: "POST",

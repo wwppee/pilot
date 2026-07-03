@@ -247,14 +247,40 @@ fi
 # ─── npm publish (optional) ─────────────────────────────────
 if [[ -n "${NPM_TOKEN:-}" ]]; then
   step "npm publish (NPM_TOKEN set)"
-  run npm publish --access public
+
+  # Pre-flight 1: dist/ must exist (otherwise publish would ship
+  # an empty tarball).
+  if [[ ! -d dist ]] || [[ ! -f dist/cli.js ]]; then
+    err "dist/ missing or dist/cli.js not built. Run 'npm run build' first."
+    exit 1
+  fi
+
+  # Pre-flight 2: the version must not already be on npm. If it is,
+  # we assume a previous run published it (or it was published
+  # manually) and skip to avoid failing with 409.
+  PKG_VERSION=$(node -p "require('./package.json').version")
+  ALREADY_PUBLISHED=$(npm view "pilot@$PKG_VERSION" version 2>/dev/null || echo "")
+  if [[ -n "$ALREADY_PUBLISHED" ]]; then
+    warn "pilot@$PKG_VERSION is already on npm — skipping publish."
+    warn "  If this is a mistake, run: npm unpublish pilot@$PKG_VERSION"
+  elif $DRY_RUN; then
+    echo "  dry-run: npm publish --access public --provenance"
+  else
+    # Dry-run preview first so we surface any error (missing files,
+    # bad tarball contents) before actually publishing.
+    echo "  preview:"
+    npm publish --access public --provenance --dry-run 2>&1 | sed 's/^/    /'
+    echo
+    run npm publish --access public --provenance
+  fi
 else
   echo
   warn "NPM_TOKEN not set — skipping npm publish"
-  warn "  to publish later: cd /path/to/pilot && npm publish"
+  warn "  to publish later: cd /path/to/pilot && npm publish --provenance"
 fi
 
 echo
 ok "Release $TAG complete."
 echo "  GitHub:  https://github.com/wwppee/pilot/releases/tag/$TAG"
+echo "  npm:     https://www.npmjs.com/package/pilot/v/$PKG_VERSION"
 echo "  Next:    verify the CI matrix is green on the tag"

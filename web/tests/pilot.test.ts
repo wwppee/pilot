@@ -329,4 +329,33 @@ describe("pilotWithCsrf", () => {
       pilotWithCsrf("/packs/install", { method: "POST", body: "{}" }),
     ).rejects.toThrow(/CSRF token/);
   });
+
+  it("packSearch returns bare array (regression: was typed as {query,results})", async () => {
+    // v0.4.10 regression: api.packSearch was typed as
+    //   { query: string; results: Pack[] }
+    // but the server endpoint GET /packs/search returns a bare array.
+    // Calling code did `searchList.results.map(...)` which crashed because
+    // `results` was undefined. This test pins the response shape so the
+    // mismatch can't silently come back.
+    process.env["PILOT_TOKEN"] = "test-token";
+    const fakePack = {
+      name: "pi-subagents",
+      version: "1.2.3",
+      description: "delegate work",
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(JSON.stringify([fakePack]), { status: 200 }),
+      ) as never,
+    );
+
+    const results = await api.packSearch("subagent");
+
+    // The server returns a bare array — there is no `.results` wrapper.
+    expect(Array.isArray(results)).toBe(true);
+    expect((results as unknown as { results?: unknown }).results).toBeUndefined();
+    expect(results).toHaveLength(1);
+    expect(results[0]?.name).toBe("pi-subagents");
+  });
 });

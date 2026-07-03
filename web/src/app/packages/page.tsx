@@ -23,7 +23,7 @@ export default async function PackagesPage({ searchParams }: SearchPageProps) {
 
   const installedList: Pack[] =
     installed.status === "fulfilled" ? installed.value : [];
-  const searchList =
+  const searchList: Pack[] | null =
     searchResults.status === "fulfilled" ? searchResults.value : null;
 
   return (
@@ -60,13 +60,13 @@ export default async function PackagesPage({ searchParams }: SearchPageProps) {
             Search results for &ldquo;{query}&rdquo;
           </h2>
           <div className="surface rounded-lg overflow-hidden">
-            {searchList.results.length === 0 ? (
+            {searchList.length === 0 ? (
               <div className="text-sm text-[var(--text-muted)] italic px-3 py-6 text-center">
                 Nothing matches.
               </div>
             ) : (
               <ul className="divide-y divide-[var(--border)]">
-                {searchList.results.map((r) => (
+                {searchList.map((r) => (
                   <li key={r.name} className="px-3 py-3">
                     <div className="flex items-baseline justify-between">
                       <Link href={`/packages/${r.name}`} className="kbd">
