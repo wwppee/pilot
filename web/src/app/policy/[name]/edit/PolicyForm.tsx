@@ -86,9 +86,7 @@ const SECTION_DEFS: Array<{
   },
 ];
 
-export default function PolicyForm({
-  initialPolicy,
-}: PolicyFormProps) {
+export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
   const router = useRouter();
   const [description, setDescription] = useState(
     initialPolicy.description ?? "",

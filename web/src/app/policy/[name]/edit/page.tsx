@@ -49,9 +49,7 @@ async function loadPolicy(name: string): Promise<{
   }
 }
 
-export default async function EditPolicyPage({
-  params,
-}: PageProps) {
+export default async function EditPolicyPage({ params }: PageProps) {
   const decoded = decodeURIComponent(params.name);
   const { policy, error } = await loadPolicy(decoded);
 
