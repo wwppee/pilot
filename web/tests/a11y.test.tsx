@@ -99,9 +99,7 @@ describe("a11y: form inputs", () => {
     // We expect at least one of the label-related rules to fire.
     // (axe may use slightly different rule IDs across versions.)
     expect(
-      ids.some((id) =>
-        /label|form-field|naming|accessible-name/i.test(id),
-      ),
+      ids.some((id) => /label|form-field|naming|accessible-name/i.test(id)),
       `expected at least one label/name violation, got: ${ids.join(",")}`,
     ).toBe(true);
   });
@@ -202,7 +200,7 @@ describe("a11y: keyboard nav", () => {
       </form>,
     );
     const focusable = container.querySelectorAll(
-      'input:not([disabled]), button:not([disabled])',
+      "input:not([disabled]), button:not([disabled])",
     );
     expect(focusable.length).toBe(3);
   });

@@ -65,10 +65,7 @@ export default async function RootLayout({
     const h = await headers();
     // x-invoke-path or x-pathname may not exist; fall back to URL.
     currentPath =
-      h.get("x-invoke-path") ??
-      h.get("x-pathname") ??
-      h.get("next-url") ??
-      "";
+      h.get("x-invoke-path") ?? h.get("x-pathname") ?? h.get("next-url") ?? "";
     // next-url is e.g. "/foo?bar"; trim query
     currentPath = currentPath.split("?")[0] ?? "";
   } catch {
@@ -156,7 +153,9 @@ export default async function RootLayout({
             role="contentinfo"
           >
             <div className="mx-auto max-w-6xl px-6 py-3 text-xs text-[var(--text-muted)] flex items-center justify-between">
-              <span>pilot-web v0.4.8 · reads + policy + compose over pilot server</span>
+              <span>
+                pilot-web v0.4.8 · reads + policy + compose over pilot server
+              </span>
               <span>
                 server expected at <code className="kbd">127.0.0.1:17361</code>
               </span>

@@ -289,39 +289,45 @@ export default function ComposeBoard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
 
-  const deleteBlock = useCallback((id: string) => {
-    setState((s) => ({ ...s, blocks: s.blocks.filter((b) => b.id !== id) }));
-    setSelectedId(null);
-    const removed = state.blocks.find((b) => b.id === id);
-    if (removed) announce(`Removed block ${removed.label}`);
-  }, [announce, state.blocks]);
+  const deleteBlock = useCallback(
+    (id: string) => {
+      setState((s) => ({ ...s, blocks: s.blocks.filter((b) => b.id !== id) }));
+      setSelectedId(null);
+      const removed = state.blocks.find((b) => b.id === id);
+      if (removed) announce(`Removed block ${removed.label}`);
+    },
+    [announce, state.blocks],
+  );
 
   /**
    * Add a sidebar entity as a block in the canvas center.
    * Used by keyboard users (Enter on a sidebar item) and as a
    * fallback for mouse users who don't want to drag.
    */
-  const addBlockAtCenter = useCallback((entity: ComposeEntity) => {
-    setState((s) => {
-      // Stagger new blocks so they don't all stack at (0,0)
-      const offset = (s.blocks.length % 6) * 24;
-      const block: ComposeBlock = {
-        id: genId(),
-        kind: entity.kind,
-        refId: entity.id,
-        x: 40 + offset,
-        y: 40 + offset,
-        label: entity.label,
-        ...(entity.sublabel !== undefined
-          ? { sublabel: entity.sublabel }
-          : {}),
-        ...(entity.href !== undefined ? { href: entity.href } : {}),
-      };
-      return { ...s, blocks: [...s.blocks, block] };
-    });
-    setSelectedId(/* will be set after state update */ null);
-    announce(`Added ${entity.label} block to canvas`);
-  }, [announce]);
+  const addBlockAtCenter = useCallback(
+    (entity: ComposeEntity) => {
+      setState((s) => {
+        // Stagger new blocks so they don't all stack at (0,0)
+        const offset = (s.blocks.length % 6) * 24;
+        const block: ComposeBlock = {
+          id: genId(),
+          kind: entity.kind,
+          refId: entity.id,
+          x: 40 + offset,
+          y: 40 + offset,
+          label: entity.label,
+          ...(entity.sublabel !== undefined
+            ? { sublabel: entity.sublabel }
+            : {}),
+          ...(entity.href !== undefined ? { href: entity.href } : {}),
+        };
+        return { ...s, blocks: [...s.blocks, block] };
+      });
+      setSelectedId(/* will be set after state update */ null);
+      announce(`Added ${entity.label} block to canvas`);
+    },
+    [announce],
+  );
 
   /**
    * Move a block by (dx, dy) pixels. Used by arrow-key keyboard
@@ -535,8 +541,8 @@ export default function ComposeBoard({
         {state.blocks.length === 0 && !pendingDrop ? (
           <div className="compose-empty">
             <p>
-              👆 Drag from the sidebar to add blocks. Keyboard users: Tab
-              to a sidebar item and press <kbd>Enter</kbd>.
+              👆 Drag from the sidebar to add blocks. Keyboard users: Tab to a
+              sidebar item and press <kbd>Enter</kbd>.
             </p>
           </div>
         ) : null}
@@ -552,7 +558,12 @@ export default function ComposeBoard({
           />
         ))}
         {/* Live region for screen readers */}
-        <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        <div
+          className="sr-only"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
           {liveMessage}
         </div>
       </div>

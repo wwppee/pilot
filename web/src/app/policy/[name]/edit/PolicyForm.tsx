@@ -14,10 +14,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  api,
-  PilotApiError,
-} from "../../../../lib/pilot-browser";
+import { api, PilotApiError } from "../../../../lib/pilot-browser";
 import type { ToolPolicy, ToolPolicyInput } from "../../../../lib/types";
 
 interface PolicyFormProps {
@@ -43,7 +40,7 @@ const SECTION_DEFS: Array<{
     field: "allow",
     id: "policy-allow",
     legend: "allow · exclusive allowlist (only these tools may run)",
-    hint: 'Leave empty to allow all (modulo deny). If non-empty, only these tools work.',
+    hint: "Leave empty to allow all (modulo deny). If non-empty, only these tools work.",
     rows: 4,
     placeholder: "read\nls",
   },
@@ -119,8 +116,7 @@ export default function PolicyForm({
     description !== (initialPolicy.description ?? "") ||
     SECTION_DEFS.some(
       (def) =>
-        arrays[def.field] !==
-        (initialPolicy[def.field] as string[]).join("\n"),
+        arrays[def.field] !== (initialPolicy[def.field] as string[]).join("\n"),
     );
 
   async function onSave(e: React.FormEvent): Promise<void> {
@@ -179,7 +175,9 @@ export default function PolicyForm({
     setApplyMessage(null);
     try {
       const { removed } = await api.unapplyPolicy(initialPolicy.name);
-      setApplyMessage(removed ? "Extension removed" : "Extension was not applied");
+      setApplyMessage(
+        removed ? "Extension removed" : "Extension was not applied",
+      );
     } catch (err) {
       setApplyMessage(
         `Unapply failed: ${
@@ -281,7 +279,8 @@ export default function PolicyForm({
         const hintId = `${def.id}-hint`;
         const error =
           saveState.kind === "error" &&
-          arrays[def.field] !== (initialPolicy[def.field] as string[]).join("\n");
+          arrays[def.field] !==
+            (initialPolicy[def.field] as string[]).join("\n");
         return (
           <fieldset
             className="policy-edit-section"
@@ -318,7 +317,11 @@ export default function PolicyForm({
       })}
 
       {/* ─── Actions ─────────────────────────────────────── */}
-      <div className="policy-edit-actions" role="group" aria-label="Form actions">
+      <div
+        className="policy-edit-actions"
+        role="group"
+        aria-label="Form actions"
+      >
         <button
           type="submit"
           className="btn"
