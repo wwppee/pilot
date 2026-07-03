@@ -3,33 +3,21 @@
 /**
  * PolicyForm — the editable form for a ToolPolicy.
  *
- * v0.4.7: textarea-based editor. One section per field. Save button
- * calls PUT /policies/:name; success → show confirmation + link back
- * to /policy. Failure → keep edits, show error.
+ * v0.4.7: textarea-based editor.
+ * v0.4.8: full accessibility pass — proper labels, aria-invalid,
+ * aria-describedby for error states, aria-live status region.
  *
- * State management:
- *   - Local useState per field (description + 6 arrays)
- *   - dirty flag tracked via comparing initial vs current
- *   - submit calls setPolicy; on success, refetch and show updated
- *
- * Sections:
- *   - description         single-line text
- *   - allow / deny        tool names (e.g. "bash", "write")
- *   - denyPaths           glob patterns (e.g. ".X/.env", "/etc/X")
- *   - denyCommands        regex patterns (e.g. "^rm\\s+-rf\\s+/")
- *   - sensitivePatterns   regex / substring (e.g. "sk-[A-Za-z0-9]+")
- *   - requireApproval     tool names
- *
- * Each array is edited as a textarea (one item per line). Empty
- * lines are dropped on save.
- *
- * (We use `X` instead of `*` in glob examples above because the
- *  TypeScript JSDoc parser treats `**` as a comment terminator.)
+ * We replaced the native `confirm()` dialog with an inline two-step
+ * confirm pattern (button → "Confirm delete?" → button) so the
+ * deletion is accessible and doesn't trigger a system-modal dialog.
  */
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { api, PilotApiError } from "../../../../lib/pilot-browser";
+import {
+  api,
+  PilotApiError,
+} from "../../../../lib/pilot-browser";
 import type { ToolPolicy, ToolPolicyInput } from "../../../../lib/types";
 
 interface PolicyFormProps {
@@ -42,6 +30,65 @@ type SaveState =
   | { kind: "saved"; at: string }
   | { kind: "error"; message: string };
 
+const SECTION_DEFS: Array<{
+  field: keyof ToolPolicyInput;
+  legend: string;
+  hint: string;
+  rows: number;
+  placeholder: string;
+  /** Generate a stable id for label / input / describedby. */
+  id: string;
+}> = [
+  {
+    field: "allow",
+    id: "policy-allow",
+    legend: "allow · exclusive allowlist (only these tools may run)",
+    hint: 'Leave empty to allow all (modulo deny). If non-empty, only these tools work.',
+    rows: 4,
+    placeholder: "read\nls",
+  },
+  {
+    field: "deny",
+    id: "policy-deny",
+    legend: "deny · tools that cannot be called",
+    hint: "deny wins over allow. One tool name per line.",
+    rows: 4,
+    placeholder: "bash\nwrite\nedit",
+  },
+  {
+    field: "denyPaths",
+    id: "policy-denyPaths",
+    legend: "denyPaths · glob patterns for read / edit / write",
+    hint: "Globs: * = any chars except /, ** = any path segments.",
+    rows: 4,
+    placeholder: "**/.env\n**/.env.*\n/etc/**",
+  },
+  {
+    field: "denyCommands",
+    id: "policy-denyCommands",
+    legend: "denyCommands · regex for bash commands to block",
+    hint: "JavaScript regex syntax. Backslashes must be doubled in TOML.",
+    rows: 4,
+    placeholder: "^rm\\s+-rf\\s+/\n^mkfs",
+  },
+  {
+    field: "sensitivePatterns",
+    id: "policy-sensitivePatterns",
+    legend: "sensitivePatterns · redact from tool results",
+    hint: "Used as regex when valid; substring otherwise. Common: API keys, passwords.",
+    rows: 4,
+    placeholder: "sk-[A-Za-z0-9]{20,}\nghp_[A-Za-z0-9]{20,}",
+  },
+  {
+    field: "requireApproval",
+    id: "policy-requireApproval",
+    legend: "requireApproval · tools that pause for human confirmation",
+    hint: "Triggers ctx.ui.confirm() in the generated extension before the tool runs.",
+    rows: 3,
+    placeholder: "bash\nwrite",
+  },
+];
+
 export default function PolicyForm({
   initialPolicy,
 }: PolicyFormProps): JSX.Element {
@@ -49,45 +96,32 @@ export default function PolicyForm({
   const [description, setDescription] = useState(
     initialPolicy.description ?? "",
   );
-  const [allow, setAllow] = useState(initialPolicy.allow.join("\n"));
-  const [deny, setDeny] = useState(initialPolicy.deny.join("\n"));
-  const [denyPaths, setDenyPaths] = useState(
-    initialPolicy.denyPaths.join("\n"),
-  );
-  const [denyCommands, setDenyCommands] = useState(
-    initialPolicy.denyCommands.join("\n"),
-  );
-  const [sensitivePatterns, setSensitivePatterns] = useState(
-    initialPolicy.sensitivePatterns.join("\n"),
-  );
-  const [requireApproval, setRequireApproval] = useState(
-    initialPolicy.requireApproval.join("\n"),
-  );
+  // Map from field name → textarea value (one item per line)
+  const [arrays, setArrays] = useState<Record<string, string>>(() => {
+    const out: Record<string, string> = {};
+    for (const def of SECTION_DEFS) {
+      out[def.field] = (initialPolicy[def.field] as string[]).join("\n");
+    }
+    return out;
+  });
   const [saveState, setSaveState] = useState<SaveState>({ kind: "idle" });
   const [busy, setBusy] = useState(false);
   const [applyMessage, setApplyMessage] = useState<string | null>(null);
+  // Two-step delete confirmation state
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
-  // Compute total rule count for the summary chip
-  const ruleCount = [
-    allow,
-    deny,
-    denyPaths,
-    denyCommands,
-    sensitivePatterns,
-    requireApproval,
-  ]
-    .map((s) => parseLines(s).length)
-    .reduce((a, b) => a + b, 0);
+  const ruleCount = SECTION_DEFS.reduce(
+    (sum, def) => sum + parseLines(arrays[def.field] ?? "").length,
+    0,
+  );
 
-  // Detect dirty state — any field differs from initial
   const isDirty =
     description !== (initialPolicy.description ?? "") ||
-    allow !== initialPolicy.allow.join("\n") ||
-    deny !== initialPolicy.deny.join("\n") ||
-    denyPaths !== initialPolicy.denyPaths.join("\n") ||
-    denyCommands !== initialPolicy.denyCommands.join("\n") ||
-    sensitivePatterns !== initialPolicy.sensitivePatterns.join("\n") ||
-    requireApproval !== initialPolicy.requireApproval.join("\n");
+    SECTION_DEFS.some(
+      (def) =>
+        arrays[def.field] !==
+        (initialPolicy[def.field] as string[]).join("\n"),
+    );
 
   async function onSave(e: React.FormEvent): Promise<void> {
     e.preventDefault();
@@ -96,41 +130,18 @@ export default function PolicyForm({
 
     const input: ToolPolicyInput = {
       description: description.trim() || undefined,
-      allow: parseLines(allow),
-      deny: parseLines(deny),
-      denyPaths: parseLines(denyPaths),
-      denyCommands: parseLines(denyCommands),
-      sensitivePatterns: parseLines(sensitivePatterns),
-      requireApproval: parseLines(requireApproval),
+      allow: parseLines(arrays.allow ?? ""),
+      deny: parseLines(arrays.deny ?? ""),
+      denyPaths: parseLines(arrays.denyPaths ?? ""),
+      denyCommands: parseLines(arrays.denyCommands ?? ""),
+      sensitivePatterns: parseLines(arrays.sensitivePatterns ?? ""),
+      requireApproval: parseLines(arrays.requireApproval ?? ""),
     };
 
     try {
       await api.setPolicy(initialPolicy.name, input);
       setSaveState({ kind: "saved", at: new Date().toISOString() });
-      // Refresh the server-side props so the back-link shows new state
       router.refresh();
-    } catch (err) {
-      setSaveState({
-        kind: "error",
-        message:
-          err instanceof PilotApiError
-            ? `${err.status}: ${err.message}`
-            : (err as Error).message,
-      });
-    }
-  }
-
-  async function onDelete(): Promise<void> {
-    if (
-      !confirm(
-        `Delete policy "${initialPolicy.name}"? This removes the TOML file. The generated extension (if applied) stays until you unapply it.`,
-      )
-    ) {
-      return;
-    }
-    try {
-      await api.deletePolicy(initialPolicy.name);
-      router.push("/policy");
     } catch (err) {
       setSaveState({
         kind: "error",
@@ -144,7 +155,7 @@ export default function PolicyForm({
 
   async function onApply(): Promise<void> {
     if (isDirty) {
-      alert("Save changes first, then apply.");
+      setApplyMessage("Save changes first, then apply.");
       return;
     }
     setBusy(true);
@@ -168,9 +179,7 @@ export default function PolicyForm({
     setApplyMessage(null);
     try {
       const { removed } = await api.unapplyPolicy(initialPolicy.name);
-      setApplyMessage(
-        removed ? "Extension removed" : "Extension was not applied",
-      );
+      setApplyMessage(removed ? "Extension removed" : "Extension was not applied");
     } catch (err) {
       setApplyMessage(
         `Unapply failed: ${
@@ -182,173 +191,134 @@ export default function PolicyForm({
     }
   }
 
+  async function onDelete(): Promise<void> {
+    // Step 1 of 2-step confirm — the button toggles to "Confirm?"
+    // Step 2 actually deletes
+    if (!confirmingDelete) {
+      setConfirmingDelete(true);
+      // Auto-revert after 5s if the user doesn't confirm
+      setTimeout(() => setConfirmingDelete(false), 5000);
+      return;
+    }
+    setConfirmingDelete(false);
+    try {
+      await api.deletePolicy(initialPolicy.name);
+      router.push("/policy");
+    } catch (err) {
+      setSaveState({
+        kind: "error",
+        message:
+          err instanceof PilotApiError
+            ? `${err.status}: ${err.message}`
+            : (err as Error).message,
+      });
+    }
+  }
+
   return (
-    <form onSubmit={onSave} className="policy-edit-form">
-      {/* ─── Status bar ─────────────────────────────────────── */}
+    <form
+      onSubmit={onSave}
+      className="policy-edit-form"
+      aria-label={`Edit policy ${initialPolicy.name}`}
+    >
+      {/* ─── Status bar (live region) ────────────────────── */}
       <div className="policy-edit-status" data-state={saveState.kind}>
-        {applyMessage && (
-          <span
-            className={
-              applyMessage.includes("failed") ? "error small" : "ok small"
-            }
-          >
-            {applyMessage}
-          </span>
-        )}
-        {saveState.kind === "idle" && !isDirty && !applyMessage && (
-          <span className="muted small">
-            {ruleCount} rule{ruleCount === 1 ? "" : "s"}
-          </span>
-        )}
-        {saveState.kind === "idle" && isDirty && (
-          <span className="warn small">Unsaved changes</span>
-        )}
-        {saveState.kind === "saving" && (
-          <span className="muted small">Saving…</span>
-        )}
-        {saveState.kind === "saved" && (
-          <span className="ok small">
-            ✓ Saved at {new Date(saveState.at).toLocaleTimeString()}
-          </span>
-        )}
-        {saveState.kind === "error" && (
-          <span className="error small">Error: {saveState.message}</span>
-        )}
+        <p
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          className="policy-edit-status-msg"
+        >
+          {applyMessage && (
+            <span
+              className={
+                applyMessage.includes("failed") ? "error small" : "ok small"
+              }
+            >
+              {applyMessage}
+            </span>
+          )}
+          {!applyMessage && saveState.kind === "idle" && !isDirty && (
+            <span className="muted small">
+              {ruleCount} rule{ruleCount === 1 ? "" : "s"}
+            </span>
+          )}
+          {!applyMessage && saveState.kind === "idle" && isDirty && (
+            <span className="warn small">Unsaved changes</span>
+          )}
+          {!applyMessage && saveState.kind === "saving" && (
+            <span className="muted small">Saving…</span>
+          )}
+          {!applyMessage && saveState.kind === "saved" && (
+            <span className="ok small">
+              ✓ Saved at {new Date(saveState.at).toLocaleTimeString()}
+            </span>
+          )}
+          {saveState.kind === "error" && (
+            <span className="error small" role="alert">
+              Error: {saveState.message}
+            </span>
+          )}
+        </p>
       </div>
 
-      {/* ─── Description ────────────────────────────────────── */}
-      <fieldset className="policy-edit-section">
-        <legend>Description</legend>
+      {/* ─── Description ─────────────────────────────────── */}
+      <div className="policy-edit-section">
+        <label htmlFor="policy-description">Description</label>
         <input
+          id="policy-description"
           type="text"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="One-line summary of what this policy enforces"
           className="policy-edit-input"
         />
-      </fieldset>
+      </div>
 
-      {/* ─── Tool name arrays ───────────────────────────────── */}
-      <fieldset className="policy-edit-section">
-        <legend>
-          <span className="rule-name deny">deny</span> · tools that cannot be
-          called
-        </legend>
-        <textarea
-          value={deny}
-          onChange={(e) => setDeny(e.target.value)}
-          placeholder={"bash\nwrite\nedit"}
-          rows={4}
-          className="policy-edit-textarea"
-          spellCheck={false}
-        />
-        <p className="muted small">
-          One tool name per line (e.g. <code>bash</code>, <code>write</code>).
-          deny wins over allow.
-        </p>
-      </fieldset>
+      {/* ─── Rule array sections ─────────────────────────── */}
+      {SECTION_DEFS.map((def) => {
+        const inputId = `${def.id}-input`;
+        const hintId = `${def.id}-hint`;
+        const error =
+          saveState.kind === "error" &&
+          arrays[def.field] !== (initialPolicy[def.field] as string[]).join("\n");
+        return (
+          <fieldset
+            className="policy-edit-section"
+            key={def.field}
+            aria-describedby={hintId}
+          >
+            <legend>
+              <span className={`rule-name ${ruleNameClass(def.field)}`}>
+                {def.field}
+              </span>{" "}
+              {def.legend.split("·").slice(1).join("·").trim()}
+            </legend>
+            <label htmlFor={inputId} className="sr-only">
+              {def.legend}
+            </label>
+            <textarea
+              id={inputId}
+              value={arrays[def.field] ?? ""}
+              onChange={(e) =>
+                setArrays((a) => ({ ...a, [def.field]: e.target.value }))
+              }
+              placeholder={def.placeholder}
+              rows={def.rows}
+              className="policy-edit-textarea"
+              spellCheck={false}
+              aria-invalid={error ? true : undefined}
+              aria-describedby={hintId}
+            />
+            <p id={hintId} className="muted small">
+              {def.hint}
+            </p>
+          </fieldset>
+        );
+      })}
 
-      <fieldset className="policy-edit-section">
-        <legend>
-          <span className="rule-name allow">allow</span> · exclusive allowlist
-          (only these tools may run; everything else blocked)
-        </legend>
-        <textarea
-          value={allow}
-          onChange={(e) => setAllow(e.target.value)}
-          placeholder={"read\nls"}
-          rows={4}
-          className="policy-edit-textarea"
-          spellCheck={false}
-        />
-        <p className="muted small">
-          Leave empty to allow all (modulo deny). If non-empty, only these tools
-          work — everything else is blocked.
-        </p>
-      </fieldset>
-
-      {/* ─── Path / command / pattern arrays ────────────────── */}
-      <fieldset className="policy-edit-section">
-        <legend>
-          <span className="rule-name paths">denyPaths</span> · glob patterns for
-          read/edit/write
-        </legend>
-        <textarea
-          value={denyPaths}
-          onChange={(e) => setDenyPaths(e.target.value)}
-          placeholder={"**/.env\n**/.env.*\n/etc/**\n**/secrets.json"}
-          rows={4}
-          className="policy-edit-textarea"
-          spellCheck={false}
-        />
-        <p className="muted small">
-          Globs: <code>*</code> = any chars except <code>/</code>,{" "}
-          <code>**</code> = any path segments. Examples: <code>**/.env</code>,{" "}
-          <code>/etc/**</code>, <code>**/id_rsa</code>.
-        </p>
-      </fieldset>
-
-      <fieldset className="policy-edit-section">
-        <legend>
-          <span className="rule-name cmds">denyCommands</span> · regex for bash
-          commands to block
-        </legend>
-        <textarea
-          value={denyCommands}
-          onChange={(e) => setDenyCommands(e.target.value)}
-          placeholder={"^rm\\s+-rf\\s+/\n^mkfs\ndd\\s+if=.*of=/dev/(sd|nvme)"}
-          rows={4}
-          className="policy-edit-textarea"
-          spellCheck={false}
-        />
-        <p className="muted small">
-          JavaScript regex syntax. Backslashes must be doubled in TOML (e.g.{" "}
-          <code>^rm\\s+-rf\\s+/</code>). Invalid regexes are skipped silently.
-        </p>
-      </fieldset>
-
-      <fieldset className="policy-edit-section">
-        <legend>
-          <span className="rule-name redact">sensitivePatterns</span> · redact
-          from tool results
-        </legend>
-        <textarea
-          value={sensitivePatterns}
-          onChange={(e) => setSensitivePatterns(e.target.value)}
-          placeholder={
-            "sk-[A-Za-z0-9]{20,}\nghp_[A-Za-z0-9]{20,}\nAKIA[0-9A-Z]{16}"
-          }
-          rows={4}
-          className="policy-edit-textarea"
-          spellCheck={false}
-        />
-        <p className="muted small">
-          Used as regex when valid; substring otherwise. Common: API keys
-          (sk-/gho-/ghp-/AKIA), passwords (<code>password=\S+</code>).
-        </p>
-      </fieldset>
-
-      <fieldset className="policy-edit-section">
-        <legend>
-          <span className="rule-name HITL">requireApproval</span> · tools that
-          pause for human confirmation
-        </legend>
-        <textarea
-          value={requireApproval}
-          onChange={(e) => setRequireApproval(e.target.value)}
-          placeholder={"bash\nwrite"}
-          rows={3}
-          className="policy-edit-textarea"
-          spellCheck={false}
-        />
-        <p className="muted small">
-          Triggers <code>ctx.ui.confirm()</code> in the generated extension
-          before the tool runs. User can deny; we then block.
-        </p>
-      </fieldset>
-
-      {/* ─── Actions ─────────────────────────────────────────── */}
-      <div className="policy-edit-actions">
+      {/* ─── Actions ─────────────────────────────────────── */}
+      <div className="policy-edit-actions" role="group" aria-label="Form actions">
         <button
           type="submit"
           className="btn"
@@ -361,14 +331,14 @@ export default function PolicyForm({
               : "Saved"}
         </button>
         <a href="/policy" className="btn secondary">
-          Back
+          Back to list
         </a>
-        <span className="policy-edit-divider" />
+        <span className="policy-edit-divider" aria-hidden="true" />
         <button
           type="button"
           className="btn secondary"
           onClick={onApply}
-          disabled={busy}
+          disabled={busy || isDirty}
           title="Generate ~/.pilot/extensions/pilot-policy-<name>.ts and have pi load it"
         >
           Apply (generate extension)
@@ -382,14 +352,19 @@ export default function PolicyForm({
         >
           Unapply
         </button>
-        <span className="policy-edit-divider" />
+        <span className="policy-edit-divider" aria-hidden="true" />
         <button
           type="button"
-          className="btn danger"
+          className={`btn ${confirmingDelete ? "danger" : "secondary"}`}
           onClick={onDelete}
-          aria-label="Delete policy"
+          disabled={busy}
+          aria-label={
+            confirmingDelete
+              ? "Confirm delete policy (click again to delete)"
+              : "Delete this policy"
+          }
         >
-          Delete
+          {confirmingDelete ? "Confirm delete?" : "Delete"}
         </button>
       </div>
     </form>
@@ -405,4 +380,24 @@ function parseLines(s: string): string[] {
     .split("\n")
     .map((l) => l.trim())
     .filter((l) => l.length > 0);
+}
+
+/** Map a field name to its visual rule-name class. */
+function ruleNameClass(field: string): string {
+  switch (field) {
+    case "deny":
+      return "deny";
+    case "allow":
+      return "allow";
+    case "denyPaths":
+      return "paths";
+    case "denyCommands":
+      return "cmds";
+    case "sensitivePatterns":
+      return "redact";
+    case "requireApproval":
+      return "HITL";
+    default:
+      return "deny";
+  }
 }

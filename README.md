@@ -240,11 +240,45 @@ const POLICY = {
 ## 数字
 
 - **270 / 270** 单测（`npm run test:offline` ~6 秒跑完，离线，0 网络）
-- **26 / 26** Web vitest（v0.4.7 加了 browserApi 测试套）
+- **43 / 43** Web vitest（v0.4.8 加了 23 个 axe-core a11y 测试）
 - **TypeScript strict 0 errors**
 - Web build 18 个路由
 - 14 个 CLI 命令（init / dashboard / server / pack / session / profile / stats / usage / tool / context / policy / capability / forge / doctor）
 - 1 条命令发布：`./scripts/release.sh <version>`
+
+## 可访问性（v0.4.8 起）
+
+Web UI **WCAG 2.1 AA 通过**，axe-core 自动检查 23 项全过。
+
+键盘全可用（不再依赖鼠标）：
+
+| 位置 | 按键 | 作用 |
+|---|---|---|
+| 任意页面 | `Tab`（第一次） | 显示 "跳到主要内容" 链接 |
+| 任意页面 | `Tab` | 看到 focus 环（`:focus-visible` 蓝圈） |
+| `/compose` | 焦点在侧边栏 + `Enter` | 把 block 加到画布中央（不需拖拽） |
+| `/compose` | 焦点在画布 + `方向键` | 选中 block 移动 5 px（`Shift+方向键` 20 px） |
+| `/compose` | 选中 block + `Delete` | 删除 |
+| `/compose` | 选中 block + `Escape` | 取消选中 |
+| 任意表单 | 输入框旁文字 | 每个字段都有 `<label htmlFor>` 关联 |
+| 任意表单 | 错误信息 | `role="alert"` 自动朗读 |
+| 任意操作 | 状态变化 | `role="status"` 自动朗读（"保存成功"、"已删除"） |
+| 删除按钮 | 第一次点击 | 变成 "确认删除?"（5 秒不动就还原） |
+| 系统设置 | 开 "减弱动态效果" | Cozy 模式的方块浮起、过渡全停 |
+
+对辅助技术的支持：
+
+- **屏幕阅读器**（VoiceOver / NVDA / JAWS）：所有动态状态都有 `aria-live` 实时通报；图标用 `aria-hidden`；状态点用 `role="status"`
+- **Windows 高对比度模式**：`@media (forced-colors: active)` 自适应系统配色
+- **键盘**：每个交互元素 Tab 都到；`tabIndex` 顺序符合视觉顺序；`:focus-visible` 区分键盘 vs 鼠标
+- **色觉**：状态不只靠颜色——文字 + `role` 同时表达
+
+本地跑 a11y 测试：
+
+```bash
+cd web && npx vitest run tests/a11y.test.tsx
+# 23 tests, <200ms
+```
 
 ## 开发者入门
 

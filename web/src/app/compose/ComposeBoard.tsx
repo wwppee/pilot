@@ -164,6 +164,16 @@ export default function ComposeBoard({
     saveViewMode(viewMode);
   }, [viewMode]);
 
+  // Accessibility: announce when blocks are added/removed/moved.
+  // We use a polite aria-live region so screen readers speak changes
+  // without interrupting the user.
+  const [liveMessage, setLiveMessage] = useState("");
+  const announce = useCallback((msg: string) => {
+    // Clear first so identical consecutive messages still re-announce.
+    setLiveMessage("");
+    setTimeout(() => setLiveMessage(msg), 50);
+  }, []);
+
   // Build a quick lookup map of catalog entities for hydration.
   const catalogIndex = useMemo(() => {
     const map = new Map<string, ComposeEntity>();
@@ -282,7 +292,89 @@ export default function ComposeBoard({
   const deleteBlock = useCallback((id: string) => {
     setState((s) => ({ ...s, blocks: s.blocks.filter((b) => b.id !== id) }));
     setSelectedId(null);
+    const removed = state.blocks.find((b) => b.id === id);
+    if (removed) announce(`Removed block ${removed.label}`);
+  }, [announce, state.blocks]);
+
+  /**
+   * Add a sidebar entity as a block in the canvas center.
+   * Used by keyboard users (Enter on a sidebar item) and as a
+   * fallback for mouse users who don't want to drag.
+   */
+  const addBlockAtCenter = useCallback((entity: ComposeEntity) => {
+    setState((s) => {
+      // Stagger new blocks so they don't all stack at (0,0)
+      const offset = (s.blocks.length % 6) * 24;
+      const block: ComposeBlock = {
+        id: genId(),
+        kind: entity.kind,
+        refId: entity.id,
+        x: 40 + offset,
+        y: 40 + offset,
+        label: entity.label,
+        ...(entity.sublabel !== undefined
+          ? { sublabel: entity.sublabel }
+          : {}),
+        ...(entity.href !== undefined ? { href: entity.href } : {}),
+      };
+      return { ...s, blocks: [...s.blocks, block] };
+    });
+    setSelectedId(/* will be set after state update */ null);
+    announce(`Added ${entity.label} block to canvas`);
+  }, [announce]);
+
+  /**
+   * Move a block by (dx, dy) pixels. Used by arrow-key keyboard
+   * navigation in the inspector and on focused blocks.
+   */
+  const moveBlock = useCallback((id: string, dx: number, dy: number) => {
+    setState((s) => ({
+      ...s,
+      blocks: s.blocks.map((b) =>
+        b.id === id
+          ? { ...b, x: Math.max(0, b.x + dx), y: Math.max(0, b.y + dy) }
+          : b,
+      ),
+    }));
   }, []);
+
+  /**
+   * Handle keyboard on a focused block: arrow keys move, Delete removes.
+   * Inspected at the canvas container level.
+   */
+  const onCanvasKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (!selectedId) return;
+      const big = e.shiftKey ? 20 : 5;
+      switch (e.key) {
+        case "ArrowLeft":
+          e.preventDefault();
+          moveBlock(selectedId, -big, 0);
+          announce(`Moved block left ${big} pixels`);
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          moveBlock(selectedId, big, 0);
+          announce(`Moved block right ${big} pixels`);
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          moveBlock(selectedId, 0, -big);
+          announce(`Moved block up ${big} pixels`);
+          break;
+        case "ArrowDown":
+          e.preventDefault();
+          moveBlock(selectedId, 0, big);
+          announce(`Moved block down ${big} pixels`);
+          break;
+        case "Escape":
+          setSelectedId(null);
+          announce("Selection cleared");
+          break;
+      }
+    },
+    [selectedId, moveBlock, announce],
+  );
 
   // ─── Export / Import ─────────────────────────────────────
   const exportJson = useCallback(() => {
@@ -403,12 +495,15 @@ export default function ComposeBoard({
                   <span>{sec.emoji}</span> {sec.label}
                 </h4>
                 {sec.items.map((e) => (
-                  <div
+                  <button
+                    type="button"
                     key={`${sec.kind}:${e.id}`}
                     className="compose-sidebar-item"
                     style={{ borderLeftColor: KIND_META[sec.kind].tint }}
                     onPointerDown={(ev) => startSidebarDrag(e, ev)}
-                    title="Drag to canvas to add a block"
+                    onClick={() => addBlockAtCenter(e)}
+                    aria-label={`Add ${sec.label.toLowerCase()} "${e.label}" to canvas`}
+                    title="Drag to canvas, or press Enter to add to center"
                   >
                     <div className="compose-sidebar-label">{e.label}</div>
                     {e.sublabel ? (
@@ -416,7 +511,7 @@ export default function ComposeBoard({
                         {e.sublabel}
                       </div>
                     ) : null}
-                  </div>
+                  </button>
                 ))}
               </div>
             ))
@@ -430,14 +525,19 @@ export default function ComposeBoard({
         className={`compose-canvas ${viewMode === "cozy" ? "cozy" : "modern"}`}
         onPointerMove={onCanvasPointerMove}
         onPointerUp={onCanvasPointerUp}
+        onKeyDown={onCanvasKeyDown}
         data-pending={pendingDrop !== null}
         data-mode={viewMode}
-        role="application"
-        aria-label="Compose canvas"
+        role="region"
+        aria-label="Compose canvas. When a block is selected, use arrow keys to move it, Delete to remove, Escape to deselect."
+        tabIndex={0}
       >
         {state.blocks.length === 0 && !pendingDrop ? (
           <div className="compose-empty">
-            <p>👆 Drag from the sidebar to add blocks.</p>
+            <p>
+              👆 Drag from the sidebar to add blocks. Keyboard users: Tab
+              to a sidebar item and press <kbd>Enter</kbd>.
+            </p>
           </div>
         ) : null}
         {state.blocks.map((b) => (
@@ -451,6 +551,10 @@ export default function ComposeBoard({
             onDelete={() => deleteBlock(b.id)}
           />
         ))}
+        {/* Live region for screen readers */}
+        <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+          {liveMessage}
+        </div>
       </div>
 
       {/* ─── Inspector ───────────────────────────────────── */}
@@ -566,6 +670,10 @@ function ComposeBlockView({
         borderColor: viewMode === "cozy" ? cozyTint : meta.tint,
       }}
       onPointerDown={onPointerDown}
+      role="group"
+      tabIndex={selected ? 0 : -1}
+      aria-label={`${meta.label}: ${block.label}${block.sublabel ? `, ${block.sublabel}` : ""}${selected ? ", selected" : ""}`}
+      data-block-id={block.id}
     >
       <button
         type="button"

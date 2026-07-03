@@ -407,6 +407,19 @@
     0 12px 24px rgba(120, 80, 30, 0.3);
 }
 
+/* Keyboard focus indicator on blocks (modern mode).
+   We use outline + box-shadow so it's visible regardless of
+   block background color. */
+.compose-block:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px rgba(121, 192, 255, 0.3);
+}
+.compose-block.cozy:focus-visible {
+  outline: 3px solid var(--cozy-accent-2);
+  outline-offset: 2px;
+}
+
 /* Top "lit" face — pseudo-element on the top edge. */
 .compose-block.cozy::before {
   content: "";
