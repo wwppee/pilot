@@ -362,9 +362,7 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
           onClick={onDelete}
           disabled={busy}
           aria-label={
-            confirmingDelete
-              ? t("btn.ariaConfirmDelete")
-              : t("btn.ariaDelete")
+            confirmingDelete ? t("btn.ariaConfirmDelete") : t("btn.ariaDelete")
           }
         >
           {confirmingDelete ? t("btn.confirmDelete") : t("btn.delete")}

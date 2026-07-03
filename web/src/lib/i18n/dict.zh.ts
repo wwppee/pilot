@@ -129,7 +129,8 @@ const zh: Dict = {
 
   // Tools
   "tools.h1": "工具清单",
-  "tools.subtitle": "当前配置下 pi 可用的工具 — 内置 {builtin} 个，npm 扩展 {npm} 个。",
+  "tools.subtitle":
+    "当前配置下 pi 可用的工具 — 内置 {builtin} 个，npm 扩展 {npm} 个。",
   "tools.empty": "暂未发现工具。运行 pi 一次以初始化目录。",
   "tools.section.builtin.title": "内置",
   "tools.section.builtin.subtitle": "Pi 自带（见 `pi --help`）",
@@ -147,7 +148,8 @@ const zh: Dict = {
   "context.h1": "项目上下文",
   "context.subtitle":
     "在 {cwd} 下 pi 可能加载进系统提示的文件。镜像 pi 的 `loadProjectContextFiles` 算法。",
-  "context.empty": "未找到上下文文件。在此目录创建 `AGENTS.md` 或 `CLAUDE.md`。",
+  "context.empty":
+    "未找到上下文文件。在此目录创建 `AGENTS.md` 或 `CLAUDE.md`。",
   "context.section.loaded.title": "Pi 已加载",
   "context.section.loaded.subtitle": "会话开始时注入到系统提示",
   "context.section.info.title": "仅供查看",

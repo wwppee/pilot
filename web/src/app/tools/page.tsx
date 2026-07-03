@@ -105,11 +105,21 @@ function ToolSection({
       <table className="w-full text-sm">
         <thead className="surface-2 text-left">
           <tr>
-            <th className="px-3 py-2 font-medium"><T k="tools.col.name" /></th>
-            <th className="px-3 py-2 font-medium"><T k="tools.col.source" /></th>
-            <th className="px-3 py-2 font-medium"><T k="tools.col.safety" /></th>
-            <th className="px-3 py-2 font-medium"><T k="tools.col.description" /></th>
-            <th className="px-3 py-2 font-medium text-right"><T k="tools.col.status" /></th>
+            <th className="px-3 py-2 font-medium">
+              <T k="tools.col.name" />
+            </th>
+            <th className="px-3 py-2 font-medium">
+              <T k="tools.col.source" />
+            </th>
+            <th className="px-3 py-2 font-medium">
+              <T k="tools.col.safety" />
+            </th>
+            <th className="px-3 py-2 font-medium">
+              <T k="tools.col.description" />
+            </th>
+            <th className="px-3 py-2 font-medium text-right">
+              <T k="tools.col.status" />
+            </th>
           </tr>
         </thead>
         <tbody>

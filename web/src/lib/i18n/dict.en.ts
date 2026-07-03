@@ -26,7 +26,8 @@ const en: Dict = {
   "server.down": "server not running",
 
   // Footer
-  "footer.copy": "pilot-web v{version} · reads + policy + compose over pilot server",
+  "footer.copy":
+    "pilot-web v{version} · reads + policy + compose over pilot server",
   "footer.endpoint": "server expected at",
 
   // Language switcher
@@ -83,7 +84,8 @@ const en: Dict = {
 
   // Packages
   "packages.h1": "Package Center",
-  "packages.subtitle": "{n} installed · search npm without leaving the dashboard.",
+  "packages.subtitle":
+    "{n} installed · search npm without leaving the dashboard.",
   "packages.searchPlaceholder": "search npm… (e.g. pi-subagents)",
   "packages.searchResultsFor": "Search results for \u201c{q}\u201d",
   "packages.nothingMatches": "Nothing matches.",
@@ -133,7 +135,8 @@ const en: Dict = {
   "tools.h1": "Tool inventory",
   "tools.subtitle":
     "{n} tool{s} available to pi — built-in ({builtin}), npm extensions ({npm}).",
-  "tools.empty": "No tools discovered. Run pi once to initialize the directory.",
+  "tools.empty":
+    "No tools discovered. Run pi once to initialize the directory.",
   "tools.section.builtin.title": "Built-in",
   "tools.section.builtin.subtitle": "Hardcoded into pi (per `pi --help`)",
   "tools.section.local.title": "Extensions (project-local)",
@@ -173,8 +176,7 @@ const en: Dict = {
 
   // Profiles
   "profiles.h1": "Profiles",
-  "profiles.subtitle":
-    "{n} profile{s} · stored under ~/.pilot/profiles/",
+  "profiles.subtitle": "{n} profile{s} · stored under ~/.pilot/profiles/",
   "profiles.newNameLabel": "New profile name (kebab-case)",
   "profiles.newNamePlaceholder": "my-work",
   "profiles.empty": "No profiles yet. Use the form above to create one.",
@@ -182,11 +184,9 @@ const en: Dict = {
 
   // Capabilities
   "capabilities.h1": "Capabilities",
-  "capabilities.subtitle":
-    "{n} capability installed · Forge ships in v0.4.",
+  "capabilities.subtitle": "{n} capability installed · Forge ships in v0.4.",
   "capabilities.refreshHint": "auto-refresh 15s",
-  "capabilities.empty":
-    "No capabilities installed yet. Forge ships in v0.4.",
+  "capabilities.empty": "No capabilities installed yet. Forge ships in v0.4.",
   "capabilities.sources": "{n} source(s)",
   "capabilities.requires": "requires {n}",
   "capabilities.conflicts": "conflicts {n}",

@@ -114,9 +114,7 @@ describe("i18n: negotiateLocale()", () => {
   it("handles a Chinese system default (the user's actual case)", () => {
     // macOS zh-CN Chrome sends something like:
     //   "zh-CN,zh;q=0.9,en;q=0.8,en-US;q=0.7"
-    expect(
-      negotiateLocale("zh-CN,zh;q=0.9,en;q=0.8,en-US;q=0.7"),
-    ).toBe("zh");
+    expect(negotiateLocale("zh-CN,zh;q=0.9,en;q=0.8,en-US;q=0.7")).toBe("zh");
   });
 });
 

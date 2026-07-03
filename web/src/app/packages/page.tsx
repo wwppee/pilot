@@ -49,10 +49,7 @@ export default async function PackagesPage({ searchParams }: SearchPageProps) {
           <T k="packages.h1" />
         </h1>
         <p className="text-[var(--text-muted)] text-sm">
-          <T
-            k="packages.subtitle"
-            params={{ n: installedList.length }}
-          />
+          <T k="packages.subtitle" params={{ n: installedList.length }} />
         </p>
       </header>
 

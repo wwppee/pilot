@@ -99,7 +99,10 @@ export default async function RootLayout({
   const footerEndpoint = renderT(locale, "footer.endpoint");
 
   return (
-    <html lang={locale} className={`${outfit.variable} ${jetbrainsMono.variable}`}>
+    <html
+      lang={locale}
+      className={`${outfit.variable} ${jetbrainsMono.variable}`}
+    >
       <body>
         <I18nProvider initialLocale={locale}>
           {/* Skip link: invisible until focused. Lets keyboard users jump
@@ -183,8 +186,7 @@ export default async function RootLayout({
               <div className="mx-auto max-w-6xl px-6 py-3 text-xs text-[var(--text-muted)] flex items-center justify-between">
                 <span>{footerCopy}</span>
                 <span>
-                  {footerEndpoint}{" "}
-                  <code className="kbd">127.0.0.1:17361</code>
+                  {footerEndpoint} <code className="kbd">127.0.0.1:17361</code>
                 </span>
               </div>
             </footer>

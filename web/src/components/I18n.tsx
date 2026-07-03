@@ -97,9 +97,7 @@ export function I18nProvider({ initialLocale, children }: I18nProviderProps) {
     [locale, setLocale, t],
   );
 
-  return (
-    <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
-  );
+  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
 
 interface TProps {
@@ -127,6 +125,10 @@ export function T({ k, params }: TProps) {
  * directly without subscribing to the client context. Useful for
  * server-rendered text that won't change after hydration.
  */
-export function renderT(locale: Locale, k: string, params?: Record<string, string | number>) {
+export function renderT(
+  locale: Locale,
+  k: string,
+  params?: Record<string, string | number>,
+) {
   return format(translate(locale, k, params), undefined);
 }

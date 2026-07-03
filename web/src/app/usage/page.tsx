@@ -30,10 +30,26 @@ export default async function UsagePage({
   const locale = negotiateLocale(acceptLanguage);
 
   const RANGES = [
-    { key: "today", range: { kind: "today" as const }, label: renderT(locale, "usage.range.today") },
-    { key: "week", range: { kind: "lastDays" as const, days: 7 }, label: renderT(locale, "usage.range.week") },
-    { key: "month", range: { kind: "lastDays" as const, days: 30 }, label: renderT(locale, "usage.range.month") },
-    { key: "all", range: { kind: "all" as const }, label: renderT(locale, "usage.range.all") },
+    {
+      key: "today",
+      range: { kind: "today" as const },
+      label: renderT(locale, "usage.range.today"),
+    },
+    {
+      key: "week",
+      range: { kind: "lastDays" as const, days: 7 },
+      label: renderT(locale, "usage.range.week"),
+    },
+    {
+      key: "month",
+      range: { kind: "lastDays" as const, days: 30 },
+      label: renderT(locale, "usage.range.month"),
+    },
+    {
+      key: "all",
+      range: { kind: "all" as const },
+      label: renderT(locale, "usage.range.all"),
+    },
   ];
   const selected = RANGES.find((r) => r.key === which) ?? RANGES[1]!;
 
@@ -85,10 +101,23 @@ export default async function UsagePage({
         <>
           {/* Summary cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Card label={renderT(locale, "usage.card.sessions")} value={String(report.totalSessions)} />
-            <Card label={renderT(locale, "usage.card.assistantMessages")} value={String(report.totalAssistantMessages)} />
-            <Card label={renderT(locale, "usage.card.totalTokens")} value={formatInt(report.totalTokens)} />
-            <Card label={renderT(locale, "usage.card.totalCost")} value={`$${report.totalCost.toFixed(4)}`} accent />
+            <Card
+              label={renderT(locale, "usage.card.sessions")}
+              value={String(report.totalSessions)}
+            />
+            <Card
+              label={renderT(locale, "usage.card.assistantMessages")}
+              value={String(report.totalAssistantMessages)}
+            />
+            <Card
+              label={renderT(locale, "usage.card.totalTokens")}
+              value={formatInt(report.totalTokens)}
+            />
+            <Card
+              label={renderT(locale, "usage.card.totalCost")}
+              value={`$${report.totalCost.toFixed(4)}`}
+              accent
+            />
           </div>
 
           {/* By model */}
@@ -104,14 +133,30 @@ export default async function UsagePage({
               <table className="w-full text-sm">
                 <thead className="surface-2 text-left">
                   <tr>
-                    <th className="px-3 py-2 font-medium"><T k="usage.col.model" /></th>
-                    <th className="px-3 py-2 font-medium text-right"><T k="usage.col.msgs" /></th>
-                    <th className="px-3 py-2 font-medium text-right"><T k="usage.col.input" /></th>
-                    <th className="px-3 py-2 font-medium text-right"><T k="usage.col.output" /></th>
-                    <th className="px-3 py-2 font-medium text-right"><T k="usage.col.cacheR" /></th>
-                    <th className="px-3 py-2 font-medium text-right"><T k="usage.col.cacheW" /></th>
-                    <th className="px-3 py-2 font-medium text-right"><T k="usage.col.total" /></th>
-                    <th className="px-3 py-2 font-medium text-right"><T k="usage.col.cost" /></th>
+                    <th className="px-3 py-2 font-medium">
+                      <T k="usage.col.model" />
+                    </th>
+                    <th className="px-3 py-2 font-medium text-right">
+                      <T k="usage.col.msgs" />
+                    </th>
+                    <th className="px-3 py-2 font-medium text-right">
+                      <T k="usage.col.input" />
+                    </th>
+                    <th className="px-3 py-2 font-medium text-right">
+                      <T k="usage.col.output" />
+                    </th>
+                    <th className="px-3 py-2 font-medium text-right">
+                      <T k="usage.col.cacheR" />
+                    </th>
+                    <th className="px-3 py-2 font-medium text-right">
+                      <T k="usage.col.cacheW" />
+                    </th>
+                    <th className="px-3 py-2 font-medium text-right">
+                      <T k="usage.col.total" />
+                    </th>
+                    <th className="px-3 py-2 font-medium text-right">
+                      <T k="usage.col.cost" />
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -123,13 +168,27 @@ export default async function UsagePage({
                       <td className="px-3 py-2">
                         <code className="kbd">{m.model}</code>
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums">{m.messages}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-[var(--text-muted)]">{formatInt(m.input)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-[var(--text-muted)]">{formatInt(m.output)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-[var(--text-muted)]">{formatInt(m.cacheRead)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-[var(--text-muted)]">{formatInt(m.cacheWrite)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{formatInt(m.totalTokens)}</td>
-                      <td className="px-3 py-2 text-right tabular-nums font-medium">${m.cost.toFixed(4)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {m.messages}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-[var(--text-muted)]">
+                        {formatInt(m.input)}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-[var(--text-muted)]">
+                        {formatInt(m.output)}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-[var(--text-muted)]">
+                        {formatInt(m.cacheRead)}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums text-[var(--text-muted)]">
+                        {formatInt(m.cacheWrite)}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {formatInt(m.totalTokens)}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums font-medium">
+                        ${m.cost.toFixed(4)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -179,7 +238,10 @@ export default async function UsagePage({
                 })}
                 {report.byDay.length > 14 && (
                   <div className="text-xs text-[var(--text-muted)] italic pt-1">
-                    <T k="usage.showingLastN" params={{ n: report.byDay.length }} />
+                    <T
+                      k="usage.showingLastN"
+                      params={{ n: report.byDay.length }}
+                    />
                   </div>
                 )}
               </div>

@@ -31,10 +31,7 @@ export default async function CapabilitiesPage() {
             <T k="capabilities.h1" />
           </h1>
           <p className="text-[var(--text-muted)] text-sm">
-            <T
-              k="capabilities.subtitle"
-              params={{ n: list.length }}
-            />
+            <T k="capabilities.subtitle" params={{ n: list.length }} />
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
