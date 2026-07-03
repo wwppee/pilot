@@ -345,8 +345,8 @@ describe("pilotWithCsrf", () => {
     };
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () =>
-        new Response(JSON.stringify([fakePack]), { status: 200 }),
+      vi.fn(
+        async () => new Response(JSON.stringify([fakePack]), { status: 200 }),
       ) as never,
     );
 
@@ -354,7 +354,9 @@ describe("pilotWithCsrf", () => {
 
     // The server returns a bare array — there is no `.results` wrapper.
     expect(Array.isArray(results)).toBe(true);
-    expect((results as unknown as { results?: unknown }).results).toBeUndefined();
+    expect(
+      (results as unknown as { results?: unknown }).results,
+    ).toBeUndefined();
     expect(results).toHaveLength(1);
     expect(results[0]?.name).toBe("pi-subagents");
   });
