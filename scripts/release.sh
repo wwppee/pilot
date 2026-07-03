@@ -214,6 +214,27 @@ with open('$PAYLOAD', 'w', encoding='utf-8') as f:
       if [[ "$HTTP_CODE" =~ ^2 ]]; then
         URL=$(node -e 'console.log(JSON.parse(require("fs").readFileSync("/tmp/release-resp.json","utf8")).html_url||"")')
         printf "  ✓ %s\n" "$URL"
+      elif [[ "$HTTP_CODE" == "422" ]] && grep -q "already_exists" /tmp/release-resp.json 2>/dev/null; then
+        # Release for this tag already exists — update it instead of failing.
+        # Common case: a previous release.sh run created the tag+release but
+        # failed at some later step, so we re-run. Idempotent.
+        warn "Release for $TAG already exists; updating instead."
+        EXISTING_ID=$(curl -s -H "Authorization: token $GH_TOKEN" \
+          "https://api.github.com/repos/$REPO/releases/tags/$TAG" \
+          | node -e 'process.stdin.on("data",d=>console.log(JSON.parse(d).id))')
+        HTTP_CODE=$(curl -s -o /tmp/release-resp.json -w '%{http_code}' \
+          -X PATCH \
+          -H "Authorization: token $GH_TOKEN" \
+          -H "Content-Type: application/json" \
+          -d "@$PAYLOAD" \
+          "https://api.github.com/repos/$REPO/releases/$EXISTING_ID")
+        if [[ "$HTTP_CODE" =~ ^2 ]]; then
+          URL=$(node -e 'console.log(JSON.parse(require("fs").readFileSync("/tmp/release-resp.json","utf8")).html_url||"")')
+          printf "  ✓ %s (updated)\n" "$URL"
+        else
+          err "GitHub release update failed (HTTP $HTTP_CODE):"
+          cat /tmp/release-resp.json | head -10
+        fi
       else
         err "GitHub release failed (HTTP $HTTP_CODE):"
         cat /tmp/release-resp.json | head -10
