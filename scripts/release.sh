@@ -280,7 +280,8 @@ else
 fi
 
 echo
+PKG_VERSION_DISPLAY=$(node -p "require('./package.json').version" 2>/dev/null || echo "${NEW_VERSION:-}")
 ok "Release $TAG complete."
 echo "  GitHub:  https://github.com/wwppee/pilot/releases/tag/$TAG"
-echo "  npm:     https://www.npmjs.com/package/pilot/v/$PKG_VERSION"
+echo "  npm:     https://www.npmjs.com/package/pilot/v/$PKG_VERSION_DISPLAY"
 echo "  Next:    verify the CI matrix is green on the tag"
