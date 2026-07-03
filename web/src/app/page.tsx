@@ -5,8 +5,12 @@
  * states for whatever is missing.
  */
 import Link from "next/link";
+export const dynamic = "force-dynamic";
+import { headers } from "next/headers";
 import { api } from "@/lib/pilot";
 import { AutoRefresh, LivePulse } from "@/components/AutoRefresh";
+import { T } from "@/components/I18n";
+import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { Pack, SessionInfo, StatsReport, UsageReport } from "@/lib/types";
 
 async function loadDashboard(): Promise<{
@@ -46,11 +50,19 @@ async function loadDashboard(): Promise<{
 export default async function DashboardPage() {
   const { stats, usage, packs, sessions, error } = await loadDashboard();
 
+  let acceptLanguage: string | null = null;
+  try {
+    acceptLanguage = (await headers()).get("accept-language");
+  } catch {
+    /* static generation */
+  }
+  const locale = negotiateLocale(acceptLanguage);
+
   if (error) {
     return (
       <ErrorScreen
-        title="Can't reach pilot server"
-        message={`${error}\n\nRun \`pilot dashboard\` to start both the server and the Web UI in one go,\nor start the server alone with \`pilot server start\` if you only need the CLI.`}
+        title={renderT(locale, "home.error.title")}
+        message={renderT(locale, "home.error.body") + "\n\n" + error}
       />
     );
   }
@@ -61,45 +73,49 @@ export default async function DashboardPage() {
 
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold mb-1">Dashboard</h1>
+          <h1 className="text-2xl font-bold mb-1">
+            <T k="home.h1" />
+          </h1>
           <p className="text-[var(--text-muted)] text-sm">
-            A live look at your local pi activity. Last 24 hours.
+            <T k="home.subtitle" />
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
           <LivePulse live />
-          <span>auto-refresh 10s · updated now</span>
+          <span>
+            <T k="home.refreshHint" />
+          </span>
         </div>
       </header>
 
       <section>
         <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)] mb-3">
-          Today
+          <T k="home.section.today" />
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           <StatCard
-            label="Sessions"
+            label={renderT(locale, "home.card.sessions")}
             value={stats?.totalSessions ?? 0}
             accent="accent"
           />
           <StatCard
-            label="Messages"
+            label={renderT(locale, "home.card.messages")}
             value={stats?.totalMessages ?? 0}
             accent="accent"
           />
           <StatCard
-            label="Tool calls"
+            label={renderT(locale, "home.card.toolCalls")}
             value={stats?.totalToolCalls ?? 0}
             accent="accent-2"
           />
           <StatCard
-            label="Tokens"
+            label={renderT(locale, "home.card.tokens")}
             value={usage?.totalTokens ?? 0}
             accent="accent-2"
             isTokens
           />
           <StatCard
-            label="Cost (USD)"
+            label={renderT(locale, "home.card.cost")}
             value={usage ? Math.round(usage.totalCost * 10000) / 10000 : 0}
             accent="warn"
             isFloat
@@ -112,7 +128,7 @@ export default async function DashboardPage() {
           {stats.byModel.length > 0 && (
             <div className="surface rounded-lg p-4">
               <h3 className="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-3">
-                By model
+                <T k="home.section.byModel" />
               </h3>
               <ul className="space-y-2">
                 {stats.byModel.map((m) => (
@@ -127,7 +143,7 @@ export default async function DashboardPage() {
           {stats.byTool.length > 0 && (
             <div className="surface rounded-lg p-4">
               <h3 className="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-3">
-                Top tools
+                <T k="home.section.topTools" />
               </h3>
               <ul className="space-y-2 text-sm">
                 {stats.byTool.slice(0, 6).map((t) => (
@@ -145,29 +161,39 @@ export default async function DashboardPage() {
       <section>
         <div className="flex items-baseline justify-between mb-3">
           <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)]">
-            Recent sessions
+            <T k="home.section.recentSessions" />
           </h2>
           <Link
             href="/sessions"
             className="text-xs"
             style={{ color: "var(--text-muted)" }}
           >
-            See all →
+            <T k="home.link.seeAll" />
           </Link>
         </div>
         <div className="surface rounded-lg overflow-hidden">
           {sessions && sessions.length === 0 && (
-            <Empty msg="No sessions yet." />
+            <Empty msg={renderT(locale, "home.empty.sessions")} />
           )}
           {sessions && sessions.length > 0 && (
             <table className="w-full text-sm">
               <thead className="surface-2 text-left">
                 <tr>
-                  <th className="px-3 py-2 font-medium">ID</th>
-                  <th className="px-3 py-2 font-medium">CWD</th>
-                  <th className="px-3 py-2 font-medium">Last used</th>
-                  <th className="px-3 py-2 font-medium text-right">Entries</th>
-                  <th className="px-3 py-2 font-medium">Model</th>
+                  <th className="px-3 py-2 font-medium">
+                    <T k="sessions.col.id" />
+                  </th>
+                  <th className="px-3 py-2 font-medium">
+                    <T k="sessions.col.cwd" />
+                  </th>
+                  <th className="px-3 py-2 font-medium">
+                    <T k="sessions.col.lastUsed" />
+                  </th>
+                  <th className="px-3 py-2 font-medium text-right">
+                    <T k="sessions.col.entries" />
+                  </th>
+                  <th className="px-3 py-2 font-medium">
+                    <T k="sessions.col.model" />
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -201,18 +227,20 @@ export default async function DashboardPage() {
       <section>
         <div className="flex items-baseline justify-between mb-3">
           <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)]">
-            Installed packs
+            <T k="home.section.installedPacks" />
           </h2>
           <Link
             href="/packages"
             className="text-xs"
             style={{ color: "var(--text-muted)" }}
           >
-            Manage →
+            <T k="home.link.manage" />
           </Link>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          {packs && packs.length === 0 && <Empty msg="No packs installed." />}
+          {packs && packs.length === 0 && (
+            <Empty msg={renderT(locale, "home.empty.packs")} />
+          )}
           {packs &&
             packs.slice(0, 6).map((p) => <PackCard key={p.name} pack={p} />)}
         </div>

@@ -8,6 +8,7 @@
 import { Suspense } from "react";
 import { api, PilotApiError } from "../../lib/pilot";
 import type { ToolPolicy } from "../../lib/types";
+import { T } from "@/components/I18n";
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
@@ -66,12 +67,11 @@ function totalRules(p: ToolPolicy): number {
 export default function PolicyPage() {
   return (
     <main>
-      <h1>Tool Policies</h1>
+      <h1>
+        <T k="policy.h1" />
+      </h1>
       <p className="subtitle">
-        ToolPolicy bundles control what pi can do. Each policy is a TOML file in{" "}
-        <code>~/.pilot/policy/</code>. Apply one to install a generated{" "}
-        <code>pilot-policy-&lt;name&gt;.ts</code> extension into
-        <code>~/.pilot/extensions/</code> — pi auto-loads it on every session.
+        <T k="policy.subtitle" />
       </p>
       <Suspense fallback={<p>Loading…</p>}>
         <PolicyList />

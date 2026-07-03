@@ -15,6 +15,7 @@
 import { Suspense } from "react";
 import { api, PilotApiError } from "../../lib/pilot";
 import type { ComposeCatalog } from "../../lib/types";
+import { T } from "@/components/I18n";
 import ComposeBoard from "./ComposeBoard";
 import "./compose.module.css";
 
@@ -43,12 +44,11 @@ export default async function ComposePage() {
 
   return (
     <main>
-      <h1>Compose</h1>
+      <h1>
+        <T k="compose.h1" />
+      </h1>
       <p className="subtitle">
-        Drag Pilot entities onto the canvas to arrange them visually. Click a
-        block to see its details. Layouts auto-save in your browser; use{" "}
-        <strong>Export</strong> / <strong>Import</strong> to share or back them
-        up.
+        <T k="compose.subtitle" />
       </p>
       {error ? (
         <section className="card error">

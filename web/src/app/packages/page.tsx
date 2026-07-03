@@ -5,8 +5,12 @@
  * `pilot pack install` CLI until we wire POST + CSRF in the UI.
  */
 import Link from "next/link";
+export const dynamic = "force-dynamic";
+import { headers } from "next/headers";
 import { api } from "@/lib/pilot";
 import type { Pack } from "@/lib/types";
+import { T } from "@/components/I18n";
+import { negotiateLocale, renderT } from "@/lib/i18n";
 
 interface SearchPageProps {
   searchParams: Promise<{ q?: string }>;
@@ -15,6 +19,18 @@ interface SearchPageProps {
 export default async function PackagesPage({ searchParams }: SearchPageProps) {
   const { q } = await searchParams;
   const query = (q ?? "").trim();
+
+  // Server-side locale (matches what layout.tsx computed) so we can
+  // pre-render attribute strings like `placeholder`. The <T> children
+  // are server-rendered with the same locale by React.
+  let acceptLanguage: string | null = null;
+  try {
+    acceptLanguage = (await headers()).get("accept-language");
+  } catch {
+    /* static generation */
+  }
+  const locale = negotiateLocale(acceptLanguage);
+  const searchPlaceholder = renderT(locale, "packages.searchPlaceholder");
 
   const [installed, searchResults] = await Promise.allSettled([
     api.packs(),
@@ -29,10 +45,14 @@ export default async function PackagesPage({ searchParams }: SearchPageProps) {
   return (
     <div className="space-y-8">
       <header>
-        <h1 className="text-2xl font-bold mb-1">Package Center</h1>
+        <h1 className="text-2xl font-bold mb-1">
+          <T k="packages.h1" />
+        </h1>
         <p className="text-[var(--text-muted)] text-sm">
-          {installedList.length} installed · search npm without leaving the
-          dashboard.
+          <T
+            k="packages.subtitle"
+            params={{ n: installedList.length }}
+          />
         </p>
       </header>
 
@@ -41,7 +61,8 @@ export default async function PackagesPage({ searchParams }: SearchPageProps) {
           type="text"
           name="q"
           defaultValue={query}
-          placeholder="search npm… (e.g. pi-subagents)"
+          placeholder={searchPlaceholder}
+          aria-label="Search"
           className="flex-1 surface rounded px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
           autoFocus
         />
@@ -50,19 +71,19 @@ export default async function PackagesPage({ searchParams }: SearchPageProps) {
           className="px-4 py-2 text-sm rounded text-[var(--bg)]"
           style={{ background: "var(--accent)" }}
         >
-          Search
+          <T k="btn.search" />
         </button>
       </form>
 
       {searchList && (
         <section>
           <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)] mb-3">
-            Search results for &ldquo;{query}&rdquo;
+            <T k="packages.searchResultsFor" params={{ q: query }} />
           </h2>
           <div className="surface rounded-lg overflow-hidden">
             {searchList.length === 0 ? (
               <div className="text-sm text-[var(--text-muted)] italic px-3 py-6 text-center">
-                Nothing matches.
+                <T k="packages.nothingMatches" />
               </div>
             ) : (
               <ul className="divide-y divide-[var(--border)]">
@@ -91,7 +112,7 @@ export default async function PackagesPage({ searchParams }: SearchPageProps) {
 
       <section>
         <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)] mb-3">
-          Installed
+          <T k="packages.installed" />
         </h2>
         {installedList.length === 0 ? (
           <div className="surface rounded-lg px-3 py-6 text-sm text-[var(--text-muted)] italic text-center">

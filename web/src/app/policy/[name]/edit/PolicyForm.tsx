@@ -16,6 +16,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, PilotApiError } from "../../../../lib/pilot-browser";
 import type { ToolPolicy, ToolPolicyInput } from "../../../../lib/types";
+import { useT } from "@/components/I18n";
 
 interface PolicyFormProps {
   initialPolicy: ToolPolicy;
@@ -88,6 +89,7 @@ const SECTION_DEFS: Array<{
 
 export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
   const router = useRouter();
+  const t = useT();
   const [description, setDescription] = useState(
     initialPolicy.description ?? "",
   );
@@ -326,13 +328,13 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
           disabled={saveState.kind === "saving" || !isDirty}
         >
           {saveState.kind === "saving"
-            ? "Saving…"
+            ? t("btn.saving")
             : isDirty
-              ? "Save changes"
-              : "Saved"}
+              ? t("btn.save")
+              : t("btn.saved")}
         </button>
         <a href="/policy" className="btn secondary">
-          Back to list
+          {t("btn.backToList")}
         </a>
         <span className="policy-edit-divider" aria-hidden="true" />
         <button
@@ -340,18 +342,18 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
           className="btn secondary"
           onClick={onApply}
           disabled={busy || isDirty}
-          title="Generate ~/.pilot/extensions/pilot-policy-<name>.ts and have pi load it"
+          title={t("btn.ariaApplyTitle")}
         >
-          Apply (generate extension)
+          {t("btn.applyGenerate")}
         </button>
         <button
           type="button"
           className="btn secondary"
           onClick={onUnapply}
           disabled={busy}
-          title="Remove the generated extension"
+          title={t("btn.ariaUnapplyTitle")}
         >
-          Unapply
+          {t("btn.unapply")}
         </button>
         <span className="policy-edit-divider" aria-hidden="true" />
         <button
@@ -361,11 +363,11 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
           disabled={busy}
           aria-label={
             confirmingDelete
-              ? "Confirm delete policy (click again to delete)"
-              : "Delete this policy"
+              ? t("btn.ariaConfirmDelete")
+              : t("btn.ariaDelete")
           }
         >
-          {confirmingDelete ? "Confirm delete?" : "Delete"}
+          {confirmingDelete ? t("btn.confirmDelete") : t("btn.delete")}
         </button>
       </div>
     </form>

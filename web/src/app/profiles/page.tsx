@@ -2,9 +2,13 @@
  * /profiles — list all named profiles + create form.
  */
 import Link from "next/link";
+export const dynamic = "force-dynamic";
+import { headers } from "next/headers";
 import { api } from "@/lib/pilot";
 import { createProfileForm, deleteProfileForm } from "@/lib/actions";
 import { DeleteButton } from "@/components/Buttons";
+import { T } from "@/components/I18n";
+import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { Profile } from "@/lib/types";
 
 interface PageProps {
@@ -16,14 +20,28 @@ export default async function ProfilesPage({ searchParams }: PageProps) {
   const result = await api.profiles().catch(() => null as Profile[] | null);
   const profiles = (result ?? []) as Profile[];
 
+  let acceptLanguage: string | null = null;
+  try {
+    acceptLanguage = (await headers()).get("accept-language");
+  } catch {
+    /* static generation */
+  }
+  const locale = negotiateLocale(acceptLanguage);
+
+  const subtitle = renderT(locale, "profiles.subtitle", {
+    n: profiles.length,
+    s: profiles.length === 1 ? "" : "s",
+  });
+  const newNameLabel = renderT(locale, "profiles.newNameLabel");
+  const newNamePlaceholder = renderT(locale, "profiles.newNamePlaceholder");
+
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold mb-1">Profiles</h1>
-        <p className="text-[var(--text-muted)] text-sm">
-          {profiles.length} profile{profiles.length === 1 ? "" : "s"} · stored
-          under <code className="kbd">~/.pilot/profiles/</code>
-        </p>
+        <h1 className="text-2xl font-bold mb-1">
+          <T k="profiles.h1" />
+        </h1>
+        <p className="text-[var(--text-muted)] text-sm">{subtitle}</p>
       </header>
 
       {sp.error && (
@@ -41,13 +59,13 @@ export default async function ProfilesPage({ searchParams }: PageProps) {
       >
         <label className="flex-1">
           <span className="text-[10px] uppercase tracking-wide text-[var(--text-muted)]">
-            New profile name (kebab-case)
+            {newNameLabel}
           </span>
           <input
             name="name"
             type="text"
             pattern="[a-z0-9]+(-[a-z0-9]+)*"
-            placeholder="my-work"
+            placeholder={newNamePlaceholder}
             required
             className="mt-1 w-full surface-2 rounded px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
           />
@@ -57,13 +75,13 @@ export default async function ProfilesPage({ searchParams }: PageProps) {
           className="px-4 py-2 text-sm rounded text-[var(--bg)]"
           style={{ background: "var(--accent)" }}
         >
-          Create
+          <T k="btn.create" />
         </button>
       </form>
 
       {profiles.length === 0 ? (
         <div className="surface rounded-lg px-3 py-6 text-sm text-[var(--text-muted)] italic text-center">
-          No profiles yet. Use the form above to create one.
+          <T k="profiles.empty" />
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -89,7 +107,7 @@ export default async function ProfilesPage({ searchParams }: PageProps) {
               <div className="absolute top-3 right-3">
                 <DeleteButton
                   name={p.name}
-                  label="delete"
+                  label={renderT(locale, "profiles.delete")}
                   action={deleteProfileForm}
                 />
               </div>

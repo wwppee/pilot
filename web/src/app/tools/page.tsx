@@ -6,7 +6,11 @@
  * policy UI. Source filter toggles the visible set.
  */
 
+import { headers } from "next/headers";
 import { api } from "@/lib/pilot";
+export const dynamic = "force-dynamic";
+import { T } from "@/components/I18n";
+import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { ToolInventoryItem } from "@/lib/types";
 
 export default async function ToolsPage() {
@@ -18,19 +22,32 @@ export default async function ToolsPage() {
     error = (e as Error).message;
   }
 
+  let acceptLanguage: string | null = null;
+  try {
+    acceptLanguage = (await headers()).get("accept-language");
+  } catch {
+    /* static generation */
+  }
+  const locale = negotiateLocale(acceptLanguage);
+
   const builtIns = tools.filter((t) => t.source === "built-in");
   const ext = tools.filter((t) => t.source === "extension");
   const npm = tools.filter((t) => t.source === "npm");
 
+  const subtitle = renderT(locale, "tools.subtitle", {
+    n: tools.length,
+    s: tools.length === 1 ? "" : "s",
+    builtin: builtIns.length,
+    npm: npm.length,
+  });
+
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold mb-1">Tool inventory</h1>
-        <p className="text-[var(--text-muted)] text-sm">
-          {tools.length} tool{tools.length === 1 ? "" : "s"} available to pi —
-          built-in ({builtIns.length}), npm extensions ({npm.length})
-          {ext.length > 0 && `, project-local extensions (${ext.length})`}
-        </p>
+        <h1 className="text-2xl font-bold mb-1">
+          <T k="tools.h1" />
+        </h1>
+        <p className="text-[var(--text-muted)] text-sm">{subtitle}</p>
       </header>
 
       {error ? (
@@ -39,28 +56,28 @@ export default async function ToolsPage() {
         </div>
       ) : tools.length === 0 ? (
         <div className="surface rounded-lg p-8 text-sm text-[var(--text-muted)] italic text-center">
-          No tools discovered. Run pi once to initialize the directory.
+          <T k="tools.empty" />
         </div>
       ) : (
         <>
           {builtIns.length > 0 && (
             <ToolSection
-              title="Built-in"
-              subtitle="Hardcoded into pi (per `pi --help`)"
+              title={renderT(locale, "tools.section.builtin.title")}
+              subtitle={renderT(locale, "tools.section.builtin.subtitle")}
               tools={builtIns}
             />
           )}
           {ext.length > 0 && (
             <ToolSection
-              title="Extensions (project-local)"
-              subtitle="~/.pi/agent/extensions/*.ts — AST scan pending"
+              title={renderT(locale, "tools.section.local.title")}
+              subtitle={renderT(locale, "tools.section.local.subtitle")}
               tools={ext}
             />
           )}
           {npm.length > 0 && (
             <ToolSection
-              title="Extensions (npm)"
-              subtitle="Installed via `pi install <pkg>`"
+              title={renderT(locale, "tools.section.npm.title")}
+              subtitle={renderT(locale, "tools.section.npm.subtitle")}
               tools={npm}
             />
           )}
@@ -88,11 +105,11 @@ function ToolSection({
       <table className="w-full text-sm">
         <thead className="surface-2 text-left">
           <tr>
-            <th className="px-3 py-2 font-medium">Name</th>
-            <th className="px-3 py-2 font-medium">Source</th>
-            <th className="px-3 py-2 font-medium">Safety</th>
-            <th className="px-3 py-2 font-medium">Description</th>
-            <th className="px-3 py-2 font-medium text-right">Status</th>
+            <th className="px-3 py-2 font-medium"><T k="tools.col.name" /></th>
+            <th className="px-3 py-2 font-medium"><T k="tools.col.source" /></th>
+            <th className="px-3 py-2 font-medium"><T k="tools.col.safety" /></th>
+            <th className="px-3 py-2 font-medium"><T k="tools.col.description" /></th>
+            <th className="px-3 py-2 font-medium text-right"><T k="tools.col.status" /></th>
           </tr>
         </thead>
         <tbody>

@@ -7,15 +7,12 @@
  */
 
 import Link from "next/link";
+import { headers } from "next/headers";
 import { api } from "@/lib/pilot";
-import type { UsageRange, UsageReport } from "@/lib/types";
-
-const RANGES: Array<{ key: string; range: UsageRange; label: string }> = [
-  { key: "today", range: { kind: "today" }, label: "Today" },
-  { key: "week", range: { kind: "lastDays", days: 7 }, label: "7 days" },
-  { key: "month", range: { kind: "lastDays", days: 30 }, label: "30 days" },
-  { key: "all", range: { kind: "all" }, label: "All" },
-];
+export const dynamic = "force-dynamic";
+import { T } from "@/components/I18n";
+import { negotiateLocale, renderT } from "@/lib/i18n";
+import type { UsageReport } from "@/lib/types";
 
 export default async function UsagePage({
   searchParams,
@@ -24,6 +21,20 @@ export default async function UsagePage({
 }) {
   const sp = await searchParams;
   const which = sp.range ?? "week";
+  let acceptLanguage: string | null = null;
+  try {
+    acceptLanguage = (await headers()).get("accept-language");
+  } catch {
+    /* static generation */
+  }
+  const locale = negotiateLocale(acceptLanguage);
+
+  const RANGES = [
+    { key: "today", range: { kind: "today" as const }, label: renderT(locale, "usage.range.today") },
+    { key: "week", range: { kind: "lastDays" as const, days: 7 }, label: renderT(locale, "usage.range.week") },
+    { key: "month", range: { kind: "lastDays" as const, days: 30 }, label: renderT(locale, "usage.range.month") },
+    { key: "all", range: { kind: "all" as const }, label: renderT(locale, "usage.range.all") },
+  ];
   const selected = RANGES.find((r) => r.key === which) ?? RANGES[1]!;
 
   let report: UsageReport | null = null;
@@ -38,13 +49,14 @@ export default async function UsagePage({
     <div className="space-y-6">
       <header className="flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-bold mb-1">Token usage &amp; cost</h1>
+          <h1 className="text-2xl font-bold mb-1">
+            <T k="usage.h1" />
+          </h1>
           <p className="text-[var(--text-muted)] text-sm">
-            Aggregated from <code>AssistantMessage.usage</code> across every pi
-            v3 session.
+            <T k="usage.subtitle" />
           </p>
         </div>
-        <nav className="flex gap-1 text-xs">
+        <nav className="flex gap-1 text-xs" aria-label="Range">
           {RANGES.map((r) => (
             <Link
               key={r.key}
@@ -67,50 +79,39 @@ export default async function UsagePage({
         </div>
       ) : !report ? null : report.totalAssistantMessages === 0 ? (
         <div className="surface rounded-lg p-8 text-sm text-[var(--text-muted)] italic text-center">
-          No usage data yet. Run pi with a real model to record tokens and cost.
+          <T k="usage.empty" />
         </div>
       ) : (
         <>
           {/* Summary cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Card label="Sessions" value={String(report.totalSessions)} />
-            <Card
-              label="Assistant messages"
-              value={String(report.totalAssistantMessages)}
-            />
-            <Card label="Total tokens" value={formatInt(report.totalTokens)} />
-            <Card
-              label="Total cost"
-              value={`$${report.totalCost.toFixed(4)}`}
-              accent
-            />
+            <Card label={renderT(locale, "usage.card.sessions")} value={String(report.totalSessions)} />
+            <Card label={renderT(locale, "usage.card.assistantMessages")} value={String(report.totalAssistantMessages)} />
+            <Card label={renderT(locale, "usage.card.totalTokens")} value={formatInt(report.totalTokens)} />
+            <Card label={renderT(locale, "usage.card.totalCost")} value={`$${report.totalCost.toFixed(4)}`} accent />
           </div>
 
           {/* By model */}
           <div className="surface rounded-lg overflow-hidden">
             <div className="px-4 py-2 surface-2 text-xs uppercase tracking-wide text-[var(--text-muted)]">
-              By model
+              <T k="usage.byModel.title" />
             </div>
             {report.byModel.length === 0 ? (
               <div className="p-4 text-sm text-[var(--text-muted)] italic">
-                No model data.
+                <T k="usage.empty.model" />
               </div>
             ) : (
               <table className="w-full text-sm">
                 <thead className="surface-2 text-left">
                   <tr>
-                    <th className="px-3 py-2 font-medium">Model</th>
-                    <th className="px-3 py-2 font-medium text-right">Msgs</th>
-                    <th className="px-3 py-2 font-medium text-right">Input</th>
-                    <th className="px-3 py-2 font-medium text-right">Output</th>
-                    <th className="px-3 py-2 font-medium text-right">
-                      Cache R
-                    </th>
-                    <th className="px-3 py-2 font-medium text-right">
-                      Cache W
-                    </th>
-                    <th className="px-3 py-2 font-medium text-right">Total</th>
-                    <th className="px-3 py-2 font-medium text-right">Cost</th>
+                    <th className="px-3 py-2 font-medium"><T k="usage.col.model" /></th>
+                    <th className="px-3 py-2 font-medium text-right"><T k="usage.col.msgs" /></th>
+                    <th className="px-3 py-2 font-medium text-right"><T k="usage.col.input" /></th>
+                    <th className="px-3 py-2 font-medium text-right"><T k="usage.col.output" /></th>
+                    <th className="px-3 py-2 font-medium text-right"><T k="usage.col.cacheR" /></th>
+                    <th className="px-3 py-2 font-medium text-right"><T k="usage.col.cacheW" /></th>
+                    <th className="px-3 py-2 font-medium text-right"><T k="usage.col.total" /></th>
+                    <th className="px-3 py-2 font-medium text-right"><T k="usage.col.cost" /></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -122,27 +123,13 @@ export default async function UsagePage({
                       <td className="px-3 py-2">
                         <code className="kbd">{m.model}</code>
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums">
-                        {m.messages}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums text-[var(--text-muted)]">
-                        {formatInt(m.input)}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums text-[var(--text-muted)]">
-                        {formatInt(m.output)}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums text-[var(--text-muted)]">
-                        {formatInt(m.cacheRead)}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums text-[var(--text-muted)]">
-                        {formatInt(m.cacheWrite)}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums">
-                        {formatInt(m.totalTokens)}
-                      </td>
-                      <td className="px-3 py-2 text-right tabular-nums font-medium">
-                        ${m.cost.toFixed(4)}
-                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums">{m.messages}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-[var(--text-muted)]">{formatInt(m.input)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-[var(--text-muted)]">{formatInt(m.output)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-[var(--text-muted)]">{formatInt(m.cacheRead)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-[var(--text-muted)]">{formatInt(m.cacheWrite)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{formatInt(m.totalTokens)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums font-medium">${m.cost.toFixed(4)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -153,11 +140,11 @@ export default async function UsagePage({
           {/* By day */}
           <div className="surface rounded-lg overflow-hidden">
             <div className="px-4 py-2 surface-2 text-xs uppercase tracking-wide text-[var(--text-muted)]">
-              By day (local TZ)
+              <T k="usage.byDay.title" />
             </div>
             {report.byDay.length === 0 ? (
               <div className="p-4 text-sm text-[var(--text-muted)] italic">
-                No daily data.
+                <T k="usage.empty.day" />
               </div>
             ) : (
               <div className="p-4 space-y-1.5">
@@ -192,7 +179,7 @@ export default async function UsagePage({
                 })}
                 {report.byDay.length > 14 && (
                   <div className="text-xs text-[var(--text-muted)] italic pt-1">
-                    (showing last 14 of {report.byDay.length} days)
+                    <T k="usage.showingLastN" params={{ n: report.byDay.length }} />
                   </div>
                 )}
               </div>

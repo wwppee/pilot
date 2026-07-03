@@ -2,12 +2,24 @@
  * /capabilities — list installed Capabilities (read-only).
  */
 import Link from "next/link";
+export const dynamic = "force-dynamic";
+import { headers } from "next/headers";
 import { api } from "@/lib/pilot";
 import { AutoRefresh, LivePulse } from "@/components/AutoRefresh";
+import { T } from "@/components/I18n";
+import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { Capability } from "@/lib/types";
 
 export default async function CapabilitiesPage() {
   const list = await api.listCapabilities().catch(() => [] as Capability[]);
+
+  let acceptLanguage: string | null = null;
+  try {
+    acceptLanguage = (await headers()).get("accept-language");
+  } catch {
+    /* static generation */
+  }
+  const locale = negotiateLocale(acceptLanguage);
 
   return (
     <div className="space-y-6">
@@ -15,25 +27,27 @@ export default async function CapabilitiesPage() {
 
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold mb-1">Capabilities</h1>
+          <h1 className="text-2xl font-bold mb-1">
+            <T k="capabilities.h1" />
+          </h1>
           <p className="text-[var(--text-muted)] text-sm">
-            {list.length} capability/capabilities installed · Forge ships in
-            v0.4.
+            <T
+              k="capabilities.subtitle"
+              params={{ n: list.length }}
+            />
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
           <LivePulse live />
-          <span>auto-refresh 15s</span>
+          <span>
+            <T k="capabilities.refreshHint" />
+          </span>
         </div>
       </header>
 
       {list.length === 0 ? (
         <div className="surface rounded-lg px-3 py-6 text-sm text-[var(--text-muted)] italic text-center">
-          No capabilities installed yet.{" "}
-          <Link href="https://github.com/wwppee/pilot" className="text-xs">
-            Forge
-          </Link>{" "}
-          ships in v0.4.
+          <T k="capabilities.empty" />
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -64,13 +78,23 @@ export default async function CapabilitiesPage() {
                 </p>
               )}
               <div className="flex gap-4 mt-3 text-[10px] text-[var(--text-muted)] font-mono">
-                <span>{c.sources.length} source(s)</span>
+                <span>
+                  {renderT(locale, "capabilities.sources", {
+                    n: c.sources.length,
+                  })}
+                </span>
                 {c.compatibility.requires.length > 0 && (
-                  <span>requires {c.compatibility.requires.length}</span>
+                  <span>
+                    {renderT(locale, "capabilities.requires", {
+                      n: c.compatibility.requires.length,
+                    })}
+                  </span>
                 )}
                 {c.compatibility.conflicts.length > 0 && (
                   <span style={{ color: "var(--warn)" }}>
-                    conflicts {c.compatibility.conflicts.length}
+                    {renderT(locale, "capabilities.conflicts", {
+                      n: c.compatibility.conflicts.length,
+                    })}
                   </span>
                 )}
               </div>

@@ -9,7 +9,11 @@
  * `?cwd=...` lets the user inspect context for any directory.
  */
 
+import { headers } from "next/headers";
 import { api } from "@/lib/pilot";
+export const dynamic = "force-dynamic";
+import { T } from "@/components/I18n";
+import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { ProjectContextRef } from "@/lib/types";
 
 export default async function ContextPage({
@@ -28,18 +32,25 @@ export default async function ContextPage({
     error = (e as Error).message;
   }
 
+  let acceptLanguage: string | null = null;
+  try {
+    acceptLanguage = (await headers()).get("accept-language");
+  } catch {
+    /* static generation */
+  }
+  const locale = negotiateLocale(acceptLanguage);
+  const subtitle = renderT(locale, "context.subtitle", { cwd });
+
   const loaded = refs.filter((r) => r.loaded);
   const info = refs.filter((r) => !r.loaded);
 
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold mb-1">Project context</h1>
-        <p className="text-[var(--text-muted)] text-sm">
-          Files visible from <code className="kbd">{cwd}</code> that pi may load
-          into its system prompt. Mirrors pi&apos;s{" "}
-          <code>loadProjectContextFiles</code> algorithm.
-        </p>
+        <h1 className="text-2xl font-bold mb-1">
+          <T k="context.h1" />
+        </h1>
+        <p className="text-[var(--text-muted)] text-sm">{subtitle}</p>
       </header>
 
       {error ? (
@@ -48,23 +59,22 @@ export default async function ContextPage({
         </div>
       ) : refs.length === 0 ? (
         <div className="surface rounded-lg p-8 text-sm text-[var(--text-muted)] italic text-center">
-          No context files found. Create an <code>AGENTS.md</code> or{" "}
-          <code>CLAUDE.md</code> in this directory.
+          <T k="context.empty" />
         </div>
       ) : (
         <>
           {loaded.length > 0 && (
             <ContextSection
-              title="Loaded by pi"
-              subtitle="Injected into the system prompt at session start"
+              title={renderT(locale, "context.section.loaded.title")}
+              subtitle={renderT(locale, "context.section.loaded.subtitle")}
               refs={loaded}
               loaded
             />
           )}
           {info.length > 0 && (
             <ContextSection
-              title="Informational only"
-              subtitle="Visible in Pilot; not auto-loaded by pi"
+              title={renderT(locale, "context.section.info.title")}
+              subtitle={renderT(locale, "context.section.info.subtitle")}
               refs={info}
             />
           )}
