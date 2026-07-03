@@ -1,6 +1,6 @@
 {
   "name": "pilot-web",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "private": true,
   "description": "Web UI for Pilot — dashboard and management console over the local pilot server.",
   "scripts": {
@@ -20,6 +20,7 @@
     "@types/node": "24.10.0",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
+    "jsdom": "^29.1.1",
     "tailwindcss": "4.3.2",
     "typescript": "5.9.3",
     "vitest": "2.1.8"

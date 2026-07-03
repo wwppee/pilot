@@ -50,6 +50,19 @@ const KIND_META: Record<
 };
 
 const STORAGE_KEY = "pilot-compose-state";
+const VIEW_MODE_KEY = "pilot-compose-view-mode";
+
+/**
+ * Visual style of the compose canvas.
+ *
+ * - `modern` (default): flat SaaS look, dark theme, dotted grid —
+ *   consistent with the rest of the Pilot dashboard (v0.4.4).
+ * - `cozy`: 2.5D isometric skin per `docs/visual-style.md` Layer 2.
+ *   Warm cream background, sage/amber palette, Outfit font, blocks
+ *   have pseudo-element "depth faces" so they look like little cubes
+ *   on a sandbox. Sandbox-only mode for visual flair.
+ */
+export type ViewMode = "modern" | "cozy";
 
 interface DragState {
   blockId: string;
@@ -89,6 +102,25 @@ function loadState(): ComposeState {
   }
 }
 
+function loadViewMode(): ViewMode {
+  if (typeof window === "undefined") return "modern";
+  try {
+    const raw = window.localStorage.getItem(VIEW_MODE_KEY);
+    return raw === "cozy" ? "cozy" : "modern";
+  } catch {
+    return "modern";
+  }
+}
+
+function saveViewMode(mode: ViewMode): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(VIEW_MODE_KEY, mode);
+  } catch {
+    /* ignore */
+  }
+}
+
 function saveState(state: ComposeState): void {
   if (typeof window === "undefined") return;
   try {
@@ -111,6 +143,7 @@ export default function ComposeBoard({
   initialCatalog: ComposeCatalog;
 }): JSX.Element {
   const [state, setState] = useState<ComposeState>(() => loadState());
+  const [viewMode, setViewMode] = useState<ViewMode>(() => loadViewMode());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const [pendingDrop, setPendingDrop] = useState<PendingDrop | null>(null);
@@ -125,6 +158,11 @@ export default function ComposeBoard({
       updatedAt: new Date().toISOString(),
     });
   }, [state]);
+
+  // Persist view mode.
+  useEffect(() => {
+    saveViewMode(viewMode);
+  }, [viewMode]);
 
   // Build a quick lookup map of catalog entities for hydration.
   const catalogIndex = useMemo(() => {
@@ -389,10 +427,11 @@ export default function ComposeBoard({
       {/* ─── Canvas ──────────────────────────────────────── */}
       <div
         ref={canvasRef}
-        className="compose-canvas"
+        className={`compose-canvas ${viewMode === "cozy" ? "cozy" : "modern"}`}
         onPointerMove={onCanvasPointerMove}
         onPointerUp={onCanvasPointerUp}
         data-pending={pendingDrop !== null}
+        data-mode={viewMode}
         role="application"
         aria-label="Compose canvas"
       >
@@ -407,6 +446,7 @@ export default function ComposeBoard({
             block={b}
             selected={b.id === selectedId}
             dragging={drag?.blockId === b.id}
+            viewMode={viewMode}
             onPointerDown={(e) => startBlockDrag(b, e)}
             onDelete={() => deleteBlock(b.id)}
           />
@@ -439,6 +479,22 @@ export default function ComposeBoard({
           </div>
         )}
         <div className="compose-inspector-footer">
+          <button
+            type="button"
+            onClick={() =>
+              setViewMode(viewMode === "modern" ? "cozy" : "modern")
+            }
+            className="btn small"
+            data-active={viewMode === "cozy"}
+            title={
+              viewMode === "modern"
+                ? "Switch to 2.5D cozy sandbox skin"
+                : "Switch back to modern flat look"
+            }
+          >
+            {viewMode === "modern" ? "🌿 Cozy" : "🌑 Modern"}
+          </button>
+          <span className="compose-inspector-divider" />
           <button type="button" onClick={exportJson} className="btn small">
             Export
           </button>
@@ -475,25 +531,39 @@ function ComposeBlockView({
   block,
   selected,
   dragging,
+  viewMode,
   onPointerDown,
   onDelete,
 }: {
   block: ComposeBlock;
   selected: boolean;
   dragging: boolean;
+  viewMode: ViewMode;
   onPointerDown: (e: React.PointerEvent) => void;
   onDelete: () => void;
 }): JSX.Element {
   const meta = KIND_META[block.kind];
+  // In cozy mode we override the border tint per kind with the warm
+  // palette so blocks read as "cubes" against cream sand.
+  const cozyTint = (
+    {
+      session: "var(--cozy-accent)",
+      pack: "var(--cozy-accent-2)",
+      profile: "var(--cozy-text-muted)",
+      policy: "#9c5fbb",
+      capability: "var(--cozy-accent)",
+    } as const
+  )[block.kind];
   return (
     <div
-      className="compose-block"
+      className={`compose-block ${viewMode === "cozy" ? "cozy" : "modern"}`}
       data-selected={selected}
       data-dragging={dragging}
+      data-mode={viewMode}
       style={{
         left: `${block.x}px`,
         top: `${block.y}px`,
-        borderColor: meta.tint,
+        borderColor: viewMode === "cozy" ? cozyTint : meta.tint,
       }}
       onPointerDown={onPointerDown}
     >

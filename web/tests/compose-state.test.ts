@@ -6,7 +6,8 @@
  * are rejected (so a v2 client doesn't accidentally read v1 data).
  */
 
-import { describe, it, expect } from "vitest";
+// @vitest-environment jsdom
+import { describe, it, expect, beforeEach } from "vitest";
 import type { ComposeState, ComposeBlock } from "../src/lib/types";
 
 function makeState(blocks: ComposeBlock[]): ComposeState {
@@ -112,5 +113,60 @@ describe("ComposeState roundtrip", () => {
     ]);
     const parsed = JSON.parse(JSON.stringify(state)) as ComposeState;
     expect(parsed.blocks.map((b) => b.id)).toEqual(["1", "2", "3"]);
+  });
+});
+
+describe("ViewMode", () => {
+  // Mirror of the localStorage key + load/save behavior in ComposeBoard.
+  // Kept here so we don't have to render the React tree to test the
+  // persistence contract.
+
+  const KEY = "pilot-compose-view-mode";
+
+  // jsdom exposes `localStorage` on globalThis. We use a typed accessor
+  // that's resilient to vitest's per-test isolation: each `it` runs in
+  // its own context, but `globalThis` is preserved across the file.
+  function ls(): Storage {
+    return (globalThis as unknown as { localStorage: Storage }).localStorage;
+  }
+
+  function load(): "modern" | "cozy" {
+    try {
+      const raw = ls().getItem(KEY);
+      return raw === "cozy" ? "cozy" : "modern";
+    } catch {
+      return "modern";
+    }
+  }
+
+  function save(mode: "modern" | "cozy"): void {
+    ls().setItem(KEY, mode);
+  }
+
+  beforeEach(() => {
+    ls().removeItem(KEY);
+  });
+
+  it("defaults to modern when key absent", () => {
+    expect(load()).toBe("modern");
+  });
+
+  it("defaults to modern when value is unrecognized", () => {
+    ls().setItem(KEY, "weird-mode");
+    expect(load()).toBe("modern");
+  });
+
+  it("reads cozy", () => {
+    ls().setItem(KEY, "cozy");
+    expect(load()).toBe("cozy");
+  });
+
+  it("round-trips modern → cozy → modern", () => {
+    save("modern");
+    expect(load()).toBe("modern");
+    save("cozy");
+    expect(load()).toBe("cozy");
+    save("modern");
+    expect(load()).toBe("modern");
   });
 });

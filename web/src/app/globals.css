@@ -12,6 +12,26 @@
   --warn: #f0b400;
   --error: #ff6b6b;
   --border: #2a3038;
+
+  /* ─── Cozy 2.5D sandbox palette (v0.4.5) ──────────────────── */
+  /* Cream background, sage primary, amber accent — per
+     docs/visual-style.md Layer 2. Fonts: Outfit (sans), JetBrains
+     Mono (code). Scoped to compose page; dashboard stays dark. */
+  --cozy-bg: #faf6ee;
+  --cozy-surface: #fffdf6;
+  --cozy-surface-2: #f4eed8;
+  --cozy-grid: #e6dcbe;
+  --cozy-text: #2a3a30;
+  --cozy-text-muted: #7a6a55;
+  --cozy-accent: #4f7a64; /* sage */
+  --cozy-accent-2: #d49050; /* warm amber */
+  --cozy-edge: #d8c8a4;
+  --cozy-edge-bottom: #c5b288;
+  --cozy-font:
+    var(--font-outfit), "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --cozy-mono:
+    var(--font-jetbrains-mono), "JetBrains Mono", ui-monospace, SFMono-Regular,
+    Menlo, monospace;
 }
 
 html,
