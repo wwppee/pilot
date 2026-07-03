@@ -141,7 +141,7 @@ export default function ComposeBoard({
   initialCatalog,
 }: {
   initialCatalog: ComposeCatalog;
-}): JSX.Element {
+}) {
   const [state, setState] = useState<ComposeState>(() => loadState());
   const [viewMode, setViewMode] = useState<ViewMode>(() => loadViewMode());
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -656,7 +656,7 @@ function ComposeBlockView({
   viewMode: ViewMode;
   onPointerDown: (e: React.PointerEvent) => void;
   onDelete: () => void;
-}): JSX.Element {
+}) {
   const meta = KIND_META[block.kind];
   // In cozy mode we override the border tint per kind with the warm
   // palette so blocks read as "cubes" against cream sand.
@@ -721,7 +721,7 @@ function BlockInspector({
   block: ComposeBlock;
   onDelete: () => void;
   catalogEntity: ComposeEntity | undefined;
-}): JSX.Element {
+}) {
   const meta = KIND_META[block.kind];
   const stale = !catalogEntity;
   const href = block.href ?? catalogEntity?.href;

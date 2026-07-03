@@ -38,7 +38,7 @@ async function loadCatalog(): Promise<{
   }
 }
 
-export default async function ComposePage(): Promise<JSX.Element> {
+export default async function ComposePage() {
   const { catalog, error } = await loadCatalog();
 
   return (

@@ -1,5 +1,20 @@
 # Pilot v1.0 — 箱庭 Cockpit + Agent 系统（v3 终极版）
 
+> ⚠️ **DEPRECATED — 2026-07-04 已归档到 `docs/retired/`**
+>
+> 本文中的核心抽象（**6 阶段流水线** / **Hermes scratch_pad** / **Tool Selector 阶段**）
+> 是早期在没核实 Pi 实际数据前开的脑补。Pi 实际的 SessionEntry schema 里没有这些
+> 抽象（详见 [`docs/retired/macro-spec-audit.md`](./macro-spec-audit.md)）。
+>
+> 正式的 roadmap 在 **[`docs/roadmap-pi-grounded.md`](../roadmap-pi-grounded.md)**
+> （以 Pi 实际能力为锚），high-level 叙事在 **[`docs/roadmap.md`](../roadmap.md)**。
+>
+> 保留此文件仅为 audit trail。
+
+---
+
+# Pilot v1.0 — 箱庭 Cockpit + Agent 系统（v3 终极版）
+
 > 把路线图收口到一句话：**现代 canvas 骨架 + 2.5D 箱庭皮肤 + 真实 Web UI 操作层**，承载一个 **6 阶段 agent 系统** —— 每个阶段都是可拼插的方块，用户只说一句话，agent 就能**自己改自己**。
 
 ## 一、6 阶段 Agent 系统（核心抽象）

@@ -7,7 +7,7 @@
 
 import { Suspense } from "react";
 import { api, PilotApiError } from "../../lib/pilot";
-import type { ToolPolicy, PolicyDecision } from "../../lib/types";
+import type { ToolPolicy } from "../../lib/types";
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
@@ -63,7 +63,7 @@ function totalRules(p: ToolPolicy): number {
   );
 }
 
-export default function PolicyPage(): JSX.Element {
+export default function PolicyPage() {
   return (
     <main>
       <h1>Tool Policies</h1>
@@ -82,7 +82,7 @@ export default function PolicyPage(): JSX.Element {
   );
 }
 
-async function PolicyList(): Promise<JSX.Element> {
+async function PolicyList() {
   const { policies, applyState, error } = await loadPolicies();
   if (error) {
     return (
@@ -188,7 +188,7 @@ async function PolicyList(): Promise<JSX.Element> {
   );
 }
 
-async function DryRun(): Promise<JSX.Element> {
+async function DryRun() {
   let policies: ToolPolicy[] = [];
   let error: string | null = null;
   try {

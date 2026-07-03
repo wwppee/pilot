@@ -206,8 +206,15 @@ export interface ToolPolicy {
 /** Input shape for `setPolicy` — timestamps are server-managed. */
 export type ToolPolicyInput = Omit<
   ToolPolicy,
-  "name" | "createdAt" | "updatedAt"
->;
+  "name" | "createdAt" | "updatedAt" | "description"
+> & {
+  /**
+   * Mirrors core policy zod schema (`z.string().optional()`).
+   * Explicit `string | undefined` for compatibility with
+   * `exactOptionalPropertyTypes: true` — callers may pass `undefined`.
+   */
+  description?: string | undefined;
+};
 
 /** Decision returned by `pilot policy check`. */
 export interface PolicyDecision {

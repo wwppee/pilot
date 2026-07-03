@@ -98,12 +98,15 @@ export async function proxyHandler(
 
   let upstream: Response;
   try {
-    upstream = await fetch(url, {
+    // exactOptionalPropertyTypes forbids `body: undefined`; omit the key
+    // entirely when there's no body (matches RequestInit behavior).
+    const fetchInit: RequestInit = {
       method: req.method,
       headers,
-      body,
       redirect: "manual",
-    });
+      ...(body !== undefined ? { body } : {}),
+    };
+    upstream = await fetch(url, fetchInit);
   } catch (err) {
     return new Response(
       JSON.stringify({

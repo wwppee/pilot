@@ -13,7 +13,8 @@
 | **[README.md](./README.md)** | 30 秒上手、安装、命令清单、截图 |
 | **[docs/vision.md](./docs/vision.md)** | Pilot 是什么 / 不是什么 / 边界 / 长期形态 |
 | **[docs/architecture.md](./docs/architecture.md)** | core / cli / server / ui / 安全模型 / 数据流 |
-| **[docs/roadmap.md](./docs/roadmap.md)** | 三段式：看见 Pi → 管理 Pi → 进化 Pi |
+| **[docs/roadmap.md](./docs/roadmap.md)** | 三段式 high-level：看见 Pi → 管理 Pi → 进化 Pi |
+| **[docs/roadmap-pi-grounded.md](./docs/roadmap-pi-grounded.md)** | v0.4.x 真实路径 + 11 个 toggle + 以 Pi 实际能力为锚（**活的 roadmap**） |
 | **[docs/forge-and-avatars.md](./docs/forge-and-avatars.md)** | §11 能力系统（Forge / Capability Store / Avatars） |
 | **[docs/modules/pack.md](./docs/modules/pack.md)** | `pilot pack` 详解 |
 | **[docs/modules/session.md](./docs/modules/session.md)** | `pilot session` 详解 |

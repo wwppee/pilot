@@ -132,8 +132,10 @@ step "Running tests (offline, ~2s)"
 run npm run test:offline --silent
 
 # ─── TypeScript ─────────────────────────────────────────────
-step "TypeScript check"
+step "TypeScript check (core)"
 run npx tsc --noEmit
+step "TypeScript check (web)"
+(cd web && run npx tsc --noEmit)
 
 # ─── Format ─────────────────────────────────────────────────
 step "Formatting"
