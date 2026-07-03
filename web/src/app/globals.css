@@ -53,3 +53,63 @@ a:hover {
   border-radius: 4px;
   background: var(--surface-2);
 }
+
+/* ─── Shared utility classes (used by Compose + others) ──────────── */
+
+.muted {
+  color: var(--text-muted);
+}
+.small {
+  font-size: 12px;
+}
+.warn {
+  color: var(--warn);
+}
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.btn {
+  display: inline-block;
+  padding: 6px 12px;
+  background: var(--accent);
+  color: var(--bg);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  text-align: center;
+  transition: opacity 0.1s ease;
+}
+.btn:hover {
+  opacity: 0.85;
+  color: var(--bg);
+}
+.btn.small {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+.btn.secondary {
+  background: var(--surface-2);
+  color: var(--text);
+  border-color: var(--border);
+}
+.btn.secondary:hover {
+  color: var(--text);
+  border-color: var(--text-muted);
+}
+.btn.danger {
+  background: var(--surface-2);
+  color: var(--error);
+  border-color: var(--error);
+}
+.btn.danger:hover {
+  background: var(--error);
+  color: white;
+}
+.btn.danger:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}

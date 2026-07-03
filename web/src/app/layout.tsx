@@ -86,6 +86,12 @@ export default async function RootLayout({
                   Policy
                 </Link>
                 <Link
+                  href="/compose"
+                  className="text-[var(--text-muted)] hover:text-[var(--text)]"
+                >
+                  Compose
+                </Link>
+                <Link
                   href="/profiles"
                   className="text-[var(--text-muted)] hover:text-[var(--text)]"
                 >
@@ -118,7 +124,9 @@ export default async function RootLayout({
           </main>
           <footer className="border-t border-[var(--border)] mt-auto">
             <div className="mx-auto max-w-6xl px-6 py-3 text-xs text-[var(--text-muted)] flex items-center justify-between">
-              <span>pilot-web v0.4.3 · reads + policy over pilot server</span>
+              <span>
+                pilot-web v0.4.4 · reads + policy + compose over pilot server
+              </span>
               <span>
                 server expected at <code className="kbd">127.0.0.1:17361</code>
               </span>

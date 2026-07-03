@@ -136,6 +136,30 @@ describe("pilot client", () => {
     rmSync(d, { recursive: true, force: true });
     expect(true).toBe(true);
   });
+
+  it("composeCatalog() calls /compose/catalog", async () => {
+    writeTokenFile("t");
+    mockFetch((url) => {
+      expect(url).toBe("http://127.0.0.1:17361/compose/catalog");
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            sessions: [],
+            packs: [],
+            profiles: [],
+            policies: [],
+            capabilities: [],
+            totalCount: 0,
+            generatedAt: "2026-07-03T00:00:00.000Z",
+          }),
+          { status: 200 },
+        ),
+      );
+    });
+    const cat = await api.composeCatalog();
+    expect(cat.totalCount).toBe(0);
+    expect(cat.sessions).toEqual([]);
+  });
 });
 
 describe("pilotWithCsrf", () => {

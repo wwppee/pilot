@@ -1,0 +1,317 @@
+/**
+ * Compose page styles — sidebar + canvas + inspector layout.
+ *
+ * Uses CSS variables from globals.css for theme integration.
+ * Layout: CSS Grid 280px | 1fr | 320px.
+ */
+
+.compose-grid {
+  display: grid;
+  grid-template-columns: 280px 1fr 320px;
+  gap: 12px;
+  height: calc(100vh - 200px);
+  min-height: 500px;
+}
+
+/* ─── Sidebar ───────────────────────────────────────────── */
+
+.compose-sidebar {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.compose-sidebar-header {
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.compose-search {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  outline: none;
+}
+.compose-search:focus {
+  border-color: var(--accent);
+}
+
+.compose-kind-filter {
+  display: flex;
+  gap: 2px;
+}
+.compose-kind-filter button {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.compose-kind-filter button[data-active="true"] {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+.compose-kind-filter button:hover:not([data-active="true"]) {
+  color: var(--text);
+}
+
+.compose-sidebar-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.compose-section h4 {
+  margin: 12px 8px 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.compose-section h4 span {
+  margin-right: 4px;
+}
+
+.compose-sidebar-item {
+  margin: 2px 6px;
+  padding: 6px 8px;
+  background: var(--surface-2);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+.compose-sidebar-item:active {
+  cursor: grabbing;
+}
+.compose-sidebar-item:hover {
+  background: var(--surface);
+  border-color: var(--text);
+}
+
+.compose-sidebar-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  word-break: break-all;
+}
+
+.compose-sidebar-sublabel {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ─── Canvas ────────────────────────────────────────────── */
+
+.compose-canvas {
+  position: relative;
+  background:
+    radial-gradient(circle, var(--border) 1px, transparent 1px) 0 0 / 20px 20px,
+    var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: auto;
+  touch-action: none;
+}
+.compose-canvas[data-pending="true"] {
+  background-color: #1a1f2a;
+}
+
+.compose-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  color: var(--text-muted);
+}
+
+.compose-block {
+  position: absolute;
+  width: 180px;
+  min-height: 70px;
+  background: var(--surface);
+  border: 2px solid var(--accent);
+  border-radius: 6px;
+  padding: 8px 10px;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: box-shadow 0.1s ease;
+}
+.compose-block[data-selected="true"] {
+  box-shadow:
+    0 0 0 3px rgba(121, 192, 255, 0.4),
+    0 2px 12px rgba(0, 0, 0, 0.5);
+}
+.compose-block[data-dragging="true"] {
+  cursor: grabbing;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+}
+
+.compose-block-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.compose-block-emoji {
+  font-size: 12px;
+}
+
+.compose-block-kind {
+  font-weight: 600;
+}
+
+.compose-block-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  word-break: break-all;
+  margin-bottom: 2px;
+}
+
+.compose-block-sublabel {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.compose-block-delete {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+.compose-block:hover .compose-block-delete,
+.compose-block[data-selected="true"] .compose-block-delete {
+  opacity: 1;
+}
+.compose-block-delete:hover {
+  background: var(--error);
+  color: white;
+  border-color: var(--error);
+}
+
+/* ─── Inspector ─────────────────────────────────────────── */
+
+.compose-inspector {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.compose-inspector-header {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.compose-inspector-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.compose-inspector-empty {
+  flex: 1;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.compose-inspector-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.compose-inspector-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border-left: 4px solid var(--accent);
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+.compose-inspector-card .emoji {
+  font-size: 24px;
+}
+.compose-inspector-card .title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  word-break: break-all;
+}
+
+.compose-inspector-fields {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 6px 12px;
+  margin: 0 0 12px;
+  font-size: 12px;
+}
+.compose-inspector-fields dt {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.compose-inspector-fields dd {
+  margin: 0;
+  color: var(--text);
+}
+
+.compose-inspector-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.compose-inspector-footer {
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 6px;
+}

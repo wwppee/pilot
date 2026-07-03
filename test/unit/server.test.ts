@@ -313,6 +313,45 @@ describe("pilot server", () => {
     }, 30_000);
   });
 
+  // ─── Compose catalog (v0.4.4) ─────────────────────
+
+  describe("Compose catalog", () => {
+    const auth = () => ({ "x-pilot-token": handle.token });
+
+    it("GET /compose/catalog returns all 5 sections", async () => {
+      const res = await handle.app.inject({
+        method: "GET",
+        url: "/compose/catalog",
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json() as {
+        sessions: unknown[];
+        packs: unknown[];
+        profiles: unknown[];
+        policies: unknown[];
+        capabilities: unknown[];
+        totalCount: number;
+        generatedAt: string;
+      };
+      expect(Array.isArray(body.sessions)).toBe(true);
+      expect(Array.isArray(body.packs)).toBe(true);
+      expect(Array.isArray(body.profiles)).toBe(true);
+      expect(Array.isArray(body.policies)).toBe(true);
+      expect(Array.isArray(body.capabilities)).toBe(true);
+      expect(typeof body.totalCount).toBe("number");
+      expect(body.generatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    });
+
+    it("GET /compose/catalog requires auth", async () => {
+      const res = await handle.app.inject({
+        method: "GET",
+        url: "/compose/catalog",
+      });
+      expect(res.statusCode).toBe(401);
+    });
+  });
+
   // ─── Policy routes (v0.4.3) ───────────────────────
 
   describe("Policy endpoints", () => {

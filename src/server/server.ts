@@ -309,6 +309,8 @@ export async function startServer(
 
   // ─── Tool policies (v0.4.3) ─────────────────────────
 
+  app.get("/compose/catalog", async () => service.listComposeEntities());
+
   app.get("/policies", async () => service.listPolicies());
 
   app.get<{ Params: { name: string } }>("/policies/:name", async (req) => {

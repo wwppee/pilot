@@ -162,6 +162,15 @@ export interface PilotService {
   /** Project context files visible from `cwd` (mirrors pi's discovery). */
   discoverProjectContext(cwd: string): Promise<ProjectContextRef[]>;
 
+  // ─── Compose catalog (v0.4.4) ──────────────────────────
+
+  /**
+   * Enumerate every Pilot entity across stores for the Compose
+   * sidebar. Each entry is `{kind, id, label, sublabel?, href?}`.
+   * Sessions are capped at 50 most-recent.
+   */
+  listComposeEntities(): Promise<import("./compose-listing.js").ComposeCatalog>;
+
   // ─── Tool policies (v0.4.3) ──────────────────────────
 
   /** List all tool policies in `~/.pilot/policy/`. */

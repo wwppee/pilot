@@ -217,3 +217,62 @@ export interface PolicyDecision {
   requireApproval?: boolean;
   approvalPrompt?: string;
 }
+
+// ─── Compose catalog (v0.4.4+) ─────────────────────────────────
+
+export type ComposeEntityKind =
+  | "session"
+  | "pack"
+  | "profile"
+  | "policy"
+  | "capability";
+
+export interface ComposeEntity {
+  kind: ComposeEntityKind;
+  id: string;
+  label: string;
+  sublabel?: string;
+  href?: string;
+}
+
+export interface ComposeCatalog {
+  sessions: ComposeEntity[];
+  packs: ComposeEntity[];
+  profiles: ComposeEntity[];
+  policies: ComposeEntity[];
+  capabilities: ComposeEntity[];
+  totalCount: number;
+  generatedAt: string;
+}
+
+/**
+ * A block placed on the Compose canvas. Persists across reloads
+ * via localStorage; can be exported/imported as JSON.
+ */
+export interface ComposeBlock {
+  /** Stable block ID (uuid generated client-side). */
+  id: string;
+  /** What kind of entity this represents. */
+  kind: ComposeEntityKind;
+  /** Reference into the catalog (catalog.{kind}.id). */
+  refId: string;
+  /** Pixel position on the canvas. */
+  x: number;
+  y: number;
+  /** Display label (cached from catalog so deleted entities still render). */
+  label: string;
+  /** Cached sublabel (model, version, rules count). */
+  sublabel?: string;
+  /** Cached href to the dedicated page. */
+  href?: string;
+}
+
+export interface ComposeState {
+  blocks: ComposeBlock[];
+  /** Schema version — bump when changing ComposeBlock shape. */
+  version: 1;
+  /** ISO timestamp of last save. */
+  updatedAt: string;
+  /** Optional human-readable name for this layout. */
+  name?: string;
+}

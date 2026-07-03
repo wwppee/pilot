@@ -137,6 +137,7 @@ import type {
   ToolPolicy,
   ToolPolicyInput,
   PolicyDecision,
+  ComposeCatalog,
 } from "./types.js";
 
 export const api = {
@@ -229,6 +230,9 @@ export const api = {
         body: JSON.stringify({ tool, args }),
       },
     ),
+
+  // ─── Compose catalog (v0.4.4+) ────────────────────────────
+  composeCatalog: () => pilot<ComposeCatalog>("/compose/catalog"),
 };
 
 function encodeName(name: string): string {

@@ -122,6 +122,8 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
     listTools: () => listToolInventory(home),
     discoverProjectContext: (cwd) => discoverProjectContext(cwd, home),
 
+    listComposeEntities: () => listComposeEntitiesFromService(home),
+
     listPolicies: () => listPoliciesFromHome(home),
     getPolicy: (name) => tryReadPolicy(name, home),
     setPolicy: (name, input) => writePolicyWithHome(name, input, home),
@@ -385,6 +387,21 @@ async function pathExists(p: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+// ─── Compose listing (v0.4.4) ──────────────────────────────
+
+async function listComposeEntitiesFromService(
+  home?: string,
+): Promise<import("./compose-listing.js").ComposeCatalog> {
+  const { listComposeEntities } = await import("./compose-listing.js");
+  return listComposeEntities({
+    listSessions: () => listSessions(undefined, home),
+    listPacks: () => listPacks(home),
+    listProfiles: () => listProfiles(home),
+    listPolicies: () => listPoliciesFromHome(home),
+    listCapabilities: () => listCapabilities(home),
+  });
 }
 
 // ─── Policy (v0.4.3) ───────────────────────────────────────
