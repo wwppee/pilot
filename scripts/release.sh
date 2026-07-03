@@ -196,13 +196,20 @@ else
         };
         fs.writeFileSync('$PAYLOAD', JSON.stringify(p));
       "
-      curl -s -X POST \
+      HTTP_CODE=$(curl -s -o /tmp/release-resp.json -w '%{http_code}' \
+        -X POST \
         -H "Authorization: token $GH_TOKEN" \
         -H "Content-Type: application/json" \
         -d "@$PAYLOAD" \
-        "https://api.github.com/repos/$REPO/releases" \
-        | node -e 'const d=JSON.parse(require("fs").readFileSync(0,"utf8")); console.log("  → "+(d.html_url || ("err: "+(d.message||JSON.stringify(d)))));'
-      rm -f "$PAYLOAD"
+        "https://api.github.com/repos/$REPO/releases")
+      if [[ "$HTTP_CODE" =~ ^2 ]]; then
+        URL=$(node -e 'console.log(JSON.parse(require("fs").readFileSync("/tmp/release-resp.json","utf8")).html_url||"")')
+        printf "  ✓ %s\n" "$URL"
+      else
+        err "GitHub release failed (HTTP $HTTP_CODE):"
+        cat /tmp/release-resp.json | head -10
+      fi
+      rm -f "$PAYLOAD" /tmp/release-resp.json
     fi
   fi
 fi
