@@ -170,9 +170,7 @@ describe("SessionTreeExplorer", () => {
       preview: '<script>alert("pwn")</script>',
       children: [],
     };
-    const { container } = render(
-      <SessionTreeExplorer root={xss} t={t} />,
-    );
+    const { container } = render(<SessionTreeExplorer root={xss} t={t} />);
     // Should be escaped, not executed.
     expect(container.innerHTML).not.toMatch(/<script>alert/i);
     expect(container.innerHTML).toMatch(/&lt;script&gt;/);

@@ -20,15 +20,9 @@
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import {
-  readPackManifest,
-  type PackManifest,
-} from "./pack-manifest.js";
+import { readPackManifest, type PackManifest } from "./pack-manifest.js";
 import { getPack, searchPacks as searchPacksNpm } from "./npm-registry.js";
-import {
-  CapabilitySchema,
-  type Capability,
-} from "./capability.js";
+import { CapabilitySchema, type Capability } from "./capability.js";
 import { pilotCapabilitiesDir } from "./types.js";
 import type { Pack } from "./types.js";
 
@@ -147,10 +141,7 @@ export async function forgeAbsorb(
  * Capability type taxonomy (workflow/tool/integration/safety). Defaults
  * to "integration" when the kind is unset.
  */
-export function buildCapability(
-  id: string,
-  pack: PackManifest,
-): Capability {
+export function buildCapability(id: string, pack: PackManifest): Capability {
   const p = pack.pi ?? {};
   const mode = p.extension !== undefined ? "L2-wrapped" : "L1-referenced";
   const now = new Date().toISOString();
@@ -180,9 +171,7 @@ export function buildCapability(
 }
 
 /** Map a pack's `pi.kind` onto the Capability `type` enum. */
-export function mapKindToType(
-  kind: string | undefined,
-): Capability["type"] {
+export function mapKindToType(kind: string | undefined): Capability["type"] {
   // Pack kinds: extension, skill, theme, prompt
   // Capability types: workflow, tool, integration, safety
   switch (kind) {

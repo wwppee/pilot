@@ -31,7 +31,11 @@ function freshHome(): string {
   return mkdtempSync(join(tmpdir(), "pilot-avatar-"));
 }
 
-function writeProfile(home: string, name: string, fields: Record<string, unknown>): void {
+function writeProfile(
+  home: string,
+  name: string,
+  fields: Record<string, unknown>,
+): void {
   const profilesDir = join(home, ".pilot", "profiles");
   mkdirSync(profilesDir, { recursive: true });
   const now = new Date().toISOString();
@@ -123,7 +127,12 @@ describe("avatarPath / readAvatar", () => {
   it("deleteAvatar removes the file and is idempotent", async () => {
     const home = freshHome();
     await writeAvatar(
-      { encodedCwd: "x", capturedAt: "2026-07-05T00:00:00Z", packSources: [], extensions: [] },
+      {
+        encodedCwd: "x",
+        capturedAt: "2026-07-05T00:00:00Z",
+        packSources: [],
+        extensions: [],
+      },
       home,
     );
     expect(await deleteAvatar("x", home)).toBe(true);
@@ -139,11 +148,21 @@ describe("avatarPath / readAvatar", () => {
   it("listAvatars returns all valid Avatars sorted by encodedCwd", async () => {
     const home = freshHome();
     await writeAvatar(
-      { encodedCwd: "--zzz--", capturedAt: "2026-07-05T00:00:00Z", packSources: [], extensions: [] },
+      {
+        encodedCwd: "--zzz--",
+        capturedAt: "2026-07-05T00:00:00Z",
+        packSources: [],
+        extensions: [],
+      },
       home,
     );
     await writeAvatar(
-      { encodedCwd: "--aaa--", capturedAt: "2026-07-05T00:00:00Z", packSources: [], extensions: [] },
+      {
+        encodedCwd: "--aaa--",
+        capturedAt: "2026-07-05T00:00:00Z",
+        packSources: [],
+        extensions: [],
+      },
       home,
     );
     const list = await listAvatars(home);
@@ -260,7 +279,10 @@ describe("diffAvatar", () => {
       packSources: ["npm:foo", "npm:bar"],
       extensions: [],
     };
-    const diff = diffAvatar(avatar, { packSources: ["npm:foo"], extensions: [] });
+    const diff = diffAvatar(avatar, {
+      packSources: ["npm:foo"],
+      extensions: [],
+    });
     expect(diff.packSources.status).toBe("missing");
     expect(diff.clean).toBe(false);
   });

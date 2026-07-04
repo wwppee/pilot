@@ -63,9 +63,7 @@ async function ls(ctx: PilotContext): Promise<number> {
   // ensureSnapshotIfStale skips sessions whose snapshot was captured
   // within the TTL, so repeated `pilot session ls` is cheap.
   await Promise.all(
-    sorted.map((s) =>
-      ensureSnapshotIfStale(s.id).catch(() => null),
-    ),
+    sorted.map((s) => ensureSnapshotIfStale(s.id).catch(() => null)),
   );
 
   ctx.logger.info(`${sorted.length} session(s):\n`);

@@ -14,11 +14,7 @@ import { headers } from "next/headers";
 import { api } from "@/lib/pilot";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/types";
-import type {
-  SessionInfo,
-  SessionSnapshot,
-  SessionTree,
-} from "@/lib/types";
+import type { SessionInfo, SessionSnapshot, SessionTree } from "@/lib/types";
 import { SessionTreeExplorer } from "@/components/SessionTreeExplorer";
 
 interface PageProps {
@@ -117,7 +113,10 @@ export default async function SessionTreePage({ params }: PageProps) {
         <h2 className="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-3">
           Tree
         </h2>
-        <SessionTreeExplorer root={tree.root} t={(k, params) => renderT(locale, k, params)} />
+        <SessionTreeExplorer
+          root={tree.root}
+          t={(k, params) => renderT(locale, k, params)}
+        />
       </div>
     </div>
   );

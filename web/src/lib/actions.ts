@@ -325,9 +325,12 @@ export async function captureAvatarForm(formData: FormData): Promise<void> {
   const cwd = formData.get("cwd");
   if (typeof cwd !== "string" || cwd.length === 0) return;
 
-  const res = await pilotWithCsrf(`/avatars/${encodeURIComponent(cwd)}/capture`, {
-    method: "POST",
-  });
+  const res = await pilotWithCsrf(
+    `/avatars/${encodeURIComponent(cwd)}/capture`,
+    {
+      method: "POST",
+    },
+  );
 
   if (res.ok) {
     redirect(`/avatars?captured=1&cwd=${encodeURIComponent(cwd)}`);

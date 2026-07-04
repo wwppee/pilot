@@ -33,6 +33,10 @@ jobs:
       - name: Format check
         run: npm run format:check
 
+      - name: Web format check
+        working-directory: web
+        run: npm run format:check
+
       - name: Lint
         run: npm run lint
 

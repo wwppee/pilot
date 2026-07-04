@@ -255,8 +255,8 @@ describe("ensureSnapshotIfStale", () => {
     const second = await ensureSnapshotIfStale(id, 0, home);
     expect(second).not.toBeNull();
     // capturedAt should be newer than the first one.
-    expect(
-      new Date(second!.capturedAt).getTime(),
-    ).toBeGreaterThanOrEqual(new Date(first!.capturedAt).getTime());
+    expect(new Date(second!.capturedAt).getTime()).toBeGreaterThanOrEqual(
+      new Date(first!.capturedAt).getTime(),
+    );
   });
 });

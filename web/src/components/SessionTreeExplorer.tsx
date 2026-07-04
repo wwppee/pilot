@@ -269,9 +269,7 @@ function Row({
             __html: highlight(node.preview ?? "", query),
           }}
         />
-        {node.model && (
-          <code className="kbd text-[10px]">{node.model}</code>
-        )}
+        {node.model && <code className="kbd text-[10px]">{node.model}</code>}
       </div>
       {hasChildren && !isCollapsed && (
         <ol>
@@ -295,19 +293,13 @@ function Row({
 }
 
 /** Walk the whole tree, calling fn on every node. */
-function walk(
-  node: SessionTreeNode,
-  fn: (n: SessionTreeNode) => void,
-): void {
+function walk(node: SessionTreeNode, fn: (n: SessionTreeNode) => void): void {
   fn(node);
   for (const c of node.children) walk(c, fn);
 }
 
 /** True if `node` or any descendant is in `matches`. */
-function hasAnyMatch(
-  node: SessionTreeNode,
-  matches: Set<string>,
-): boolean {
+function hasAnyMatch(node: SessionTreeNode, matches: Set<string>): boolean {
   if (matches.has(node.id)) return true;
   for (const c of node.children) {
     if (hasAnyMatch(c, matches)) return true;
@@ -327,7 +319,10 @@ function highlight(text: string, query: string): string {
     `(${query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
     "gi",
   );
-  return escaped.replace(re, '<mark class="bg-[var(--accent)]/30 rounded px-0.5">$1</mark>');
+  return escaped.replace(
+    re,
+    '<mark class="bg-[var(--accent)]/30 rounded px-0.5">$1</mark>',
+  );
 }
 
 function escapeHtml(s: string): string {

@@ -11,10 +11,7 @@ import { api } from "@/lib/pilot";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/types";
 import type { Avatar } from "@/lib/types";
-import {
-  captureAvatarForm,
-  deleteAvatarForm,
-} from "@/lib/actions";
+import { captureAvatarForm, deleteAvatarForm } from "@/lib/actions";
 import { DeleteButton } from "@/components/Buttons";
 
 interface PageProps {
@@ -53,7 +50,9 @@ export default async function AvatarsPage({ searchParams }: PageProps) {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold mb-1">{renderT(locale, "avatars.h1")}</h1>
+        <h1 className="text-2xl font-bold mb-1">
+          {renderT(locale, "avatars.h1")}
+        </h1>
         <p className="text-[var(--text-muted)] text-sm">{subtitle}</p>
       </header>
 
@@ -129,10 +128,7 @@ export default async function AvatarsPage({ searchParams }: PageProps) {
       ) : (
         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {avatars.map((a) => (
-            <li
-              key={a.encodedCwd}
-              className="surface rounded-lg p-4 relative"
-            >
+            <li key={a.encodedCwd} className="surface rounded-lg p-4 relative">
               <div className="flex items-baseline justify-between mb-1">
                 <h3 className="font-mono font-semibold text-sm break-all">
                   {a.encodedCwd}

@@ -105,7 +105,11 @@ export default async function ForgeInspectPage({
           </p>
         )}
         <div className="text-xs text-[var(--text-muted)] mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Stat label={renderT(locale, "forge.inspect.version")} value={`v${pack.version}`} mono />
+          <Stat
+            label={renderT(locale, "forge.inspect.version")}
+            value={`v${pack.version}`}
+            mono
+          />
           {pi?.kind && (
             <Stat
               label={renderT(locale, "forge.inspect.kind")}
@@ -151,16 +155,28 @@ export default async function ForgeInspectPage({
           </h2>
           <ul className="space-y-1.5 text-xs">
             {pi.skills && pi.skills.length > 0 && (
-              <PillRow label={renderT(locale, "forge.inspect.skills")} items={pi.skills} />
+              <PillRow
+                label={renderT(locale, "forge.inspect.skills")}
+                items={pi.skills}
+              />
             )}
             {pi.themes && pi.themes.length > 0 && (
-              <PillRow label={renderT(locale, "forge.inspect.themes")} items={pi.themes} />
+              <PillRow
+                label={renderT(locale, "forge.inspect.themes")}
+                items={pi.themes}
+              />
             )}
             {pi.prompts && pi.prompts.length > 0 && (
-              <PillRow label={renderT(locale, "forge.inspect.prompts")} items={pi.prompts} />
+              <PillRow
+                label={renderT(locale, "forge.inspect.prompts")}
+                items={pi.prompts}
+              />
             )}
             {pi.commands && pi.commands.length > 0 && (
-              <PillRow label={renderT(locale, "forge.inspect.commands")} items={pi.commands} />
+              <PillRow
+                label={renderT(locale, "forge.inspect.commands")}
+                items={pi.commands}
+              />
             )}
             {pi.keybindings && pi.keybindings.length > 0 && (
               <div>
@@ -194,7 +210,10 @@ export default async function ForgeInspectPage({
             className="mt-1 w-full surface-2 rounded px-3 py-2 text-sm font-mono outline-none focus:border-[var(--accent)]"
             aria-describedby="asId-hint"
           />
-          <span id="asId-hint" className="block text-[10px] text-[var(--text-muted)] mt-1">
+          <span
+            id="asId-hint"
+            className="block text-[10px] text-[var(--text-muted)] mt-1"
+          >
             {renderT(locale, "forge.inspect.asIdHint")}
           </span>
         </label>

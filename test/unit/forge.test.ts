@@ -195,9 +195,7 @@ describe("forgeAbsorb", () => {
 
   it("throws ForgeAbsorbError(invalid-id) when override is invalid", async () => {
     const home = freshHome();
-    await expect(
-      forgeAbsorb("pi-x", "Bad_ID", home),
-    ).rejects.toMatchObject({
+    await expect(forgeAbsorb("pi-x", "Bad_ID", home)).rejects.toMatchObject({
       code: "invalid-id",
     });
   });

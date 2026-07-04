@@ -46,12 +46,16 @@ export default async function ForgePage({ searchParams }: PageProps) {
   const searchLabel = renderT(locale, "forge.searchLabel");
   const searchButton = renderT(locale, "forge.searchButton");
   const emptyText = renderT(locale, "forge.empty");
-  const resultCountText = renderT(locale, "forge.resultCount", { n: results.length });
+  const resultCountText = renderT(locale, "forge.resultCount", {
+    n: results.length,
+  });
 
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold mb-1">{renderT(locale, "forge.h1")}</h1>
+        <h1 className="text-2xl font-bold mb-1">
+          {renderT(locale, "forge.h1")}
+        </h1>
         <p className="text-[var(--text-muted)] text-sm">{subtitle}</p>
       </header>
 

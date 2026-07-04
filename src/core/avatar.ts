@@ -134,7 +134,9 @@ export async function readAvatar(
     return {
       encodedCwd: parsed.encodedCwd,
       capturedAt: parsed.capturedAt,
-      ...(typeof parsed.profile === "string" ? { profile: parsed.profile } : {}),
+      ...(typeof parsed.profile === "string"
+        ? { profile: parsed.profile }
+        : {}),
       ...(typeof parsed.model === "string" ? { model: parsed.model } : {}),
       packSources: Array.isArray(parsed.packSources)
         ? parsed.packSources.filter((s): s is string => typeof s === "string")
@@ -144,9 +146,7 @@ export async function readAvatar(
         : [],
     };
   } catch (e) {
-    throw new Error(
-      `avatar at ${path} is malformed: ${(e as Error).message}`,
-    );
+    throw new Error(`avatar at ${path} is malformed: ${(e as Error).message}`);
   }
 }
 
@@ -217,7 +217,9 @@ export async function captureAvatar(
 ): Promise<Avatar> {
   const [active, profiles, settings] = await Promise.all([
     readActiveProfile(home),
-    listProfiles(home).catch(() => [] as Awaited<ReturnType<typeof listProfiles>>),
+    listProfiles(home).catch(
+      () => [] as Awaited<ReturnType<typeof listProfiles>>,
+    ),
     readSettings(home),
   ]);
 
@@ -251,12 +253,12 @@ export async function captureAvatar(
  * Read the *current* state for an encodedCwd. Used by
  * `diffAvatar(avatar, current)` and the Web UI.
  */
-export async function readCurrentState(
-  home?: string,
-): Promise<AvatarCurrent> {
+export async function readCurrentState(home?: string): Promise<AvatarCurrent> {
   const [active, profiles, settings] = await Promise.all([
     readActiveProfile(home),
-    listProfiles(home).catch(() => [] as Awaited<ReturnType<typeof listProfiles>>),
+    listProfiles(home).catch(
+      () => [] as Awaited<ReturnType<typeof listProfiles>>,
+    ),
     readSettings(home),
   ]);
 
@@ -269,9 +271,7 @@ export async function readCurrentState(
   return {
     ...(active ? { activeProfile: active.name } : {}),
     ...(model ? { model } : {}),
-    packSources: settings
-      ? listSources(settings).map((s) => s.source)
-      : [],
+    packSources: settings ? listSources(settings).map((s) => s.source) : [],
     extensions: await listGeneratedPolicyExtensions(home),
   };
 }
@@ -281,10 +281,7 @@ export async function readCurrentState(
  * (actual). Pure function — no fs side-effects beyond reading what
  * `readCurrentState` already loaded.
  */
-export function diffAvatar(
-  avatar: Avatar,
-  current: AvatarCurrent,
-): AvatarDiff {
+export function diffAvatar(avatar: Avatar, current: AvatarCurrent): AvatarDiff {
   const profile: AvatarDiffField<string | undefined> = {
     expected: avatar.profile,
     actual: current.activeProfile,

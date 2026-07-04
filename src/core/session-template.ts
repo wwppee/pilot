@@ -87,10 +87,7 @@ export async function deriveTemplate(
  * Walk an assistant message's content (string | array of blocks) and
  * pull out `type: "toolCall"` block names.
  */
-function collectToolNames(
-  content: unknown,
-  out: Set<string>,
-): void {
+function collectToolNames(content: unknown, out: Set<string>): void {
   if (typeof content === "string") return;
   if (!Array.isArray(content)) return;
   for (const block of content) {

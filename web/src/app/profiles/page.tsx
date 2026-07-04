@@ -114,11 +114,14 @@ export default async function ProfilesPage({ searchParams }: PageProps) {
             aria-live="polite"
           >
             <div className="font-semibold mb-1">
-              <T k="profiles.fromSession.banner" params={{
-                sessionId: template.sessionId,
-                nTool: template.tools.length,
-                s: template.tools.length === 1 ? "" : "s",
-              }} />
+              <T
+                k="profiles.fromSession.banner"
+                params={{
+                  sessionId: template.sessionId,
+                  nTool: template.tools.length,
+                  s: template.tools.length === 1 ? "" : "s",
+                }}
+              />
             </div>
             {template.model && (
               <div className="text-[var(--text-muted)] mt-1">
@@ -137,9 +140,7 @@ export default async function ProfilesPage({ searchParams }: PageProps) {
                   <T k="profiles.fromSession.noTools" />
                 </span>
               ) : (
-                <span className="font-mono">
-                  {template.tools.join(", ")}
-                </span>
+                <span className="font-mono">{template.tools.join(", ")}</span>
               )}
             </div>
           </div>

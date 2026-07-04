@@ -137,10 +137,19 @@ run npx tsc --noEmit
 step "TypeScript check (web)"
 (cd web && run npx tsc --noEmit)
 
+# ─── Format check ───────────────────────────────────────────
+# v0.4.13 and v0.5.0 both shipped with unformatted files because
+# authors ran `npm run format` against the old (web-less) glob.
+# Catch it BEFORE bumping / pushing: abort if anything is dirty.
+step "Format check (core)"
+run npm run format:check
+step "Format check (web)"
+(cd web && run npm run format:check)
+
 # ─── Format ─────────────────────────────────────────────────
 step "Formatting"
 run npm run format
-(cd web && run npx prettier --write .)
+(cd web && run npm run format)
 
 # ─── Bump version ───────────────────────────────────────────
 step "Bumping version in package.json + web/package.json"

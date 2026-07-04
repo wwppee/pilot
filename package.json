@@ -22,8 +22,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src test --max-warnings 0",
-    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" && (cd web && npx prettier --write .)",
+    "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\" && (cd web && npx prettier --check .)",
     "release": "np"
   },
   "keywords": [

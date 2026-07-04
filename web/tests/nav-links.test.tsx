@@ -40,9 +40,7 @@ describe("NavLinks (v0.4.14 grouped nav)", () => {
     const totalItems = NAV_GROUPS.reduce((n, g) => n + g.items.length, 0);
     expect(totalItems).toBe(12);
     // Spot-check key entries survived the refactor.
-    const allHrefs = NAV_GROUPS.flatMap((g) =>
-      g.items.map((i) => i.href),
-    );
+    const allHrefs = NAV_GROUPS.flatMap((g) => g.items.map((i) => i.href));
     expect(allHrefs).toContain("/");
     expect(allHrefs).toContain("/forge");
     expect(allHrefs).toContain("/capabilities");
@@ -63,9 +61,19 @@ describe("NavLinks (v0.4.14 grouped nav)", () => {
   it("marks the dashboard active only on exact '/'", () => {
     const { rerender } = render(<NavLinks currentPath="/sessions" />);
     // /sessions is active, / is not.
-    expect(screen.getByText("nav.dashboard").closest("a")?.getAttribute("aria-current")).toBeNull();
+    expect(
+      screen
+        .getByText("nav.dashboard")
+        .closest("a")
+        ?.getAttribute("aria-current"),
+    ).toBeNull();
     rerender(<NavLinks currentPath="/" />);
-    expect(screen.getByText("nav.dashboard").closest("a")?.getAttribute("aria-current")).toBe("page");
+    expect(
+      screen
+        .getByText("nav.dashboard")
+        .closest("a")
+        ?.getAttribute("aria-current"),
+    ).toBe("page");
   });
 
   it("marks nested paths active (e.g. /sessions/abc is in /sessions)", () => {

@@ -243,16 +243,13 @@ export async function startServer(
 
   app.get("/avatars/current", async () => service.readCurrentState());
 
-  app.get<{ Params: { cwd: string } }>(
-    "/avatars/:cwd",
-    async (req, reply) => {
-      const avatar = await service.readAvatar(req.params.cwd);
-      if (!avatar) {
-        return reply.code(404).send({ error: "avatar not found" });
-      }
-      return avatar;
-    },
-  );
+  app.get<{ Params: { cwd: string } }>("/avatars/:cwd", async (req, reply) => {
+    const avatar = await service.readAvatar(req.params.cwd);
+    if (!avatar) {
+      return reply.code(404).send({ error: "avatar not found" });
+    }
+    return avatar;
+  });
 
   app.get<{ Params: { cwd: string } }>(
     "/avatars/:cwd/diff",
@@ -265,9 +262,8 @@ export async function startServer(
     },
   );
 
-  app.post<{ Params: { cwd: string } }>(
-    "/avatars/:cwd/capture",
-    async (req) => service.captureAvatar(req.params.cwd),
+  app.post<{ Params: { cwd: string } }>("/avatars/:cwd/capture", async (req) =>
+    service.captureAvatar(req.params.cwd),
   );
 
   app.delete<{ Params: { cwd: string } }>(

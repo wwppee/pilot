@@ -316,8 +316,7 @@ const zh: Dict = {
   "profiles.fromSession.modelLabel": "检测到的模型",
   "profiles.fromSession.toolsLabel": "本次 session 用到的工具",
   "profiles.fromSession.noTools": "（未记录到工具调用）",
-  "profiles.fromSession.notFound":
-    "无法加载 session 模板 — 文件可能已被清理。",
+  "profiles.fromSession.notFound": "无法加载 session 模板 — 文件可能已被清理。",
   "profiles.fromSession.cta": "基于此 session 创建 profile →",
   "sessions.createProfileCta": "基于此 session 创建 profile",
 
@@ -340,8 +339,7 @@ const zh: Dict = {
 
   // Forge (v0.4.14+) — Web 入口
   "forge.h1": "Forge",
-  "forge.subtitle":
-    "在 npm 上搜索 Pi 兼容包并吸收为本地 Capability。",
+  "forge.subtitle": "在 npm 上搜索 Pi 兼容包并吸收为本地 Capability。",
   "forge.searchLabel": "搜索 npm 上可 forge 的包",
   "forge.searchPlaceholder": "试试 'pi-subagent' 或 'pi-git'…",
   "forge.searchButton": "搜索",
@@ -361,19 +359,14 @@ const zh: Dict = {
   "forge.inspect.absorbCta": "吸收为 Capability",
   "forge.inspect.asIdLabel": "Capability id（可选，kebab-case）",
   "forge.inspect.asIdHint": "留空将使用自动推导的 id（去掉 npm scope）。",
-  "forge.inspect.absorbedToast":
-    "已吸收 — 跳转到 /capabilities/{id}",
+  "forge.inspect.absorbedToast": "已吸收 — 跳转到 /capabilities/{id}",
   "forge.inspect.error": "无法吸收：{error}",
-  "forge.inspect.errorNotFound":
-    "包在 npm 上找不到，或没有 manifest。",
+  "forge.inspect.errorNotFound": "包在 npm 上找不到，或没有 manifest。",
   "forge.inspect.errorInvalidId":
     "Capability id 不合法 — 必须为 kebab-case（a-z0-9-）。",
-  "forge.inspect.errorSchema":
-    "构建的 Capability 未通过 schema 校验。",
-  "forge.inspect.notFound":
-    "包找不到或没有 manifest。",
-  "forge.noManifest":
-    "无 `pi` 字段 — 只能吸收为 L1-referenced。",
+  "forge.inspect.errorSchema": "构建的 Capability 未通过 schema 校验。",
+  "forge.inspect.notFound": "包找不到或没有 manifest。",
+  "forge.noManifest": "无 `pi` 字段 — 只能吸收为 L1-referenced。",
 
   // Avatars (v0.5+)
   "avatars.h1": "Avatars",

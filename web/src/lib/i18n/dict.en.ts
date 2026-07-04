@@ -332,10 +332,8 @@ const en: Dict = {
   "profiles.fromSession.noTools": "(no tool calls recorded)",
   "profiles.fromSession.notFound":
     "Could not load session template — the file may have been pruned.",
-  "profiles.fromSession.cta":
-    "Create a profile from this session →",
-  "sessions.createProfileCta":
-    "Create profile from this session",
+  "profiles.fromSession.cta": "Create a profile from this session →",
+  "sessions.createProfileCta": "Create profile from this session",
 
   // Session tree explorer (v0.4.13+)
   "sessions.tree.searchPlaceholder": "search preview…",
@@ -378,20 +376,14 @@ const en: Dict = {
   "forge.inspect.asIdLabel": "Capability id (optional, kebab-case)",
   "forge.inspect.asIdHint":
     "Leave blank to use the derived id (stripped of npm scope).",
-  "forge.inspect.absorbedToast":
-    "Absorbed — redirecting to /capabilities/{id}",
-  "forge.inspect.error":
-    "Could not absorb: {error}",
-  "forge.inspect.errorNotFound":
-    "Package not found on npm or has no manifest.",
+  "forge.inspect.absorbedToast": "Absorbed — redirecting to /capabilities/{id}",
+  "forge.inspect.error": "Could not absorb: {error}",
+  "forge.inspect.errorNotFound": "Package not found on npm or has no manifest.",
   "forge.inspect.errorInvalidId":
     "Capability id is invalid — must be kebab-case (a-z0-9-).",
-  "forge.inspect.errorSchema":
-    "Built capability failed schema validation.",
-  "forge.inspect.notFound":
-    "Package not found or no manifest.",
-  "forge.noManifest":
-    "No `pi` field — would absorb as L1-referenced only.",
+  "forge.inspect.errorSchema": "Built capability failed schema validation.",
+  "forge.inspect.notFound": "Package not found or no manifest.",
+  "forge.noManifest": "No `pi` field — would absorb as L1-referenced only.",
 
   // Avatars (v0.5+)
   "avatars.h1": "Avatars",

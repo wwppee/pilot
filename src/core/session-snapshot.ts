@@ -126,8 +126,7 @@ export async function deriveSnapshot(
   const snapshot: SessionSnapshot = {
     sessionId,
     capturedAt: new Date().toISOString(),
-    note:
-      "v0.4.13 best-knowledge snapshot. v0.5.0 will replace with true history.",
+    note: "v0.4.13 best-knowledge snapshot. v0.5.0 will replace with true history.",
     ...(info.model !== undefined ? { model: info.model } : {}),
     ...(cwd !== undefined ? { cwd } : {}),
     ...(info.startedAt !== undefined ? { startedAt: info.startedAt } : {}),
