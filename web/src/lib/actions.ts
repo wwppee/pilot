@@ -313,3 +313,51 @@ export async function forgeAbsorbForm(formData: FormData): Promise<void> {
     );
   }
 }
+
+// ─── Avatars (v0.5+) ─────────────────────────────────────────
+
+/**
+ * v0.5.0: capture the current Pilot state into an Avatar for the
+ * encoded cwd. Redirects to /avatars?captured=1&cwd=<id> on success
+ * or to /avatars?error=… on failure.
+ */
+export async function captureAvatarForm(formData: FormData): Promise<void> {
+  const cwd = formData.get("cwd");
+  if (typeof cwd !== "string" || cwd.length === 0) return;
+
+  const res = await pilotWithCsrf(`/avatars/${encodeURIComponent(cwd)}/capture`, {
+    method: "POST",
+  });
+
+  if (res.ok) {
+    redirect(`/avatars?captured=1&cwd=${encodeURIComponent(cwd)}`);
+  } else {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    redirect(
+      `/avatars?error=${encodeURIComponent(body.error ?? "capture failed")}`,
+    );
+  }
+}
+
+/**
+ * v0.5.0: delete an Avatar by encoded cwd. Redirects to
+ * /avatars?deleted=1 on success or ?error=… on failure.
+ */
+export async function deleteAvatarForm(formData: FormData): Promise<void> {
+  // <DeleteButton> sends hidden "name" — accept either "name" or "cwd".
+  const cwd = formData.get("cwd") ?? formData.get("name");
+  if (typeof cwd !== "string" || cwd.length === 0) return;
+
+  const res = await pilotWithCsrf(`/avatars/${encodeURIComponent(cwd)}`, {
+    method: "DELETE",
+  });
+
+  if (res.ok) {
+    redirect(`/avatars?deleted=1&cwd=${encodeURIComponent(cwd)}`);
+  } else {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    redirect(
+      `/avatars?error=${encodeURIComponent(body.error ?? "delete failed")}`,
+    );
+  }
+}

@@ -231,6 +231,114 @@ describe("pilot server", () => {
       expect(res.statusCode).toBe(400);
     });
 
+    // ─── Avatars (v0.5+) ───────────────────────────────────────
+
+    it("GET /avatars returns [] when no avatars exist", async () => {
+      const res = await handle.app.inject({
+        method: "GET",
+        url: "/avatars",
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual([]);
+    });
+
+    it("GET /avatars/current returns current Pilot state", async () => {
+      const res = await handle.app.inject({
+        method: "GET",
+        url: "/avatars/current",
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body).toMatchObject({
+        packSources: [],
+        extensions: [],
+      });
+    });
+
+    it("Avatar lifecycle: capture → read → diff → delete", async () => {
+      const cwd = "--test-cwd--";
+
+      // Capture.
+      const cap = await handle.app.inject({
+        method: "POST",
+        url: `/avatars/${cwd}/capture`,
+        headers: auth(),
+      });
+      expect(cap.statusCode).toBe(200);
+      const avatar = cap.json();
+      expect(avatar.encodedCwd).toBe(cwd);
+      expect(avatar.packSources).toEqual([]);
+      expect(avatar.extensions).toEqual([]);
+
+      // Listed.
+      const list = await handle.app.inject({
+        method: "GET",
+        url: "/avatars",
+        headers: auth(),
+      });
+      const listBody = list.json();
+      expect(
+        listBody.find((a: { encodedCwd: string }) => a.encodedCwd === cwd),
+      ).toBeTruthy();
+
+      // Read.
+      const read = await handle.app.inject({
+        method: "GET",
+        url: `/avatars/${cwd}`,
+        headers: auth(),
+      });
+      expect(read.statusCode).toBe(200);
+      expect(read.json().encodedCwd).toBe(cwd);
+
+      // Diff (clean on a fresh capture with no current state).
+      const diff = await handle.app.inject({
+        method: "GET",
+        url: `/avatars/${cwd}/diff`,
+        headers: auth(),
+      });
+      expect(diff.statusCode).toBe(200);
+      const diffBody = diff.json();
+      expect(diffBody.clean).toBe(true);
+      expect(diffBody.profile.status).toBe("match");
+
+      // Delete.
+      const del = await handle.app.inject({
+        method: "DELETE",
+        url: `/avatars/${cwd}`,
+        headers: auth(),
+      });
+      expect(del.statusCode).toBe(200);
+      expect(del.json().ok).toBe(true);
+
+      // Read after delete — 404.
+      const after = await handle.app.inject({
+        method: "GET",
+        url: `/avatars/${cwd}`,
+        headers: auth(),
+      });
+      expect(after.statusCode).toBe(404);
+    });
+
+    it("GET /avatars/:cwd/diff 404s for missing avatar", async () => {
+      const res = await handle.app.inject({
+        method: "GET",
+        url: "/avatars/--ghost--/diff",
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(404);
+    });
+
+    it("DELETE /avatars/:cwd is idempotent (404 on missing)", async () => {
+      const res = await handle.app.inject({
+        method: "DELETE",
+        url: "/avatars/--never-existed--",
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(404);
+    });
+
     it("GET /sessions/:id/tree returns session tree", async () => {
       // First create a real session file in our isolated home
       const encoded = Buffer.from("/tmp/fake-cwd").toString("base64");

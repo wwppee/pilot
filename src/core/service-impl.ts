@@ -43,6 +43,14 @@ import { deriveSnapshot } from "./session-snapshot.js";
 import { deriveTemplate } from "./session-template.js";
 import { listSources, readSettings } from "./settings.js";
 import { forgeAbsorb, forgeInspect, forgeSearch } from "./forge.js";
+import {
+  captureAvatar as captureAvatarCore,
+  deleteAvatar as deleteAvatarCore,
+  diffAvatar as diffAvatarCore,
+  listAvatars as listAvatarsCore,
+  readAvatar as readAvatarCore,
+  readCurrentState as readCurrentStateCore,
+} from "./avatar.js";
 import { aggregateStats } from "./stats.js";
 import { listToolInventory } from "./tool-inventory.js";
 import {
@@ -120,6 +128,18 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
     forgeInspect: (name) => forgeInspect(name),
     forgeAbsorb: async (name, asId) =>
       (await forgeAbsorb(name, asId, home)).capability,
+
+    listAvatars: () => listAvatarsCore(home),
+    readAvatar: (encodedCwd) => readAvatarCore(encodedCwd, home),
+    captureAvatar: (encodedCwd) => captureAvatarCore(encodedCwd, home),
+    deleteAvatar: (encodedCwd) => deleteAvatarCore(encodedCwd, home),
+    readCurrentState: () => readCurrentStateCore(home),
+    diffAvatar: async (encodedCwd) => {
+      const avatar = await readAvatarCore(encodedCwd, home);
+      if (!avatar) return null;
+      const current = await readCurrentStateCore(home);
+      return diffAvatarCore(avatar, current);
+    },
     traceSessionTools: (id, filter) => traceSessionTools(id, home, filter),
 
     runDoctor: () => runDoctor(home),

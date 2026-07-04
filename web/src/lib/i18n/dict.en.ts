@@ -21,6 +21,7 @@ const en: Dict = {
   "nav.profiles": "Profiles",
   "nav.forge": "Forge",
   "nav.capabilities": "Capabilities",
+  "nav.avatars": "Avatars",
   // v0.4.14: nav groups
   "nav.groupInspect": "Inspect",
   "nav.groupManage": "Manage",
@@ -391,5 +392,35 @@ const en: Dict = {
     "Package not found or no manifest.",
   "forge.noManifest":
     "No `pi` field — would absorb as L1-referenced only.",
+
+  // Avatars (v0.5+)
+  "avatars.h1": "Avatars",
+  "avatars.subtitle":
+    "Project-level expected config. One Avatar per cwd. Diff against current state to see drift.",
+  "avatars.empty":
+    "No Avatars yet. Capture one to lock in a project's expected config.",
+  "avatars.captureCta": "Capture current state →",
+  "avatars.cwdLabel": "Project (encoded cwd)",
+  "avatars.cwdPlaceholder": "--home-me-myproj--",
+  "avatars.delete": "delete",
+  "avatars.confirmDelete": "Delete Avatar for {cwd}?",
+  "avatars.capturedToast": "Captured Avatar for {cwd}",
+  "avatars.deletedToast": "Deleted Avatar for {cwd}",
+  "avatars.diffLink": "view diff",
+  "avatars.captured": "captured",
+  "avatars.profile": "profile",
+  "avatars.model": "model",
+  "avatars.packSources": "pack sources",
+  "avatars.extensions": "policy extensions",
+  "avatars.status.match": "match",
+  "avatars.status.drift": "drift",
+  "avatars.status.missing": "missing",
+  "avatars.status.extra": "extra",
+  "avatars.clean": "clean",
+  "avatars.dirty": "needs attention",
+  "avatars.detail.h1": "Avatar · {cwd}",
+  "avatars.detail.capturedAt": "Captured {when}",
+  "avatars.detail.expected": "Expected",
+  "avatars.detail.actual": "Actual",
 };
 export default en;

@@ -41,6 +41,7 @@ export type Dict = {
   "nav.profiles": string;
   "nav.forge": string;
   "nav.capabilities": string;
+  "nav.avatars": string;
   "nav.groupInspect": string;
   "nav.groupManage": string;
 
@@ -362,4 +363,31 @@ export type Dict = {
   "forge.inspect.errorSchema": string;
   "forge.inspect.notFound": string;
   "forge.noManifest": string;
+  // Avatars (v0.5+)
+  "avatars.h1": string;
+  "avatars.subtitle": string;
+  "avatars.empty": string;
+  "avatars.captureCta": string;
+  "avatars.cwdLabel": string;
+  "avatars.cwdPlaceholder": string;
+  "avatars.delete": string;
+  "avatars.confirmDelete": string;
+  "avatars.capturedToast": string;
+  "avatars.deletedToast": string;
+  "avatars.diffLink": string;
+  "avatars.captured": string;
+  "avatars.profile": string;
+  "avatars.model": string;
+  "avatars.packSources": string;
+  "avatars.extensions": string;
+  "avatars.status.match": string;
+  "avatars.status.drift": string;
+  "avatars.status.missing": string;
+  "avatars.status.extra": string;
+  "avatars.clean": string;
+  "avatars.dirty": string;
+  "avatars.detail.h1": string;
+  "avatars.detail.capturedAt": string;
+  "avatars.detail.expected": string;
+  "avatars.detail.actual": string;
 };

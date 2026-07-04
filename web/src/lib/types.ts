@@ -152,6 +152,49 @@ export interface ForgeInspectResult {
   };
 }
 
+// ─── Avatars (v0.5+) ──────────────────────────────────────────
+
+/**
+ * Persisted "expected config" for a project cwd. See core/avatar.ts.
+ * Fields are all optional except `encodedCwd` + `capturedAt` — a fresh
+ * capture can omit profile/model if the user hasn't set them up yet.
+ */
+export interface Avatar {
+  encodedCwd: string;
+  capturedAt: string;
+  profile?: string;
+  model?: string;
+  packSources: string[];
+  extensions: string[];
+}
+
+/** What an Avatar would diff against. */
+export interface AvatarCurrent {
+  activeProfile?: string;
+  model?: string;
+  packSources: string[];
+  extensions: string[];
+}
+
+export type DiffStatus = "match" | "drift" | "missing" | "extra";
+
+export interface AvatarDiffField<T> {
+  status: DiffStatus;
+  expected: T;
+  actual: T;
+}
+
+export interface AvatarDiff {
+  encodedCwd: string;
+  capturedAt: string;
+  profile: AvatarDiffField<string | undefined>;
+  model: AvatarDiffField<string | undefined>;
+  packSources: AvatarDiffField<string[]>;
+  extensions: AvatarDiffField<string[]>;
+  /** True when nothing needs fixing (matches + extras only). */
+  clean: boolean;
+}
+
 // ─── Usage (v0.4.2+) ──────────────────────────────────────────
 
 export type UsageRange =

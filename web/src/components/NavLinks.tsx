@@ -33,7 +33,8 @@ type LabelKey =
   | "nav.compose"
   | "nav.profiles"
   | "nav.capabilities"
-  | "nav.forge";
+  | "nav.forge"
+  | "nav.avatars";
 
 interface NavItem {
   href: string;
@@ -62,6 +63,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       { href: "/tools", labelKey: "nav.tools" },
       { href: "/context", labelKey: "nav.context" },
       { href: "/capabilities", labelKey: "nav.capabilities" },
+      { href: "/avatars", labelKey: "nav.avatars" },
     ],
   },
   {

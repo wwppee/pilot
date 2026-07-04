@@ -237,6 +237,50 @@ export async function startServer(
     },
   );
 
+  // ─── Avatars (v0.5+) — project-level expected config ──────
+
+  app.get("/avatars", async () => service.listAvatars());
+
+  app.get("/avatars/current", async () => service.readCurrentState());
+
+  app.get<{ Params: { cwd: string } }>(
+    "/avatars/:cwd",
+    async (req, reply) => {
+      const avatar = await service.readAvatar(req.params.cwd);
+      if (!avatar) {
+        return reply.code(404).send({ error: "avatar not found" });
+      }
+      return avatar;
+    },
+  );
+
+  app.get<{ Params: { cwd: string } }>(
+    "/avatars/:cwd/diff",
+    async (req, reply) => {
+      const diff = await service.diffAvatar(req.params.cwd);
+      if (!diff) {
+        return reply.code(404).send({ error: "avatar not found" });
+      }
+      return diff;
+    },
+  );
+
+  app.post<{ Params: { cwd: string } }>(
+    "/avatars/:cwd/capture",
+    async (req) => service.captureAvatar(req.params.cwd),
+  );
+
+  app.delete<{ Params: { cwd: string } }>(
+    "/avatars/:cwd",
+    async (req, reply) => {
+      const removed = await service.deleteAvatar(req.params.cwd);
+      if (!removed) {
+        return reply.code(404).send({ error: "avatar not found" });
+      }
+      return { ok: true };
+    },
+  );
+
   app.post<{ Body: { source?: string } }>("/packs/install", async (req) => {
     const source = req.body?.source;
     if (!source) {

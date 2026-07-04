@@ -33,6 +33,7 @@ import type { UsageRange, UsageReport } from "./usage.js";
 import type { InstalledPack, Pack, SessionInfo, SessionTree } from "./types.js";
 import type { SessionSnapshot } from "./session-snapshot.js";
 import type { SessionTemplate } from "./session-template.js";
+import type { Avatar, AvatarCurrent, AvatarDiff } from "./avatar.js";
 
 export type PolicyDecision = ReturnType<typeof checkPolicy>;
 
@@ -166,6 +167,41 @@ export interface PilotService {
    * schema-validation / io).
    */
   forgeAbsorb(name: string, asId?: string): Promise<Capability>;
+
+  // ─── Avatars (v0.5+) ─────────────────────────────
+
+  /**
+   * List every Avatar in `~/.pilot/avatars/` — one per encoded cwd.
+   * Sorted by encodedCwd for stable display.
+   */
+  listAvatars(): Promise<Avatar[]>;
+
+  /** Read one Avatar by encodedCwd, or null if it doesn't exist. */
+  readAvatar(encodedCwd: string): Promise<Avatar | null>;
+
+  /**
+   * Capture the *current* Pilot state (active profile, model, packs,
+   * extensions) into an Avatar for the given encoded cwd.
+   */
+  captureAvatar(encodedCwd: string): Promise<Avatar>;
+
+  /**
+   * Delete an Avatar. Returns true when the file was removed.
+   */
+  deleteAvatar(encodedCwd: string): Promise<boolean>;
+
+  /**
+   * Read the current state — what an Avatar would diff against. The
+   * same data `captureAvatar` would record; useful for the Web UI
+   * to show "before vs after" without re-capturing.
+   */
+  readCurrentState(): Promise<AvatarCurrent>;
+
+  /**
+   * Compute the diff between an Avatar (expected) and the current
+   * state (actual). Pure — does not touch fs beyond `readCurrentState`.
+   */
+  diffAvatar(encodedCwd: string): Promise<AvatarDiff | null>;
 
   /**
    * Stream tool call events from a session. Each `ToolResultMessage`

@@ -138,6 +138,9 @@ import type {
   Profile,
   ActiveProfile,
   Capability,
+  Avatar,
+  AvatarCurrent,
+  AvatarDiff,
   ForgeInspectResult,
   ToolInventoryItem,
   ProjectContextRef,
@@ -205,6 +208,28 @@ export const api = {
       return await pilot<ForgeInspectResult>(
         `/forge/inspect/${encodeName(name)}`,
       );
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (status === 404) return null;
+      throw e;
+    }
+  },
+
+  // v0.5.0: Avatar CRUD — project-level expected config.
+  avatars: () => pilot<Avatar[]>("/avatars"),
+  avatarCurrent: () => pilot<AvatarCurrent>("/avatars/current"),
+  avatar: async (encodedCwd: string): Promise<Avatar | null> => {
+    try {
+      return await pilot<Avatar>(`/avatars/${encodeName(encodedCwd)}`);
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (status === 404) return null;
+      throw e;
+    }
+  },
+  avatarDiff: async (encodedCwd: string): Promise<AvatarDiff | null> => {
+    try {
+      return await pilot<AvatarDiff>(`/avatars/${encodeName(encodedCwd)}/diff`);
     } catch (e) {
       const status = (e as { status?: number }).status;
       if (status === 404) return null;

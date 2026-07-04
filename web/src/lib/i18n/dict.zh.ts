@@ -21,6 +21,7 @@ const zh: Dict = {
   "nav.profiles": "配置",
   "nav.forge": "Forge",
   "nav.capabilities": "能力",
+  "nav.avatars": "Avatars",
   // v0.4.14: nav 分组
   "nav.groupInspect": "查看",
   "nav.groupManage": "管理",
@@ -373,5 +374,34 @@ const zh: Dict = {
     "包找不到或没有 manifest。",
   "forge.noManifest":
     "无 `pi` 字段 — 只能吸收为 L1-referenced。",
+
+  // Avatars (v0.5+)
+  "avatars.h1": "Avatars",
+  "avatars.subtitle":
+    "项目级期望配置。每个 cwd 一个 Avatar。可与当前状态对比查看漂移。",
+  "avatars.empty": "暂无 Avatar。捕获一个以锁定项目的期望配置。",
+  "avatars.captureCta": "捕获当前状态 →",
+  "avatars.cwdLabel": "项目（编码后的 cwd）",
+  "avatars.cwdPlaceholder": "--home-me-myproj--",
+  "avatars.delete": "删除",
+  "avatars.confirmDelete": "删除 {cwd} 的 Avatar？",
+  "avatars.capturedToast": "已捕获 {cwd} 的 Avatar",
+  "avatars.deletedToast": "已删除 {cwd} 的 Avatar",
+  "avatars.diffLink": "查看差异",
+  "avatars.captured": "已捕获",
+  "avatars.profile": "profile",
+  "avatars.model": "model",
+  "avatars.packSources": "已安装包",
+  "avatars.extensions": "策略扩展",
+  "avatars.status.match": "一致",
+  "avatars.status.drift": "漂移",
+  "avatars.status.missing": "缺失",
+  "avatars.status.extra": "多余",
+  "avatars.clean": "干净",
+  "avatars.dirty": "需要关注",
+  "avatars.detail.h1": "Avatar · {cwd}",
+  "avatars.detail.capturedAt": "采集于 {when}",
+  "avatars.detail.expected": "期望",
+  "avatars.detail.actual": "实际",
 };
 export default zh;

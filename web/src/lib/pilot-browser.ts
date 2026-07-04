@@ -30,6 +30,9 @@ import type {
   SessionSnapshot,
   SessionTemplate,
   SessionTree,
+  Avatar,
+  AvatarCurrent,
+  AvatarDiff,
   ForgeInspectResult,
   Profile,
   Capability,
@@ -131,6 +134,30 @@ export const browserApi = {
     try {
       return await browserFetch<ForgeInspectResult>(
         `/forge/inspect/${encodeName(name)}`,
+      );
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (status === 404) return null;
+      throw e;
+    }
+  },
+
+  // v0.5.0: Avatar CRUD — browser-safe variant.
+  avatars: () => browserFetch<Avatar[]>("/avatars"),
+  avatarCurrent: () => browserFetch<AvatarCurrent>("/avatars/current"),
+  avatar: async (encodedCwd: string): Promise<Avatar | null> => {
+    try {
+      return await browserFetch<Avatar>(`/avatars/${encodeName(encodedCwd)}`);
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (status === 404) return null;
+      throw e;
+    }
+  },
+  avatarDiff: async (encodedCwd: string): Promise<AvatarDiff | null> => {
+    try {
+      return await browserFetch<AvatarDiff>(
+        `/avatars/${encodeName(encodedCwd)}/diff`,
       );
     } catch (e) {
       const status = (e as { status?: number }).status;

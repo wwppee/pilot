@@ -36,9 +36,9 @@ describe("NavLinks (v0.4.14 grouped nav)", () => {
     expect(manage).not.toBeNull();
   });
 
-  it("includes all 11 nav items (5 Inspect + 6 Manage)", () => {
+  it("includes all 12 nav items (7 Inspect + 5 Manage)", () => {
     const totalItems = NAV_GROUPS.reduce((n, g) => n + g.items.length, 0);
-    expect(totalItems).toBe(11);
+    expect(totalItems).toBe(12);
     // Spot-check key entries survived the refactor.
     const allHrefs = NAV_GROUPS.flatMap((g) =>
       g.items.map((i) => i.href),
@@ -47,6 +47,7 @@ describe("NavLinks (v0.4.14 grouped nav)", () => {
     expect(allHrefs).toContain("/forge");
     expect(allHrefs).toContain("/capabilities");
     expect(allHrefs).toContain("/profiles");
+    expect(allHrefs).toContain("/avatars");
   });
 
   it("marks the active link with aria-current=page", () => {
@@ -82,7 +83,7 @@ describe("NavLinks (v0.4.14 grouped nav)", () => {
     expect(visibleLabels.length).toBeGreaterThanOrEqual(3);
   });
 
-  it("Inspect group contains 6 items (Dashboard, Sessions, Usage, Tools, Context, Capabilities)", () => {
+  it("Inspect group contains 7 items (Dashboard, Sessions, Usage, Tools, Context, Capabilities, Avatars)", () => {
     const inspectGroup = NAV_GROUPS.find(
       (g) => g.labelKey === "nav.groupInspect",
     )!;
@@ -93,6 +94,7 @@ describe("NavLinks (v0.4.14 grouped nav)", () => {
       "nav.tools",
       "nav.context",
       "nav.capabilities",
+      "nav.avatars",
     ]);
   });
 
