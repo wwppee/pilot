@@ -96,6 +96,52 @@ export type StatsRange =
   | { kind: "lastDays"; days: number }
   | { kind: "all" };
 
+// ─── Capability diff (v0.5.1+) ──────────────────────────────
+
+/**
+ * Per-field diff between two Capabilities. Mirrors the shape
+ * returned by core/capability-diff.ts `diffCapability`. Web-side
+ * types are intentionally slightly looser than core (e.g. eval
+ * is treated as `unknown`) so the page renders whatever the
+ * server sends without bespoke mapping.
+ */
+export interface CapabilityDiff {
+  aId: string;
+  bId: string;
+  equal: boolean;
+  title: { status: DiffStatus; a?: string; b?: string };
+  type: { status: DiffStatus; a?: string; b?: string };
+  description: { status: DiffStatus; a?: string; b?: string };
+  sources: { status: DiffStatus; a: string[]; b: string[] };
+  sourceDetails: Array<{
+    ref: string;
+    status: DiffStatus;
+    a?: CapabilitySource;
+    b?: CapabilitySource;
+  }>;
+  artifacts: {
+    extensions: { status: DiffStatus; a: string[]; b: string[] };
+    skills: { status: DiffStatus; a: string[]; b: string[] };
+    prompts: { status: DiffStatus; a: string[]; b: string[] };
+    themes: { status: DiffStatus; a: string[]; b: string[] };
+  };
+  eval:
+    | { status: "match"; note: "both absent" }
+    | { status: "match" | "drift"; a: unknown; b: unknown }
+    | { status: "missing"; a: unknown }
+    | { status: "extra"; b: unknown };
+  compatibility: {
+    conflicts: { status: DiffStatus; a: string[]; b: string[] };
+    requires: { status: DiffStatus; a: string[]; b: string[] };
+  };
+  metadata: {
+    inspiredBy: { status: DiffStatus; a: string[]; b: string[] };
+    tags: { status: DiffStatus; a: string[]; b: string[] };
+    createdAt: { status: DiffStatus; a?: string; b?: string };
+    updatedAt: { status: DiffStatus; a?: string; b?: string };
+  };
+}
+
 // ─── Capability types (v0.3.9+) ─────────────────────────────────────
 
 export type CapabilityType = "workflow" | "lens" | "reviewer" | string;

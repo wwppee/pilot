@@ -138,6 +138,7 @@ import type {
   Profile,
   ActiveProfile,
   Capability,
+  CapabilityDiff,
   Avatar,
   AvatarCurrent,
   AvatarDiff,
@@ -230,6 +231,22 @@ export const api = {
   avatarDiff: async (encodedCwd: string): Promise<AvatarDiff | null> => {
     try {
       return await pilot<AvatarDiff>(`/avatars/${encodeName(encodedCwd)}/diff`);
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (status === 404) return null;
+      throw e;
+    }
+  },
+
+  // v0.5.1: Capability diff — compare two absorbed capabilities by id.
+  capabilityDiff: async (
+    aId: string,
+    bId: string,
+  ): Promise<CapabilityDiff | null> => {
+    try {
+      return await pilot<CapabilityDiff>(
+        `/capabilities/${encodeName(aId)}/diff/${encodeName(bId)}`,
+      );
     } catch (e) {
       const status = (e as { status?: number }).status;
       if (status === 404) return null;

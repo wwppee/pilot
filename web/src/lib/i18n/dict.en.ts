@@ -351,6 +351,40 @@ const en: Dict = {
   "capabilities.sources": "{n} source(s)",
   "capabilities.requires": "requires {n}",
   "capabilities.conflicts": "conflicts {n}",
+  "capabilities.diffLink": "diff with…",
+
+  // Capability diff (v0.5.1+)
+  "capdiff.h1": "Capability diff",
+  "capdiff.subtitle":
+    "Compare two absorbed Capabilities. Per-field match / drift / missing / extra, side by side.",
+  "capdiff.pickerA": "Capability A",
+  "capdiff.pickerB": "Capability B",
+  "capdiff.pickerPlaceholder": "— pick one —",
+  "capdiff.swapCta": "Swap",
+  "capdiff.empty":
+    "Need at least two capabilities to diff. Absorb one from /forge first.",
+  "capdiff.notFound":
+    "One or both capabilities don't exist on disk. Try a different pair.",
+  "capdiff.equal": "Identical",
+  "capdiff.unequal": "Differences",
+  "capdiff.sourcesA": "sources (A)",
+  "capdiff.sourcesB": "sources (B)",
+  "capdiff.evalAbsent": "(no eval recorded)",
+  "capdiff.field.title": "title",
+  "capdiff.field.type": "type",
+  "capdiff.field.description": "description",
+  "capdiff.field.sources": "sources",
+  "capdiff.field.extensions": "extensions",
+  "capdiff.field.skills": "skills",
+  "capdiff.field.prompts": "prompts",
+  "capdiff.field.themes": "themes",
+  "capdiff.field.eval": "eval",
+  "capdiff.field.conflicts": "conflicts",
+  "capdiff.field.requires": "requires",
+  "capdiff.field.inspiredBy": "inspiredBy",
+  "capdiff.field.tags": "tags",
+  "capdiff.field.createdAt": "createdAt",
+  "capdiff.field.updatedAt": "updatedAt",
 
   // Forge (v0.4.14+) — Web entrypoint
   "forge.h1": "Forge",

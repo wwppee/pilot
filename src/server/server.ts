@@ -358,6 +358,21 @@ export async function startServer(
     },
   );
 
+  // v0.5.1: diff two Capabilities by id. URL form is
+  // /capabilities/:aId/diff/:bId. 404 when either side is missing.
+  app.get<{ Params: { aId: string; bId: string } }>(
+    "/capabilities/:aId/diff/:bId",
+    async (req, reply) => {
+      const diff = await service.capabilityDiff(req.params.aId, req.params.bId);
+      if (!diff) {
+        return reply.code(404).send({
+          error: "one or both capabilities not found",
+        });
+      }
+      return diff;
+    },
+  );
+
   app.get("/doctor", async () => service.runDoctor());
 
   app.get("/capabilities", async () => service.listCapabilities());

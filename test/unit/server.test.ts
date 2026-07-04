@@ -231,7 +231,67 @@ describe("pilot server", () => {
       expect(res.statusCode).toBe(400);
     });
 
-    // ─── Avatars (v0.5+) ───────────────────────────────────────
+    // ─── Capability diff (v0.5.1+) ────────────────────────────
+
+    it("Capability diff lifecycle: write two caps, diff them, delete", async () => {
+      // Write two real capability files into the test home.
+      const capsDir = join(tempHome, ".pilot", "capabilities");
+      mkdirSync(join(capsDir, "cap-a"), { recursive: true });
+      mkdirSync(join(capsDir, "cap-b"), { recursive: true });
+
+      const capA = {
+        id: "cap-a",
+        title: "Old Title",
+        type: "integration",
+        description: "same description",
+        sources: [{ type: "npm", ref: "npm:foo@1.0.0", mode: "L1-referenced" }],
+        artifacts: { skills: ["s1"] },
+        compatibility: { conflicts: [], requires: [] },
+        metadata: {
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+      };
+      const capB = {
+        ...capA,
+        id: "cap-b",
+        title: "New Title",
+        sources: [{ type: "npm", ref: "npm:foo@2.0.0", mode: "L1-referenced" }],
+        metadata: { ...capA.metadata, updatedAt: "2026-02-01T00:00:00.000Z" },
+      };
+
+      writeFileSync(
+        join(capsDir, "cap-a", "capability.json"),
+        JSON.stringify(capA),
+        "utf-8",
+      );
+      writeFileSync(
+        join(capsDir, "cap-b", "capability.json"),
+        JSON.stringify(capB),
+        "utf-8",
+      );
+
+      const res = await handle.app.inject({
+        method: "GET",
+        url: "/capabilities/cap-a/diff/cap-b",
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.aId).toBe("cap-a");
+      expect(body.bId).toBe("cap-b");
+      expect(body.equal).toBe(false);
+      expect(body.title.status).toBe("drift");
+    });
+
+    it("Capability diff 404 when one id is missing", async () => {
+      const res = await handle.app.inject({
+        method: "GET",
+        url: "/capabilities/cap-a/diff/never-existed",
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(404);
+    });
 
     it("GET /avatars returns [] when no avatars exist", async () => {
       const res = await handle.app.inject({
@@ -256,6 +316,8 @@ describe("pilot server", () => {
         extensions: [],
       });
     });
+
+    // ─── Avatars (v0.5+) ─────────────────────────────────────
 
     it("Avatar lifecycle: capture → read → diff → delete", async () => {
       const cwd = "--test-cwd--";

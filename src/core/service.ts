@@ -34,6 +34,7 @@ import type { InstalledPack, Pack, SessionInfo, SessionTree } from "./types.js";
 import type { SessionSnapshot } from "./session-snapshot.js";
 import type { SessionTemplate } from "./session-template.js";
 import type { Avatar, AvatarCurrent, AvatarDiff } from "./avatar.js";
+import type { CapabilityDiff } from "./capability-diff.js";
 
 export type PolicyDecision = ReturnType<typeof checkPolicy>;
 
@@ -202,6 +203,12 @@ export interface PilotService {
    * state (actual). Pure — does not touch fs beyond `readCurrentState`.
    */
   diffAvatar(encodedCwd: string): Promise<AvatarDiff | null>;
+
+  /**
+   * v0.5.1: compare two Capabilities by id. Returns null when
+   * either id doesn't exist on disk. Pure — no side effects.
+   */
+  capabilityDiff(aId: string, bId: string): Promise<CapabilityDiff | null>;
 
   /**
    * Stream tool call events from a session. Each `ToolResultMessage`

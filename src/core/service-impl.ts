@@ -19,6 +19,7 @@ import { join } from "node:path";
 const execFileAsync = promisify(execFile);
 
 import { listCapabilities, tryLoadCapability } from "./capability.js";
+import { diffCapability } from "./capability-diff.js";
 import { readSessionTree, searchSession } from "./jsonl-parser.js";
 import {
   classifyFromManifest,
@@ -139,6 +140,15 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
       if (!avatar) return null;
       const current = await readCurrentStateCore(home);
       return diffAvatarCore(avatar, current);
+    },
+
+    capabilityDiff: async (aId, bId) => {
+      const [a, b] = await Promise.all([
+        tryLoadCapability(aId, home),
+        tryLoadCapability(bId, home),
+      ]);
+      if (!a || !b) return null;
+      return diffCapability(a, b);
     },
     traceSessionTools: (id, filter) => traceSessionTools(id, home, filter),
 

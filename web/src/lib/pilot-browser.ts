@@ -36,6 +36,7 @@ import type {
   ForgeInspectResult,
   Profile,
   Capability,
+  CapabilityDiff,
   ToolInventoryItem,
   ProjectContextRef,
   ToolPolicy,
@@ -158,6 +159,22 @@ export const browserApi = {
     try {
       return await browserFetch<AvatarDiff>(
         `/avatars/${encodeName(encodedCwd)}/diff`,
+      );
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (status === 404) return null;
+      throw e;
+    }
+  },
+
+  // v0.5.1: Capability diff — browser-safe variant.
+  capabilityDiff: async (
+    aId: string,
+    bId: string,
+  ): Promise<CapabilityDiff | null> => {
+    try {
+      return await browserFetch<CapabilityDiff>(
+        `/capabilities/${encodeName(aId)}/diff/${encodeName(bId)}`,
       );
     } catch (e) {
       const status = (e as { status?: number }).status;

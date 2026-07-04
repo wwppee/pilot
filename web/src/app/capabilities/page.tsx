@@ -95,6 +95,15 @@ export default async function CapabilitiesPage() {
                   </span>
                 )}
               </div>
+              {/* v0.5.1: link into the diff page with this capability pre-selected as "A".
+                  Click again to pick "B" via the page's picker. */}
+              <Link
+                href={`/capabilities/diff?a=${encodeURIComponent(c.id)}`}
+                className="block mt-3 text-[10px] text-[var(--accent)] hover:underline"
+                aria-label={`Compare ${c.id} with another capability`}
+              >
+                {renderT(locale, "capabilities.diffLink")} →
+              </Link>
             </Link>
           ))}
         </div>

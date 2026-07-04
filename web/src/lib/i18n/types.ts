@@ -334,6 +334,36 @@ export type Dict = {
   "capabilities.sources": string;
   "capabilities.requires": string;
   "capabilities.conflicts": string;
+  "capabilities.diffLink": string;
+  // Capability diff (v0.5.1+)
+  "capdiff.h1": string;
+  "capdiff.subtitle": string;
+  "capdiff.pickerA": string;
+  "capdiff.pickerB": string;
+  "capdiff.pickerPlaceholder": string;
+  "capdiff.swapCta": string;
+  "capdiff.empty": string;
+  "capdiff.notFound": string;
+  "capdiff.equal": string;
+  "capdiff.unequal": string;
+  "capdiff.sourcesA": string;
+  "capdiff.sourcesB": string;
+  "capdiff.evalAbsent": string;
+  "capdiff.field.title": string;
+  "capdiff.field.type": string;
+  "capdiff.field.description": string;
+  "capdiff.field.sources": string;
+  "capdiff.field.extensions": string;
+  "capdiff.field.skills": string;
+  "capdiff.field.prompts": string;
+  "capdiff.field.themes": string;
+  "capdiff.field.eval": string;
+  "capdiff.field.conflicts": string;
+  "capdiff.field.requires": string;
+  "capdiff.field.inspiredBy": string;
+  "capdiff.field.tags": string;
+  "capdiff.field.createdAt": string;
+  "capdiff.field.updatedAt": string;
   // Forge (v0.4.14+)
   "forge.h1": string;
   "forge.subtitle": string;
