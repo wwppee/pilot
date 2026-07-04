@@ -163,7 +163,7 @@ web/src/app/                        18 routes
 
 `stats.ts` 已经补了 usage + cost，从 `AssistantMessage.usage.{input,output,cacheRead,cacheWrite,totalTokens,cost.*}` 直接聚合。
 
-## 五、v0.4.2 → v0.4.8 真实路径
+## 五、v0.4.2 → v0.4.11 真实路径
 
 | 版本 | 内容 | 关键文件 |
 |---|---|---|
@@ -171,31 +171,62 @@ web/src/app/                        18 routes
 | **v0.4.3** | Tool policies (TOML + extension generator) | `core/policy.ts` + `core/policy-engine.ts` + `core/policy-extension.ts` + `core/extension-scanner.ts` |
 | **v0.4.4** | Box Garden Compose MVP | `core/compose-listing.ts` + `web/.../compose/ComposeBoard.tsx` |
 | **v0.4.5** | Cozy 2.5D skin (cream + sage + amber) | `web/.../compose/compose.module.css` |
-| **v0.4.6** | 基础设施：`init` + `dashboard --prod` + `release.sh` | `commands/init.ts` + `commands/dashboard.ts` + `scripts/release.sh` |
+| **v0.4.6** | 基础设施：`init` + `dashboard --prod` + `release.sh` 一条龙 | `commands/init.ts` + `commands/dashboard.ts` + `scripts/release.sh` |
 | **v0.4.7** | 浏览器编辑 policy (token 不进浏览器) | `web/.../api/pilot/[...path]/route.ts` + `web/.../policy/[name]/edit/` |
-| **v0.4.8** | WebUI a11y (WCAG AA + keyboard + axe-core) | `web/.../layout.tsx` + `web/.../globals.css` + `web/tests/a11y.test.tsx` |
+| **v0.4.8** | WebUI a11y (WCAG AA + keyboard + axe-core 23 测试) | `web/.../layout.tsx` + `web/.../globals.css` + `web/tests/a11y.test.tsx` |
+| **v0.4.9** | typecheck hotfix + docs sync (release-please 历史债) | 9 处 JSX namespace + 3 处其他 + `release.sh` 加 web tsc + `roadmap-v1.0.md` 归档 |
+| **v0.4.10** | `/packages` 搜索白屏 hotfix + npm publish 流程加固 | `web/src/lib/pilot.ts` + `scripts/release.sh` (preflight dist + npm view + --provenance) |
+| **v0.4.11** | WebUI i18n (EN / 中文，Accept-Language 默认 + localStorage 持久化) | `web/src/lib/i18n/` + `web/src/components/I18n.tsx` + `web/src/components/LanguageSwitcher.tsx` + 12 page files + 90+ dict keys |
+| *unreleased* | policy edit white-screen (params 未 await) + i18n coverage gap fix | `web/src/app/policy/[name]/edit/page.tsx` + `<NavLinks>` + `<DeleteButton confirmMessage>` + 30+ dict keys |
 
-## 六、v0.4.9 候选（next）
+**总测试**：270 core + 70 web = 340 passing；TypeScript strict 0 errors；web build clean。
 
-按"先解决最痛的问题"原则，三个候选（**等你拍板**）：
+## 六、v0.4.12 → v0.5.0 候选（next）
+
+按"先解决最痛的问题"原则：
 
 | 候选 | 内容 | 估时 | 解决的痛点 |
 |---|---|---|---|
-| **A** | npm publish 自动化（接 `release.sh`，有 `NPM_TOKEN` 时自动 publish） | 半天 | v0.4.x 每次发布都要手工 publish，文档说"有 NPM_TOKEN 就自动"，实际没接 |
-| **B** | 浏览器编辑 profile（v0.4.7 是 policy，profile 还是只能 CLI） | 2-3 天 | profile 编辑是高频动作，不能只在 CLI |
-| **C** | ComposeBoard 加 block-to-block SVG 箭头（让"画布"真的有"流"的感觉） | 2-3 天 | 视觉上现在是孤立方块，缺"连"的概念 |
+| **A** ✅ done | npm publish 自动化 | 半天 | **v0.4.10 已完成** — `release.sh` 加 preflight + npm view + --provenance + 422 already_exists 自动 PATCH |
+| **B** | 浏览器编辑 profile（v0.4.7 是 policy；profile 还是只能 CLI） | 2-3 天 | profile 编辑是高频动作，"创建-编辑-应用" 闭环断在 web |
+| **C** | ComposeBoard block-to-block SVG 箭头 + 6 阶段可视化骨架 | 3-4 天 | 现在方块是孤立的；加箭头让"流"的感觉出来；为 v0.5.0 的 Replay mode 打底 |
+| **D** | Session snapshot — 在 session JSONL 派生文件里记录 capabilities + model 快照 | 4-5 天 | v0.5.0 Avatars / Capability diff 的数据基础，没有它 diff 没法做 |
+| **E** | `pilot init` 接入到 dashboard flow（`dashboard --setup` 一键 init + start） | 1 天 | 新用户体验：现在 `init` 和 `dashboard` 是两步，衔接不顺 |
 
-我倾向 **A**：v0.4.x 已经发了 9 个版本，每个版本都带病发布（typecheck / docs 不全），先把发布工程一次搞透，再上功能。但你拍。
+**我倾向 D 先做**（虽然时间最长）。理由：
+
+1. **D 是 v0.5.0 的硬前置**：Avatars diff、Replay mode、6 阶段 trace 可视化——这三个都依赖"每个 session 当时启用了哪些 capabilities + model"。没这个 snapshot，后面 5 个版本都在沙上盖楼。
+2. **D 单独 ship 也立得住**：不依赖 Avatars/Replay 本身。读 JSONL + 派生文件 + 在 `/sessions/[id]` 显示"当时 model = claude-opus, capabilities = [policy-safe-bash, profile-research]" 这一行就够了。
+3. **D 测试容易**：纯派生计算，无 UI 复杂度；session JSONL schema 已经验证过。
+
+时间表（按这个顺序）：
+```
+v0.4.12 (4-5 天)  D: Session snapshot
+v0.4.13 (2-3 天)  B: 浏览器编辑 profile（拿 v0.4.7 policy edit 的模板，1 天复用）
+v0.4.14 (3-4 天)  C: ComposeBoard SVG 箭头（v0.5.0 视觉基础）
+v0.4.15 (1 天)    E: init + dashboard 衔接（polish）
+v0.5.0  (1-2 周)  组合: Avatars + Capability diff (基于 D + B) + Replay mode (基于 C)
+```
+
+如果你拍 D，我就开干。
 
 ## 七、v0.5 → v1.0 计划
 
 详见 [`docs/roadmap.md` § 阶段三](./roadmap.md#阶段三进化-pi-v04---v10进行中)。
 
-简版：
-- **v0.5.0**（4-6 周）：Avatars + Session snapshot + 能力差异可视化 + Replay mode + A/B diff + 6 阶段 trace 可视化
-- **v0.6.0**（2 周）：Pi extension（`/pilot` slash 命令）
-- **v0.7.0**（2 周）：多 Pi 编排
-- **v1.0.0**（1 月）：GA + 申请收录 pi.dev/packages
+调整后的简版（v0.5 拆成 5 个小版本，每个 1-2 周，可独立 ship）：
+
+| 版本 | 周期 | 内容 |
+|---|---|---|
+| **v0.5.0** | 2 周 | Avatars (架构定义 + TOML schema + 第一个示例 avatar `pi-architect`) + Capability diff (基于 v0.4.12 snapshot) |
+| **v0.5.1** | 1 周 | Replay mode（选 session + profile 重放；只读 trace） |
+| **v0.5.2** | 1 周 | 6 阶段 trace 可视化（基于 Replay 的每步标注属于 strategy/planner/retrieval/toolSelector/executor/validator/output） |
+| **v0.5.3** | 1 周 | A/B diff（两个 session 同 prompt 不同 profile 的差异对比） |
+| **v0.6.0** | 2 周 | Pi extension（`@pilot/pi-extension` — `/pilot stats today`、`/pilot session search`、`/pilot doctor`、`/pilot ui`） |
+| **v0.7.0** | 2 周 | 多 Pi 编排（团队 / 服务端 / 本地） |
+| **v1.0.0** | 1 月 | GA + 申请收录 pi.dev/packages + 完整文档 + npm 周下载 > 100 |
+
+**v0.5.0 GA 标志**：用户能在 Web 上选 session 重放 + 看每个 capability 的差异 + 看到 6 阶段 trace。
 
 ## 八、v0.4.2 dev plan（已完成）
 
