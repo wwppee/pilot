@@ -155,9 +155,13 @@ export default async function ProfilesPage({ searchParams }: PageProps) {
                   name={p.name}
                   label={renderT(locale, "btn.ariaDeleteProfile")}
                   action={deleteProfileForm}
-                  confirmMessage={renderT(locale, "policy.confirmDeleteProfile", {
-                    name: p.name,
-                  })}
+                  confirmMessage={renderT(
+                    locale,
+                    "policy.confirmDeleteProfile",
+                    {
+                      name: p.name,
+                    },
+                  )}
                 />
               </div>
             </div>

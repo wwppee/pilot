@@ -130,12 +130,16 @@ async function ls(ctx: PilotContext): Promise<number> {
     const thinking = p.thinking ? kleur.dim(` thinking=${p.thinking}`) : "";
     const team = p.team ? kleur.dim(` team=${p.team}`) : "";
     const tag = isActive ? kleur.green(" (active)") : "";
-    console.log(`  ${mark} ${kleur.bold(p.name)}${tag}${model}${thinking}${team}`);
+    console.log(
+      `  ${mark} ${kleur.bold(p.name)}${tag}${model}${thinking}${team}`,
+    );
     if (p.description) console.log(kleur.dim(`    ${p.description}`));
   }
   if (!active) {
     console.log();
-    console.log(kleur.dim("  No active profile. Use: pilot profile use <name>"));
+    console.log(
+      kleur.dim("  No active profile. Use: pilot profile use <name>"),
+    );
   }
   return 0;
 }

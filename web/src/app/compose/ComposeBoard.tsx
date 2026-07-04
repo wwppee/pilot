@@ -493,9 +493,7 @@ export default function ComposeBoard({
         </div>
         <div className="compose-sidebar-body">
           {filteredCatalog.length === 0 ? (
-            <p className="muted small">
-              {t("compose.emptySearch")}
-            </p>
+            <p className="muted small">{t("compose.emptySearch")}</p>
           ) : (
             filteredCatalog.map((sec) => (
               <div key={sec.kind} className="compose-section">
@@ -542,9 +540,7 @@ export default function ComposeBoard({
       >
         {state.blocks.length === 0 && !pendingDrop ? (
           <div className="compose-empty">
-            <p>
-              👆 {t("compose.canvasEmpty", { key: "Enter" })}
-            </p>
+            <p>👆 {t("compose.canvasEmpty", { key: "Enter" })}</p>
           </div>
         ) : null}
         {state.blocks.map((b) => (

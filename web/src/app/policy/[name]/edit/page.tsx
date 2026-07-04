@@ -83,7 +83,13 @@ export default async function EditPolicyPage({ params }: PageProps) {
           </p>
         </section>
       ) : (
-        <Suspense fallback={<p><T k="loading.policyForm" /></p>}>
+        <Suspense
+          fallback={
+            <p>
+              <T k="loading.policyForm" />
+            </p>
+          }
+        >
           <PolicyForm initialPolicy={policy} />
         </Suspense>
       )}

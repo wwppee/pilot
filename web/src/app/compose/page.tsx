@@ -61,7 +61,13 @@ export default async function ComposePage() {
           </p>
         </section>
       ) : catalog ? (
-        <Suspense fallback={<p><T k="loading.catalog" /></p>}>
+        <Suspense
+          fallback={
+            <p>
+              <T k="loading.catalog" />
+            </p>
+          }
+        >
           <ComposeBoard initialCatalog={catalog} />
         </Suspense>
       ) : null}

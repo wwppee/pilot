@@ -79,7 +79,8 @@ const zh: Dict = {
   "loading.policies": "加载中…",
   "loading.policyForm": "加载表单中…",
   "error.couldntLoad.title": "加载失败",
-  "error.couldntLoad.body": "是否 `pilot server` 没在跑？试试 `pilot server start`。",
+  "error.couldntLoad.body":
+    "是否 `pilot server` 没在跑？试试 `pilot server start`。",
   "status.unsaved": "有未保存的修改",
   "status.saving": "保存中…",
 
@@ -92,7 +93,8 @@ const zh: Dict = {
   "policy.empty.title": "暂无策略",
   "policy.empty.body":
     "用 `pilot policy new <name>` 创建，或 `pilot policy apply` 应用。",
-  "policy.serverHint": "是否 `pilot server` 没在跑？试试 `pilot server start`。",
+  "policy.serverHint":
+    "是否 `pilot server` 没在跑？试试 `pilot server start`。",
   "policy.newCard.title": "新建策略",
   "policy.newCard.nameLabel": "策略名（kebab-case）",
   "policy.newCard.namePlaceholder": "safe-bash",
@@ -101,7 +103,8 @@ const zh: Dict = {
   "policy.newCard.templateSafeBashDesc":
     "屏蔽危险的 shell 模式，对风险工具要求人工确认。",
   "policy.newCard.templateReadonly": "只读",
-  "policy.newCard.templateReadonlyDesc": "禁止所有变更类工具（bash / write / edit）。",
+  "policy.newCard.templateReadonlyDesc":
+    "禁止所有变更类工具（bash / write / edit）。",
   "policy.newCard.templateEmpty": "空",
   "policy.newCard.templateEmptyDesc": "空白策略 — 下一步填写具体规则。",
   "policy.newCard.submit": "创建策略",
@@ -121,7 +124,7 @@ const zh: Dict = {
   "policy.hitlDesc": "会话暂停，通过 `ctx.ui.confirm()` 询问用户后再执行。",
   "policy.applyFailed": "应用失败：{msg}",
   "policy.unapplyFailed": "取消应用失败：{msg}",
-  "policy.confirmDeleteProfile": "删除 \"{name}\"？此操作不可恢复。",
+  "policy.confirmDeleteProfile": '删除 "{name}"？此操作不可恢复。',
 
   // Compose
   "compose.searchPlaceholder": "搜索…",
@@ -149,7 +152,8 @@ const zh: Dict = {
   "profiles.activeHint": "下次启动 pi 时会使用这份配置。",
   "profiles.activatedToast": "✓ {name} 已设为活跃配置。",
   "profiles.clearedToast": "已取消活跃配置。",
-  "profiles.noActive": "暂无活跃配置。点击任一配置卡的「设为活跃」按钮即可指定。",
+  "profiles.noActive":
+    "暂无活跃配置。点击任一配置卡的「设为活跃」按钮即可指定。",
   "profiles.activateFailed": "激活失败：{msg}",
 
   // Context
@@ -181,8 +185,7 @@ const zh: Dict = {
   "home.empty.packs": "暂无已装包。",
   "home.refreshHint": "10 秒自动刷新 · 已更新",
   "home.emptyState.title": "欢迎使用 Pilot",
-  "home.emptyState.subtitle":
-    "Pilot 帮你读取并管理 pi 的状态。三步快速上手：",
+  "home.emptyState.subtitle": "Pilot 帮你读取并管理 pi 的状态。三步快速上手：",
   "home.emptyState.card1Title": "创建配置",
   "home.emptyState.card1Body":
     "配置把模型 + 思考级别 + 包组合成一个可命名切换的单元，方便在不同任务间快速切换。",

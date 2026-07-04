@@ -94,8 +94,7 @@ const en: Dict = {
   "policy.empty.title": "No policies yet",
   "policy.empty.body":
     "Create one with `pilot policy new <name>` or `pilot policy apply`.",
-  "policy.serverHint":
-    "Is `pilot server` running? Try `pilot server start`.",
+  "policy.serverHint": "Is `pilot server` running? Try `pilot server start`.",
   "policy.newCard.title": "New policy",
   "policy.newCard.nameLabel": "Policy name (kebab-case)",
   "policy.newCard.namePlaceholder": "safe-bash",
@@ -107,7 +106,8 @@ const en: Dict = {
   "policy.newCard.templateReadonlyDesc":
     "Deny every tool that mutates (bash / write / edit).",
   "policy.newCard.templateEmpty": "Empty",
-  "policy.newCard.templateEmptyDesc": "Blank policy — fill in the rules next page.",
+  "policy.newCard.templateEmptyDesc":
+    "Blank policy — fill in the rules next page.",
   "policy.newCard.submit": "Create policy",
   "policy.newCard.errorInvalidName":
     "Policy name must be kebab-case (lowercase letters, digits, hyphens).",
@@ -126,17 +126,15 @@ const en: Dict = {
     "Pauses the session and asks the user via `ctx.ui.confirm()` before the tool runs.",
   "policy.applyFailed": "Apply failed: {msg}",
   "policy.unapplyFailed": "Unapply failed: {msg}",
-  "policy.confirmDeleteProfile": "Delete \"{name}\"? This cannot be undone.",
+  "policy.confirmDeleteProfile": 'Delete "{name}"? This cannot be undone.',
 
   // Compose
   "compose.searchPlaceholder": "Search…",
   "compose.emptySearch": "No matches. Adjust the filter or search.",
-  "compose.dragHint":
-    "Drag to canvas, or press Enter to add to center",
+  "compose.dragHint": "Drag to canvas, or press Enter to add to center",
   "compose.canvasAria":
     "Compose canvas. When a block is selected, use arrow keys to move it, Delete to remove, Escape to deselect.",
-  "compose.canvasEmpty":
-    "Empty canvas — pick a sidebar item and press {key}.",
+  "compose.canvasEmpty": "Empty canvas — pick a sidebar item and press {key}.",
   "compose.canvasSelectBlock":
     "Click a block on the canvas to inspect it. Press {del} to remove it, or {esc} to deselect.",
   "compose.removeBlock": "Remove block",

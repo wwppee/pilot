@@ -188,7 +188,9 @@ async function uninstallPack(name: string, home?: string): Promise<void> {
       `Pack "${name}" is not installed. Run \`pilot pack ls\` to see installed packs.`,
     );
   }
-  const spec = found.source.startsWith("npm:") ? found.source : `npm:${found.name}`;
+  const spec = found.source.startsWith("npm:")
+    ? found.source
+    : `npm:${found.name}`;
   await runPiStreaming(["uninstall", spec]);
 }
 

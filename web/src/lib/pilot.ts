@@ -195,8 +195,7 @@ export const api = {
   profiles: () => pilot<Profile[]>("/profiles"),
   profile: (name: string) => pilot<Profile>(`/profiles/${encodeName(name)}`),
   // v0.4.12: active profile pointer — "管了就能用" path closer
-  activeProfile: () =>
-    pilot<ActiveProfile | null>("/profiles/active"),
+  activeProfile: () => pilot<ActiveProfile | null>("/profiles/active"),
   activateProfile: (name: string) =>
     pilot<ActiveProfile>(`/profiles/${encodeName(name)}/activate`, {
       method: "POST",

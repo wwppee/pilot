@@ -36,9 +36,7 @@ describe("profile-state", () => {
     const home = freshHome();
     const state = await writeActiveProfile("pi-architect", "cli", home);
     expect(state.name).toBe("pi-architect");
-    expect(state.activatedAt).toMatch(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/,
-    );
+    expect(state.activatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
     expect(state.source).toBe("cli");
 
     const back = await readActiveProfile(home);

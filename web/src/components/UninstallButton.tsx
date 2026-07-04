@@ -26,11 +26,7 @@ export function UninstallButton({ name }: UninstallButtonProps) {
         border: "1px solid var(--error)",
       }}
       onClick={(e) => {
-        if (
-          !confirm(
-            `Uninstall ${name}? You can reinstall it later.`,
-          )
-        ) {
+        if (!confirm(`Uninstall ${name}? You can reinstall it later.`)) {
           e.preventDefault();
         }
       }}

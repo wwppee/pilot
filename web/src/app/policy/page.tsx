@@ -74,7 +74,13 @@ export default function PolicyPage() {
       <p className="subtitle">
         <T k="policy.subtitle" />
       </p>
-      <Suspense fallback={<p><T k="loading.policies" /></p>}>
+      <Suspense
+        fallback={
+          <p>
+            <T k="loading.policies" />
+          </p>
+        }
+      >
         <PolicyList />
       </Suspense>
       <hr />
@@ -290,8 +296,8 @@ function NewPolicyCard() {
         <T k="policy.newCard.title" />
       </h2>
       <p className="subtitle">
-        Pick a starter template, give it a kebab-case name, and you'll land
-        on the edit page to refine.
+        Pick a starter template, give it a kebab-case name, and you'll land on
+        the edit page to refine.
       </p>
       <form action={createPolicyForm} className="form">
         <div className="form-row">

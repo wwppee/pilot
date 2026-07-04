@@ -160,7 +160,8 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
       const { path } = await api.applyPolicy(initialPolicy.name);
       setApplyMessage(`Extension written to ${path}`);
     } catch (err) {
-      const msg = err instanceof PilotApiError ? err.message : (err as Error).message;
+      const msg =
+        err instanceof PilotApiError ? err.message : (err as Error).message;
       setApplyMessage(t("policy.applyFailed", { msg }));
     } finally {
       setBusy(false);
@@ -176,7 +177,8 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
         removed ? "Extension removed" : "Extension was not applied",
       );
     } catch (err) {
-      const msg = err instanceof PilotApiError ? err.message : (err as Error).message;
+      const msg =
+        err instanceof PilotApiError ? err.message : (err as Error).message;
       setApplyMessage(t("policy.unapplyFailed", { msg }));
     } finally {
       setBusy(false);
@@ -256,7 +258,9 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
 
       {/* ─── Description ─────────────────────────────────── */}
       <div className="policy-edit-section">
-        <label htmlFor="policy-description">{t("policy.descriptionLabel")}</label>
+        <label htmlFor="policy-description">
+          {t("policy.descriptionLabel")}
+        </label>
         <input
           id="policy-description"
           type="text"

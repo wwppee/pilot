@@ -131,7 +131,10 @@ export default async function PackageDetailPage({
                 ? "Already installed. Re-run to update."
                 : "Not yet installed. Install via the pilot CLI or this Web UI."}
             </p>
-            <form action={installPackForm} className="flex items-center gap-2 mb-3">
+            <form
+              action={installPackForm}
+              className="flex items-center gap-2 mb-3"
+            >
               <input type="hidden" name="name" value={pack.name} />
               <button
                 type="submit"
@@ -157,7 +160,8 @@ export default async function PackageDetailPage({
                 <input type="hidden" name="name" value={pack.name} />
                 <UninstallButton name={pack.name} />
                 <span className="text-xs text-[var(--text-muted)]">
-                  runs <code className="kbd">pilot pack uninstall {pack.name}</code>
+                  runs{" "}
+                  <code className="kbd">pilot pack uninstall {pack.name}</code>
                 </span>
               </form>
             )}
