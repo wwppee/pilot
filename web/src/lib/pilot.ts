@@ -138,6 +138,7 @@ import type {
   Profile,
   ActiveProfile,
   Capability,
+  ForgeInspectResult,
   ToolInventoryItem,
   ProjectContextRef,
   ToolPolicy,
@@ -188,6 +189,21 @@ export const api = {
     try {
       return await pilot<SessionTemplate>(
         `/sessions/${encodeName(id)}/template`,
+      );
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (status === 404) return null;
+      throw e;
+    }
+  },
+
+  // v0.4.14: Web forge entrypoint.
+  forgeSearch: (query: string) =>
+    pilot<Pack[]>(`/forge/search?q=${encodeURIComponent(query)}`),
+  forgeInspect: async (name: string): Promise<ForgeInspectResult | null> => {
+    try {
+      return await pilot<ForgeInspectResult>(
+        `/forge/inspect/${encodeName(name)}`,
       );
     } catch (e) {
       const status = (e as { status?: number }).status;

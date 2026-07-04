@@ -5,11 +5,18 @@
  * Before this, the only path to remove a pack was the CLI (which
  * didn't have an uninstall subcommand either — that was added in
  * the same commit). Now CRUD is complete.
+ *
+ * v0.4.14: install/uninstall success banners now render with
+ * `role="status"` + `aria-live="polite"` so screen readers announce
+ * them, and use i18n keys instead of hardcoded English.
  */
 import Link from "next/link";
+import { headers } from "next/headers";
 import { api } from "@/lib/pilot";
 import { installPackForm, uninstallPackForm } from "@/lib/actions";
 import { UninstallButton } from "@/components/UninstallButton";
+import { negotiateLocale, renderT } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n/types";
 
 interface PageProps {
   params: Promise<{ name: string }>;
@@ -35,6 +42,14 @@ export default async function PackageDetailPage({
     error = (e as Error).message;
   }
 
+  let locale: Locale = "en";
+  try {
+    const acceptLanguage = (await headers()).get("accept-language");
+    locale = negotiateLocale(acceptLanguage);
+  } catch {
+    /* static generation fallback */
+  }
+
   return (
     <div className="space-y-6">
       <div className="text-xs text-[var(--text-muted)]">
@@ -43,32 +58,54 @@ export default async function PackageDetailPage({
 
       {error && (
         <div className="surface rounded-lg p-4 text-sm text-[var(--error)]">
-          Couldn&apos;t fetch this pack: {error}
+          {renderT(locale, "packages.fetchError", { error })}
         </div>
       )}
 
       {sp.installed && (
         <div
-          className="surface rounded-lg p-3 text-sm"
-          style={{ color: "var(--accent-2)", borderColor: "var(--accent-2)" }}
+          className="surface rounded-lg p-3 text-sm flex items-center justify-between"
+          style={{
+            color: "var(--accent-2)",
+            borderLeft: "3px solid var(--accent-2)",
+          }}
+          role="status"
+          aria-live="polite"
         >
-          ✓ Installed <code className="kbd">{decoded}</code> successfully.
+          <span>
+            {renderT(locale, "packages.installedToast", { name: decoded })}
+          </span>
+          <Link
+            href="/packages"
+            className="text-xs underline hover:no-underline"
+          >
+            {renderT(locale, "packages.viewAll")} →
+          </Link>
         </div>
       )}
       {sp.uninstalled && (
         <div
           className="surface rounded-lg p-3 text-sm"
-          style={{ color: "var(--accent-2)", borderColor: "var(--accent-2)" }}
+          style={{
+            color: "var(--accent-2)",
+            borderLeft: "3px solid var(--accent-2)",
+          }}
+          role="status"
+          aria-live="polite"
         >
-          ✓ Uninstalled <code className="kbd">{decoded}</code> successfully.
+          {renderT(locale, "packages.uninstalledToast", { name: decoded })}
         </div>
       )}
       {sp.error && (
         <div
           className="surface rounded-lg p-3 text-sm"
-          style={{ color: "var(--error)", borderColor: "var(--error)" }}
+          style={{
+            color: "var(--error)",
+            borderLeft: "3px solid var(--error)",
+          }}
+          role="alert"
         >
-          Install failed: {sp.error}
+          {renderT(locale, "packages.installError", { error: sp.error })}
         </div>
       )}
 

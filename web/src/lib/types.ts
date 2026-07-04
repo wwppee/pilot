@@ -127,6 +127,31 @@ export interface Capability {
   metadata: CapabilityMetadata;
 }
 
+// ─── Forge (v0.4.14+) ──────────────────────────────────────────
+
+/**
+ * Server response for `GET /forge/inspect/:name` — pack summary
+ * plus parsed manifest from npm registry. Mirrors the shape returned
+ * by core/forge.ts `forgeInspect`.
+ */
+export interface ForgeInspectResult {
+  pack: Pack;
+  manifest: {
+    name: string;
+    version: string;
+    description?: string;
+    pi?: {
+      kind?: PackKind;
+      extension?: string;
+      skills?: string[];
+      themes?: string[];
+      prompts?: string[];
+      commands?: string[];
+      keybindings?: string[];
+    };
+  };
+}
+
 // ─── Usage (v0.4.2+) ──────────────────────────────────────────
 
 export type UsageRange =

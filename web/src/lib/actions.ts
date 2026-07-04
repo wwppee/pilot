@@ -272,3 +272,44 @@ export async function deleteProfileForm(formData: FormData): Promise<void> {
   await deleteProfile(name);
   redirect("/profiles");
 }
+
+// ─── Forge (v0.4.14+) ────────────────────────────────────────
+
+/**
+ * v0.4.14: absorb a package into a Capability via the Web.
+ *
+ * On success → redirect to /capabilities/[id]?absorbed=1.
+ * On failure → redirect to /forge/[name]?error=… with a code so the
+ * page can render the right banner (404 / 400 invalid-id / 422 schema).
+ */
+export async function forgeAbsorbForm(formData: FormData): Promise<void> {
+  const name = formData.get("name");
+  const asIdRaw = formData.get("asId");
+  if (typeof name !== "string") return;
+  const asId =
+    typeof asIdRaw === "string" && asIdRaw.trim().length > 0
+      ? asIdRaw.trim()
+      : undefined;
+
+  const res = await pilotWithCsrf("/forge/absorb", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ name, asId }),
+  });
+
+  if (res.ok) {
+    const body = (await res.json()) as { id?: string };
+    const id = body.id ?? "unknown";
+    redirect(`/capabilities/${id}?absorbed=1`);
+  } else {
+    const body = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      code?: string;
+    };
+    const err = body.error ?? `absorb failed (${res.status})`;
+    const code = body.code ?? "io";
+    redirect(
+      `/forge/${encodeURIComponent(name)}?error=${encodeURIComponent(err)}&code=${encodeURIComponent(code)}`,
+    );
+  }
+}

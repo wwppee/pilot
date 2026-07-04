@@ -19,7 +19,11 @@ const en: Dict = {
   "nav.policy": "Policy",
   "nav.compose": "Compose",
   "nav.profiles": "Profiles",
+  "nav.forge": "Forge",
   "nav.capabilities": "Capabilities",
+  // v0.4.14: nav groups
+  "nav.groupInspect": "Inspect",
+  "nav.groupManage": "Manage",
 
   // Server status
   "server.up": "pilot server · v{version}",
@@ -212,6 +216,11 @@ const en: Dict = {
   "packages.searchResultsFor": "Search results for \u201c{q}\u201d",
   "packages.nothingMatches": "Nothing matches.",
   "packages.installed": "Installed",
+  "packages.installedToast": "✓ Installed {name} successfully.",
+  "packages.uninstalledToast": "✓ Uninstalled {name} successfully.",
+  "packages.installError": "Install failed: {error}",
+  "packages.fetchError": "Couldn't fetch this pack: {error}",
+  "packages.viewAll": "View installed packs",
   "packages.empty": "No packs installed yet. Try `pilot pack search subagent`.",
 
   // Sessions
@@ -343,5 +352,44 @@ const en: Dict = {
   "capabilities.sources": "{n} source(s)",
   "capabilities.requires": "requires {n}",
   "capabilities.conflicts": "conflicts {n}",
+
+  // Forge (v0.4.14+) — Web entrypoint
+  "forge.h1": "Forge",
+  "forge.subtitle":
+    "Search npm for Pi-compatible packages and absorb them into local Capabilities.",
+  "forge.searchLabel": "Search npm for forge-able packages",
+  "forge.searchPlaceholder": "try 'pi-subagent' or 'pi-git'…",
+  "forge.searchButton": "Search",
+  "forge.empty": "No results yet — try a query.",
+  "forge.resultCount": "{n} result(s)",
+  "forge.inspect.h1": "Inspect {name}",
+  "forge.inspect.version": "version",
+  "forge.inspect.kind": "kind",
+  "forge.inspect.description": "description",
+  "forge.inspect.skills": "skills",
+  "forge.inspect.themes": "themes",
+  "forge.inspect.prompts": "prompts",
+  "forge.inspect.commands": "commands",
+  "forge.inspect.keybindings": "keybindings",
+  "forge.inspect.extension": "extension entry",
+  "forge.inspect.absorbMode": "absorb would create",
+  "forge.inspect.absorbCta": "Absorb as Capability",
+  "forge.inspect.asIdLabel": "Capability id (optional, kebab-case)",
+  "forge.inspect.asIdHint":
+    "Leave blank to use the derived id (stripped of npm scope).",
+  "forge.inspect.absorbedToast":
+    "Absorbed — redirecting to /capabilities/{id}",
+  "forge.inspect.error":
+    "Could not absorb: {error}",
+  "forge.inspect.errorNotFound":
+    "Package not found on npm or has no manifest.",
+  "forge.inspect.errorInvalidId":
+    "Capability id is invalid — must be kebab-case (a-z0-9-).",
+  "forge.inspect.errorSchema":
+    "Built capability failed schema validation.",
+  "forge.inspect.notFound":
+    "Package not found or no manifest.",
+  "forge.noManifest":
+    "No `pi` field — would absorb as L1-referenced only.",
 };
 export default en;

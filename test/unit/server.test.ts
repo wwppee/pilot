@@ -191,6 +191,46 @@ describe("pilot server", () => {
       expect(res.statusCode).toBe(404);
     }, 15_000);
 
+    // ─── Forge (v0.4.14+) ────────────────────────────
+
+    it("GET /forge/search returns empty array for short / missing q", async () => {
+      const res1 = await handle.app.inject({
+        method: "GET",
+        url: "/forge/search",
+        headers: auth(),
+      });
+      expect(res1.statusCode).toBe(200);
+      expect(res1.json()).toEqual([]);
+
+      const res2 = await handle.app.inject({
+        method: "GET",
+        url: "/forge/search?q=a",
+        headers: auth(),
+      });
+      expect(res2.json()).toEqual([]);
+    });
+
+    it("[network] GET /forge/inspect/:name 404 for missing package", async () => {
+      if (process.env["PILOT_SKIP_NETWORK"] === "1") return;
+      const res = await handle.app.inject({
+        method: "GET",
+        url: "/forge/inspect/this-does-not-exist-9999",
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(404);
+      expect(res.json().error).toMatch(/not found/);
+    }, 15_000);
+
+    it("POST /forge/absorb rejects without name", async () => {
+      const res = await handle.app.inject({
+        method: "POST",
+        url: "/forge/absorb",
+        payload: {},
+        headers: { ...auth(), "content-type": "application/json" },
+      });
+      expect(res.statusCode).toBe(400);
+    });
+
     it("GET /sessions/:id/tree returns session tree", async () => {
       // First create a real session file in our isolated home
       const encoded = Buffer.from("/tmp/fake-cwd").toString("base64");

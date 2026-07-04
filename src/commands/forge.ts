@@ -1,7 +1,11 @@
 /**
- * `pilot forge` — discover and absorb Pi packages into Capabilities (v0.4+).
+ * `pilot forge` — discover and absorb Pi packages into Capabilities.
  *
- * Subcommands (v0.4.1 MVP):
+ * v0.4.14: logic moved to `core/forge.ts` so the Web UI can call the
+ * same operations through PilotService. This file is now a thin CLI
+ * wrapper around the shared core helpers.
+ *
+ * Subcommands:
  *   search <query>    Search npm for packages that look forge-able
  *   inspect <name>    Read a package's manifest and show what would be absorbed
  *   absorb <name>     Pull a package's manifest and create a Capability in
@@ -17,12 +21,31 @@
  */
 
 import kleur from "kleur";
-import { writeFile, mkdir } from "node:fs/promises";
-import { join } from "node:path";
-import { readPackManifest, type PackManifest } from "../core/pack-manifest.js";
-import { CapabilitySchema, type Capability } from "../core/capability.js";
-import { pilotCapabilitiesDir } from "../core/types.js";
+import {
+  ForgeAbsorbError,
+  buildCapability,
+  deriveCapabilityId,
+  forgeAbsorb,
+  forgeInspect,
+  forgeSearch,
+  isValidCapabilityId,
+  mapKindToType,
+  type ForgeInspectResult,
+} from "../core/forge.js";
 import type { Command, PilotContext } from "../core/types.js";
+
+/**
+ * Re-export core helpers for the existing test suite
+ * (test/unit/commands.test.ts → "internal helpers map kinds correctly").
+ * Web UI goes through `service.forgeAbsorb` etc. directly — this is
+ * only here so the CLI test of these helpers still resolves.
+ */
+export const __test__ = {
+  buildCapability,
+  deriveCapabilityId,
+  isValidCapabilityId,
+  mapKindToType,
+};
 
 export const manifest: Command = {
   name: "forge",
@@ -60,7 +83,7 @@ async function runSearch(args: string[], ctx: PilotContext): Promise<number> {
     return 1;
   }
   try {
-    const results = await ctx.service.searchPacks(q);
+    const results = await forgeSearch(q);
     if (results.length === 0) {
       ctx.logger.info("No matching packages.");
       return 0;
@@ -89,16 +112,22 @@ async function runInspect(args: string[], ctx: PilotContext): Promise<number> {
     ctx.logger.error("Usage: pilot forge inspect <name>");
     return 1;
   }
-  const manifest = await readPackManifest(name);
-  if (!manifest) {
+  let result: ForgeInspectResult | null;
+  try {
+    result = await forgeInspect(name);
+  } catch (e) {
+    ctx.logger.error(`Inspect failed: ${(e as Error).message}`);
+    return 1;
+  }
+  if (!result) {
     ctx.logger.error(`Package not found or no manifest: ${name}`);
     return 1;
   }
-  printManifest(manifest);
+  printManifest(result.manifest);
   return 0;
 }
 
-function printManifest(m: PackManifest): void {
+function printManifest(m: ForgeInspectResult["manifest"]): void {
   console.log(`${kleur.cyan(m.name)} — v${m.version}`);
   if (m.description) console.log(`\n${m.description}\n`);
   if (m.pi) {
@@ -154,111 +183,19 @@ async function runAbsorb(args: string[], ctx: PilotContext): Promise<number> {
     return 1;
   }
 
-  const packManifest = await readPackManifest(name);
-  if (!packManifest) {
-    ctx.logger.error(`Package not found or no manifest: ${name}`);
-    return 1;
-  }
-
-  const id = asId ?? deriveCapabilityId(packManifest);
-  if (!isValidCapabilityId(id)) {
-    ctx.logger.error(
-      `Derived capability id "${id}" is invalid. Use kebab-case, or pass --as <id>.`,
+  try {
+    const result = await forgeAbsorb(name, asId, ctx.home || undefined);
+    ctx.logger.success(
+      `Absorbed ${kleur.cyan(name)} as ${kleur.green(result.id)}`,
     );
+    ctx.logger.info(`  ${result.path}`);
+    return 0;
+  } catch (e) {
+    if (e instanceof ForgeAbsorbError) {
+      ctx.logger.error(e.message);
+      return 1;
+    }
+    ctx.logger.error(`Absorb failed: ${(e as Error).message}`);
     return 1;
   }
-
-  const cap = buildCapability(id, packManifest);
-  const validation = CapabilitySchema.safeParse(cap);
-  if (!validation.success) {
-    ctx.logger.error(
-      `Built capability failed schema validation: ${validation.error.issues[0]?.message}`,
-    );
-    return 1;
-  }
-
-  // Write the capability file
-  const home = ctx.home || undefined;
-  const capDir = join(pilotCapabilitiesDir(home), id);
-  const capFile = join(capDir, "capability.json");
-  await mkdir(capDir, { recursive: true });
-  await writeFile(
-    capFile,
-    JSON.stringify(validation.data, null, 2) + "\n",
-    "utf-8",
-  );
-
-  ctx.logger.success(`Absorbed ${kleur.cyan(name)} as ${kleur.green(id)}`);
-  ctx.logger.info(`  ${capFile}`);
-  return 0;
 }
-
-/**
- * Build a Capability object from a pack manifest.
- *
- * Maps the pack's `pi.kind` (extension/skill/theme/prompt) onto the
- * Capability type taxonomy (workflow/tool/integration/safety). Defaults
- * to "integration" when the kind is unset.
- */
-function buildCapability(id: string, pack: PackManifest): Capability {
-  const p = pack.pi ?? {};
-  const mode = p.extension !== undefined ? "L2-wrapped" : "L1-referenced";
-  const now = new Date().toISOString();
-  return {
-    id,
-    title: pack.name,
-    type: mapKindToType(p.kind),
-    description:
-      pack.description ?? `Absorbed from ${pack.name}@${pack.version}`,
-    sources: [
-      {
-        type: "npm",
-        ref: `npm:${pack.name}@${pack.version}`,
-        mode,
-      },
-    ],
-    artifacts: {},
-    compatibility: {
-      conflicts: [],
-      requires: [],
-    },
-    metadata: {
-      createdAt: now,
-      updatedAt: now,
-    },
-  };
-}
-
-/** Map a pack's `pi.kind` onto the Capability `type` enum. */
-function mapKindToType(kind: string | undefined): Capability["type"] {
-  // Pack kinds: extension, skill, theme, prompt
-  // Capability types: workflow, tool, integration, safety
-  switch (kind) {
-    case "skill":
-      return "tool";
-    case "prompt":
-      return "workflow";
-    case "theme":
-      return "integration";
-    case "extension":
-    default:
-      return "integration";
-  }
-}
-
-/** Strip npm scope and lowercase, e.g. `@wwppee/foo` → `foo`. */
-function deriveCapabilityId(pack: PackManifest): string {
-  const base = pack.name.replace(/^@[^/]+\//, "").toLowerCase();
-  return base;
-}
-
-function isValidCapabilityId(id: string): boolean {
-  return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id);
-}
-
-// Re-export for tests
-export const __test__ = {
-  deriveCapabilityId,
-  isValidCapabilityId,
-  buildCapability,
-};

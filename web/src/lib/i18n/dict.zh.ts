@@ -19,7 +19,11 @@ const zh: Dict = {
   "nav.policy": "策略",
   "nav.compose": "编排",
   "nav.profiles": "配置",
+  "nav.forge": "Forge",
   "nav.capabilities": "能力",
+  // v0.4.14: nav 分组
+  "nav.groupInspect": "查看",
+  "nav.groupManage": "管理",
 
   // Server status
   "server.up": "pilot 服务 · v{version}",
@@ -206,6 +210,11 @@ const zh: Dict = {
   "packages.searchResultsFor": "\u201c{q}\u201d 的搜索结果",
   "packages.nothingMatches": "没匹配上。",
   "packages.installed": "已安装",
+  "packages.installedToast": "✓ 已成功安装 {name}。",
+  "packages.uninstalledToast": "✓ 已成功卸载 {name}。",
+  "packages.installError": "安装失败：{error}",
+  "packages.fetchError": "无法获取该包：{error}",
+  "packages.viewAll": "查看已安装的包",
   "packages.empty": "还没装包。试试 `pilot pack search subagent`。",
 
   // Sessions
@@ -327,5 +336,42 @@ const zh: Dict = {
   "capabilities.sources": "{n} 个来源",
   "capabilities.requires": "需要 {n}",
   "capabilities.conflicts": "冲突 {n}",
+
+  // Forge (v0.4.14+) — Web 入口
+  "forge.h1": "Forge",
+  "forge.subtitle":
+    "在 npm 上搜索 Pi 兼容包并吸收为本地 Capability。",
+  "forge.searchLabel": "搜索 npm 上可 forge 的包",
+  "forge.searchPlaceholder": "试试 'pi-subagent' 或 'pi-git'…",
+  "forge.searchButton": "搜索",
+  "forge.empty": "暂无结果 — 试试别的关键词。",
+  "forge.resultCount": "{n} 个结果",
+  "forge.inspect.h1": "检视 {name}",
+  "forge.inspect.version": "版本",
+  "forge.inspect.kind": "类型",
+  "forge.inspect.description": "描述",
+  "forge.inspect.skills": "技能",
+  "forge.inspect.themes": "主题",
+  "forge.inspect.prompts": "提示词",
+  "forge.inspect.commands": "命令",
+  "forge.inspect.keybindings": "快捷键",
+  "forge.inspect.extension": "扩展入口",
+  "forge.inspect.absorbMode": "吸收后将创建",
+  "forge.inspect.absorbCta": "吸收为 Capability",
+  "forge.inspect.asIdLabel": "Capability id（可选，kebab-case）",
+  "forge.inspect.asIdHint": "留空将使用自动推导的 id（去掉 npm scope）。",
+  "forge.inspect.absorbedToast":
+    "已吸收 — 跳转到 /capabilities/{id}",
+  "forge.inspect.error": "无法吸收：{error}",
+  "forge.inspect.errorNotFound":
+    "包在 npm 上找不到，或没有 manifest。",
+  "forge.inspect.errorInvalidId":
+    "Capability id 不合法 — 必须为 kebab-case（a-z0-9-）。",
+  "forge.inspect.errorSchema":
+    "构建的 Capability 未通过 schema 校验。",
+  "forge.inspect.notFound":
+    "包找不到或没有 manifest。",
+  "forge.noManifest":
+    "无 `pi` 字段 — 只能吸收为 L1-referenced。",
 };
 export default zh;

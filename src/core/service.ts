@@ -143,6 +143,30 @@ export interface PilotService {
    */
   getSessionTemplate(id: string): Promise<SessionTemplate | null>;
 
+  // ─── Forge (v0.4.14+) ────────────────────────────────
+
+  /** Search npm for forge-able packages. */
+  forgeSearch(query: string): Promise<Pack[]>;
+
+  /**
+   * Inspect a package by name — returns pack summary + parsed
+   * manifest. Null when the package isn't on npm.
+   */
+  forgeInspect(name: string): Promise<{
+    pack: Pack;
+    manifest: import("./pack-manifest.js").PackManifest;
+  } | null>;
+
+  /**
+   * Absorb a package into a Capability (writes
+   * `~/.pilot/capabilities/<id>/capability.json`). Returns the
+   * created capability.
+   *
+   * @throws ForgeAbsorbError on failure (not-found / invalid-id /
+   * schema-validation / io).
+   */
+  forgeAbsorb(name: string, asId?: string): Promise<Capability>;
+
   /**
    * Stream tool call events from a session. Each `ToolResultMessage`
    * yields one event with name, args, isError, latency, and content

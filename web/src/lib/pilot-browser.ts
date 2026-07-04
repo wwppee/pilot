@@ -30,6 +30,7 @@ import type {
   SessionSnapshot,
   SessionTemplate,
   SessionTree,
+  ForgeInspectResult,
   Profile,
   Capability,
   ToolInventoryItem,
@@ -115,6 +116,21 @@ export const browserApi = {
     try {
       return await browserFetch<SessionTemplate>(
         `/sessions/${encodeName(id)}/template`,
+      );
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (status === 404) return null;
+      throw e;
+    }
+  },
+
+  // v0.4.14: Web forge entrypoint (browser-safe variant).
+  forgeSearch: (query: string) =>
+    browserFetch<Pack[]>(`/forge/search?q=${encodeURIComponent(query)}`),
+  forgeInspect: async (name: string): Promise<ForgeInspectResult | null> => {
+    try {
+      return await browserFetch<ForgeInspectResult>(
+        `/forge/inspect/${encodeName(name)}`,
       );
     } catch (e) {
       const status = (e as { status?: number }).status;

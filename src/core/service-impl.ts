@@ -42,6 +42,7 @@ import { listAllSessions, sortByRecent } from "./sessions.js";
 import { deriveSnapshot } from "./session-snapshot.js";
 import { deriveTemplate } from "./session-template.js";
 import { listSources, readSettings } from "./settings.js";
+import { forgeAbsorb, forgeInspect, forgeSearch } from "./forge.js";
 import { aggregateStats } from "./stats.js";
 import { listToolInventory } from "./tool-inventory.js";
 import {
@@ -114,6 +115,11 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
     readSessionTree: (id) => readSessionTreeById(id, home),
     getSnapshot: (id) => deriveSnapshot(id, home),
     getSessionTemplate: (id) => deriveTemplate(id, home),
+
+    forgeSearch: (q) => forgeSearch(q),
+    forgeInspect: (name) => forgeInspect(name),
+    forgeAbsorb: async (name, asId) =>
+      (await forgeAbsorb(name, asId, home)).capability,
     traceSessionTools: (id, filter) => traceSessionTools(id, home, filter),
 
     runDoctor: () => runDoctor(home),

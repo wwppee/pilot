@@ -39,7 +39,10 @@ export type Dict = {
   "nav.policy": string;
   "nav.compose": string;
   "nav.profiles": string;
+  "nav.forge": string;
   "nav.capabilities": string;
+  "nav.groupInspect": string;
+  "nav.groupManage": string;
 
   // ─── Server status pill ──────────────────────────────────────
   "server.up": string;
@@ -212,6 +215,11 @@ export type Dict = {
   "packages.searchResultsFor": string;
   "packages.nothingMatches": string;
   "packages.installed": string;
+  "packages.installedToast": string;
+  "packages.uninstalledToast": string;
+  "packages.installError": string;
+  "packages.fetchError": string;
+  "packages.viewAll": string;
   "packages.empty": string;
 
   // sessions
@@ -325,4 +333,33 @@ export type Dict = {
   "capabilities.sources": string;
   "capabilities.requires": string;
   "capabilities.conflicts": string;
+  // Forge (v0.4.14+)
+  "forge.h1": string;
+  "forge.subtitle": string;
+  "forge.searchLabel": string;
+  "forge.searchPlaceholder": string;
+  "forge.searchButton": string;
+  "forge.empty": string;
+  "forge.resultCount": string;
+  "forge.inspect.h1": string;
+  "forge.inspect.version": string;
+  "forge.inspect.kind": string;
+  "forge.inspect.description": string;
+  "forge.inspect.skills": string;
+  "forge.inspect.themes": string;
+  "forge.inspect.prompts": string;
+  "forge.inspect.commands": string;
+  "forge.inspect.keybindings": string;
+  "forge.inspect.extension": string;
+  "forge.inspect.absorbMode": string;
+  "forge.inspect.absorbCta": string;
+  "forge.inspect.asIdLabel": string;
+  "forge.inspect.asIdHint": string;
+  "forge.inspect.absorbedToast": string;
+  "forge.inspect.error": string;
+  "forge.inspect.errorNotFound": string;
+  "forge.inspect.errorInvalidId": string;
+  "forge.inspect.errorSchema": string;
+  "forge.inspect.notFound": string;
+  "forge.noManifest": string;
 };

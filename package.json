@@ -1,6 +1,6 @@
 {
   "name": "pilot",
-  "version": "0.4.13",
+  "version": "0.4.14",
   "description": "Pilot — management plane for pi.dev coding agent. Pack manager, session manager, profile manager, stats, and doctor.",
   "type": "module",
   "main": "./dist/cli.js",
