@@ -180,6 +180,21 @@ const zh: Dict = {
   "home.empty.sessions": "暂无会话。",
   "home.empty.packs": "暂无已装包。",
   "home.refreshHint": "10 秒自动刷新 · 已更新",
+  "home.emptyState.title": "欢迎使用 Pilot",
+  "home.emptyState.subtitle":
+    "Pilot 帮你读取并管理 pi 的状态。三步快速上手：",
+  "home.emptyState.card1Title": "创建配置",
+  "home.emptyState.card1Body":
+    "配置把模型 + 思考级别 + 包组合成一个可命名切换的单元，方便在不同任务间快速切换。",
+  "home.emptyState.card1Cta": "新建配置 →",
+  "home.emptyState.card2Title": "安装包",
+  "home.emptyState.card2Body":
+    "包是 npm 发布的 pi 扩展（subagents、lenses、themes 等），先试一个看看适合什么场景。",
+  "home.emptyState.card2Cta": "浏览包 →",
+  "home.emptyState.card3Title": "创建策略",
+  "home.emptyState.card3Body":
+    "策略可屏蔽危险的 shell 命令、隐藏敏感信息，或在风险工具运行前要求人工确认。",
+  "home.emptyState.card3Cta": "新建策略 →",
 
   // Packages
   "packages.h1": "包中心",

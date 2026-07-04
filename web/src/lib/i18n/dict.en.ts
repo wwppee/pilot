@@ -190,6 +190,21 @@ const en: Dict = {
   "home.empty.sessions": "No sessions yet.",
   "home.empty.packs": "No packs installed.",
   "home.refreshHint": "auto-refresh 10s · updated now",
+  "home.emptyState.title": "Welcome to Pilot",
+  "home.emptyState.subtitle":
+    "Pilot reads your pi state and lets you manage it. Three quick wins to get started:",
+  "home.emptyState.card1Title": "Create a profile",
+  "home.emptyState.card1Body":
+    "Profiles capture a model + thinking level + packages as one named unit, then you can switch between them.",
+  "home.emptyState.card1Cta": "New profile →",
+  "home.emptyState.card2Title": "Install a pack",
+  "home.emptyState.card2Body":
+    "Packs are npm packages that extend pi with subagents, lenses, themes, etc. Try one and see what fits.",
+  "home.emptyState.card2Cta": "Browse packs →",
+  "home.emptyState.card3Title": "Create a policy",
+  "home.emptyState.card3Body":
+    "Policies block dangerous shell commands, redact secrets, or require human approval before risky tools run.",
+  "home.emptyState.card3Cta": "New policy →",
 
   // Packages
   "packages.h1": "Package Center",

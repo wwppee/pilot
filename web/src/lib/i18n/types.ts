@@ -193,6 +193,17 @@ export type Dict = {
   "home.empty.sessions": string;
   "home.empty.packs": string;
   "home.refreshHint": string;
+  "home.emptyState.title": string;
+  "home.emptyState.subtitle": string;
+  "home.emptyState.card1Title": string;
+  "home.emptyState.card1Body": string;
+  "home.emptyState.card1Cta": string;
+  "home.emptyState.card2Title": string;
+  "home.emptyState.card2Body": string;
+  "home.emptyState.card2Cta": string;
+  "home.emptyState.card3Title": string;
+  "home.emptyState.card3Body": string;
+  "home.emptyState.card3Cta": string;
 
   // packages
   "packages.h1": string;

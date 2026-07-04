@@ -11,21 +11,33 @@ import { api } from "@/lib/pilot";
 import { AutoRefresh, LivePulse } from "@/components/AutoRefresh";
 import { T } from "@/components/I18n";
 import { negotiateLocale, renderT } from "@/lib/i18n";
-import type { Pack, SessionInfo, StatsReport, UsageReport } from "@/lib/types";
+import type {
+  Capability,
+  Pack,
+  Profile,
+  SessionInfo,
+  StatsReport,
+  UsageReport,
+} from "@/lib/types";
 
 async function loadDashboard(): Promise<{
   stats: StatsReport | null;
   usage: UsageReport | null;
   packs: Pack[] | null;
   sessions: SessionInfo[] | null;
+  profiles: Profile[] | null;
+  capabilities: Capability[] | null;
   error: string | null;
 }> {
-  const [statsR, usageR, packsR, sessionsR] = await Promise.allSettled([
-    api.stats({ kind: "lastDays", days: 1 }),
-    api.usage({ kind: "lastDays", days: 1 }),
-    api.packs(),
-    api.sessions(),
-  ]);
+  const [statsR, usageR, packsR, sessionsR, profilesR, capsR] =
+    await Promise.allSettled([
+      api.stats({ kind: "lastDays", days: 1 }),
+      api.usage({ kind: "lastDays", days: 1 }),
+      api.packs(),
+      api.sessions(),
+      api.profiles(),
+      api.listCapabilities(),
+    ]);
 
   const unwrap = <T,>(r: PromiseSettledResult<T>): T | null =>
     r.status === "fulfilled" ? r.value : null;
@@ -43,12 +55,15 @@ async function loadDashboard(): Promise<{
     usage: unwrap(usageR),
     packs: unwrap(packsR),
     sessions: unwrap(sessionsR),
+    profiles: unwrap(profilesR),
+    capabilities: unwrap(capsR),
     error,
   };
 }
 
 export default async function DashboardPage() {
-  const { stats, usage, packs, sessions, error } = await loadDashboard();
+  const { stats, usage, packs, sessions, profiles, capabilities, error } =
+    await loadDashboard();
 
   let acceptLanguage: string | null = null;
   try {
@@ -67,9 +82,24 @@ export default async function DashboardPage() {
     );
   }
 
+  // v0.4.12: detect "this user just installed Pilot and hasn't done
+  // anything yet" so we can show a quick-start guide instead of an
+  // empty dashboard.
+  const profileCount = profiles?.length ?? 0;
+  const packCount = packs?.length ?? 0;
+  const sessionCount = sessions?.length ?? 0;
+  const capabilityCount = capabilities?.length ?? 0;
+  const hasNothing =
+    sessionCount === 0 &&
+    packCount === 0 &&
+    profileCount === 0 &&
+    capabilityCount === 0;
+
   return (
     <div className="space-y-10">
       <AutoRefresh intervalMs={10_000} />
+
+      {hasNothing && <EmptyState />}
 
       <header className="flex items-center justify-between">
         <div>
@@ -324,6 +354,70 @@ function Empty({ msg }: { msg: string }) {
     <div className="text-sm text-[var(--text-muted)] italic px-3 py-6 text-center">
       {msg}
     </div>
+  );
+}
+
+// ─── EmptyState (v0.4.12) ──────────────────────────────────────
+// Three-card quick-start shown when the dashboard would otherwise
+// render four near-empty sections. Renders only when sessionCount,
+// packCount, profileCount, capabilityCount are all 0.
+function EmptyState() {
+  const cards = [
+    {
+      titleKey: "home.emptyState.card1Title" as const,
+      bodyKey: "home.emptyState.card1Body" as const,
+      ctaKey: "home.emptyState.card1Cta" as const,
+      href: "/profiles",
+    },
+    {
+      titleKey: "home.emptyState.card2Title" as const,
+      bodyKey: "home.emptyState.card2Body" as const,
+      ctaKey: "home.emptyState.card2Cta" as const,
+      href: "/packages",
+    },
+    {
+      titleKey: "home.emptyState.card3Title" as const,
+      bodyKey: "home.emptyState.card3Body" as const,
+      ctaKey: "home.emptyState.card3Cta" as const,
+      href: "/policy",
+    },
+  ];
+  return (
+    <section
+      className="surface rounded-lg p-6 mb-2"
+      style={{
+        borderLeft: "4px solid var(--accent)",
+        background:
+          "linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%)",
+      }}
+      aria-label="Quick start"
+    >
+      <h2 className="text-lg font-semibold mb-1">
+        <T k="home.emptyState.title" />
+      </h2>
+      <p className="text-sm text-[var(--text-muted)] mb-4">
+        <T k="home.emptyState.subtitle" />
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {cards.map((c) => (
+          <Link
+            key={c.href}
+            href={c.href}
+            className="surface rounded-lg p-4 hover:bg-[var(--surface-2)] transition-colors"
+          >
+            <h3 className="text-sm font-semibold mb-1">
+              <T k={c.titleKey} />
+            </h3>
+            <p className="text-xs text-[var(--text-muted)] mb-3">
+              <T k={c.bodyKey} />
+            </p>
+            <span className="text-xs" style={{ color: "var(--accent)" }}>
+              <T k={c.ctaKey} />
+            </span>
+          </Link>
+        ))}
+      </div>
+    </section>
   );
 }
 
