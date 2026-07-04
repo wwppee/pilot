@@ -272,6 +272,25 @@ export async function startServer(
     return { ok: true };
   });
 
+  // Active profile pointer (v0.4.12+) — "管了就能用" path closer.
+  // Three routes: GET to read, POST to set, DELETE to clear.
+  app.get("/profiles/active", async () => service.getActiveProfile());
+
+  app.post<{ Params: { name: string } }>(
+    "/profiles/:name/activate",
+    async (req) => {
+      // service.activateProfile throws if the named profile doesn't
+      // exist; that's the right behavior (we never silently activate
+      // a ghost profile).
+      return service.activateProfile(req.params.name);
+    },
+  );
+
+  app.delete("/profiles/active", async () => {
+    await service.clearActiveProfile();
+    return { ok: true };
+  });
+
   // ─── Stats (v0.3.0-c) ──────────────────────────────
 
   app.get<{

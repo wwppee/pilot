@@ -134,6 +134,7 @@ import type {
   SessionInfo,
   SessionTree,
   Profile,
+  ActiveProfile,
   Capability,
   ToolInventoryItem,
   ProjectContextRef,
@@ -187,6 +188,15 @@ export const api = {
 
   profiles: () => pilot<Profile[]>("/profiles"),
   profile: (name: string) => pilot<Profile>(`/profiles/${encodeName(name)}`),
+  // v0.4.12: active profile pointer — "管了就能用" path closer
+  activeProfile: () =>
+    pilot<ActiveProfile | null>("/profiles/active"),
+  activateProfile: (name: string) =>
+    pilot<ActiveProfile>(`/profiles/${encodeName(name)}/activate`, {
+      method: "POST",
+    }),
+  clearActiveProfile: () =>
+    pilot<{ ok: true }>("/profiles/active", { method: "DELETE" }),
 
   // ─── Capabilities (v0.3.9+) ───────────────────────────────
   listCapabilities: () => pilot<Capability[]>("/capabilities"),

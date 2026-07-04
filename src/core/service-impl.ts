@@ -32,6 +32,11 @@ import {
   tryReadProfile,
   writeProfile,
 } from "./profile.js";
+import {
+  clearActiveProfile,
+  readActiveProfile,
+  writeActiveProfile,
+} from "./profile-state.js";
 import { discoverProjectContext } from "./project-context.js";
 import { listAllSessions, sortByRecent } from "./sessions.js";
 import { listSources, readSettings } from "./settings.js";
@@ -115,6 +120,19 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
     getProfile: (name) => tryReadProfile(name, home),
     setProfile: (name, input) => writeProfile(name, input, home),
     deleteProfile: (name) => deleteProfile(name, home),
+    activateProfile: async (name) => {
+      // Refuse to activate a profile that has no TOML — silently
+      // activating "ghost" profiles is how drift bugs start.
+      const existing = await tryReadProfile(name, home);
+      if (!existing) {
+        throw new Error(
+          `Profile "${name}" not found in ~/.pilot/profiles/. Run \`pilot profile ls\` to see available profiles.`,
+        );
+      }
+      return writeActiveProfile(name, "web", home);
+    },
+    getActiveProfile: () => readActiveProfile(home),
+    clearActiveProfile: () => clearActiveProfile(home),
 
     getStats: (range) => aggregateStats(range, home),
     getUsage: (range) => aggregateUsage(range, home),

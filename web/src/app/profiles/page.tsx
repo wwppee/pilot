@@ -1,24 +1,35 @@
 /**
- * /profiles — list all named profiles + create form.
+ * /profiles — list all named profiles + create form + active state.
+ *
+ * v0.4.12: each profile card now shows whether it's the active one
+ * and exposes an "Activate" button. The active profile is loaded
+ * server-side and passed into the card via the client island
+ * <ActivateProfileButton>.
  */
 import Link from "next/link";
-export const dynamic = "force-dynamic";
 import { headers } from "next/headers";
 import { api } from "@/lib/pilot";
 import { createProfileForm, deleteProfileForm } from "@/lib/actions";
 import { DeleteButton } from "@/components/Buttons";
 import { T } from "@/components/I18n";
+import { ActivateProfileButton } from "@/components/ActivateProfileButton";
 import { negotiateLocale, renderT } from "@/lib/i18n";
-import type { Profile } from "@/lib/types";
+import type { Profile, ActiveProfile } from "@/lib/types";
 
 interface PageProps {
   searchParams: Promise<{ error?: string }>;
 }
 
+export const dynamic = "force-dynamic";
+
 export default async function ProfilesPage({ searchParams }: PageProps) {
   const sp = await searchParams;
-  const result = await api.profiles().catch(() => null as Profile[] | null);
-  const profiles = (result ?? []) as Profile[];
+  // Load profiles + active state in parallel — both are independent.
+  const [profilesResult, active] = await Promise.all([
+    api.profiles().catch(() => null as Profile[] | null),
+    api.activeProfile().catch(() => null as ActiveProfile | null),
+  ]);
+  const profiles = (profilesResult ?? []) as Profile[];
 
   let acceptLanguage: string | null = null;
   try {
@@ -43,6 +54,32 @@ export default async function ProfilesPage({ searchParams }: PageProps) {
         </h1>
         <p className="text-[var(--text-muted)] text-sm">{subtitle}</p>
       </header>
+
+      {/* Active profile banner — visible only when one is active.
+          Shows at the top so users always know which profile is in effect. */}
+      {active && (
+        <div
+          className="surface rounded-lg p-3 flex items-center justify-between"
+          style={{
+            borderLeft: "4px solid var(--accent-2)",
+          }}
+          role="status"
+          aria-live="polite"
+        >
+          <div className="text-sm">
+            <span className="text-[var(--text-muted)]">
+              <T k="profiles.active" />:
+            </span>{" "}
+            <code className="kbd font-semibold">{active.name}</code>{" "}
+            <span className="text-xs text-[var(--text-muted)]">
+              ({active.source}, {new Date(active.activatedAt).toLocaleString()})
+            </span>
+            <p className="text-xs text-[var(--text-muted)] mt-1">
+              <T k="profiles.activeHint" />
+            </p>
+          </div>
+        </div>
+      )}
 
       {sp.error && (
         <div
@@ -89,8 +126,13 @@ export default async function ProfilesPage({ searchParams }: PageProps) {
             <div
               key={p.name}
               className="surface rounded-lg p-4 hover:bg-[var(--surface-2)] block relative"
+              style={
+                active?.name === p.name
+                  ? { borderLeft: "4px solid var(--accent-2)" }
+                  : undefined
+              }
             >
-              <Link href={`/profiles/${p.name}`} className="block">
+              <Link href={`/profiles/${p.name}`} className="block pr-24">
                 <h3 className="text-base font-semibold mb-2">{p.name}</h3>
                 <div className="space-y-1 text-xs text-[var(--text-muted)]">
                   {p.model && (
@@ -104,11 +146,18 @@ export default async function ProfilesPage({ searchParams }: PageProps) {
                   )}
                 </div>
               </Link>
-              <div className="absolute top-3 right-3">
+              {/* Activate button (top-right) + Delete (bottom-right).
+                  Both are absolute-positioned so the <Link> can cover
+                  the rest of the card without click-event conflicts. */}
+              <div className="absolute top-3 right-3 flex flex-col items-end gap-2">
+                <ActivateProfileButton name={p.name} active={active} />
                 <DeleteButton
                   name={p.name}
-                  label={renderT(locale, "profiles.delete")}
+                  label={renderT(locale, "btn.ariaDeleteProfile")}
                   action={deleteProfileForm}
+                  confirmMessage={renderT(locale, "policy.confirmDeleteProfile", {
+                    name: p.name,
+                  })}
                 />
               </div>
             </div>

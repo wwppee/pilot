@@ -137,6 +137,15 @@ const en: Dict = {
   "profiles.model": "model",
   "profiles.thinking": "thinking",
   "profiles.packages": "package(s)",
+  "profiles.activate": "Activate",
+  "profiles.active": "Active",
+  "profiles.activeHint":
+    "This profile is the one Pilot will hand to pi on next session.",
+  "profiles.activatedToast": "✓ {name} is now the active profile.",
+  "profiles.clearedToast": "Active profile cleared.",
+  "profiles.noActive":
+    "No profile is active yet. Click Activate on any profile to set one.",
+  "profiles.activateFailed": "Could not activate: {msg}",
 
   // Context
   "context.loadedTitle": "Loaded by pi",

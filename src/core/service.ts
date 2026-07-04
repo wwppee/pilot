@@ -22,6 +22,7 @@
 
 import type { Capability } from "./capability.js";
 import type { Profile, ProfileInput } from "./profile.js";
+import type { ActiveProfileState } from "./profile-state.js";
 import type { ToolPolicy, ToolPolicyInput } from "./policy.js";
 import { checkPolicy, type ToolCallInfo } from "./policy-engine.js";
 import type { ProjectContextRef } from "./project-context.js";
@@ -136,6 +137,22 @@ export interface PilotService {
 
   /** Delete a profile. Returns true if it existed. */
   deleteProfile(name: string): Promise<boolean>;
+
+  // ─── Active profile pointer (v0.4.12+) ───────────────
+  /**
+   * Mark a named profile as the user's current active profile.
+   * Writes `~/.pilot/active.json`. Throws if the profile doesn't
+   * exist (we never let users activate a profile that has no
+   * definition — silently activating "ghost" profiles is how
+   * drift bugs start).
+   */
+  activateProfile(name: string): Promise<ActiveProfileState>;
+
+  /** Read the current active profile, or null if none is active. */
+  getActiveProfile(): Promise<ActiveProfileState | null>;
+
+  /** Clear the active profile pointer. */
+  clearActiveProfile(): Promise<void>;
 
   // ─── Stats (v0.3.0+) ─────────────────────────────────
 

@@ -130,6 +130,13 @@ const zh: Dict = {
   "profiles.model": "模型",
   "profiles.thinking": "思考",
   "profiles.packages": "包",
+  "profiles.activate": "设为活跃",
+  "profiles.active": "活跃中",
+  "profiles.activeHint": "下次启动 pi 时会使用这份配置。",
+  "profiles.activatedToast": "✓ {name} 已设为活跃配置。",
+  "profiles.clearedToast": "已取消活跃配置。",
+  "profiles.noActive": "暂无活跃配置。点击任一配置卡的「设为活跃」按钮即可指定。",
+  "profiles.activateFailed": "激活失败：{msg}",
 
   // Context
   "context.loadedTitle": "Pi 已加载",

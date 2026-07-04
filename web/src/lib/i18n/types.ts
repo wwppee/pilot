@@ -145,6 +145,13 @@ export type Dict = {
   "profiles.model": string;
   "profiles.thinking": string;
   "profiles.packages": string;
+  "profiles.activate": string;
+  "profiles.active": string;
+  "profiles.activeHint": string;
+  "profiles.activatedToast": string;
+  "profiles.clearedToast": string;
+  "profiles.noActive": string;
+  "profiles.activateFailed": string;
 
   // ─── Context ────────────────────────────────────────────────
   "context.loadedTitle": string;

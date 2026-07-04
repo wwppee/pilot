@@ -115,6 +115,18 @@ export const browserApi = {
   profiles: () => browserFetch<Profile[]>("/profiles"),
   profile: (name: string) =>
     browserFetch<Profile>(`/profiles/${encodeName(name)}`),
+  // v0.4.12: active profile pointer — "管了就能用" path closer
+  activeProfile: () =>
+    browserFetch<{ name: string; activatedAt: string; source: string } | null>(
+      "/profiles/active",
+    ),
+  activateProfile: (name: string) =>
+    browserFetch<{ name: string; activatedAt: string; source: string }>(
+      `/profiles/${encodeName(name)}/activate`,
+      { method: "POST" },
+    ),
+  clearActiveProfile: () =>
+    browserFetch<{ ok: true }>("/profiles/active", { method: "DELETE" }),
 
   listCapabilities: () => browserFetch<Capability[]>("/capabilities"),
   getCapability: (id: string) =>

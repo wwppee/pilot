@@ -10,6 +10,7 @@ import { I18nProvider, T } from "@/components/I18n";
 import { NavLinks } from "@/components/NavLinks";
 import { renderT } from "@/lib/i18n";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { ActiveProfileBadge } from "@/components/ActiveProfileBadge";
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -117,6 +118,7 @@ export default async function RootLayout({
                 </Link>
                 <NavLinks currentPath={currentPath} />
                 <div className="ml-auto flex items-center gap-3">
+                  <ActiveProfileBadge />
                   <LanguageSwitcher />
                   <div
                     className="text-xs text-[var(--text-muted)] flex items-center gap-2"

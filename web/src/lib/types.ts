@@ -67,6 +67,16 @@ export interface Profile {
   notes?: string;
 }
 
+/**
+ * v0.4.12: active profile pointer (`~/.pilot/active.json`).
+ * Mirrors `core/profile-state.ts:ActiveProfileState`.
+ */
+export interface ActiveProfile {
+  name: string;
+  activatedAt: string;
+  source: "cli" | "web" | "auto";
+}
+
 export interface StatsBucket {
   /** First key. */
   [k: string]: string | number;

@@ -1,18 +1,21 @@
 /**
  * `pilot profile` — manage named Pilot profiles.
  *
- * Subcommands (v0.3.0-b):
+ * Subcommands (v0.3.0-b + v0.4.12):
  *   ls        List all profiles
  *   show      Show details for a profile
  *   create    Create a new profile
  *   set       Update a profile field
  *   delete    Delete a profile
+ *   use       Mark a profile as active (v0.4.12 — writes ~/.pilot/active.json)
+ *   unset     Clear the active profile pointer (v0.4.12)
+ *   current   Show the currently active profile (v0.4.12)
  *
  * Profile storage: `~/.pilot/profiles/<name>.toml`. Pilot never writes
  * to `~/.pi/agent/settings.json` directly.
  *
- * Future (v0.3.0+): `pilot profile use <name>` to apply overlay when
- * launching pi. `pilot profile share` to export a team-style TOML.
+ * Active profile storage: `~/.pilot/active.json` — separate file so
+ * "which one is in effect" is session state, not config.
  */
 
 import kleur from "kleur";
@@ -28,6 +31,9 @@ export const manifest: Command = {
     "create <name>",
     "set <name> <key>=<val>",
     "delete <name>",
+    "use <name>",
+    "unset",
+    "current",
   ],
 };
 
@@ -46,18 +52,59 @@ export async function run(args: string[], ctx: PilotContext): Promise<number> {
     case "delete":
       return del(args[1] ?? "", ctx);
     case "use":
-    case "share":
-      ctx.logger.warn(`\`pilot profile ${sub}\` ships in a follow-up release`);
-      return 0;
+      return use(args[1] ?? "", ctx);
+    case "unset":
+      return unset(ctx);
+    case "current":
+      return current(ctx);
     case undefined:
       ctx.logger.error(
-        "Missing subcommand. Try: pilot profile ls|show|create|set|delete",
+        "Missing subcommand. Try: pilot profile ls|show|create|set|delete|use|current",
       );
       return 1;
     default:
       ctx.logger.error(`Unknown subcommand: ${sub}`);
       return 1;
   }
+}
+
+// ─── use / unset / current (v0.4.12+) ─────────────────────────
+
+async function use(name: string, ctx: PilotContext): Promise<number> {
+  if (!name) {
+    ctx.logger.error("Usage: pilot profile use <name>");
+    return 1;
+  }
+  try {
+    const state = await ctx.service.activateProfile(name);
+    ctx.logger.success(
+      `✓ Active profile: ${kleur.cyan().bold(state.name)} ` +
+        `(activated ${state.activatedAt}, source=${state.source})`,
+    );
+    return 0;
+  } catch (err) {
+    ctx.logger.error((err as Error).message);
+    return 1;
+  }
+}
+
+async function unset(ctx: PilotContext): Promise<number> {
+  await ctx.service.clearActiveProfile();
+  ctx.logger.info("✓ Active profile cleared.");
+  return 0;
+}
+
+async function current(ctx: PilotContext): Promise<number> {
+  const active = await ctx.service.getActiveProfile();
+  if (!active) {
+    ctx.logger.info("No active profile. Use: pilot profile use <name>");
+    return 0;
+  }
+  ctx.logger.info(
+    `${kleur.cyan().bold(active.name)} ` +
+      `(activated ${active.activatedAt}, source=${active.source})`,
+  );
+  return 0;
 }
 
 // ─── ls ────────────────────────────────────────────────────────────
@@ -72,13 +119,23 @@ async function ls(ctx: PilotContext): Promise<number> {
   }
 
   ctx.logger.info(`${profiles.length} profile(s):\n`);
+  // v0.4.12: highlight the active profile so users can see at a glance
+  // which one will be used when launching pi.
+  const active = await ctx.service.getActiveProfile();
+  const activeName = active?.name;
   for (const p of profiles) {
-    const mark = kleur.cyan("●");
+    const isActive = p.name === activeName;
+    const mark = isActive ? kleur.green("★") : kleur.cyan("●");
     const model = p.model ? kleur.dim(` model=${p.model}`) : "";
     const thinking = p.thinking ? kleur.dim(` thinking=${p.thinking}`) : "";
     const team = p.team ? kleur.dim(` team=${p.team}`) : "";
-    console.log(`  ${mark} ${kleur.bold(p.name)}${model}${thinking}${team}`);
+    const tag = isActive ? kleur.green(" (active)") : "";
+    console.log(`  ${mark} ${kleur.bold(p.name)}${tag}${model}${thinking}${team}`);
     if (p.description) console.log(kleur.dim(`    ${p.description}`));
+  }
+  if (!active) {
+    console.log();
+    console.log(kleur.dim("  No active profile. Use: pilot profile use <name>"));
   }
   return 0;
 }
