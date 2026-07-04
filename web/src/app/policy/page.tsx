@@ -9,6 +9,7 @@ import { Suspense } from "react";
 import { api, PilotApiError } from "../../lib/pilot";
 import type { ToolPolicy } from "../../lib/types";
 import { T } from "@/components/I18n";
+import { createPolicyForm } from "@/lib/actions";
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
@@ -76,6 +77,9 @@ export default function PolicyPage() {
       <Suspense fallback={<p><T k="loading.policies" /></p>}>
         <PolicyList />
       </Suspense>
+      <hr />
+      {/* v0.4.12: New Policy form — was CLI-only before. */}
+      <NewPolicyCard />
       <hr />
       <DryRun />
     </main>
@@ -274,5 +278,100 @@ async function DryRun() {
         </form>
       )}
     </section>
+  );
+}
+
+// ─── NewPolicyCard (v0.4.12) ──────────────────────────────────
+
+function NewPolicyCard() {
+  return (
+    <section className="card">
+      <h2>
+        <T k="policy.newCard.title" />
+      </h2>
+      <p className="subtitle">
+        Pick a starter template, give it a kebab-case name, and you'll land
+        on the edit page to refine.
+      </p>
+      <form action={createPolicyForm} className="form">
+        <div className="form-row">
+          <label htmlFor="new-policy-name">
+            <T k="policy.newCard.nameLabel" />
+          </label>
+          <input
+            id="new-policy-name"
+            name="name"
+            type="text"
+            pattern="[a-z0-9]+(-[a-z0-9]+)*"
+            placeholder="safe-bash"
+            required
+            className="surface-2 rounded px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
+          />
+        </div>
+
+        <fieldset className="form-row" style={{ border: 0, padding: 0 }}>
+          <legend className="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-2">
+            <T k="policy.newCard.templateLabel" />
+          </legend>
+          <div className="space-y-2">
+            <TemplateOption
+              value="safe-bash"
+              labelKey="policy.newCard.templateSafeBash"
+              descKey="policy.newCard.templateSafeBashDesc"
+            />
+            <TemplateOption
+              value="readonly"
+              labelKey="policy.newCard.templateReadonly"
+              descKey="policy.newCard.templateReadonlyDesc"
+            />
+            <TemplateOption
+              value="empty"
+              labelKey="policy.newCard.templateEmpty"
+              descKey="policy.newCard.templateEmptyDesc"
+            />
+          </div>
+        </fieldset>
+
+        <button type="submit" className="btn">
+          <T k="policy.newCard.submit" />
+        </button>
+      </form>
+    </section>
+  );
+}
+
+function TemplateOption({
+  value,
+  labelKey,
+  descKey,
+}: {
+  value: string;
+  labelKey:
+    | "policy.newCard.templateSafeBash"
+    | "policy.newCard.templateReadonly"
+    | "policy.newCard.templateEmpty";
+  descKey:
+    | "policy.newCard.templateSafeBashDesc"
+    | "policy.newCard.templateReadonlyDesc"
+    | "policy.newCard.templateEmptyDesc";
+}) {
+  return (
+    <label className="flex items-start gap-2 cursor-pointer surface-2 rounded px-3 py-2 hover:bg-[var(--surface)]">
+      <input
+        type="radio"
+        name="template"
+        value={value}
+        defaultChecked={value === "safe-bash"}
+        className="mt-0.5"
+      />
+      <span className="flex-1">
+        <span className="block text-sm font-medium">
+          <T k={labelKey} />
+        </span>
+        <span className="block text-xs text-[var(--text-muted)] mt-0.5">
+          <T k={descKey} />
+        </span>
+      </span>
+    </label>
   );
 }

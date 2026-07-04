@@ -96,6 +96,21 @@ const en: Dict = {
     "Create one with `pilot policy new <name>` or `pilot policy apply`.",
   "policy.serverHint":
     "Is `pilot server` running? Try `pilot server start`.",
+  "policy.newCard.title": "New policy",
+  "policy.newCard.nameLabel": "Policy name (kebab-case)",
+  "policy.newCard.namePlaceholder": "safe-bash",
+  "policy.newCard.templateLabel": "Starter template",
+  "policy.newCard.templateSafeBash": "Safe bash",
+  "policy.newCard.templateSafeBashDesc":
+    "Block destructive shell patterns, require approval for risky tools.",
+  "policy.newCard.templateReadonly": "Read-only",
+  "policy.newCard.templateReadonlyDesc":
+    "Deny every tool that mutates (bash / write / edit).",
+  "policy.newCard.templateEmpty": "Empty",
+  "policy.newCard.templateEmptyDesc": "Blank policy — fill in the rules next page.",
+  "policy.newCard.submit": "Create policy",
+  "policy.newCard.errorInvalidName":
+    "Policy name must be kebab-case (lowercase letters, digits, hyphens).",
   "policy.tryRule.h2": "Try a rule",
   "policy.tryRule.noPolicies": "No policies to test against.",
   "policy.tryRule.policyLabel": "Policy",

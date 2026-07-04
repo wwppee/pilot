@@ -61,6 +61,32 @@ export async function uninstallPack(name: string): Promise<ActionResult> {
   }
 }
 
+/**
+ * v0.4.12: create-or-update a ToolPolicy (used by the "new policy"
+ * form on /policy to seed a starter template). Mirrors the server's
+ * PUT /policies/:name endpoint — setPolicy is upsert.
+ */
+export async function setPolicy(
+  name: string,
+  input: Record<string, unknown>,
+): Promise<ActionResult> {
+  try {
+    const res = await pilotWithCsrf(`/policies/${encodeURIComponent(name)}`, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      return { ok: false, error: text || res.statusText };
+    }
+    revalidatePath("/policy");
+    revalidatePath(`/policy/${name}/edit`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
 /** Create or update a profile (merge input into existing). */
 export async function saveProfile(
   name: string,
@@ -132,6 +158,51 @@ export async function uninstallPackForm(formData: FormData): Promise<void> {
     redirect(`/packages/${name}?uninstalled=1`);
   } else {
     redirect(`/packages/${name}?error=${encodeURIComponent(result.error)}`);
+  }
+}
+
+/**
+ * v0.4.12: create a new ToolPolicy from a starter template.
+ * Templates are small starter rule sets so users get something
+ * sensible out of the box rather than a blank page. After creation,
+ * redirects to the edit page so they can refine.
+ */
+export async function createPolicyForm(formData: FormData): Promise<void> {
+  const name = formData.get("name");
+  if (typeof name !== "string") return;
+  const template = formData.get("template");
+  if (typeof template !== "string") return;
+
+  // Starter templates — picked to be useful defaults, not exhaustive.
+  const input: Record<string, unknown> = (() => {
+    switch (template) {
+      case "safe-bash":
+        return {
+          description:
+            "Sane defaults for bash — block destructive patterns and require approval for risky ones.",
+          deny: ["shell-wrapper"],
+          denyCommands: ["^\\s*rm\\s+-rf\\s+/\\s*$"],
+          denyPaths: ["**/.env", "**/.env.*", "**/secrets/**"],
+          requireApproval: ["bash", "write"],
+        };
+      case "readonly":
+        return {
+          description: "Read-only — deny every tool that mutates.",
+          deny: ["bash", "write", "edit"],
+        };
+      case "empty":
+      default:
+        return {
+          description: "Empty starter — fill in the rules on the next page.",
+        };
+    }
+  })();
+
+  const result = await setPolicy(name, input as never);
+  if (result.ok) {
+    redirect(`/policy/${name}/edit?created=1`);
+  } else {
+    redirect(`/policy?error=${encodeURIComponent(result.error)}`);
   }
 }
 

@@ -93,6 +93,20 @@ const zh: Dict = {
   "policy.empty.body":
     "用 `pilot policy new <name>` 创建，或 `pilot policy apply` 应用。",
   "policy.serverHint": "是否 `pilot server` 没在跑？试试 `pilot server start`。",
+  "policy.newCard.title": "新建策略",
+  "policy.newCard.nameLabel": "策略名（kebab-case）",
+  "policy.newCard.namePlaceholder": "safe-bash",
+  "policy.newCard.templateLabel": "起始模板",
+  "policy.newCard.templateSafeBash": "安全 bash",
+  "policy.newCard.templateSafeBashDesc":
+    "屏蔽危险的 shell 模式，对风险工具要求人工确认。",
+  "policy.newCard.templateReadonly": "只读",
+  "policy.newCard.templateReadonlyDesc": "禁止所有变更类工具（bash / write / edit）。",
+  "policy.newCard.templateEmpty": "空",
+  "policy.newCard.templateEmptyDesc": "空白策略 — 下一步填写具体规则。",
+  "policy.newCard.submit": "创建策略",
+  "policy.newCard.errorInvalidName":
+    "策略名必须用 kebab-case（小写字母、数字、连字符）。",
   "policy.tryRule.h2": "试着跑一条规则",
   "policy.tryRule.noPolicies": "暂无可测试的策略。",
   "policy.tryRule.policyLabel": "策略",

@@ -110,6 +110,18 @@ export type Dict = {
   "policy.empty.title": string;
   "policy.empty.body": string;
   "policy.serverHint": string;
+  "policy.newCard.title": string;
+  "policy.newCard.nameLabel": string;
+  "policy.newCard.namePlaceholder": string;
+  "policy.newCard.templateLabel": string;
+  "policy.newCard.templateSafeBash": string;
+  "policy.newCard.templateSafeBashDesc": string;
+  "policy.newCard.templateReadonly": string;
+  "policy.newCard.templateReadonlyDesc": string;
+  "policy.newCard.templateEmpty": string;
+  "policy.newCard.templateEmptyDesc": string;
+  "policy.newCard.submit": string;
+  "policy.newCard.errorInvalidName": string;
   "policy.tryRule.h2": string;
   "policy.tryRule.noPolicies": string;
   "policy.tryRule.policyLabel": string;
