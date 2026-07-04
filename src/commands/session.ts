@@ -18,6 +18,7 @@ import type {
   SessionInfo,
   SessionTreeNode,
 } from "../core/types.js";
+import { ensureSnapshotIfStale } from "../core/session-snapshot.js";
 
 export const manifest: Command = {
   name: "session",
@@ -57,6 +58,15 @@ async function ls(ctx: PilotContext): Promise<number> {
     ctx.logger.info("No sessions found.");
     return 0;
   }
+
+  // v0.4.13: keep snapshots warm for each listed session, in parallel.
+  // ensureSnapshotIfStale skips sessions whose snapshot was captured
+  // within the TTL, so repeated `pilot session ls` is cheap.
+  await Promise.all(
+    sorted.map((s) =>
+      ensureSnapshotIfStale(s.id).catch(() => null),
+    ),
+  );
 
   ctx.logger.info(`${sorted.length} session(s):\n`);
 

@@ -235,8 +235,88 @@ describe("pilot server", () => {
         url: "/sessions/does-not-exist/tree",
         headers: auth(),
       });
-      // Service throws → server returns 500 (no custom error mapping yet)
-      expect(res.statusCode).toBe(500);
+      expect(res.statusCode).toBeGreaterThanOrEqual(400);
+    });
+
+    it("GET /sessions/:id/snapshot returns derived snapshot", async () => {
+      // Write a fresh session file so the test is self-contained.
+      const encoded = Buffer.from("/tmp/fake-cwd-snap").toString("base64");
+      const sessionsDir = join(tempHome, ".pi/agent/sessions", encoded);
+      mkdirSync(sessionsDir, { recursive: true });
+      const snapSessionId = "2026-07-04_10-00_snap";
+      const sessionPath = join(sessionsDir, `${snapSessionId}.jsonl`);
+      writeFileSync(
+        sessionPath,
+        [
+          JSON.stringify({
+            type: "session_info",
+            timestamp: "2026-07-04T10:00:00Z",
+          }),
+          JSON.stringify({
+            type: "message",
+            timestamp: "2026-07-04T10:00:05Z",
+            message: { role: "assistant", model: "claude-opus-4.6" },
+          }),
+        ].join("\n"),
+      );
+
+      const res = await handle.app.inject({
+        method: "GET",
+        url: `/sessions/${snapSessionId}/snapshot`,
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.sessionId).toBe(snapSessionId);
+      expect(body.model).toBe("claude-opus-4.6");
+      expect(body.entryCount).toBe(2);
+      expect(body.cwd).toBe(encoded);
+      expect(body.note).toMatch(/v0\.4\.13/);
+    });
+
+    it("GET /sessions/:id/snapshot 404s when session file is gone", async () => {
+      const res = await handle.app.inject({
+        method: "GET",
+        url: "/sessions/does-not-exist/snapshot",
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(404);
+      expect(res.json().error).toMatch(/not found/);
+    });
+
+    it("GET /sessions/:id/template returns model + tools", async () => {
+      const encoded = Buffer.from("/tmp/fake-cwd-tmpl").toString("base64");
+      const sessionsDir = join(tempHome, ".pi/agent/sessions", encoded);
+      mkdirSync(sessionsDir, { recursive: true });
+      const tmplSessionId = "2026-07-04_21-00_tmpl";
+      writeFileSync(
+        join(sessionsDir, `${tmplSessionId}.jsonl`),
+        [
+          JSON.stringify({
+            type: "message",
+            timestamp: "2026-07-04T21:00:00Z",
+            message: {
+              role: "assistant",
+              model: "claude-sonnet-4-5",
+              content: [
+                { type: "toolCall", name: "bash" },
+                { type: "toolCall", name: "read" },
+              ],
+            },
+          }),
+        ].join("\n"),
+      );
+
+      const res = await handle.app.inject({
+        method: "GET",
+        url: `/sessions/${tmplSessionId}/template`,
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.sessionId).toBe(tmplSessionId);
+      expect(body.model).toBe("claude-sonnet-4-5");
+      expect(body.tools).toEqual(["bash", "read"]);
     });
   });
 

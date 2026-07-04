@@ -39,6 +39,8 @@ import {
 } from "./profile-state.js";
 import { discoverProjectContext } from "./project-context.js";
 import { listAllSessions, sortByRecent } from "./sessions.js";
+import { deriveSnapshot } from "./session-snapshot.js";
+import { deriveTemplate } from "./session-template.js";
 import { listSources, readSettings } from "./settings.js";
 import { aggregateStats } from "./stats.js";
 import { listToolInventory } from "./tool-inventory.js";
@@ -110,6 +112,8 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
     listSessions: (filter) => listSessions(filter, home),
     searchSessions: (q, options) => searchSessions(q, options, home),
     readSessionTree: (id) => readSessionTreeById(id, home),
+    getSnapshot: (id) => deriveSnapshot(id, home),
+    getSessionTemplate: (id) => deriveTemplate(id, home),
     traceSessionTools: (id, filter) => traceSessionTools(id, home, filter),
 
     runDoctor: () => runDoctor(home),

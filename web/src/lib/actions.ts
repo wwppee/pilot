@@ -242,7 +242,23 @@ export async function saveProfileForm(formData: FormData): Promise<void> {
 export async function createProfileForm(formData: FormData): Promise<void> {
   const name = formData.get("name");
   if (typeof name !== "string") return;
-  const result = await saveProfile(name, {});
+
+  // v0.4.13: when `/profiles?from=<sessionId>` pre-fills the form,
+  // the hidden `model` field is populated from the session template.
+  // We forward it as the initial profile model so the new profile
+  // matches the session's model without the user retyping.
+  //
+  // Tool names are *informational* — shown in the pre-fill banner as
+  // a hint, but not persisted to profile TOML (Profile TOML doesn't
+  // have a tools field). Users who want a specific tool allow-list
+  // should create a policy after the profile is in place.
+  const input: Record<string, unknown> = {};
+  const model = formData.get("model");
+  if (typeof model === "string" && model.length > 0) {
+    input.model = model;
+  }
+
+  const result = await saveProfile(name, input);
   if (result.ok) {
     redirect(`/profiles/${name}?created=1`);
   } else {

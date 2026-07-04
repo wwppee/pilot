@@ -14,20 +14,29 @@ import { DeleteButton } from "@/components/Buttons";
 import { T } from "@/components/I18n";
 import { ActivateProfileButton } from "@/components/ActivateProfileButton";
 import { negotiateLocale, renderT } from "@/lib/i18n";
-import type { Profile, ActiveProfile } from "@/lib/types";
+import type { Profile, ActiveProfile, SessionTemplate } from "@/lib/types";
 
 interface PageProps {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; from?: string }>;
 }
 
 export const dynamic = "force-dynamic";
 
 export default async function ProfilesPage({ searchParams }: PageProps) {
   const sp = await searchParams;
-  // Load profiles + active state in parallel — both are independent.
-  const [profilesResult, active] = await Promise.all([
+  // v0.4.13: when `?from=<sessionId>` is set, fetch the session
+  // template and use it to pre-fill the form (model) + show a
+  // banner with detected tools. Tools are informational only — see
+  // createProfileForm in actions.ts for why.
+  const templatePromise: Promise<SessionTemplate | null> = sp.from
+    ? api.sessionTemplate(sp.from).catch(() => null)
+    : Promise.resolve(null);
+
+  // Load profiles + active + template in parallel — independent.
+  const [profilesResult, active, template] = await Promise.all([
     api.profiles().catch(() => null as Profile[] | null),
     api.activeProfile().catch(() => null as ActiveProfile | null),
+    templatePromise,
   ]);
   const profiles = (profilesResult ?? []) as Profile[];
 
@@ -92,28 +101,84 @@ export default async function ProfilesPage({ searchParams }: PageProps) {
 
       <form
         action={createProfileForm}
-        className="surface rounded-lg p-4 flex items-end gap-2"
+        className="surface rounded-lg p-4 space-y-3"
       >
-        <label className="flex-1">
-          <span className="text-[10px] uppercase tracking-wide text-[var(--text-muted)]">
-            {newNameLabel}
-          </span>
-          <input
-            name="name"
-            type="text"
-            pattern="[a-z0-9]+(-[a-z0-9]+)*"
-            placeholder={newNamePlaceholder}
-            required
-            className="mt-1 w-full surface-2 rounded px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
-          />
-        </label>
-        <button
-          type="submit"
-          className="px-4 py-2 text-sm rounded text-[var(--bg)]"
-          style={{ background: "var(--accent)" }}
-        >
-          <T k="btn.create" />
-        </button>
+        {sp.from && template && (
+          <div
+            className="rounded p-3 text-xs"
+            style={{
+              background: "var(--surface-2)",
+              borderLeft: "3px solid var(--accent)",
+            }}
+            role="status"
+            aria-live="polite"
+          >
+            <div className="font-semibold mb-1">
+              <T k="profiles.fromSession.banner" params={{
+                sessionId: template.sessionId,
+                nTool: template.tools.length,
+                s: template.tools.length === 1 ? "" : "s",
+              }} />
+            </div>
+            {template.model && (
+              <div className="text-[var(--text-muted)] mt-1">
+                <span className="uppercase text-[10px] tracking-wide">
+                  <T k="profiles.fromSession.modelLabel" />:{" "}
+                </span>
+                <code className="kbd">{template.model}</code>
+              </div>
+            )}
+            <div className="text-[var(--text-muted)] mt-1">
+              <span className="uppercase text-[10px] tracking-wide">
+                <T k="profiles.fromSession.toolsLabel" />:
+              </span>{" "}
+              {template.tools.length === 0 ? (
+                <span className="italic">
+                  <T k="profiles.fromSession.noTools" />
+                </span>
+              ) : (
+                <span className="font-mono">
+                  {template.tools.join(", ")}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+        {sp.from && !template && (
+          <div
+            className="rounded p-3 text-xs italic"
+            style={{ background: "var(--surface-2)" }}
+            role="status"
+          >
+            <T k="profiles.fromSession.notFound" />
+          </div>
+        )}
+        <div className="flex items-end gap-2">
+          <label className="flex-1">
+            <span className="text-[10px] uppercase tracking-wide text-[var(--text-muted)]">
+              {newNameLabel}
+            </span>
+            <input
+              name="name"
+              type="text"
+              pattern="[a-z0-9]+(-[a-z0-9]+)*"
+              placeholder={newNamePlaceholder}
+              required
+              className="mt-1 w-full surface-2 rounded px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
+            />
+          </label>
+          {/* Hidden inputs from session template pre-fill. */}
+          {template?.model && (
+            <input type="hidden" name="model" value={template.model} />
+          )}
+          <button
+            type="submit"
+            className="px-4 py-2 text-sm rounded text-[var(--bg)]"
+            style={{ background: "var(--accent)" }}
+          >
+            <T k="btn.create" />
+          </button>
+        </div>
       </form>
 
       {profiles.length === 0 ? (

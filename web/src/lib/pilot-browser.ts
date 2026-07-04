@@ -27,6 +27,8 @@ import type {
   UsageReport,
   Pack,
   SessionInfo,
+  SessionSnapshot,
+  SessionTemplate,
   SessionTree,
   Profile,
   Capability,
@@ -97,6 +99,29 @@ export const browserApi = {
   sessions: () => browserFetch<SessionInfo[]>("/sessions"),
   sessionTree: (id: string) =>
     browserFetch<SessionTree>(`/sessions/${encodeName(id)}/tree`),
+  // v0.4.13: same shape as server-side helper; 404 maps to null.
+  sessionSnapshot: async (id: string): Promise<SessionSnapshot | null> => {
+    try {
+      return await browserFetch<SessionSnapshot>(
+        `/sessions/${encodeName(id)}/snapshot`,
+      );
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (status === 404) return null;
+      throw e;
+    }
+  },
+  sessionTemplate: async (id: string): Promise<SessionTemplate | null> => {
+    try {
+      return await browserFetch<SessionTemplate>(
+        `/sessions/${encodeName(id)}/template`,
+      );
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (status === 404) return null;
+      throw e;
+    }
+  },
 
   stats: (range: StatsRange, days?: number) => {
     const params = new URLSearchParams({ range: range.kind });

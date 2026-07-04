@@ -235,6 +235,42 @@ export interface PolicyDecision {
   approvalPrompt?: string;
 }
 
+// ─── Session template (v0.4.13+) ──────────────────────────────
+
+/**
+ * Profile-creation defaults extracted from a session — model from
+ * first assistant message, tools from toolCall blocks. See
+ * core/session-template.ts.
+ */
+export interface SessionTemplate {
+  sessionId: string;
+  model?: string;
+  tools: string[];
+  cwd?: string;
+}
+
+// ─── Session snapshot (v0.4.13+) ──────────────────────────────
+
+/**
+ * Derived per-session metadata. See core/session-snapshot.ts.
+ * Best-knowledge view: model/cwd from JSONL, profile/extensions from
+ * current Pilot state at capture time. Real per-session history
+ * lands in v0.5.0.
+ */
+export interface SessionSnapshot {
+  sessionId: string;
+  capturedAt: string;
+  model?: string;
+  cwd?: string;
+  startedAt?: string;
+  lastUsedAt?: string;
+  entryCount?: number;
+  note: string;
+  activeProfile?: string;
+  packSources?: string[];
+  extensions?: string[];
+}
+
 // ─── Compose catalog (v0.4.4+) ─────────────────────────────────
 
 export type ComposeEntityKind =

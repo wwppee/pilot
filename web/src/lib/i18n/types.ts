@@ -224,6 +224,14 @@ export type Dict = {
   "sessions.col.entries": string;
   "sessions.col.size": string;
   "sessions.col.model": string;
+  // Snapshot banner (v0.4.13+)
+  "sessions.snapshot.h2": string;
+  "sessions.snapshot.captured": string;
+  "sessions.snapshot.profile": string;
+  "sessions.snapshot.extensions": string;
+  "sessions.snapshot.packs": string;
+  "sessions.snapshot.none": string;
+  "sessions.snapshot.missing": string;
 
   // usage
   "usage.h1": string;
@@ -293,6 +301,21 @@ export type Dict = {
   "profiles.newNamePlaceholder": string;
   "profiles.empty": string;
   "profiles.delete": string;
+  // Profile pre-fill from session (v0.4.13+)
+  "profiles.fromSession.banner": string;
+  "profiles.fromSession.modelLabel": string;
+  "profiles.fromSession.toolsLabel": string;
+  "profiles.fromSession.noTools": string;
+  "profiles.fromSession.notFound": string;
+  "profiles.fromSession.cta": string;
+  "sessions.createProfileCta": string;
+  // Session tree explorer (v0.4.13+)
+  "sessions.tree.searchPlaceholder": string;
+  "sessions.tree.searchLabel": string;
+  "sessions.tree.filterLabel": string;
+  "sessions.tree.expandAll": string;
+  "sessions.tree.collapseAll": string;
+  "sessions.tree.matchCount": string;
 
   // capabilities
   "capabilities.h1": string;

@@ -242,6 +242,35 @@ export async function startServer(
     return tree;
   });
 
+  // v0.4.13: derive a fresh snapshot for a session. Returns null
+  // when the session file is gone (user pruned ~/.pi/agent/sessions/
+  // outside Pilot) — server returns 200 with `null` body so the Web
+  // UI can render a "session no longer exists" state without an
+  // error toast.
+  app.get<{ Params: { id: string } }>(
+    "/sessions/:id/snapshot",
+    async (req, reply) => {
+      const snap = await service.getSnapshot(req.params.id);
+      if (!snap) {
+        return reply.code(404).send({ error: "session not found" });
+      }
+      return snap;
+    },
+  );
+
+  // v0.4.13: extract a profile-creation template (model + tools) from
+  // a session. Used by `/profiles/new?from=<id>` to pre-fill the form.
+  app.get<{ Params: { id: string } }>(
+    "/sessions/:id/template",
+    async (req, reply) => {
+      const tmpl = await service.getSessionTemplate(req.params.id);
+      if (!tmpl) {
+        return reply.code(404).send({ error: "session not found" });
+      }
+      return tmpl;
+    },
+  );
+
   app.get("/doctor", async () => service.runDoctor());
 
   app.get("/capabilities", async () => service.listCapabilities());

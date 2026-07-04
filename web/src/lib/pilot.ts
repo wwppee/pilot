@@ -132,6 +132,8 @@ import type {
   UsageReport,
   Pack,
   SessionInfo,
+  SessionSnapshot,
+  SessionTemplate,
   SessionTree,
   Profile,
   ActiveProfile,
@@ -168,6 +170,31 @@ export const api = {
   sessions: () => pilot<SessionInfo[]>("/sessions"),
   sessionTree: (id: string) =>
     pilot<SessionTree>(`/sessions/${encodeName(id)}/tree`),
+  // v0.4.13: server returns 404 if session file is gone; surface as
+  // null so the Web UI can render an empty-state instead of an error.
+  sessionSnapshot: async (id: string): Promise<SessionSnapshot | null> => {
+    try {
+      return await pilot<SessionSnapshot>(
+        `/sessions/${encodeName(id)}/snapshot`,
+      );
+    } catch (e) {
+      // 404 → null. Anything else → rethrow so the page surfaces the error.
+      const status = (e as { status?: number }).status;
+      if (status === 404) return null;
+      throw e;
+    }
+  },
+  sessionTemplate: async (id: string): Promise<SessionTemplate | null> => {
+    try {
+      return await pilot<SessionTemplate>(
+        `/sessions/${encodeName(id)}/template`,
+      );
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (status === 404) return null;
+      throw e;
+    }
+  },
 
   stats: (range: StatsRange, days?: number) => {
     const params = new URLSearchParams({ range: range.kind });

@@ -219,6 +219,15 @@ const zh: Dict = {
   "sessions.col.size": "大小",
   "sessions.col.model": "模型",
 
+  // 快照条幅 (v0.4.13+)
+  "sessions.snapshot.h2": "快照",
+  "sessions.snapshot.captured": "采集于 {when}",
+  "sessions.snapshot.profile": "当前 profile",
+  "sessions.snapshot.extensions": "策略扩展",
+  "sessions.snapshot.packs": "已安装包",
+  "sessions.snapshot.none": "无",
+  "sessions.snapshot.missing": "快照不可用 — session 文件可能已被清理。",
+
   // Usage
   "usage.h1": "Token 与成本",
   "usage.subtitle": "聚合所有 pi v3 会话的 `AssistantMessage.usage`。",
@@ -290,6 +299,25 @@ const zh: Dict = {
   "profiles.newNamePlaceholder": "my-work",
   "profiles.empty": "暂无配置。用上方表单创建。",
   "profiles.delete": "删除",
+
+  // 从 session 预填 (v0.4.13+)
+  "profiles.fromSession.banner":
+    "已从 session {sessionId} 预填：模型 + {nTool} 个工具已检测。",
+  "profiles.fromSession.modelLabel": "检测到的模型",
+  "profiles.fromSession.toolsLabel": "本次 session 用到的工具",
+  "profiles.fromSession.noTools": "（未记录到工具调用）",
+  "profiles.fromSession.notFound":
+    "无法加载 session 模板 — 文件可能已被清理。",
+  "profiles.fromSession.cta": "基于此 session 创建 profile →",
+  "sessions.createProfileCta": "基于此 session 创建 profile",
+
+  // Session 树交互 (v0.4.13+)
+  "sessions.tree.searchPlaceholder": "搜索预览…",
+  "sessions.tree.searchLabel": "搜索节点预览文本",
+  "sessions.tree.filterLabel": "按节点类型筛选",
+  "sessions.tree.expandAll": "全部展开",
+  "sessions.tree.collapseAll": "全部折叠",
+  "sessions.tree.matchCount": "{n} 处匹配",
 
   // Capabilities
   "capabilities.h1": "能力",

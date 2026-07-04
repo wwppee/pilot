@@ -31,6 +31,8 @@ import type { ToolInventoryItem } from "./tool-inventory.js";
 import type { ToolTraceFilter } from "./tool-trace.js";
 import type { UsageRange, UsageReport } from "./usage.js";
 import type { InstalledPack, Pack, SessionInfo, SessionTree } from "./types.js";
+import type { SessionSnapshot } from "./session-snapshot.js";
+import type { SessionTemplate } from "./session-template.js";
 
 export type PolicyDecision = ReturnType<typeof checkPolicy>;
 
@@ -118,6 +120,28 @@ export interface PilotService {
    * @throws if no session with this id is found.
    */
   readSessionTree(id: string): Promise<SessionTree>;
+
+  /**
+   * Derive a fresh snapshot for a session (model, cwd, entry count,
+   * active profile, generated extensions). Returns null if the
+   * session file no longer exists on disk — which can happen when
+   * users prune `~/.pi/agent/sessions/` outside of Pilot.
+   *
+   * v0.4.13: snapshot is "best-knowledge" — model + cwd come from
+   * the JSONL, profile/extensions come from current Pilot state at
+   * capture time. Real per-session history lands in v0.5.0.
+   */
+  getSnapshot(id: string): Promise<SessionSnapshot | null>;
+
+  /**
+   * v0.4.13: extract a profile-creation template from a session —
+   * `model` (first assistant message) + sorted unique `tools` (from
+   * toolCall blocks). Returns null if the session file is gone.
+   *
+   * Used by `/profiles/new?from=<id>` to pre-fill the form so users
+   * don't retype what they already used.
+   */
+  getSessionTemplate(id: string): Promise<SessionTemplate | null>;
 
   /**
    * Stream tool call events from a session. Each `ToolResultMessage`

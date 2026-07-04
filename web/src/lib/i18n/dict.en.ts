@@ -225,6 +225,16 @@ const en: Dict = {
   "sessions.col.size": "Size",
   "sessions.col.model": "Model",
 
+  // Snapshot banner (v0.4.13+)
+  "sessions.snapshot.h2": "Snapshot",
+  "sessions.snapshot.captured": "Captured {when}",
+  "sessions.snapshot.profile": "Active profile",
+  "sessions.snapshot.extensions": "Policy extensions",
+  "sessions.snapshot.packs": "Pack sources",
+  "sessions.snapshot.none": "None",
+  "sessions.snapshot.missing":
+    "Snapshot unavailable — session file may have been pruned.",
+
   // Usage
   "usage.h1": "Token usage & cost",
   "usage.subtitle":
@@ -303,6 +313,27 @@ const en: Dict = {
   "profiles.newNamePlaceholder": "my-work",
   "profiles.empty": "No profiles yet. Use the form above to create one.",
   "profiles.delete": "delete",
+
+  // Profile pre-fill from session (v0.4.13+)
+  "profiles.fromSession.banner":
+    "Pre-filled from session {sessionId}: model + {nTool} tool{s} detected.",
+  "profiles.fromSession.modelLabel": "Detected model",
+  "profiles.fromSession.toolsLabel": "Tools used in this session",
+  "profiles.fromSession.noTools": "(no tool calls recorded)",
+  "profiles.fromSession.notFound":
+    "Could not load session template — the file may have been pruned.",
+  "profiles.fromSession.cta":
+    "Create a profile from this session →",
+  "sessions.createProfileCta":
+    "Create profile from this session",
+
+  // Session tree explorer (v0.4.13+)
+  "sessions.tree.searchPlaceholder": "search preview…",
+  "sessions.tree.searchLabel": "Search node preview text",
+  "sessions.tree.filterLabel": "Filter by node type",
+  "sessions.tree.expandAll": "expand all",
+  "sessions.tree.collapseAll": "collapse all",
+  "sessions.tree.matchCount": "{n} match{es}",
 
   // Capabilities
   "capabilities.h1": "Capabilities",

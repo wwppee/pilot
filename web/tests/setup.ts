@@ -10,7 +10,8 @@
  */
 
 // @vitest-environment jsdom
-import { beforeEach, vi } from "vitest";
+import { afterEach, beforeEach, vi } from "vitest";
+import { cleanup } from "@testing-library/react";
 
 const store = new Map<string, string>();
 
@@ -41,4 +42,12 @@ beforeEach(() => {
   store.clear();
   // Stub navigator.clipboard etc. if/when tests need them.
   vi.unstubAllGlobals();
+});
+
+afterEach(() => {
+  // RTL auto-cleanup: unmount all rendered components so each test
+  // starts with a clean DOM. Without this, multiple `render(...)`
+  // calls in one file accumulate nodes and `getByX` queries hit
+  // "found multiple elements" on duplicated inputs.
+  cleanup();
 });
