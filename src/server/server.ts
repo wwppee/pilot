@@ -199,6 +199,20 @@ export async function startServer(
     return { ok: true };
   });
 
+  // v0.4.12: uninstall completes the CRUD loop. Body shape mirrors
+  // install — `{ name: "pi-subagents" }` or `{ source: "npm:pi-subagents" }`.
+  app.post<{ Body: { name?: string; source?: string } }>(
+    "/packs/uninstall",
+    async (req) => {
+      const name = req.body?.name ?? req.body?.source;
+      if (!name) {
+        throw Object.assign(new Error("missing name"), { statusCode: 400 });
+      }
+      await service.uninstallPack(name);
+      return { ok: true };
+    },
+  );
+
   app.get<{
     Querystring: { model?: string; cwd?: string; sinceDays?: string };
   }>("/sessions", async (req) => {

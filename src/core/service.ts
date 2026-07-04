@@ -91,6 +91,16 @@ export interface PilotService {
    */
   installPack(source: string): Promise<void>;
 
+  /**
+   * Uninstall a pack by name. Delegates to `pi uninstall`.
+   * Throws if the pack isn't installed.
+   *
+   * v0.4.12: completes the CRUD loop (was install-only before).
+   * Accepts both bare package names ("pi-subagents") and prefixed
+   * ones ("npm:pi-subagents"). Always normalizes to `npm:<name>`.
+   */
+  uninstallPack(name: string): Promise<void>;
+
   // ─── Sessions ─────────────────────────────────────────
 
   /** List local sessions, optionally filtered. Most-recent first. */

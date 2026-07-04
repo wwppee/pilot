@@ -105,6 +105,7 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
     searchPacks: (q) => searchPacks(q),
     getPack: (name) => getPack(name),
     installPack: (source) => installPack(source),
+    uninstallPack: (name: string) => uninstallPack(name, home),
 
     listSessions: (filter) => listSessions(filter, home),
     searchSessions: (q, options) => searchSessions(q, options, home),
@@ -169,6 +170,26 @@ async function searchPacks(query: string): Promise<Pack[]> {
 async function installPack(source: string): Promise<void> {
   const spec = source.includes(":") ? source : `npm:${source}`;
   await runPiStreaming(["install", spec]);
+}
+
+async function uninstallPack(name: string, home?: string): Promise<void> {
+  if (!name) {
+    throw new Error("Usage: pilot pack uninstall <name>");
+  }
+  // v0.4.12: gate on whether the pack is actually installed, so users
+  // get a clear error instead of a confusing pi-side failure if they
+  // typo the name.
+  const installed = await listPacks(home);
+  const found = installed.find(
+    (p) => p.name === name || p.source === `npm:${name}`,
+  );
+  if (!found) {
+    throw new Error(
+      `Pack "${name}" is not installed. Run \`pilot pack ls\` to see installed packs.`,
+    );
+  }
+  const spec = found.source.startsWith("npm:") ? found.source : `npm:${found.name}`;
+  await runPiStreaming(["uninstall", spec]);
 }
 
 async function toInstalledPack(

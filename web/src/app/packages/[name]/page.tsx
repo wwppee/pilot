@@ -1,13 +1,23 @@
 /**
  * /packages/[name] — single pack detail with install form.
+ *
+ * v0.4.12: Added Uninstall button so the Web UI isn't install-only.
+ * Before this, the only path to remove a pack was the CLI (which
+ * didn't have an uninstall subcommand either — that was added in
+ * the same commit). Now CRUD is complete.
  */
 import Link from "next/link";
 import { api } from "@/lib/pilot";
-import { installPackForm } from "@/lib/actions";
+import { installPackForm, uninstallPackForm } from "@/lib/actions";
+import { UninstallButton } from "@/components/UninstallButton";
 
 interface PageProps {
   params: Promise<{ name: string }>;
-  searchParams: Promise<{ installed?: string; error?: string }>;
+  searchParams: Promise<{
+    installed?: string;
+    uninstalled?: string;
+    error?: string;
+  }>;
 }
 
 export default async function PackageDetailPage({
@@ -43,6 +53,14 @@ export default async function PackageDetailPage({
           style={{ color: "var(--accent-2)", borderColor: "var(--accent-2)" }}
         >
           ✓ Installed <code className="kbd">{decoded}</code> successfully.
+        </div>
+      )}
+      {sp.uninstalled && (
+        <div
+          className="surface rounded-lg p-3 text-sm"
+          style={{ color: "var(--accent-2)", borderColor: "var(--accent-2)" }}
+        >
+          ✓ Uninstalled <code className="kbd">{decoded}</code> successfully.
         </div>
       )}
       {sp.error && (
@@ -113,7 +131,7 @@ export default async function PackageDetailPage({
                 ? "Already installed. Re-run to update."
                 : "Not yet installed. Install via the pilot CLI or this Web UI."}
             </p>
-            <form action={installPackForm} className="flex items-center gap-2">
+            <form action={installPackForm} className="flex items-center gap-2 mb-3">
               <input type="hidden" name="name" value={pack.name} />
               <button
                 type="submit"
@@ -127,6 +145,22 @@ export default async function PackageDetailPage({
                 under the hood
               </span>
             </form>
+
+            {/* v0.4.12: Uninstall — completes the CRUD loop. Only shown
+                when the pack is installed; uninstalling a non-installed
+                pack would be a no-op and confusing. */}
+            {pack.enabled && (
+              <form
+                action={uninstallPackForm}
+                className="flex items-center gap-2 pt-3 border-t border-[var(--border)]"
+              >
+                <input type="hidden" name="name" value={pack.name} />
+                <UninstallButton name={pack.name} />
+                <span className="text-xs text-[var(--text-muted)]">
+                  runs <code className="kbd">pilot pack uninstall {pack.name}</code>
+                </span>
+              </form>
+            )}
           </div>
         </>
       )}

@@ -38,6 +38,29 @@ export async function installPack(name: string): Promise<ActionResult> {
   }
 }
 
+/**
+ * Uninstall a pack by npm name. v0.4.12 — completes the CRUD loop.
+ * (Install was always available; uninstall was the missing half.)
+ */
+export async function uninstallPack(name: string): Promise<ActionResult> {
+  try {
+    const res = await pilotWithCsrf("/packs/uninstall", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      return { ok: false, error: text || res.statusText };
+    }
+    revalidatePath("/packages");
+    revalidatePath(`/packages/${name}`);
+    revalidatePath("/");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
 /** Create or update a profile (merge input into existing). */
 export async function saveProfile(
   name: string,
@@ -90,6 +113,23 @@ export async function installPackForm(formData: FormData): Promise<void> {
   const result = await installPack(name);
   if (result.ok) {
     redirect(`/packages/${name}?installed=1`);
+  } else {
+    redirect(`/packages/${name}?error=${encodeURIComponent(result.error)}`);
+  }
+}
+
+/**
+ * v0.4.12: uninstall form action — mirrors installPackForm. On
+ * success redirects with `?uninstalled=1`; on failure uses the
+ * existing `?error=` query param so the existing error banner
+ * renders it.
+ */
+export async function uninstallPackForm(formData: FormData): Promise<void> {
+  const name = formData.get("name");
+  if (typeof name !== "string") return;
+  const result = await uninstallPack(name);
+  if (result.ok) {
+    redirect(`/packages/${name}?uninstalled=1`);
   } else {
     redirect(`/packages/${name}?error=${encodeURIComponent(result.error)}`);
   }

@@ -87,6 +87,12 @@ export const browserApi = {
   packs: () => browserFetch<Pack[]>("/packs"),
   packInfo: (name: string) =>
     browserFetch<Pack>(`/packs/info/${encodeName(name)}`),
+  packUninstall: (name: string) =>
+    browserFetch<unknown>(`/packs/uninstall`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name }),
+    }),
 
   sessions: () => browserFetch<SessionInfo[]>("/sessions"),
   sessionTree: (id: string) =>

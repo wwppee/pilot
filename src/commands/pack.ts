@@ -1,11 +1,12 @@
 /**
  * `pilot pack` — manage pi packages and meta-packs.
  *
- * Subcommands (v0.1):
- *   ls        List installed packs, grouped by kind
- *   search    Search npm registry from the terminal
- *   info      Show details for a pack
- *   install   Install a pack (delegates to PilotService.installPack)
+ * Subcommands (v0.1 + v0.4.12):
+ *   ls           List installed packs, grouped by kind
+ *   search       Search npm registry from the terminal
+ *   info         Show details for a pack
+ *   install      Install a pack (delegates to PilotService.installPack)
+ *   uninstall    Remove an installed pack (v0.4.12 — completes CRUD loop)
  *
  * All read/write paths go through `ctx.service` — no direct core imports.
  */
@@ -21,7 +22,13 @@ import type {
 export const manifest: Command = {
   name: "pack",
   description: "Manage pi packages and meta-packs",
-  subcommands: ["ls", "search <query>", "info <pkg>", "install <pkg>"],
+  subcommands: [
+    "ls",
+    "search <query>",
+    "info <pkg>",
+    "install <pkg>",
+    "uninstall <pkg>",
+  ],
 };
 
 /** Dispatch `pilot pack <subcommand>` to the right function. */
@@ -37,12 +44,14 @@ export async function run(args: string[], ctx: PilotContext): Promise<number> {
       return info(args[1] ?? "", ctx);
     case "install":
       return install(args[1] ?? "", ctx);
+    case "uninstall":
+      return uninstall(args[1] ?? "", ctx);
     case "team":
       ctx.logger.warn("`pilot pack team` is in v0.2 — track in #15");
       return 0;
     case undefined:
       ctx.logger.error(
-        "Missing subcommand. Try: pilot pack ls|search|info|install",
+        "Missing subcommand. Try: pilot pack ls|search|info|install|uninstall",
       );
       return 1;
     default:
@@ -179,6 +188,24 @@ async function install(source: string, ctx: PilotContext): Promise<number> {
     return 0;
   } catch (err) {
     ctx.logger.error(`Install failed: ${(err as Error).message}`);
+    return 1;
+  }
+}
+
+// ─── uninstall (v0.4.12) ──────────────────────────────────────────
+
+async function uninstall(name: string, ctx: PilotContext): Promise<number> {
+  if (!name) {
+    ctx.logger.error("Usage: pilot pack uninstall <pkg>");
+    return 1;
+  }
+  ctx.logger.info(`Running: pi uninstall ${name}`);
+  try {
+    await ctx.service.uninstallPack(name);
+    ctx.logger.success("Uninstalled.");
+    return 0;
+  } catch (err) {
+    ctx.logger.error(`Uninstall failed: ${(err as Error).message}`);
     return 1;
   }
 }

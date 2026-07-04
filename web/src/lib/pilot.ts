@@ -158,6 +158,12 @@ export const api = {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ source: `npm:${name}` }),
     }),
+  packUninstall: (name: string) =>
+    pilot<unknown>(`/packs/uninstall`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name }),
+    }),
 
   sessions: () => pilot<SessionInfo[]>("/sessions"),
   sessionTree: (id: string) =>
