@@ -401,6 +401,39 @@ describe("pilot server", () => {
       expect(res.statusCode).toBe(404);
     });
 
+    it("POST /avatars/:cwd/apply 404s when no Avatar", async () => {
+      const res = await handle.app.inject({
+        method: "POST",
+        url: "/avatars/--no-such--/apply",
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(404);
+    });
+
+    it("POST /avatars/:cwd/apply returns the apply report", async () => {
+      // Capture a fresh Avatar (no packs, no active profile → both
+      // steps should be "skipped" / "none").
+      await handle.app.inject({
+        method: "POST",
+        url: "/avatars/--apply-cwd--/capture",
+        headers: auth(),
+      });
+
+      const res = await handle.app.inject({
+        method: "POST",
+        url: "/avatars/--apply-cwd--/apply",
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.encodedCwd).toBe("--apply-cwd--");
+      expect(body.steps).toBeDefined();
+      expect(Array.isArray(body.steps)).toBe(true);
+      expect(body.installed).toEqual([]);
+      expect(body.failed).toEqual([]);
+      expect(body.skipped.length).toBeGreaterThan(0);
+    });
+
     it("GET /sessions/:id/tree returns session tree", async () => {
       // First create a real session file in our isolated home
       const encoded = Buffer.from("/tmp/fake-cwd").toString("base64");

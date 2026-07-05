@@ -428,5 +428,20 @@ const zh: Dict = {
   "avatars.detail.capturedAt": "采集于 {when}",
   "avatars.detail.expected": "期望",
   "avatars.detail.actual": "实际",
+
+  // Avatar apply (v0.5.2+)
+  "avatars.apply.caption":
+    "安装缺失的包 + 激活 Avatar 的 profile。已生成的策略文件不会被重新生成 — 那部分走 `pilot policy apply`。",
+  "avatars.apply.cta": "应用 Avatar",
+  "avatars.apply.confirm":
+    "应用此 Avatar？将通过 `pi install` 安装缺失的包，并激活 Avatar 的 profile。",
+  "avatars.apply.running": "正在应用…",
+  "avatars.apply.done": "应用完成",
+  "avatars.apply.installed": "已安装",
+  "avatars.apply.activated": "已激活",
+  "avatars.apply.skipped": "已跳过",
+  "avatars.apply.failed": "失败",
+  "avatars.apply.steps": "步骤",
+  "avatars.apply.noOp": "无需操作 — 当前状态已与 Avatar 一致。",
 };
 export default zh;

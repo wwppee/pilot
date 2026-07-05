@@ -45,6 +45,7 @@ import { deriveTemplate } from "./session-template.js";
 import { listSources, readSettings } from "./settings.js";
 import { forgeAbsorb, forgeInspect, forgeSearch } from "./forge.js";
 import {
+  applyAvatar as applyAvatarCore,
   captureAvatar as captureAvatarCore,
   deleteAvatar as deleteAvatarCore,
   diffAvatar as diffAvatarCore,
@@ -134,6 +135,7 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
     readAvatar: (encodedCwd) => readAvatarCore(encodedCwd, home),
     captureAvatar: (encodedCwd) => captureAvatarCore(encodedCwd, home),
     deleteAvatar: (encodedCwd) => deleteAvatarCore(encodedCwd, home),
+    applyAvatar: (encodedCwd) => applyAvatarCore(encodedCwd, home),
     readCurrentState: () => readCurrentStateCore(home),
     diffAvatar: async (encodedCwd) => {
       const avatar = await readAvatarCore(encodedCwd, home);

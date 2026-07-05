@@ -420,4 +420,16 @@ export type Dict = {
   "avatars.detail.capturedAt": string;
   "avatars.detail.expected": string;
   "avatars.detail.actual": string;
+  // Avatar apply (v0.5.2+)
+  "avatars.apply.caption": string;
+  "avatars.apply.cta": string;
+  "avatars.apply.confirm": string;
+  "avatars.apply.running": string;
+  "avatars.apply.done": string;
+  "avatars.apply.installed": string;
+  "avatars.apply.activated": string;
+  "avatars.apply.skipped": string;
+  "avatars.apply.failed": string;
+  "avatars.apply.steps": string;
+  "avatars.apply.noOp": string;
 };

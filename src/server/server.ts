@@ -266,6 +266,19 @@ export async function startServer(
     service.captureAvatar(req.params.cwd),
   );
 
+  // v0.5.2: apply an Avatar — install missing packs, activate profile.
+  // Returns the structured report so the UI can show "installed X / skipped Y".
+  app.post<{ Params: { cwd: string } }>(
+    "/avatars/:cwd/apply",
+    async (req, reply) => {
+      const report = await service.applyAvatar(req.params.cwd);
+      if (!report) {
+        return reply.code(404).send({ error: "avatar not found" });
+      }
+      return report;
+    },
+  );
+
   app.delete<{ Params: { cwd: string } }>(
     "/avatars/:cwd",
     async (req, reply) => {

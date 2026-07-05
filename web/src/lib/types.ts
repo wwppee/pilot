@@ -241,6 +241,27 @@ export interface AvatarDiff {
   clean: boolean;
 }
 
+/**
+ * v0.5.2: result of `applyAvatar` — bring current state into alignment
+ * with the Avatar's expectations. Mirrors core/avatar.ts
+ * `AvatarApplyReport`.
+ */
+export interface AvatarApplyStep {
+  action: "install-pack" | "activate-profile" | "none";
+  target: string;
+  status: "ok" | "skipped" | "failed";
+  message?: string;
+}
+
+export interface AvatarApplyReport {
+  encodedCwd: string;
+  steps: AvatarApplyStep[];
+  installed: string[];
+  activated?: string;
+  skipped: string[];
+  failed: string[];
+}
+
 // ─── Usage (v0.4.2+) ──────────────────────────────────────────
 
 export type UsageRange =

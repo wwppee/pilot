@@ -99,6 +99,36 @@ export interface AvatarDiff {
   clean: boolean;
 }
 
+/**
+ * v0.5.2: result of `applyAvatar`. Each step captures what actually
+ * happened so the UI can show "installed X, Y; skipped Z; failed W".
+ *
+ * Steps with `action: "none"` mean the current state already matched
+ * the Avatar — surfaced as `skipped: [...]` so the user sees that
+ * apply didn't no-op silently.
+ */
+export interface AvatarApplyStep {
+  /** What was attempted. */
+  action: "install-pack" | "activate-profile" | "none";
+  /** The Avatar-side value that drove this step. */
+  target: string;
+  /** "ok" / "skipped" / "failed". */
+  status: "ok" | "skipped" | "failed";
+  /** Optional detail — e.g. error message on `failed`. */
+  message?: string;
+}
+
+export interface AvatarApplyReport {
+  encodedCwd: string;
+  /** Every step attempted, in order. */
+  steps: AvatarApplyStep[];
+  /** Quick counters for the banner. */
+  installed: string[];
+  activated?: string;
+  skipped: string[];
+  failed: string[];
+}
+
 /** Absolute path to an Avatar file. */
 export function avatarPath(encodedCwd: string, home?: string): string {
   return join(pilotAvatarsDir(home), `${encodedCwd}.json`);
@@ -148,6 +178,148 @@ export async function readAvatar(
   } catch (e) {
     throw new Error(`avatar at ${path} is malformed: ${(e as Error).message}`);
   }
+}
+
+/**
+ * v0.5.2: apply an Avatar — bring the current Pilot state into
+ * alignment with the Avatar's expectations.
+ *
+ * Steps performed:
+ *   1. For every Avatar.packSource missing from current state →
+ *      `pi install <source>`. Failures are captured per-pack; one
+ *      failed install doesn't block the rest of the apply.
+ *   2. If Avatar.profile is set AND differs from the currently
+ *      active profile → activate it via writeActiveProfile.
+ *      Skip when the profile is already active.
+ *   3. Extensions are **deliberately not touched**. Regenerating
+ *      a policy file is an explicit choice (`pilot policy apply`),
+ *      not a side effect of "set up the project". Applying an
+ *      Avatar that's missing a generated policy file the user
+ *      wanted should be surfaced as drift, not silently re-created.
+ *
+ * Returns a structured AvatarApplyReport so the Web UI can show
+ * a precise "installed X / activated Y / skipped Z" banner rather
+ * than a single yes/no answer.
+ *
+ * Returns null when no Avatar exists for the given encodedCwd.
+ *
+ * Throws nothing — every step's failure is captured in the report.
+ */
+export async function applyAvatar(
+  encodedCwd: string,
+  home?: string,
+): Promise<AvatarApplyReport | null> {
+  const avatar = await readAvatar(encodedCwd, home);
+  if (!avatar) return null;
+
+  const current = await readCurrentState(home);
+  const steps: AvatarApplyStep[] = [];
+  const installed: string[] = [];
+  const failed: string[] = [];
+  const skipped: string[] = [];
+
+  // ─── 1. Install missing packs ─────────────────────────────────
+  const currentSet = new Set(current.packSources);
+  const missingPacks = avatar.packSources.filter((s) => !currentSet.has(s));
+
+  if (missingPacks.length === 0 && avatar.packSources.length > 0) {
+    // Every expected pack is already installed — record a single
+    // "none" step so the UI can show "skipped: all packs present".
+    skipped.push("all packs already installed");
+    steps.push({
+      action: "none",
+      target: avatar.packSources.join(","),
+      status: "skipped",
+      message: "every pack in this Avatar is already installed",
+    });
+  } else if (missingPacks.length === 0 && avatar.packSources.length === 0) {
+    skipped.push("avatar has no packs to install");
+    steps.push({
+      action: "none",
+      target: "",
+      status: "skipped",
+      message: "avatar has no packSources",
+    });
+  }
+
+  for (const source of missingPacks) {
+    try {
+      const { runPiStreaming } = await import("./pi-cli.js");
+      // runPiStreaming spawns pi and streams output; we trust exit
+      // code today. A future iteration can parse stderr for npm
+      // error details (404 / peer-dep failures).
+      await runPiStreaming(["install", source]);
+      installed.push(source);
+      steps.push({
+        action: "install-pack",
+        target: source,
+        status: "ok",
+      });
+    } catch (e) {
+      const msg = (e as Error).message;
+      failed.push(source);
+      steps.push({
+        action: "install-pack",
+        target: source,
+        status: "failed",
+        message: msg,
+      });
+    }
+  }
+
+  // ─── 2. Activate profile if it differs ────────────────────────
+  let activated: string | undefined;
+
+  if (!avatar.profile) {
+    skipped.push("avatar has no profile to activate");
+    steps.push({
+      action: "none",
+      target: "",
+      status: "skipped",
+      message: "avatar has no profile",
+    });
+  } else if (current.activeProfile === avatar.profile) {
+    skipped.push(`profile already active: ${avatar.profile}`);
+    steps.push({
+      action: "none",
+      target: avatar.profile,
+      status: "skipped",
+      message: "already active",
+    });
+  } else {
+    try {
+      const { writeActiveProfile } = await import("./profile-state.js");
+      await writeActiveProfile(avatar.profile, "cli", home);
+      activated = avatar.profile;
+      steps.push({
+        action: "activate-profile",
+        target: avatar.profile,
+        status: "ok",
+        message:
+          current.activeProfile !== undefined
+            ? `previously active: ${current.activeProfile}`
+            : "no previous active profile",
+      });
+    } catch (e) {
+      const msg = (e as Error).message;
+      failed.push(`activate:${avatar.profile}`);
+      steps.push({
+        action: "activate-profile",
+        target: avatar.profile,
+        status: "failed",
+        message: msg,
+      });
+    }
+  }
+
+  return {
+    encodedCwd,
+    steps,
+    installed,
+    ...(activated !== undefined ? { activated } : {}),
+    skipped,
+    failed,
+  };
 }
 
 /**

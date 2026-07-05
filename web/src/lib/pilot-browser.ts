@@ -37,6 +37,7 @@ import type {
   Profile,
   Capability,
   CapabilityDiff,
+  AvatarApplyReport,
   ToolInventoryItem,
   ProjectContextRef,
   ToolPolicy,
@@ -175,6 +176,22 @@ export const browserApi = {
     try {
       return await browserFetch<CapabilityDiff>(
         `/capabilities/${encodeName(aId)}/diff/${encodeName(bId)}`,
+      );
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (status === 404) return null;
+      throw e;
+    }
+  },
+
+  // v0.5.2: apply an Avatar — browser-safe variant.
+  applyAvatar: async (
+    encodedCwd: string,
+  ): Promise<AvatarApplyReport | null> => {
+    try {
+      return await browserFetch<AvatarApplyReport>(
+        `/avatars/${encodeName(encodedCwd)}/apply`,
+        { method: "POST" },
       );
     } catch (e) {
       const status = (e as { status?: number }).status;

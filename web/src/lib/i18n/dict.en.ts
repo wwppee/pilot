@@ -448,5 +448,21 @@ const en: Dict = {
   "avatars.detail.capturedAt": "Captured {when}",
   "avatars.detail.expected": "Expected",
   "avatars.detail.actual": "Actual",
+
+  // Avatar apply (v0.5.2+)
+  "avatars.apply.caption":
+    "Install missing packs + activate the Avatar's profile. Generated policy files are NOT regenerated — use `pilot policy apply` for that.",
+  "avatars.apply.cta": "Apply Avatar",
+  "avatars.apply.confirm":
+    "Apply this Avatar? Missing packs will be installed via `pi install` and the Avatar's profile will be activated.",
+  "avatars.apply.running": "Applying…",
+  "avatars.apply.done": "Apply complete",
+  "avatars.apply.installed": "installed",
+  "avatars.apply.activated": "activated",
+  "avatars.apply.skipped": "skipped",
+  "avatars.apply.failed": "failed",
+  "avatars.apply.steps": "Steps",
+  "avatars.apply.noOp":
+    "Nothing to do — current state already matches this Avatar.",
 };
 export default en;

@@ -140,6 +140,7 @@ import type {
   Capability,
   CapabilityDiff,
   Avatar,
+  AvatarApplyReport,
   AvatarCurrent,
   AvatarDiff,
   ForgeInspectResult,
@@ -231,6 +232,24 @@ export const api = {
   avatarDiff: async (encodedCwd: string): Promise<AvatarDiff | null> => {
     try {
       return await pilot<AvatarDiff>(`/avatars/${encodeName(encodedCwd)}/diff`);
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (status === 404) return null;
+      throw e;
+    }
+  },
+
+  // v0.5.2: apply an Avatar — install missing packs, activate profile.
+  // Returns null when no Avatar exists; the Web UI renders a
+  // distinct banner in that case.
+  applyAvatar: async (
+    encodedCwd: string,
+  ): Promise<AvatarApplyReport | null> => {
+    try {
+      return await pilot<AvatarApplyReport>(
+        `/avatars/${encodeName(encodedCwd)}/apply`,
+        { method: "POST" },
+      );
     } catch (e) {
       const status = (e as { status?: number }).status;
       if (status === 404) return null;

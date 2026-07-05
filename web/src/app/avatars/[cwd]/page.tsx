@@ -1,18 +1,26 @@
 /**
- * /avatars/[cwd] — per-Avatar diff view.
+ * /avatars/[cwd] — per-Avatar diff view + apply button (v0.5.2).
  *
  * Shows expected vs actual side-by-side for every field, color-coded
- * by status (match / drift / missing / extra).
+ * by status (match / drift / missing / extra). When the Avatar
+ * isn't clean, the user gets an "Apply" button that runs
+ * install-missing-packs + activate-profile and renders the report.
  */
 import Link from "next/link";
 import { headers } from "next/headers";
 import { api } from "@/lib/pilot";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/types";
-import type { AvatarDiff, DiffStatus } from "@/lib/types";
+import type { AvatarApplyReport, AvatarDiff, DiffStatus } from "@/lib/types";
+import { applyAvatarForm } from "@/lib/actions";
 
 interface PageProps {
   params: Promise<{ cwd: string }>;
+  searchParams: Promise<{
+    applied?: string;
+    report?: string;
+    error?: string;
+  }>;
 }
 
 export const dynamic = "force-dynamic";
@@ -24,8 +32,12 @@ const STATUS_COLOR: Record<DiffStatus, string> = {
   extra: "var(--accent)",
 };
 
-export default async function AvatarDetailPage({ params }: PageProps) {
+export default async function AvatarDetailPage({
+  params,
+  searchParams,
+}: PageProps) {
   const { cwd: rawCwd } = await params;
+  const sp = await searchParams;
   const cwd = decodeURIComponent(rawCwd);
 
   let diff: AvatarDiff | null = null;
@@ -54,6 +66,16 @@ export default async function AvatarDetailPage({ params }: PageProps) {
         </div>
       </div>
     );
+  }
+
+  // Parse the apply report from the URL (set by applyAvatarForm).
+  let report: AvatarApplyReport | null = null;
+  if (sp.applied && sp.report) {
+    try {
+      report = JSON.parse(sp.report) as AvatarApplyReport;
+    } catch {
+      report = null;
+    }
   }
 
   const statusKey = (s: DiffStatus): string =>
@@ -153,6 +175,23 @@ export default async function AvatarDetailPage({ params }: PageProps) {
         </div>
       </header>
 
+      {/* v0.5.2: apply report banner — shown after the user clicks
+          "Apply Avatar". Counts installed / activated / failed so
+          the user sees the exact effect. */}
+      {sp.error && (
+        <div
+          className="surface rounded-lg p-3 text-sm"
+          style={{
+            color: "var(--error)",
+            borderLeft: "3px solid var(--error)",
+          }}
+          role="alert"
+        >
+          {sp.error}
+        </div>
+      )}
+      {report && <ApplyReportBanner report={report} locale={locale} />}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field
           title={renderT(locale, "avatars.profile")}
@@ -178,6 +217,145 @@ export default async function AvatarDetailPage({ params }: PageProps) {
           expected={fmtList(diff.extensions.expected)}
           actual={fmtList(diff.extensions.actual)}
         />
+      </div>
+
+      {/* v0.5.2: apply CTA. Hidden when the diff is already clean
+          AND the user has no opinion about extensions (extensions
+          drift alone doesn't trigger this — extensions are managed
+          separately by policy apply). The "needs attention" text is
+          kept for partial-drift cases (e.g. only `model` drifted). */}
+      <form
+        action={applyAvatarForm}
+        className="surface rounded-lg p-4 space-y-3"
+      >
+        <p className="text-xs text-[var(--text-muted)]">
+          {renderT(locale, "avatars.apply.caption")}
+        </p>
+        <input type="hidden" name="cwd" value={diff.encodedCwd} />
+        <button
+          type="submit"
+          // Inline confirm keeps the click honest without forcing
+          // a separate modal for what's usually a quick action.
+          onClick={(e) => {
+            if (!window.confirm(renderT(locale, "avatars.apply.confirm"))) {
+              e.preventDefault();
+            }
+          }}
+          className="px-4 py-2 text-sm rounded text-[var(--bg)]"
+          style={{ background: "var(--accent)" }}
+        >
+          {renderT(locale, "avatars.apply.cta")}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+/**
+ * Render the report from the previous apply. Shows counts at the top
+ * and a per-step detail list at the bottom. Lives inside the server
+ * component (not "use client") because the report is passed via URL
+ * query params — no interactive state needed.
+ */
+function ApplyReportBanner({
+  report,
+  locale,
+}: {
+  report: AvatarApplyReport;
+  locale: Locale;
+}) {
+  const totalCount =
+    report.installed.length + (report.activated ? 1 : 0) + report.failed.length;
+  const isNoOp = totalCount === 0;
+  return (
+    <section
+      className="surface rounded-lg p-4 space-y-3"
+      style={{
+        borderLeft: `3px solid ${
+          report.failed.length > 0
+            ? "var(--error)"
+            : isNoOp
+              ? "var(--text-muted)"
+              : "var(--accent-2)"
+        }`,
+      }}
+      role="status"
+      aria-live="polite"
+    >
+      <h2 className="text-xs uppercase tracking-wide text-[var(--text-muted)]">
+        {isNoOp
+          ? renderT(locale, "avatars.apply.noOp")
+          : renderT(locale, "avatars.apply.done")}
+      </h2>
+      <div className="text-xs grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <Count
+          label={renderT(locale, "avatars.apply.installed")}
+          value={report.installed.length}
+          color="var(--accent-2)"
+        />
+        <Count
+          label={renderT(locale, "avatars.apply.activated")}
+          value={report.activated ? 1 : 0}
+          color="var(--accent-2)"
+        />
+        <Count
+          label={renderT(locale, "avatars.apply.skipped")}
+          value={report.skipped.length}
+          color="var(--text-muted)"
+        />
+        <Count
+          label={renderT(locale, "avatars.apply.failed")}
+          value={report.failed.length}
+          color={
+            report.failed.length > 0 ? "var(--error)" : "var(--text-muted)"
+          }
+        />
+      </div>
+      {report.steps.length > 0 && (
+        <details className="text-xs">
+          <summary className="cursor-pointer text-[var(--text-muted)] hover:text-[var(--text)]">
+            {renderT(locale, "avatars.apply.steps")} ({report.steps.length})
+          </summary>
+          <ul className="mt-2 space-y-0.5 font-mono text-[10px]">
+            {report.steps.map((s, i) => (
+              <li
+                key={i}
+                style={{
+                  color:
+                    s.status === "failed"
+                      ? "var(--error)"
+                      : s.status === "ok"
+                        ? "var(--accent-2)"
+                        : "var(--text-muted)",
+                }}
+              >
+                [{s.status}] {s.action}: <code className="kbd">{s.target}</code>
+                {s.message && <span className="italic"> — {s.message}</span>}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </section>
+  );
+}
+
+function Count({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: number;
+  color: string;
+}) {
+  return (
+    <div className="surface-2 rounded px-2 py-1.5">
+      <div className="text-[10px] uppercase tracking-wide text-[var(--text-muted)]">
+        {label}
+      </div>
+      <div className="text-base font-mono font-semibold" style={{ color }}>
+        {value}
       </div>
     </div>
   );

@@ -33,7 +33,12 @@ import type { UsageRange, UsageReport } from "./usage.js";
 import type { InstalledPack, Pack, SessionInfo, SessionTree } from "./types.js";
 import type { SessionSnapshot } from "./session-snapshot.js";
 import type { SessionTemplate } from "./session-template.js";
-import type { Avatar, AvatarCurrent, AvatarDiff } from "./avatar.js";
+import type {
+  Avatar,
+  AvatarCurrent,
+  AvatarDiff,
+  AvatarApplyReport,
+} from "./avatar.js";
 import type { CapabilityDiff } from "./capability-diff.js";
 
 export type PolicyDecision = ReturnType<typeof checkPolicy>;
@@ -209,6 +214,21 @@ export interface PilotService {
    * either id doesn't exist on disk. Pure — no side effects.
    */
   capabilityDiff(aId: string, bId: string): Promise<CapabilityDiff | null>;
+
+  /**
+   * v0.5.2: apply an Avatar — install missing packSources, activate
+   * the Avatar's profile. Returns a per-step report so the UI can
+   * show what actually happened (which packs were installed, which
+   * were skipped, which failed).
+   *
+   * Returns null when the Avatar doesn't exist on disk.
+   *
+   * Does NOT touch `extensions` (generated policy files) — those
+   * are managed by `pilot policy apply/unapply`, not Avatar apply.
+   * Reasoning: regenerating a policy should be an explicit choice,
+   * not a side effect of "set up the project".
+   */
+  applyAvatar(encodedCwd: string): Promise<AvatarApplyReport | null>;
 
   /**
    * Stream tool call events from a session. Each `ToolResultMessage`
