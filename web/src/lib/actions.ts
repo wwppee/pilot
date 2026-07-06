@@ -211,6 +211,14 @@ export async function saveProfileForm(formData: FormData): Promise<void> {
   if (typeof name !== "string") return;
 
   const input: Record<string, unknown> = {};
+  // v0.5.6: also forward provider + description (newly supported
+  // in core's ProfileSchema). Without these, model + packages still
+  // saved but provider was silently dropped and the Web form had
+  // to lie about what it could persist.
+  const provider = formData.get("provider");
+  if (typeof provider === "string" && provider.trim().length > 0) {
+    input["provider"] = provider.trim();
+  }
   const model = formData.get("model");
   if (typeof model === "string" && model.trim().length > 0) {
     input["model"] = model.trim();
@@ -225,6 +233,10 @@ export async function saveProfileForm(formData: FormData): Promise<void> {
       .split(",")
       .map((p) => p.trim())
       .filter((p) => p.length > 0);
+  }
+  const description = formData.get("description");
+  if (typeof description === "string" && description.trim().length > 0) {
+    input["description"] = description.trim();
   }
   const notes = formData.get("notes");
   if (typeof notes === "string" && notes.trim().length > 0) {

@@ -50,6 +50,17 @@ export function activeProfilePath(home?: string): string {
  *
  * Returns null (not throws) if the file doesn't exist — that's the
  * normal "no profile activated yet" state.
+ *
+ * v0.5.6+: validates that the named profile actually exists in
+ * `~/.pilot/profiles/`. If `active.json` points to a ghost profile
+ * (e.g. the user deleted the TOML but the diary still references
+ * it), the diary is auto-cleared and we return null — otherwise the
+ * UI would show "pi-architect (active profile)" for a profile that
+ * doesn't exist, which is misleading.
+ *
+ * The validation step is intentionally lazy (best-effort) — if the
+ * profile read itself fails for any reason, we keep the diary
+ * entry rather than nuking it on a transient read error.
  */
 export async function readActiveProfile(
   home?: string,
@@ -68,7 +79,25 @@ export async function readActiveProfile(
     ) {
       return null;
     }
-    return parsed as ActiveProfileState;
+    const state = parsed as ActiveProfileState;
+
+    // Ghost-profile guard (v0.5.6). Best-effort: only clear the
+    // diary when we're confident the profile is actually gone.
+    // Try a directory listing under ~/.pilot/profiles/ and look
+    // for `<name>.toml`. We avoid importing the full readProfile
+    // path here to keep this fast (called on every dashboard load).
+    const profileFile = join(dirname(path), "profiles", `${state.name}.toml`);
+    if (!existsSync(profileFile)) {
+      // Clear the diary so the UI stops lying.
+      try {
+        await unlink(path);
+      } catch {
+        /* race with another process — fine */
+      }
+      return null;
+    }
+
+    return state;
   } catch {
     // JSON.parse failed or file unreadable — same response as
     // "no file": treat as no active profile. The next write will

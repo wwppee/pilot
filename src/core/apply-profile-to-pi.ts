@@ -66,6 +66,8 @@ export interface PilotProfileShape {
   /** Thinking level — maps directly to pi's `defaultThinkingLevel`. */
   thinking?: PiThinkingLevel | undefined;
   /** Pack sources to install — strings (npm:/git:/file:) or `PackageSource` objects. */
+  packages?: Array<string | PiPackageSource> | undefined;
+  /** v0.5.6+: accept legacy `packs` alias for back-compat with older callers. */
   packs?: Array<string | PiPackageSource> | undefined;
 }
 
@@ -149,7 +151,9 @@ export async function applyProfileToPi(
   }
 
   // ── packages (additive merge) ─────────────────────────────────
-  const incomingPkgs = profile.packs as PiPackageSource[] | undefined;
+  const incomingPkgs = (profile.packages ?? profile.packs) as
+    | PiPackageSource[]
+    | undefined;
   const { merged, added } = mergePackages(existing.packages, incomingPkgs);
   if (added > 0) {
     changes.packagesAdded = added;

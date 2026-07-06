@@ -62,8 +62,20 @@ function writeActiveProfile(home: string, name: string): void {
       null,
       2,
     ) + "\n",
-    "utf-8",
   );
+  // v0.5.6: stub a matching profile TOML so readActiveProfile's
+  // ghost-profile guard doesn't clear the diary — but only if no
+  // profile already exists for this name (otherwise we'd clobber a
+  // richer fixture written by `writeProfile`).
+  const profPath = join(dir, "profiles", `${name}.toml`);
+  if (!existsSync(profPath)) {
+    mkdirSync(join(dir, "profiles"), { recursive: true });
+    writeFileSync(
+      profPath,
+      `name = "${name}"\ncreatedAt = "2026-07-06T00:00:00.000Z"\nupdatedAt = "2026-07-06T00:00:00.000Z"\ndescription = "stub for test"\n`,
+      "utf-8",
+    );
+  }
 }
 
 function writePiSettings(home: string, packages: string[]): void {

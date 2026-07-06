@@ -179,6 +179,8 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
       // Previously this only wrote `~/.pilot/active.json`, a file
       // pi never read — the activation was theatrical.
       //
+      // v0.5.6: pass the full profile so provider / packages / notes
+      // also flow through (previously only model + thinking made it).
       // We do this BEFORE writeActiveProfile so a settings write
       // failure surfaces clearly instead of leaving Pilot's diary
       // pointing at a profile that pi's runtime can't see.

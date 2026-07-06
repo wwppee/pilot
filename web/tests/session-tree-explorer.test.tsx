@@ -65,7 +65,7 @@ const sampleTree: SessionTreeNode = {
 
 describe("SessionTreeExplorer", () => {
   it("renders all nodes by default", () => {
-    render(<SessionTreeExplorer root={sampleTree} t={t} />);
+    render(<SessionTreeExplorer root={sampleTree} locale="en" />);
     expect(screen.getByText("find me something")).toBeTruthy();
     expect(screen.getByText("thinking about it")).toBeTruthy();
     expect(screen.getByText("running bash")).toBeTruthy();
@@ -74,7 +74,7 @@ describe("SessionTreeExplorer", () => {
   });
 
   it("collapses a subtree when chevron is clicked", () => {
-    render(<SessionTreeExplorer root={sampleTree} t={t} />);
+    render(<SessionTreeExplorer root={sampleTree} locale="en" />);
     // Initially expanded — grandchild visible.
     expect(screen.getByText("running bash")).toBeTruthy();
 
@@ -99,7 +99,7 @@ describe("SessionTreeExplorer", () => {
   });
 
   it("filters out hidden node types when a type chip is toggled off", () => {
-    render(<SessionTreeExplorer root={sampleTree} t={t} />);
+    render(<SessionTreeExplorer root={sampleTree} locale="en" />);
     // Initially all 5 previews visible.
     expect(screen.getByText("system message")).toBeTruthy();
 
@@ -112,7 +112,7 @@ describe("SessionTreeExplorer", () => {
   });
 
   it("search highlights matches with <mark> and hides non-matching leaves", () => {
-    render(<SessionTreeExplorer root={sampleTree} t={t} />);
+    render(<SessionTreeExplorer root={sampleTree} locale="en" />);
 
     const search = screen.getByPlaceholderText(/search preview/i);
     fireEvent.change(search, { target: { value: "bash" } });
@@ -134,7 +134,7 @@ describe("SessionTreeExplorer", () => {
   });
 
   it("'collapse all' hides every non-leaf node's children", () => {
-    render(<SessionTreeExplorer root={sampleTree} t={t} />);
+    render(<SessionTreeExplorer root={sampleTree} locale="en" />);
     fireEvent.click(screen.getByRole("button", { name: /collapse all/i }));
     // Grandchild + middle-tier + sibling children all gone.
     expect(screen.queryByText("running bash")).toBeNull();
@@ -145,7 +145,7 @@ describe("SessionTreeExplorer", () => {
   });
 
   it("'expand all' restores a collapsed tree", () => {
-    render(<SessionTreeExplorer root={sampleTree} t={t} />);
+    render(<SessionTreeExplorer root={sampleTree} locale="en" />);
     fireEvent.click(screen.getByRole("button", { name: /collapse all/i }));
     fireEvent.click(screen.getByRole("button", { name: /expand all/i }));
     expect(screen.getByText("running bash")).toBeTruthy();
@@ -158,7 +158,7 @@ describe("SessionTreeExplorer", () => {
       preview: "",
       children: [],
     };
-    render(<SessionTreeExplorer root={noPreview} t={t} />);
+    render(<SessionTreeExplorer root={noPreview} locale="en" />);
     // No errors thrown. Just an empty <li>.
     expect(screen.getAllByRole("list")).toBeTruthy();
   });
@@ -170,7 +170,9 @@ describe("SessionTreeExplorer", () => {
       preview: '<script>alert("pwn")</script>',
       children: [],
     };
-    const { container } = render(<SessionTreeExplorer root={xss} t={t} />);
+    const { container } = render(
+      <SessionTreeExplorer root={xss} locale="en" />,
+    );
     // Should be escaped, not executed.
     expect(container.innerHTML).not.toMatch(/<script>alert/i);
     expect(container.innerHTML).toMatch(/&lt;script&gt;/);

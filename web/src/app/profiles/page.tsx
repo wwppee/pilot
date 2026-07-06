@@ -12,6 +12,7 @@ import { api } from "@/lib/pilot";
 import { createProfileForm, deleteProfileForm } from "@/lib/actions";
 import { DeleteButton } from "@/components/Buttons";
 import { T } from "@/components/I18n";
+import { EmptyState } from "@/components/EmptyState";
 import { ActivateProfileButton } from "@/components/ActivateProfileButton";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { Profile, ActiveProfile, SessionTemplate } from "@/lib/types";
@@ -183,9 +184,20 @@ export default async function ProfilesPage({ searchParams }: PageProps) {
       </form>
 
       {profiles.length === 0 ? (
-        <div className="surface rounded-lg px-3 py-6 text-sm text-[var(--text-muted)] italic text-center">
-          <T k="profiles.empty" />
-        </div>
+        <EmptyState
+          title={renderT(locale, "profiles.empty")}
+          hint={
+            <>
+              A profile bundles a model + thinking level + provider + package
+              list. Use the <strong>Create profile</strong> form above to make
+              one, then activate it from a profile card. Activated profiles are
+              written to <code className="kbd">~/.pi/agent/settings.json</code>{" "}
+              and picked up by Pi on next launch.
+            </>
+          }
+          actionHref="/profiles/new"
+          actionLabel="Open the profile form"
+        />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {profiles.map((p) => (

@@ -59,12 +59,17 @@ export interface SessionTree {
 
 export interface Profile {
   name: string;
+  /** v0.5.6+: provider ID — e.g. "anthropic" / "openai" / "google". */
+  provider?: string;
   model?: string;
   thinking?: string;
   packages?: string[];
+  /** v0.5.6+: short tagline — shown in profile list cards. */
+  description?: string;
+  /** v0.5.6+: free-form long-form notes — the "why" of the profile. */
+  notes?: string;
   env?: Record<string, string>;
   capabilities?: string[];
-  notes?: string;
 }
 
 /**

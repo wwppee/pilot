@@ -153,8 +153,13 @@ const en: Dict = {
   "profiles.descriptionPlaceholder": "What is this profile for?",
   "profiles.saved": "Profile updated.",
   "profiles.model": "model",
+  "profiles.provider": "provider",
   "profiles.thinking": "thinking",
   "profiles.packages": "package(s)",
+  "profiles.description": "description (short tagline)",
+  "profiles.notes": "notes (long-form)",
+  "profiles.notesPlaceholder":
+    "Why does this profile exist? When should the user pick it?",
   "profiles.activate": "Activate",
   "profiles.active": "Active",
   "profiles.activeHint":

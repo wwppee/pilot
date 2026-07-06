@@ -161,6 +161,10 @@ export type Dict = {
   "profiles.model": string;
   "profiles.thinking": string;
   "profiles.packages": string;
+  "profiles.provider": string;
+  "profiles.description": string;
+  "profiles.notes": string;
+  "profiles.notesPlaceholder": string;
   "profiles.activate": string;
   "profiles.active": string;
   "profiles.activeHint": string;

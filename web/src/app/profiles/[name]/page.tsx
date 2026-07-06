@@ -88,12 +88,37 @@ export default async function ProfileDetailPage({
         <>
           <header className="surface rounded-lg p-4">
             <h1 className="text-xl font-bold">{profile.name}</h1>
-            {profile.notes && (
-              <p className="text-sm text-[var(--text-muted)] mt-2">
-                {profile.notes}
-              </p>
+            {profile.description && (
+              <p className="text-sm mt-2">{profile.description}</p>
             )}
+            <div className="text-xs text-[var(--text-muted)] mt-2 flex flex-wrap gap-x-4 gap-y-1">
+              {profile.provider && (
+                <span>
+                  provider: <code className="kbd">{profile.provider}</code>
+                </span>
+              )}
+              {profile.model && (
+                <span>
+                  model: <code className="kbd">{profile.model}</code>
+                </span>
+              )}
+              {profile.thinking && (
+                <span>
+                  thinking: <code className="kbd">{profile.thinking}</code>
+                </span>
+              )}
+            </div>
           </header>
+          {profile.notes && (
+            <section className="surface rounded-lg p-4">
+              <h2 className="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-2">
+                <T k="profiles.notes" />
+              </h2>
+              <pre className="text-sm whitespace-pre-wrap font-sans">
+                {profile.notes}
+              </pre>
+            </section>
+          )}
 
           {/* Edit form */}
           <form
@@ -104,6 +129,12 @@ export default async function ProfileDetailPage({
               <T k="profiles.editHeading" />
             </h2>
             <input type="hidden" name="name" value={profile.name} />
+            <Field
+              label={renderT(locale, "profiles.provider")}
+              name="provider"
+              placeholder="anthropic / openai / google"
+              defaultValue={profile.provider ?? ""}
+            />
             <Field
               label={renderT(locale, "profiles.model")}
               name="model"
@@ -123,9 +154,15 @@ export default async function ProfileDetailPage({
               defaultValue={(profile.packages ?? []).join(", ")}
             />
             <Field
-              label="notes"
-              name="notes"
+              label={renderT(locale, "profiles.description")}
+              name="description"
               placeholder={renderT(locale, "profiles.descriptionPlaceholder")}
+              defaultValue={profile.description ?? ""}
+            />
+            <Field
+              label={renderT(locale, "profiles.notes")}
+              name="notes"
+              placeholder={renderT(locale, "profiles.notesPlaceholder")}
               defaultValue={profile.notes ?? ""}
               multiline
             />

@@ -123,10 +123,7 @@ export default async function SessionTreePage({ params }: PageProps) {
         <h2 className="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-3">
           Tree
         </h2>
-        <SessionTreeExplorer
-          root={tree.root}
-          t={(k, params) => renderT(locale, k, params)}
-        />
+        <SessionTreeExplorer root={tree.root} locale={locale} />
       </div>
     </div>
   );

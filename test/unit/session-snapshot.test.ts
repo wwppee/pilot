@@ -22,6 +22,7 @@ import {
   snapshotPath,
 } from "../../src/core/session-snapshot.js";
 import { writeActiveProfile } from "../../src/core/profile-state.js";
+import { writeProfile } from "../../src/core/profile.js";
 
 function freshHome(): string {
   return mkdtempSync(join(tmpdir(), "pilot-snapshot-"));
@@ -117,6 +118,14 @@ describe("deriveSnapshot", () => {
       },
     ]);
     await writeActiveProfile("pi-architect", "cli", home);
+    // v0.5.6: ghost-profile guard would otherwise clear the diary
+    // because no profile TOML exists. Stub the profile so the
+    // diary survives readActiveProfile's validation.
+    await writeProfile(
+      "pi-architect",
+      { description: "stub for snapshot test" },
+      home,
+    );
 
     const snap = await deriveSnapshot(id, home);
     expect(snap!.activeProfile).toBe("pi-architect");

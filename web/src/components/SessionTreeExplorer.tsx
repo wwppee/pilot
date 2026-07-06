@@ -13,7 +13,6 @@
  *      node preview text and auto-collapses non-matching subtrees so
  *      the relevant nodes rise to the top. Empty query restores the
  *      tree to fully expanded.
- *
  *   3. **Type filter** (chips above the tree) toggles which entry
  *      types are visible. All on by default. Hiding "tool" is the
  *      most common case — sessions with lots of bash/read churn are
@@ -23,8 +22,10 @@
  * with the rest of the page.
  */
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { SessionTreeNode } from "@/lib/types";
+import { translate } from "@/lib/i18n";
+import type { Locale } from "@/lib/i18n/types";
 
 export type NodeTypeFilter = "user" | "assistant" | "tool" | "system";
 
@@ -32,11 +33,25 @@ const ALL_TYPES: NodeTypeFilter[] = ["user", "assistant", "tool", "system"];
 
 interface Props {
   root: SessionTreeNode;
-  /** T function from the parent so we don't have to wrap in I18nProvider. */
-  t: (k: string, params?: Record<string, string | number>) => string;
+  /**
+   * Locale to render UI strings in. The component imports
+   * `translate` directly so it can render on either side of the
+   * server/client boundary without a function prop (RSC forbids
+   * passing functions across the boundary, which used to crash
+   * this page with "Functions cannot be passed directly to Client
+   * Components" — v0.5.6).
+   */
+  locale: Locale;
 }
 
-export function SessionTreeExplorer({ root, t }: Props) {
+export function SessionTreeExplorer({ root, locale }: Props) {
+  // Thin wrapper so existing call sites read `t(k, params)` instead
+  // of `translate(locale, k, params)` everywhere.
+  const t = useCallback(
+    (k: string, params?: Record<string, string | number>) =>
+      translate(locale, k, params),
+    [locale],
+  );
   const [query, setQuery] = useState("");
   const [hiddenTypes, setHiddenTypes] = useState<Set<NodeTypeFilter>>(
     new Set(),

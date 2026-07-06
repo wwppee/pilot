@@ -13,6 +13,7 @@ import type { Locale } from "@/lib/i18n/types";
 import type { Avatar } from "@/lib/types";
 import { captureAvatarForm, deleteAvatarForm } from "@/lib/actions";
 import { DeleteButton } from "@/components/Buttons";
+import { EmptyState } from "@/components/EmptyState";
 
 interface PageProps {
   searchParams: Promise<{
@@ -122,9 +123,19 @@ export default async function AvatarsPage({ searchParams }: PageProps) {
       </form>
 
       {avatars.length === 0 ? (
-        <div className="surface rounded-lg px-3 py-6 text-sm text-[var(--text-muted)] italic text-center">
-          {renderT(locale, "avatars.empty")}
-        </div>
+        <EmptyState
+          title={renderT(locale, "avatars.empty")}
+          hint={
+            <>
+              Use the <strong>Capture current state</strong> form above to lock
+              in this project's expected setup (active profile, model, installed
+              packs, generated policy files). You'll then see drift when any of
+              those change.
+            </>
+          }
+          actionHref="/avatars"
+          actionLabel="Capture your first Avatar"
+        />
       ) : (
         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {avatars.map((a) => (

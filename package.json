@@ -1,6 +1,6 @@
 {
   "name": "pilot",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "description": "Pilot — co-pilot for pi.dev coding agent. Pack manager, session manager, profile manager, stats, doctor, and a Pi extension that lets Pi's LLM call Pilot commands mid-conversation.",
   "type": "module",
   "main": "./dist/cli.js",

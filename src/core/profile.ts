@@ -49,9 +49,32 @@ export const ProfileSchema = z.object({
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "name must be kebab-case"),
   description: z.string().optional(),
   model: z.string().optional(),
+  /**
+   * Provider ID for the model (e.g. "anthropic" / "openai" / "google").
+   * Optional — pi's `SettingsManager` only sets `defaultProvider` when
+   * the profile also specifies a `model`. Don't guess the pairing.
+   * v0.5.5+: exposed by `applyProfileToPi` to pi's settings.json.
+   */
+  provider: z.string().optional(),
   thinking: ThinkingLevelSchema.optional(),
   /** Name of a meta-pack team to install when this profile is active. */
   team: z.string().optional(),
+  /**
+   * Free-form long-form notes (markdown). Independent of
+   * `description` (short tagline) — descriptions show in profile
+   * list cards, notes are the full "why this profile exists" essay.
+   * v0.5.6+: previously Web form saved this but the server schema
+   * silently dropped it; now it persists.
+   */
+  notes: z.string().optional(),
+  /**
+   * Pack sources to install when this profile is active (e.g.
+   * `["npm:pi-lens", "git:github.com/u/r@v1"]`). v0.5.6+: previously
+   * Web form saved this but the server schema dropped it. Now it's
+   * consumed by `applyProfileToPi` to append to pi's settings.json
+   * `packages` field on activation.
+   */
+  packages: z.array(z.string()).optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
