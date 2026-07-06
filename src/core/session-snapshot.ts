@@ -230,7 +230,7 @@ function extractCwd(filePath: string): string | undefined {
 async function readPackSources(home?: string): Promise<string[]> {
   try {
     const settings = await readSettings(home);
-    return listSources(settings).map((s) => s.source);
+    return listSources(settings);
   } catch {
     return [];
   }

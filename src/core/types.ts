@@ -78,19 +78,83 @@ export function pilotRuntimeDir(home?: string): string {
 // ─── Settings types ────────────────────────────────────────────────
 
 /**
- * Schema of `~/.pi/agent/settings.json`.
- * Kept loose intentionally — we only model the fields Pilot needs.
+ * Pi's package source shape (matches `PackageSource` in
+ * `@earendil-works/pi-coding-agent`'s `dist/core/settings-manager.d.ts`):
+ *
+ *   - String form: load all resources from the package (most common).
+ *   - Object form: filter which resources to load
+ *     (extensions / skills / prompts / themes by source path).
+ */
+export type PiPackageSource =
+  | string
+  | {
+      source: string;
+      extensions?: string[];
+      skills?: string[];
+      prompts?: string[];
+      themes?: string[];
+    };
+
+/**
+ * Pi's thinking level enum (matches `defaultThinkingLevel` in pi's
+ * `Settings`). Pilot's own `Profile.thinking` is a subset
+ * (`off` / `low` / `medium` / `high` / `xhigh`) and maps cleanly.
+ */
+export type PiThinkingLevel =
+  | "off"
+  | "minimal"
+  | "low"
+  | "medium"
+  | "high"
+  | "xhigh";
+
+/**
+ * Schema of `~/.pi/agent/settings.json` (v0.5.5+).
+ *
+ * v0.5.5 fix: previously Pilot only modeled `sources?: Array<{source,
+ * enabled}>`. That was wrong on three counts:
+ *   1. The real field is **`packages`** (pi's `PackageSource`), not
+ *      `sources`.
+ *   2. Each entry is `string | {source, extensions?, skills?, prompts?,
+ *      themes?}`, not `{source, enabled?}` — there's no `enabled` flag.
+ *   3. Many other fields exist (`defaultProvider`, `defaultModel`,
+ *      `defaultThinkingLevel`, `theme`, `defaultProjectTrust`, etc.)
+ *      that Pilot deliberately doesn't manage but MUST preserve across
+ *      a write — otherwise Pilot would silently drop user-tuned
+ *      settings. The `[key: string]: unknown` index signature handles
+ *      this.
+ *
+ * Source of truth for the full schema: `Settings` in
+ * `@earendil-works/pi-coding-agent`'s `dist/core/settings-manager.d.ts`.
+ * We only model the fields Pilot actively writes; everything else
+ * round-trips untouched.
+ *
+ * v0.5.5 also flips the historical "Pilot never writes to
+ * settings.json" stance — Pilot now writes (via `core/settings-write.ts`
+ * with proper-lockfile + backup) so profile activation actually takes
+ * effect on the next pi launch, instead of writing to an orphaned
+ * `~/.pilot/active.json` diary.
  */
 export interface PiSettings {
-  /** List of installed extension sources. */
-  sources?: Array<{
-    /** The source specifier (e.g. `npm:pi-subagents`, `git:github.com/...`). */
-    source: string;
-    /** Whether the source is currently enabled. */
-    enabled?: boolean;
-  }>;
-  /** Other settings fields we don't model — kept as-is. */
+  /** e.g. "anthropic" / "openai" / "google". */
+  defaultProvider?: string;
+  /** e.g. "claude-opus-4-6". */
+  defaultModel?: string;
+  defaultThinkingLevel?: PiThinkingLevel;
+  /** Theme name (loaded from pi's themes/ dir). */
+  theme?: string;
+  /** Installed packages — the new name for the old `sources` field. */
+  packages?: PiPackageSource[];
+  /** Preserve any other fields across read-modify-write. */
   [key: string]: unknown;
+}
+
+/**
+ * Extract the canonical source specifier string from a
+ * `PiPackageSource` (handles both string and object forms).
+ */
+export function packageSourceOf(p: PiPackageSource): string {
+  return typeof p === "string" ? p : p.source;
 }
 
 // ─── Pack types ─────────────────────────────────────────────────────

@@ -66,18 +66,14 @@ function writeActiveProfile(home: string, name: string): void {
   );
 }
 
-function writePiSettings(home: string, sources: string[]): void {
+function writePiSettings(home: string, packages: string[]): void {
+  // v0.5.5: pi's field is `packages` (string-form, the common case).
+  // No `enabled` flag — every package listed is implicitly enabled.
   const dir = join(home, ".pi", "agent");
   mkdirSync(dir, { recursive: true });
   writeFileSync(
     join(dir, "settings.json"),
-    JSON.stringify(
-      {
-        sources: sources.map((source) => ({ source, enabled: true })),
-      },
-      null,
-      2,
-    ) + "\n",
+    JSON.stringify({ packages }, null, 2) + "\n",
     "utf-8",
   );
 }

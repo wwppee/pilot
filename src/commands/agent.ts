@@ -167,8 +167,40 @@ export async function run(args: string[], _ctx: PilotContext): Promise<number> {
   if (opt.cwd) {
     piArgs.push("--cwd", resolve(opt.cwd));
   }
-  if (opt.model) {
-    piArgs.push("--model", opt.model);
+  // v0.5.5: if the user didn't pass --model AND a profile is active,
+  // forward the profile's model + provider to pi for this session.
+  // (The persistent setting also lives in ~/.pi/agent/settings.json
+  // — applyProfileToPi writes it — but pi picks it up on next launch,
+  // not mid-session. Forwarding via --model/--provider here means the
+  // active profile takes effect immediately, no restart needed.)
+  let modelArg = opt.model;
+  let providerArg: string | undefined;
+  if (!modelArg) {
+    try {
+      const active = await _ctx.service.getActiveProfile();
+      if (active?.name) {
+        const profile = await _ctx.service.getProfile(active.name);
+        if (profile?.model) {
+          modelArg = profile.model;
+          providerArg = profile.provider;
+          console.log(
+            kleur.dim(
+              `→ forwarding active profile "${active.name}" to pi: model=${modelArg}${
+                providerArg ? `, provider=${providerArg}` : ""
+              }`,
+            ),
+          );
+        }
+      }
+    } catch {
+      /* non-fatal — pi will start with whatever settings.json says */
+    }
+  }
+  if (providerArg) {
+    piArgs.push("--provider", providerArg);
+  }
+  if (modelArg) {
+    piArgs.push("--model", modelArg);
   }
   piArgs.push(...opt.passthrough);
 

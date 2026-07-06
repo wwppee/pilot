@@ -93,11 +93,9 @@ describe("createService", () => {
       writeFileSync(
         join(tempHome, ".pi/agent/settings.json"),
         JSON.stringify({
-          sources: [
-            { source: "npm:pi-subagents", enabled: true },
-            { source: "npm:pi-lens", enabled: true },
-            { source: "npm:disabled-pack", enabled: false },
-          ],
+          // v0.5.5: pi's field is `packages` (string-form); no `enabled`
+          // flag — every listed package is implicitly enabled.
+          packages: ["npm:pi-subagents", "npm:pi-lens", "npm:disabled-pack"],
         }),
       );
       const svc = createService();
@@ -105,7 +103,8 @@ describe("createService", () => {
       expect(packs).toHaveLength(3);
       expect(packs[0]?.source).toBe("npm:pi-subagents");
       expect(packs[0]?.enabled).toBe(true);
-      expect(packs[2]?.enabled).toBe(false);
+      // v0.5.5: there's no enabled:false in pi's schema anymore.
+      expect(packs[2]?.enabled).toBe(true);
     });
 
     it("classifies packs via manifest (not name heuristic)", async () => {
@@ -141,10 +140,10 @@ describe("createService", () => {
       writeFileSync(
         join(tempHome, ".pi/agent/settings.json"),
         JSON.stringify({
-          sources: [
-            { source: "npm:pi-lens" }, // manifest says skill
-            { source: "npm:pi-hud-footer" }, // manifest says theme
-            { source: "npm:pi-subagents" }, // manifest says extension
+          packages: [
+            "npm:pi-lens", // manifest says skill
+            "npm:pi-hud-footer", // manifest says theme
+            "npm:pi-subagents", // manifest says extension
           ],
         }),
       );
@@ -164,12 +163,12 @@ describe("createService", () => {
       writeFileSync(
         join(tempHome, ".pi/agent/settings.json"),
         JSON.stringify({
-          sources: [
-            { source: "npm:pi-foo-skill" }, // name → skill
-            { source: "npm:pi-foo-theme" }, // name → theme
-            { source: "npm:pi-foo-prompt" }, // name → prompt
-            { source: "npm:superpowers-zh" }, // name → skill (contains 'superpowers')
-            { source: "npm:pi-lens" }, // name → extension (default)
+          packages: [
+            "npm:pi-foo-skill", // name → skill
+            "npm:pi-foo-theme", // name → theme
+            "npm:pi-foo-prompt", // name → prompt
+            "npm:superpowers-zh", // name → skill (contains 'superpowers')
+            "npm:pi-lens", // name → extension (default)
           ],
         }),
       );

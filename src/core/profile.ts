@@ -5,12 +5,17 @@
  * meta-pack team, etc. — that the user can switch between per-project.
  *
  * Profiles are stored in `~/.pilot/profiles/<name>.toml` (global) or
- * `<cwd>/.pilot/profile.toml` (project-level). Pilot NEVER writes to
- * `~/.pi/agent/settings.json` directly — applying a profile means
- * generating a runtime overlay, not mutating pi's source of truth.
+ * `<cwd>/.pilot/profile.toml` (project-level).
  *
- * v0.3.0-b scope: read / write / list / delete profiles. Application
- * (the part that actually overlays onto pi's settings) ships in v0.3.0+.
+ * v0.5.5: Pilot now writes `~/.pi/agent/settings.json` directly when
+ * activating a profile (via `applyProfileToPi`). The earlier
+ * "never writes to settings.json" stance was changed because the
+ * `~/.pilot/active.json` pointer was orphaned — pi never read it, so
+ * profile activation was theatrical. Now `service.activateProfile`
+ * merges the profile's model + thinking + packages into pi's
+ * settings.json (with proper-lockfile + backup + rollback), then
+ * writes the Pilot diary at `~/.pilot/active.json`. The next pi
+ * launch picks up the change.
  *
  * See: docs/architecture.md §1, docs/roadmap.md §2.
  */

@@ -1,6 +1,6 @@
 {
   "name": "pilot",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "description": "Pilot — co-pilot for pi.dev coding agent. Pack manager, session manager, profile manager, stats, doctor, and a Pi extension that lets Pi's LLM call Pilot commands mid-conversation.",
   "type": "module",
   "main": "./dist/cli.js",
@@ -46,11 +46,13 @@
     "fastify": "^5.9.0",
     "kleur": "^4.1.5",
     "ora": "^8.0.1",
+    "proper-lockfile": "^4.1.2",
     "smol-toml": "^1.3.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@types/proper-lockfile": "^4.1.4",
     "@types/supertest": "^7.2.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",

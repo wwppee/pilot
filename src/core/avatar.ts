@@ -470,9 +470,7 @@ export async function captureAvatar(
     if (prof?.model) model = prof.model;
   }
 
-  const packSources = settings
-    ? listSources(settings).map((s) => s.source)
-    : [];
+  const packSources = settings ? listSources(settings) : [];
 
   const extensions = await listGeneratedPolicyExtensions(home);
 
@@ -511,7 +509,7 @@ export async function readCurrentState(home?: string): Promise<AvatarCurrent> {
   return {
     ...(active ? { activeProfile: active.name } : {}),
     ...(model ? { model } : {}),
-    packSources: settings ? listSources(settings).map((s) => s.source) : [],
+    packSources: settings ? listSources(settings) : [],
     extensions: await listGeneratedPolicyExtensions(home),
   };
 }

@@ -174,6 +174,21 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
           `Profile "${name}" not found in ~/.pilot/profiles/. Run \`pilot profile ls\` to see available profiles.`,
         );
       }
+      // v0.5.5: actually apply the profile to pi's settings.json so
+      // the next pi launch picks up the model / thinking / packages.
+      // Previously this only wrote `~/.pilot/active.json`, a file
+      // pi never read — the activation was theatrical.
+      //
+      // We do this BEFORE writeActiveProfile so a settings write
+      // failure surfaces clearly instead of leaving Pilot's diary
+      // pointing at a profile that pi's runtime can't see.
+      const { applyProfileToPi } = await import("./apply-profile-to-pi.js");
+      const applied = await applyProfileToPi(existing, home);
+      if (!applied.ok) {
+        throw new Error(
+          `failed to apply profile "${name}" to pi's settings: ${applied.message}${applied.error ? ` (${applied.error})` : ""}`,
+        );
+      }
       return writeActiveProfile(name, "web", home);
     },
     getActiveProfile: () => readActiveProfile(home),
@@ -238,19 +253,22 @@ async function uninstallPack(name: string, home?: string): Promise<void> {
   await runPiStreaming(["uninstall", spec]);
 }
 
-async function toInstalledPack(
-  src: NonNullable<ReturnType<typeof listSources>>[number],
-): Promise<InstalledPack> {
-  const raw = src.source;
-  const colonIdx = raw.indexOf(":");
-  const name = colonIdx >= 0 ? raw.slice(colonIdx + 1) : raw;
+async function toInstalledPack(source: string): Promise<InstalledPack> {
+  // v0.5.5: `listSources` now returns plain strings (the new `packages`
+  // field is `string | {source,...}`, we extract the source via
+  // `packageSourceOf`). pi's schema has no `enabled` flag, so every
+  // package listed in `settings.json` is implicitly enabled — we
+  // preserve the `InstalledPack.enabled` field for back-compat but
+  // always set it to `true`.
+  const colonIdx = source.indexOf(":");
+  const name = colonIdx >= 0 ? source.slice(colonIdx + 1) : source;
   // Read manifest (cached). Falls back to name heuristic on failure or
   // when manifest has no `pi` field.
   const manifest = await readPackManifestCached(name);
   return {
-    source: raw,
+    source,
     name,
-    enabled: src.enabled !== false,
+    enabled: true,
     kind: classifyFromManifest(manifest, name),
   };
 }
@@ -405,9 +423,7 @@ async function runDoctor(home?: string): Promise<DoctorReport> {
   // Pack conflicts
   const sources = listSources(settings);
   if (sources.length >= 2) {
-    const subagent = sources.filter((s) =>
-      /subagent|crew|orchestr/i.test(s.source),
-    );
+    const subagent = sources.filter((s) => /subagent|crew|orchestr/i.test(s));
     if (subagent.length >= 2) {
       checks.push({
         ok: false,
