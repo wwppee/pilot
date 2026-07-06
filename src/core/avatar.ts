@@ -116,6 +116,13 @@ export interface AvatarApplyStep {
   status: "ok" | "skipped" | "failed";
   /** Optional detail — e.g. error message on `failed`. */
   message?: string;
+  /**
+   * v0.5.3: true when this step would have happened, but the caller
+   * asked for a dry-run. The action / target / status fields still
+   * describe the *intended* outcome — only `dry: true` flips the
+   * banner prefix and signals "nothing actually changed".
+   */
+  dry?: boolean;
 }
 
 export interface AvatarApplyReport {
@@ -127,6 +134,24 @@ export interface AvatarApplyReport {
   activated?: string;
   skipped: string[];
   failed: string[];
+  /**
+   * v0.5.3: true when no side-effects were performed — the report is
+   * a *preview* of what would happen. UI banner uses this to prefix
+   * "(dry run — no changes made)" and to skip the "Apply successful"
+   * framing.
+   */
+  dry?: boolean;
+}
+
+/** v0.5.3: options for `applyAvatar`. */
+export interface AvatarApplyOptions {
+  /**
+   * When true, compute the same report as a real apply but skip every
+   * side-effect (no `pi install`, no profile activation). Use this for
+   * "what would happen?" previews; the Web UI exposes it as a separate
+   * Dry-run button next to Apply.
+   */
+  dry?: boolean;
 }
 
 /** Absolute path to an Avatar file. */
@@ -204,14 +229,25 @@ export async function readAvatar(
  * Returns null when no Avatar exists for the given encodedCwd.
  *
  * Throws nothing — every step's failure is captured in the report.
+ *
+ * ## Dry-run (v0.5.3+)
+ *
+ * Pass `opts.dry: true` to preview the same report without performing
+ * any side-effects. The shape is identical: every "would-install" and
+ * "would-activate" step carries `dry: true`, and the report itself
+ * has `dry: true` so the UI can swap the banner framing. Useful as a
+ * safer alternative to a real Apply — same diff, no `~/.pilot/`
+ * mutation.
  */
 export async function applyAvatar(
   encodedCwd: string,
   home?: string,
+  opts?: AvatarApplyOptions,
 ): Promise<AvatarApplyReport | null> {
   const avatar = await readAvatar(encodedCwd, home);
   if (!avatar) return null;
 
+  const dry = opts?.dry === true;
   const current = await readCurrentState(home);
   const steps: AvatarApplyStep[] = [];
   const installed: string[] = [];
@@ -231,6 +267,7 @@ export async function applyAvatar(
       target: avatar.packSources.join(","),
       status: "skipped",
       message: "every pack in this Avatar is already installed",
+      ...(dry ? { dry: true } : {}),
     });
   } else if (missingPacks.length === 0 && avatar.packSources.length === 0) {
     skipped.push("avatar has no packs to install");
@@ -239,10 +276,23 @@ export async function applyAvatar(
       target: "",
       status: "skipped",
       message: "avatar has no packSources",
+      ...(dry ? { dry: true } : {}),
     });
   }
 
   for (const source of missingPacks) {
+    if (dry) {
+      // v0.5.3: dry-run — record the step but skip the actual install.
+      installed.push(source); // would-have-been-installed
+      steps.push({
+        action: "install-pack",
+        target: source,
+        status: "ok",
+        message: "would install (dry run)",
+        dry: true,
+      });
+      continue;
+    }
     try {
       const { runPiStreaming } = await import("./pi-cli.js");
       // runPiStreaming spawns pi and streams output; we trust exit
@@ -277,6 +327,7 @@ export async function applyAvatar(
       target: "",
       status: "skipped",
       message: "avatar has no profile",
+      ...(dry ? { dry: true } : {}),
     });
   } else if (current.activeProfile === avatar.profile) {
     skipped.push(`profile already active: ${avatar.profile}`);
@@ -285,30 +336,46 @@ export async function applyAvatar(
       target: avatar.profile,
       status: "skipped",
       message: "already active",
+      ...(dry ? { dry: true } : {}),
     });
   } else {
-    try {
-      const { writeActiveProfile } = await import("./profile-state.js");
-      await writeActiveProfile(avatar.profile, "cli", home);
-      activated = avatar.profile;
+    if (dry) {
+      // v0.5.3: dry-run — record the step but skip writeActiveProfile.
+      activated = avatar.profile; // would-have-been-activated
       steps.push({
         action: "activate-profile",
         target: avatar.profile,
         status: "ok",
         message:
           current.activeProfile !== undefined
-            ? `previously active: ${current.activeProfile}`
-            : "no previous active profile",
+            ? `would activate (dry run); previously active: ${current.activeProfile}`
+            : "would activate (dry run); no previous active profile",
+        dry: true,
       });
-    } catch (e) {
-      const msg = (e as Error).message;
-      failed.push(`activate:${avatar.profile}`);
-      steps.push({
-        action: "activate-profile",
-        target: avatar.profile,
-        status: "failed",
-        message: msg,
-      });
+    } else {
+      try {
+        const { writeActiveProfile } = await import("./profile-state.js");
+        await writeActiveProfile(avatar.profile, "cli", home);
+        activated = avatar.profile;
+        steps.push({
+          action: "activate-profile",
+          target: avatar.profile,
+          status: "ok",
+          message:
+            current.activeProfile !== undefined
+              ? `previously active: ${current.activeProfile}`
+              : "no previous active profile",
+        });
+      } catch (e) {
+        const msg = (e as Error).message;
+        failed.push(`activate:${avatar.profile}`);
+        steps.push({
+          action: "activate-profile",
+          target: avatar.profile,
+          status: "failed",
+          message: msg,
+        });
+      }
     }
   }
 
@@ -319,6 +386,7 @@ export async function applyAvatar(
     ...(activated !== undefined ? { activated } : {}),
     skipped,
     failed,
+    ...(dry ? { dry: true } : {}),
   };
 }
 

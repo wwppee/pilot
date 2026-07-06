@@ -218,10 +218,10 @@ v0.5.0  (1-2 周)  组合: Avatars + Capability diff (基于 D + B) + Replay mod
 
 | 版本 | 周期 | 内容 |
 |---|---|---|
-| **v0.5.0** | 2 周 | Avatars (架构定义 + TOML schema + 第一个示例 avatar `pi-architect`) + Capability diff (基于 v0.4.12 snapshot) |
-| **v0.5.1** | 1 周 | Replay mode（选 session + profile 重放；只读 trace） |
-| **v0.5.2** | 1 周 | 6 阶段 trace 可视化（基于 Replay 的每步标注属于 strategy/planner/retrieval/toolSelector/executor/validator/output） |
-| **v0.5.3** | 1 周 | A/B diff（两个 session 同 prompt 不同 profile 的差异对比） |
+| **v0.5.0** | 2 周 | Avatars：架构定义 + TOML schema + 第一个示例 avatar `pi-architect`（每 cwd 期望的 running config：profile / model / packSources / extensions）+ diff vs current state（per-field status: match/drift/missing/extra） |
+| **v0.5.1** | 1 周 | Capability diff：capability 之间纯函数逐字段对比（sources/artifacts/eval/compatibility/metadata），独立的 `/capabilities/diff?a=&b=` picker UI |
+| **v0.5.2** | 1 周 | Avatar Apply：把当前 state 对齐到 Avatar（install missing packs + activate profile），结构性 report（installed/activated/skipped/failed）+ 详细步骤列表；extensions 不动（policy regen 仍是 explicit `pilot policy apply`） |
+| **v0.5.3** | 1 周 | Session info card（per-session 摘要 banner：model + duration + tokens + cost + toolsUsed[]）+ Avatar Apply dry-run（`POST ?dry=1` 跳过 side-effect 跑预览，banner 标记 "dry run"） |
 | **v0.6.0** | 2 周 | Pi extension（`@pilot/pi-extension` — `/pilot stats today`、`/pilot session search`、`/pilot doctor`、`/pilot ui`） |
 | **v0.7.0** | 2 周 | 多 Pi 编排（团队 / 服务端 / 本地） |
 | **v1.0.0** | 1 月 | GA + 申请收录 pi.dev/packages + 完整文档 + npm 周下载 > 100 |

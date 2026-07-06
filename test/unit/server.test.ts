@@ -434,6 +434,41 @@ describe("pilot server", () => {
       expect(body.skipped.length).toBeGreaterThan(0);
     });
 
+    it("POST /avatars/:cwd/apply?dry=1 returns dry report (same shape, no side-effects)", async () => {
+      // v0.5.3: dry-run via ?dry=1 query flag. Same report shape as
+      // a real apply, but every step is dry:true and the root has
+      // dry:true. No pi install / writeActiveProfile calls happen.
+      await handle.app.inject({
+        method: "POST",
+        url: "/avatars/--apply-dry-cwd--/capture",
+        headers: auth(),
+      });
+
+      const res = await handle.app.inject({
+        method: "POST",
+        url: "/avatars/--apply-dry-cwd--/apply?dry=1",
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.encodedCwd).toBe("--apply-dry-cwd--");
+      expect(body.dry).toBe(true);
+      // Capture had no packs/profile → both steps are skipped/none
+      // steps, all marked dry.
+      expect(body.steps.every((s: { dry?: boolean }) => s.dry === true)).toBe(
+        true,
+      );
+    });
+
+    it("POST /avatars/:cwd/apply?dry=1 404s when no Avatar", async () => {
+      const res = await handle.app.inject({
+        method: "POST",
+        url: "/avatars/--no-such-dry--/apply?dry=1",
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(404);
+    });
+
     it("GET /sessions/:id/tree returns session tree", async () => {
       // First create a real session file in our isolated home
       const encoded = Buffer.from("/tmp/fake-cwd").toString("base64");
@@ -560,6 +595,188 @@ describe("pilot server", () => {
       expect(body.sessionId).toBe(tmplSessionId);
       expect(body.model).toBe("claude-sonnet-4-5");
       expect(body.tools).toEqual(["bash", "read"]);
+    });
+
+    // ─── Session info (v0.5.3+) ──────────────────────────────────────
+
+    it("GET /sessions/:id/info returns summary card data", async () => {
+      const encoded = Buffer.from("/tmp/fake-cwd-info").toString("base64");
+      const sessionsDir = join(tempHome, ".pi/agent/sessions", encoded);
+      mkdirSync(sessionsDir, { recursive: true });
+      const infoSessionId = "2026-07-06_10-00_info";
+      writeFileSync(
+        join(sessionsDir, `${infoSessionId}.jsonl`),
+        [
+          JSON.stringify({
+            type: "session_info",
+            timestamp: "2026-07-06T10:00:00.000Z",
+          }),
+          JSON.stringify({
+            type: "message",
+            timestamp: "2026-07-06T10:00:05.000Z",
+            message: {
+              role: "user",
+              content: "hi",
+            },
+          }),
+          JSON.stringify({
+            type: "message",
+            timestamp: "2026-07-06T10:00:30.000Z",
+            message: {
+              role: "assistant",
+              model: "claude-opus-4-6",
+              content: [
+                { type: "toolCall", name: "bash" },
+                { type: "toolCall", name: "read" },
+              ],
+              usage: {
+                input: 100,
+                output: 50,
+                cacheRead: 0,
+                cacheWrite: 0,
+                totalTokens: 150,
+                cost: { input: 0.01, output: 0.015, total: 0.025 },
+              },
+            },
+          }),
+        ].join("\n"),
+      );
+
+      const res = await handle.app.inject({
+        method: "GET",
+        url: `/sessions/${infoSessionId}/info`,
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.sessionId).toBe(infoSessionId);
+      expect(body.model).toBe("claude-opus-4-6");
+      expect(body.durationMs).toBe(30_000);
+      expect(body.totalTokens).toBe(150);
+      expect(body.totalCost).toBeCloseTo(0.025, 6);
+      expect(body.assistantMessages).toBe(1);
+      expect(body.totalMessages).toBe(3);
+      expect(body.toolsUsed).toEqual([
+        { toolName: "bash", count: 1 },
+        { toolName: "read", count: 1 },
+      ]);
+    });
+
+    it("GET /sessions/:id/info 404s for missing session", async () => {
+      const res = await handle.app.inject({
+        method: "GET",
+        url: "/sessions/--never-existed-info--/info",
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(404);
+    });
+
+    // v0.5.3: cost aggregation correctness. Pi's `usage.cost` includes
+    // both granular (input, output) and a canonical `total` field that
+    // already equals input + output. Summing every numeric field would
+    // double-count. The endpoint must prefer `total` and fall back to
+    // summing the rest only when `total` is absent.
+    it("GET /sessions/:id/info uses cost.total not sum(input+output) (no double-count)", async () => {
+      // v0.5.3 gotcha: Pi's `usage.cost = {input, output, total}` where
+      // `total === input + output`. Summing every numeric field would
+      // double-count. The endpoint must use the canonical `total`.
+      const encoded = Buffer.from("/tmp/fake-cwd-info-cost").toString("base64");
+      const sessionsDir = join(tempHome, ".pi/agent/sessions", encoded);
+      mkdirSync(sessionsDir, { recursive: true });
+      const costSessionId = "2026-07-06_11-00_info_cost";
+      writeFileSync(
+        join(sessionsDir, `${costSessionId}.jsonl`),
+        [
+          JSON.stringify({
+            type: "message",
+            timestamp: "2026-07-06T11:00:00.000Z",
+            message: {
+              role: "assistant",
+              model: "claude-opus-4-6",
+              content: [{ type: "text", text: "hi" }],
+              usage: {
+                input: 100,
+                output: 50,
+                cacheRead: 0,
+                cacheWrite: 0,
+                totalTokens: 150,
+                cost: { input: 0.01, output: 0.015, total: 0.025 },
+              },
+            },
+          }),
+          JSON.stringify({
+            type: "message",
+            timestamp: "2026-07-06T11:00:10.000Z",
+            message: {
+              role: "assistant",
+              model: "claude-opus-4-6",
+              content: [{ type: "text", text: "again" }],
+              usage: {
+                input: 200,
+                output: 100,
+                cacheRead: 0,
+                cacheWrite: 0,
+                totalTokens: 300,
+                cost: { input: 0.02, output: 0.03, total: 0.05 },
+              },
+            },
+          }),
+        ].join("\n"),
+      );
+
+      const res = await handle.app.inject({
+        method: "GET",
+        url: `/sessions/${costSessionId}/info`,
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      // Must equal 0.025 + 0.05 = 0.075 (sum of `total`), not
+      // double-counted 0.15.
+      expect(body.totalCost).toBeCloseTo(0.075, 6);
+      expect(body.totalTokens).toBe(450);
+      expect(body.assistantMessages).toBe(2);
+    });
+
+    it("GET /sessions/:id/info falls back to summing fields when total absent", async () => {
+      // Defensive: some custom trace writers might omit `cost.total`.
+      // Summing the rest gives a sensible fallback.
+      const encoded = Buffer.from("/tmp/fake-cwd-info-cost-fb").toString(
+        "base64",
+      );
+      const sessionsDir = join(tempHome, ".pi/agent/sessions", encoded);
+      mkdirSync(sessionsDir, { recursive: true });
+      const fbSessionId = "2026-07-06_12-00_info_cost_fb";
+      writeFileSync(
+        join(sessionsDir, `${fbSessionId}.jsonl`),
+        JSON.stringify({
+          type: "message",
+          timestamp: "2026-07-06T12:00:00.000Z",
+          message: {
+            role: "assistant",
+            model: "claude-opus-4-6",
+            content: [{ type: "text", text: "fallback" }],
+            usage: {
+              input: 0,
+              output: 0,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 100,
+              // No `total` field here — only input + output.
+              cost: { input: 0.1, output: 0.2 },
+            },
+          },
+        }),
+      );
+
+      const res = await handle.app.inject({
+        method: "GET",
+        url: `/sessions/${fbSessionId}/info`,
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.totalCost).toBeCloseTo(0.3, 6);
     });
   });
 

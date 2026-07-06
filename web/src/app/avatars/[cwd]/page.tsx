@@ -12,12 +12,13 @@ import { api } from "@/lib/pilot";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/types";
 import type { AvatarApplyReport, AvatarDiff, DiffStatus } from "@/lib/types";
-import { applyAvatarForm } from "@/lib/actions";
+import { applyAvatarForm, dryRunAvatarForm } from "@/lib/actions";
 
 interface PageProps {
   params: Promise<{ cwd: string }>;
   searchParams: Promise<{
     applied?: string;
+    dry?: string;
     report?: string;
     error?: string;
   }>;
@@ -223,7 +224,11 @@ export default async function AvatarDetailPage({
           AND the user has no opinion about extensions (extensions
           drift alone doesn't trigger this — extensions are managed
           separately by policy apply). The "needs attention" text is
-          kept for partial-drift cases (e.g. only `model` drifted). */}
+          kept for partial-drift cases (e.g. only `model` drifted).
+
+          v0.5.3: pair the real Apply button with a Dry-run button
+          that posts to the same route with `?dry=1`. The banner above
+          detects `dry` in the report and reframes itself. */}
       <form
         action={applyAvatarForm}
         className="surface rounded-lg p-4 space-y-3"
@@ -232,19 +237,45 @@ export default async function AvatarDetailPage({
           {renderT(locale, "avatars.apply.caption")}
         </p>
         <input type="hidden" name="cwd" value={diff.encodedCwd} />
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="submit"
+            // Inline confirm keeps the click honest without forcing
+            // a separate modal for what's usually a quick action.
+            onClick={(e) => {
+              if (!window.confirm(renderT(locale, "avatars.apply.confirm"))) {
+                e.preventDefault();
+              }
+            }}
+            className="px-4 py-2 text-sm rounded text-[var(--bg)]"
+            style={{ background: "var(--accent)" }}
+          >
+            {renderT(locale, "avatars.apply.cta")}
+          </button>
+        </div>
+      </form>
+
+      {/* v0.5.3: separate Dry-run form — posts to the same endpoint
+          but with `?dry=1`, so the server skips every side-effect.
+          No confirm dialog needed; dry-run is reversible by definition. */}
+      <form
+        action={dryRunAvatarForm}
+        className="surface rounded-lg p-4 space-y-3"
+      >
+        <p className="text-xs text-[var(--text-muted)]">
+          {renderT(locale, "avatars.apply.dryCaption")}
+        </p>
+        <input type="hidden" name="cwd" value={diff.encodedCwd} />
         <button
           type="submit"
-          // Inline confirm keeps the click honest without forcing
-          // a separate modal for what's usually a quick action.
-          onClick={(e) => {
-            if (!window.confirm(renderT(locale, "avatars.apply.confirm"))) {
-              e.preventDefault();
-            }
+          className="px-4 py-2 text-sm rounded border"
+          style={{
+            background: "var(--surface-2)",
+            color: "var(--text)",
+            borderColor: "var(--accent)",
           }}
-          className="px-4 py-2 text-sm rounded text-[var(--bg)]"
-          style={{ background: "var(--accent)" }}
         >
-          {renderT(locale, "avatars.apply.cta")}
+          {renderT(locale, "avatars.apply.dryCta")}
         </button>
       </form>
     </div>
@@ -267,6 +298,7 @@ function ApplyReportBanner({
   const totalCount =
     report.installed.length + (report.activated ? 1 : 0) + report.failed.length;
   const isNoOp = totalCount === 0;
+  const isDry = report.dry === true;
   return (
     <section
       className="surface rounded-lg p-4 space-y-3"
@@ -282,11 +314,29 @@ function ApplyReportBanner({
       role="status"
       aria-live="polite"
     >
-      <h2 className="text-xs uppercase tracking-wide text-[var(--text-muted)]">
-        {isNoOp
-          ? renderT(locale, "avatars.apply.noOp")
-          : renderT(locale, "avatars.apply.done")}
-      </h2>
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-xs uppercase tracking-wide text-[var(--text-muted)]">
+          {isNoOp
+            ? renderT(locale, "avatars.apply.noOp")
+            : renderT(locale, "avatars.apply.done")}
+        </h2>
+        {isDry && (
+          <span
+            className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded"
+            style={{
+              color: "var(--accent)",
+              background: "var(--surface-2)",
+            }}
+          >
+            {renderT(locale, "avatars.apply.dryBadge")}
+          </span>
+        )}
+      </div>
+      {isDry && (
+        <p className="text-xs text-[var(--text-muted)] italic">
+          {renderT(locale, "avatars.apply.dryNote")}
+        </p>
+      )}
       <div className="text-xs grid grid-cols-2 sm:grid-cols-4 gap-2">
         <Count
           label={renderT(locale, "avatars.apply.installed")}
@@ -329,7 +379,8 @@ function ApplyReportBanner({
                         : "var(--text-muted)",
                 }}
               >
-                [{s.status}] {s.action}: <code className="kbd">{s.target}</code>
+                [{s.status}]{s.dry ? " (dry)" : ""} {s.action}:{" "}
+                <code className="kbd">{s.target}</code>
                 {s.message && <span className="italic"> — {s.message}</span>}
               </li>
             ))}

@@ -318,6 +318,17 @@ export type Dict = {
   "profiles.fromSession.notFound": string;
   "profiles.fromSession.cta": string;
   "sessions.createProfileCta": string;
+  // Session info card (v0.5.3+)
+  "sessions.info.h2": string;
+  "sessions.info.model": string;
+  "sessions.info.duration": string;
+  "sessions.info.totalTokens": string;
+  "sessions.info.totalCost": string;
+  "sessions.info.toolsUsed": string;
+  "sessions.info.assistantMessages": string;
+  "sessions.info.noUsage": string;
+  "sessions.info.noTools": string;
+  "sessions.info.noModel": string;
   // Session tree explorer (v0.4.13+)
   "sessions.tree.searchPlaceholder": string;
   "sessions.tree.searchLabel": string;
@@ -431,5 +442,10 @@ export type Dict = {
   "avatars.apply.skipped": string;
   "avatars.apply.failed": string;
   "avatars.apply.steps": string;
+  // Avatar apply dry-run (v0.5.3+)
+  "avatars.apply.dryCaption": string;
+  "avatars.apply.dryCta": string;
+  "avatars.apply.dryBadge": string;
+  "avatars.apply.dryNote": string;
   "avatars.apply.noOp": string;
 };

@@ -14,7 +14,12 @@ import { headers } from "next/headers";
 import { api } from "@/lib/pilot";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/types";
-import type { SessionInfo, SessionSnapshot, SessionTree } from "@/lib/types";
+import type {
+  SessionInfo,
+  SessionInfoSummary,
+  SessionSnapshot,
+  SessionTree,
+} from "@/lib/types";
 import { SessionTreeExplorer } from "@/components/SessionTreeExplorer";
 
 interface PageProps {
@@ -25,21 +30,24 @@ async function load(id: string): Promise<{
   tree: SessionTree | null;
   session: SessionInfo | null;
   snapshot: SessionSnapshot | null;
+  info: SessionInfoSummary | null;
   error: string | null;
 }> {
   try {
-    const [tree, sessions, snapshot] = await Promise.all([
+    const [tree, sessions, snapshot, info] = await Promise.all([
       api.sessionTree(id),
       api.sessions(),
       api.sessionSnapshot(id),
+      api.sessionInfo(id),
     ]);
     const session = sessions.find((s) => s.id === id) ?? null;
-    return { tree, session, snapshot, error: null };
+    return { tree, session, snapshot, info, error: null };
   } catch (e) {
     return {
       tree: null,
       session: null,
       snapshot: null,
+      info: null,
       error: (e as Error).message,
     };
   }
@@ -48,7 +56,7 @@ async function load(id: string): Promise<{
 export default async function SessionTreePage({ params }: PageProps) {
   const { id } = await params;
   const decoded = decodeURIComponent(id);
-  const { tree, session, snapshot, error } = await load(decoded);
+  const { tree, session, snapshot, info, error } = await load(decoded);
 
   let locale: Locale = "en";
   try {
@@ -108,6 +116,8 @@ export default async function SessionTreePage({ params }: PageProps) {
       </header>
 
       <SnapshotBanner snapshot={snapshot} locale={locale} />
+
+      <SessionInfoCard info={info} locale={locale} />
 
       <div className="surface rounded-lg p-4 overflow-x-auto">
         <h2 className="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-3">
@@ -253,4 +263,142 @@ function Stat({
       </div>
     </div>
   );
+}
+
+/**
+ * v0.5.3: per-session summary card — model + duration + tokens +
+ * cost + tool usage. Sourced from the same JSONL trace but sliced
+ * per-session instead of aggregated like `/usage`.
+ *
+ * Renders nothing when info is null (404 / pre-derive); the snapshot
+ * banner above already shows the model in its own row.
+ */
+function SessionInfoCard({
+  info,
+  locale,
+}: {
+  info: SessionInfoSummary | null;
+  locale: Locale;
+}) {
+  if (!info) return null;
+
+  const duration = info.durationMs > 0 ? formatDuration(info.durationMs) : "—";
+  const cost =
+    info.totalCost > 0
+      ? `$${info.totalCost.toFixed(4)}`
+      : info.totalCost === 0
+        ? "$0.0000"
+        : "—";
+  const tokens =
+    info.totalTokens > 0
+      ? info.totalTokens.toLocaleString()
+      : renderT(locale, "sessions.info.noUsage");
+
+  return (
+    <section
+      className="surface rounded-lg p-4"
+      aria-label={renderT(locale, "sessions.info.h2")}
+    >
+      <h2 className="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-3">
+        {renderT(locale, "sessions.info.h2")}
+      </h2>
+      <dl className="text-xs grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <InfoField
+          label={renderT(locale, "sessions.info.model")}
+          value={
+            info.model ? (
+              <code className="kbd">{info.model}</code>
+            ) : (
+              <span className="italic text-[var(--text-muted)]">
+                {renderT(locale, "sessions.info.noModel")}
+              </span>
+            )
+          }
+        />
+        <InfoField
+          label={renderT(locale, "sessions.info.duration")}
+          value={duration}
+        />
+        <InfoField
+          label={renderT(locale, "sessions.info.totalTokens")}
+          value={tokens}
+          mono
+        />
+        <InfoField
+          label={renderT(locale, "sessions.info.totalCost")}
+          value={cost}
+          mono
+        />
+        <InfoField
+          label={renderT(locale, "sessions.info.assistantMessages")}
+          value={String(info.assistantMessages)}
+        />
+        <InfoField
+          label={renderT(locale, "sessions.info.toolsUsed")}
+          value={
+            info.toolsUsed.length > 0 ? (
+              <ul className="space-y-0.5">
+                {info.toolsUsed.map((t) => (
+                  <li
+                    key={t.toolName}
+                    className="flex items-center justify-between gap-2"
+                  >
+                    <code className="kbd">{t.toolName}</code>
+                    <span className="text-[10px] text-[var(--text-muted)]">
+                      ×{t.count}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <span className="italic text-[var(--text-muted)]">
+                {renderT(locale, "sessions.info.noTools")}
+              </span>
+            )
+          }
+        />
+      </dl>
+    </section>
+  );
+}
+
+function InfoField({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: React.ReactNode;
+  mono?: boolean;
+}) {
+  return (
+    <div>
+      <dt className="text-[10px] uppercase tracking-wide text-[var(--text-muted)]">
+        {label}
+      </dt>
+      <dd
+        className={`mt-1 ${mono ? "font-mono text-xs" : "text-sm"} break-words`}
+      >
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+/**
+ * Compact human-readable duration. Examples:
+ *   "12s", "3m 4s", "1h 5m", "2d 3h"
+ */
+function formatDuration(ms: number): string {
+  const totalSec = Math.floor(ms / 1000);
+  if (totalSec < 60) return `${totalSec}s`;
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  if (m < 60) return `${m}m ${s}s`;
+  const h = Math.floor(m / 60);
+  const remM = m % 60;
+  if (h < 24) return `${h}h ${remM}m`;
+  const d = Math.floor(h / 24);
+  const remH = h % 24;
+  return `${d}d ${remH}h`;
 }

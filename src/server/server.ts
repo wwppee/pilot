@@ -268,16 +268,21 @@ export async function startServer(
 
   // v0.5.2: apply an Avatar — install missing packs, activate profile.
   // Returns the structured report so the UI can show "installed X / skipped Y".
-  app.post<{ Params: { cwd: string } }>(
-    "/avatars/:cwd/apply",
-    async (req, reply) => {
-      const report = await service.applyAvatar(req.params.cwd);
-      if (!report) {
-        return reply.code(404).send({ error: "avatar not found" });
-      }
-      return report;
-    },
-  );
+  //
+  // v0.5.3: `?dry=1` runs a dry-run (preview) — same report shape, but
+  // no side-effects (no `pi install`, no profile activation). Steps
+  // are flagged `dry: true` and the report root carries `dry: true`.
+  app.post<{
+    Params: { cwd: string };
+    Querystring: { dry?: string };
+  }>("/avatars/:cwd/apply", async (req, reply) => {
+    const dry = req.query.dry === "1" || req.query.dry === "true";
+    const report = await service.applyAvatar(req.params.cwd, { dry });
+    if (!report) {
+      return reply.code(404).send({ error: "avatar not found" });
+    }
+    return report;
+  });
 
   app.delete<{ Params: { cwd: string } }>(
     "/avatars/:cwd",
@@ -368,6 +373,19 @@ export async function startServer(
         return reply.code(404).send({ error: "session not found" });
       }
       return tmpl;
+    },
+  );
+
+  // v0.5.3: per-session summary card (model + duration + tokens +
+  // cost + tool usage). Used by `/sessions/[id]` info banner.
+  app.get<{ Params: { id: string } }>(
+    "/sessions/:id/info",
+    async (req, reply) => {
+      const info = await service.getSessionInfo(req.params.id);
+      if (!info) {
+        return reply.code(404).send({ error: "session not found" });
+      }
+      return info;
     },
   );
 

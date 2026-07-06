@@ -29,6 +29,7 @@ import type {
   SessionInfo,
   SessionSnapshot,
   SessionTemplate,
+  SessionInfoSummary,
   SessionTree,
   Avatar,
   AvatarCurrent,
@@ -129,6 +130,19 @@ export const browserApi = {
     }
   },
 
+  // v0.5.3: per-session summary card.
+  sessionInfo: async (id: string): Promise<SessionInfoSummary | null> => {
+    try {
+      return await browserFetch<SessionInfoSummary>(
+        `/sessions/${encodeName(id)}/info`,
+      );
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (status === 404) return null;
+      throw e;
+    }
+  },
+
   // v0.4.14: Web forge entrypoint (browser-safe variant).
   forgeSearch: (query: string) =>
     browserFetch<Pack[]>(`/forge/search?q=${encodeURIComponent(query)}`),
@@ -187,10 +201,12 @@ export const browserApi = {
   // v0.5.2: apply an Avatar — browser-safe variant.
   applyAvatar: async (
     encodedCwd: string,
+    opts?: { dry?: boolean },
   ): Promise<AvatarApplyReport | null> => {
     try {
+      const qs = opts?.dry ? "?dry=1" : "";
       return await browserFetch<AvatarApplyReport>(
-        `/avatars/${encodeName(encodedCwd)}/apply`,
+        `/avatars/${encodeName(encodedCwd)}/apply${qs}`,
         { method: "POST" },
       );
     } catch (e) {

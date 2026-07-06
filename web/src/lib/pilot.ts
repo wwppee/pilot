@@ -134,6 +134,7 @@ import type {
   SessionInfo,
   SessionSnapshot,
   SessionTemplate,
+  SessionInfoSummary,
   SessionTree,
   Profile,
   ActiveProfile,
@@ -202,6 +203,19 @@ export const api = {
     }
   },
 
+  // v0.5.3: per-session summary card.
+  sessionInfo: async (id: string): Promise<SessionInfoSummary | null> => {
+    try {
+      return await pilot<SessionInfoSummary>(
+        `/sessions/${encodeName(id)}/info`,
+      );
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (status === 404) return null;
+      throw e;
+    }
+  },
+
   // v0.4.14: Web forge entrypoint.
   forgeSearch: (query: string) =>
     pilot<Pack[]>(`/forge/search?q=${encodeURIComponent(query)}`),
@@ -242,12 +256,16 @@ export const api = {
   // v0.5.2: apply an Avatar — install missing packs, activate profile.
   // Returns null when no Avatar exists; the Web UI renders a
   // distinct banner in that case.
+  //
+  // v0.5.3: pass `{dry: true}` to preview without side-effects.
   applyAvatar: async (
     encodedCwd: string,
+    opts?: { dry?: boolean },
   ): Promise<AvatarApplyReport | null> => {
     try {
+      const qs = opts?.dry ? "?dry=1" : "";
       return await pilot<AvatarApplyReport>(
-        `/avatars/${encodeName(encodedCwd)}/apply`,
+        `/avatars/${encodeName(encodedCwd)}/apply${qs}`,
         { method: "POST" },
       );
     } catch (e) {

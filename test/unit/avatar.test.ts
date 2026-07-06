@@ -535,4 +535,70 @@ describe("applyAvatar", () => {
       false,
     );
   });
+
+  // ─── dry-run (v0.5.3+) ──────────────────────────────────
+
+  it("dry-run: reports would-install + would-activate without side-effects", async () => {
+    const home = freshHome();
+    await writeAvatar(
+      {
+        encodedCwd: "--proj--",
+        capturedAt: "2026-07-06T00:00:00Z",
+        profile: "pi-architect",
+        packSources: ["npm:foo", "npm:bar"],
+        extensions: [],
+      },
+      home,
+    );
+
+    const report = await applyAvatar("--proj--", home, { dry: true });
+    expect(report).not.toBeNull();
+    // Same shape as a real apply — UI can reuse the banner.
+    expect(report!.installed).toEqual(["npm:foo", "npm:bar"]);
+    expect(report!.activated).toBe("pi-architect");
+    // Root is flagged dry.
+    expect(report!.dry).toBe(true);
+    // Every step is flagged dry.
+    expect(report!.steps.every((s) => s.dry === true)).toBe(true);
+    // No side-effect calls happened.
+    expect(mockRunPiStreaming).not.toHaveBeenCalled();
+    expect(mockWriteActiveProfile).not.toHaveBeenCalled();
+    // Steps still carry the would-* intent in their messages.
+    const installSteps = report!.steps.filter(
+      (s) => s.action === "install-pack",
+    );
+    expect(installSteps.every((s) => s.message?.includes("dry run"))).toBe(
+      true,
+    );
+  });
+
+  it("dry-run: returns null when no Avatar exists", async () => {
+    const home = freshHome();
+    expect(await applyAvatar("--ghost--", home, { dry: true })).toBeNull();
+  });
+
+  it("dry-run: skips when current state already matches (still dry)", async () => {
+    const home = freshHome();
+    writePiSettings(home, ["npm:foo"]);
+    writeProfile(home, "pi-architect", {});
+    writeActiveProfile(home, "pi-architect");
+    await writeAvatar(
+      {
+        encodedCwd: "--proj--",
+        capturedAt: "2026-07-06T00:00:00Z",
+        profile: "pi-architect",
+        packSources: ["npm:foo"],
+        extensions: [],
+      },
+      home,
+    );
+
+    const report = await applyAvatar("--proj--", home, { dry: true });
+    expect(report).not.toBeNull();
+    expect(report!.installed).toEqual([]);
+    expect(report!.activated).toBeUndefined();
+    expect(report!.dry).toBe(true);
+    expect(mockRunPiStreaming).not.toHaveBeenCalled();
+    expect(mockWriteActiveProfile).not.toHaveBeenCalled();
+  });
 });

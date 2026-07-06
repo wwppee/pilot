@@ -42,6 +42,7 @@ import { discoverProjectContext } from "./project-context.js";
 import { listAllSessions, sortByRecent } from "./sessions.js";
 import { deriveSnapshot } from "./session-snapshot.js";
 import { deriveTemplate } from "./session-template.js";
+import { deriveSessionInfo } from "./session-info.js";
 import { listSources, readSettings } from "./settings.js";
 import { forgeAbsorb, forgeInspect, forgeSearch } from "./forge.js";
 import {
@@ -125,6 +126,7 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
     readSessionTree: (id) => readSessionTreeById(id, home),
     getSnapshot: (id) => deriveSnapshot(id, home),
     getSessionTemplate: (id) => deriveTemplate(id, home),
+    getSessionInfo: (id) => deriveSessionInfo(id, home),
 
     forgeSearch: (q) => forgeSearch(q),
     forgeInspect: (name) => forgeInspect(name),
@@ -135,7 +137,7 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
     readAvatar: (encodedCwd) => readAvatarCore(encodedCwd, home),
     captureAvatar: (encodedCwd) => captureAvatarCore(encodedCwd, home),
     deleteAvatar: (encodedCwd) => deleteAvatarCore(encodedCwd, home),
-    applyAvatar: (encodedCwd) => applyAvatarCore(encodedCwd, home),
+    applyAvatar: (encodedCwd, opts) => applyAvatarCore(encodedCwd, home, opts),
     readCurrentState: () => readCurrentStateCore(home),
     diffAvatar: async (encodedCwd) => {
       const avatar = await readAvatarCore(encodedCwd, home);

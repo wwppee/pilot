@@ -96,6 +96,33 @@ export type StatsRange =
   | { kind: "lastDays"; days: number }
   | { kind: "all" };
 
+/**
+ * v0.5.3: per-session summary card — derived from the same JSONL
+ * trace that v0.4.2 usage stats pull from, but sliced per-session
+ * instead of aggregated across all sessions.
+ */
+export interface SessionToolUsage {
+  toolName: string;
+  count: number;
+}
+
+export interface SessionInfoSummary {
+  sessionId: string;
+  cwd?: string;
+  /** First assistant message's model. */
+  model?: string;
+  startedAt?: string;
+  endedAt?: string;
+  /** Wall-clock span (first → last entry timestamp). */
+  durationMs: number;
+  totalMessages: number;
+  assistantMessages: number;
+  totalTokens: number;
+  /** Sum of usage.cost.total across assistant messages (USD). */
+  totalCost: number;
+  toolsUsed: SessionToolUsage[];
+}
+
 // ─── Capability diff (v0.5.1+) ──────────────────────────────
 
 /**
@@ -245,12 +272,17 @@ export interface AvatarDiff {
  * v0.5.2: result of `applyAvatar` — bring current state into alignment
  * with the Avatar's expectations. Mirrors core/avatar.ts
  * `AvatarApplyReport`.
+ *
+ * v0.5.3: dry-run adds `dry?: boolean` to both the per-step and the
+ * report root. UI uses this to swap the banner framing — when
+ * `report.dry === true`, no side-effects actually happened.
  */
 export interface AvatarApplyStep {
   action: "install-pack" | "activate-profile" | "none";
   target: string;
   status: "ok" | "skipped" | "failed";
   message?: string;
+  dry?: boolean;
 }
 
 export interface AvatarApplyReport {
@@ -260,6 +292,7 @@ export interface AvatarApplyReport {
   activated?: string;
   skipped: string[];
   failed: string[];
+  dry?: boolean;
 }
 
 // ─── Usage (v0.4.2+) ──────────────────────────────────────────

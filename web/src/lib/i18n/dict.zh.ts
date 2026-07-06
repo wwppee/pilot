@@ -320,6 +320,18 @@ const zh: Dict = {
   "profiles.fromSession.cta": "基于此 session 创建 profile →",
   "sessions.createProfileCta": "基于此 session 创建 profile",
 
+  // Session info 卡片 (v0.5.3+)
+  "sessions.info.h2": "汇总",
+  "sessions.info.model": "模型",
+  "sessions.info.duration": "耗时",
+  "sessions.info.totalTokens": "总 tokens",
+  "sessions.info.totalCost": "总花费",
+  "sessions.info.toolsUsed": "工具调用",
+  "sessions.info.assistantMessages": "助手消息数",
+  "sessions.info.noUsage": "（暂无使用记录）",
+  "sessions.info.noTools": "（无工具调用）",
+  "sessions.info.noModel": "（暂无助手消息）",
+
   // Session 树交互 (v0.4.13+)
   "sessions.tree.searchPlaceholder": "搜索预览…",
   "sessions.tree.searchLabel": "搜索节点预览文本",
@@ -439,6 +451,12 @@ const zh: Dict = {
   "avatars.apply.done": "应用完成",
   "avatars.apply.installed": "已安装",
   "avatars.apply.activated": "已激活",
+  // Avatar apply 试运行 (v0.5.3+)
+  "avatars.apply.dryCaption":
+    "预览应用会做什么 —— 同样的报告，但不跑 `pi install`、不切换 profile。磁盘不会有任何变化。",
+  "avatars.apply.dryCta": "试运行",
+  "avatars.apply.dryBadge": "试运行",
+  "avatars.apply.dryNote": "（试运行 —— 未做任何修改）",
   "avatars.apply.skipped": "已跳过",
   "avatars.apply.failed": "失败",
   "avatars.apply.steps": "步骤",

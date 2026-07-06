@@ -33,11 +33,13 @@ import type { UsageRange, UsageReport } from "./usage.js";
 import type { InstalledPack, Pack, SessionInfo, SessionTree } from "./types.js";
 import type { SessionSnapshot } from "./session-snapshot.js";
 import type { SessionTemplate } from "./session-template.js";
+import type { SessionInfoSummary } from "./session-info.js";
 import type {
   Avatar,
   AvatarCurrent,
   AvatarDiff,
   AvatarApplyReport,
+  AvatarApplyOptions,
 } from "./avatar.js";
 import type { CapabilityDiff } from "./capability-diff.js";
 
@@ -150,6 +152,13 @@ export interface PilotService {
    */
   getSessionTemplate(id: string): Promise<SessionTemplate | null>;
 
+  /**
+   * v0.5.3: per-session summary card — model + duration + total
+   * tokens/cost + tool-usage counts. Returns null when the session
+   * file is gone. Pure derivation, no side effects.
+   */
+  getSessionInfo(id: string): Promise<SessionInfoSummary | null>;
+
   // ─── Forge (v0.4.14+) ────────────────────────────────
 
   /** Search npm for forge-able packages. */
@@ -228,7 +237,10 @@ export interface PilotService {
    * Reasoning: regenerating a policy should be an explicit choice,
    * not a side effect of "set up the project".
    */
-  applyAvatar(encodedCwd: string): Promise<AvatarApplyReport | null>;
+  applyAvatar(
+    encodedCwd: string,
+    opts?: AvatarApplyOptions,
+  ): Promise<AvatarApplyReport | null>;
 
   /**
    * Stream tool call events from a session. Each `ToolResultMessage`

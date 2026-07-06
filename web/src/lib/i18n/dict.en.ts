@@ -335,6 +335,18 @@ const en: Dict = {
   "profiles.fromSession.cta": "Create a profile from this session →",
   "sessions.createProfileCta": "Create profile from this session",
 
+  // Session info card (v0.5.3+)
+  "sessions.info.h2": "Summary",
+  "sessions.info.model": "model",
+  "sessions.info.duration": "duration",
+  "sessions.info.totalTokens": "total tokens",
+  "sessions.info.totalCost": "total cost",
+  "sessions.info.toolsUsed": "tools used",
+  "sessions.info.assistantMessages": "assistant messages",
+  "sessions.info.noUsage": "(no usage recorded)",
+  "sessions.info.noTools": "(no tool calls recorded)",
+  "sessions.info.noModel": "(no assistant messages yet)",
+
   // Session tree explorer (v0.4.13+)
   "sessions.tree.searchPlaceholder": "search preview…",
   "sessions.tree.searchLabel": "Search node preview text",
@@ -459,6 +471,12 @@ const en: Dict = {
   "avatars.apply.done": "Apply complete",
   "avatars.apply.installed": "installed",
   "avatars.apply.activated": "activated",
+  // Avatar apply dry-run (v0.5.3+)
+  "avatars.apply.dryCaption":
+    "Preview what Apply would do — same report, but no `pi install` runs and no profile gets activated. Nothing changes on disk.",
+  "avatars.apply.dryCta": "Dry-run",
+  "avatars.apply.dryBadge": "dry run",
+  "avatars.apply.dryNote": "(dry run — no changes made)",
   "avatars.apply.skipped": "skipped",
   "avatars.apply.failed": "failed",
   "avatars.apply.steps": "Steps",

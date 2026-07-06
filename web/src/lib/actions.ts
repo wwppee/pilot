@@ -396,3 +396,41 @@ export async function applyAvatarForm(formData: FormData): Promise<void> {
     );
   }
 }
+
+/**
+ * v0.5.3: dry-run variant of applyAvatarForm. Same shape, same
+ * report, same redirect — but the `?dry=1` query flag tells the server
+ * to skip every side-effect. The /avatars/[cwd] page detects `dry=1`
+ * in the report (and `applied=1` in the URL) and switches the banner
+ * to "(dry run — no changes made)".
+ *
+ * Kept separate from applyAvatarForm so the UI can offer it as its
+ * own button without needing a client component to switch behavior.
+ */
+export async function dryRunAvatarForm(formData: FormData): Promise<void> {
+  const cwd = formData.get("cwd");
+  if (typeof cwd !== "string" || cwd.length === 0) return;
+
+  const res = await pilotWithCsrf(
+    `/avatars/${encodeURIComponent(cwd)}/apply?dry=1`,
+    { method: "POST" },
+  );
+
+  if (res.ok) {
+    const report = (await res.json()) as {
+      installed: string[];
+      activated?: string;
+      skipped: string[];
+      failed: string[];
+    };
+    const summary = JSON.stringify(report);
+    redirect(
+      `/avatars/${encodeURIComponent(cwd)}?applied=1&dry=1&report=${encodeURIComponent(summary)}`,
+    );
+  } else {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    redirect(
+      `/avatars/${encodeURIComponent(cwd)}?error=${encodeURIComponent(body.error ?? "dry run failed")}`,
+    );
+  }
+}
