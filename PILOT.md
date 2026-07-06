@@ -1,8 +1,21 @@
 # Pilot — Design Overview
 
-> **Pi 跑活，Pilot 管 Pi。**
+> **Pilot = Pi 的 Co-pilot。**
 >
-> Pilot 是 Pi 的管理平面：它不运行 agent，只管理 Pi 的包、会话、profile、消耗、健康状态和能力组合。Forge 让 Pi 吸收扩展生态，Avatars 让不同会话树拥有不同能力。
+> Pilot 给 Pi 装一套"管理 + 能力"工具栈：CLI/Web 让人看见 Pi 在做什么，`pilot agent` 帮你起 Pi 并装上 Pilot 的工具集，Pi 在跑活时可以反过来调 Pilot 的命令来即装即用 Forge 包、切 profile、抓 Avatar、补会话上下文。Forge 让 Pi 吸收扩展生态，Avatars 让不同项目拥有不同能力配置。
+
+---
+
+## 0. 一句话定位（v0.5.4 修正）
+
+> Pilot **不替代** Pi 跑活，但 **是 Pi 跑活的最佳搭档**：
+>
+> - **看见 Pi**：CLI / Web 看包、会话、profile、消耗、能力组合
+> - **管理 Pi**：`pilot pack install`、`pilot profile activate`、`pilot avatar apply` 直接驱动 Pi 的状态
+> - **给 Pi 装工具**：`pilot agent` 启动 Pi 时自动加载 `pilot-tools` extension，让 LLM 在会话内就能调 Pilot 的命令（"装这个包"、"切那个 profile"、"存当前 Avatar"）
+> - **和 Pi 一起长**：Forge 让 Pi 吸收扩展生态，Avatars 让不同项目拥有不同能力组合
+
+**Pilot 是双向桥，不是单向观察者。**
 
 ---
 
@@ -47,44 +60,48 @@
 
 ---
 
-## 3. 一句话定位
+## 3. 一句话定位（v0.5.4 修正：双向桥）
 
 **完整版**（vision.md / 演讲）：
-> Pilot 是 Pi 的管理平面：它不运行 agent，只管理 Pi 的包、会话、profile、消耗、健康状态和能力组合。Pi 跑活，Pilot 管 Pi；Forge 让 Pi 吸收扩展生态，Avatars 让不同会话树拥有不同能力。
+> Pilot = Pi 的 Co-pilot。Pilot 不替代 Pi 跑活，但是 Pi 跑活的最佳搭档——CLI / Web UI 让你看见和管理 Pi 的状态（包、会话、profile、消耗、能力），`pilot agent` 帮你起 Pi 时自动装上 Pilot 的工具集，让 Pi 在会话内也能反过来调 Pilot 的命令即装即用。Forge 让 Pi 吸收扩展生态，Avatars 让不同项目拥有不同能力组合。
 
 **短版**（README）：
-> Pi 跑活，Pilot 管 Pi。Pilot 管包、管会话、管 profile、看消耗、做体检，并把扩展生态沉淀成可组合的 Pi 能力。
+> Pilot = Pi 的 Co-pilot。管包、管会话、管 profile、看消耗、做体检；还能在 Pi 跑活时给 LLM 装上自己的工具（pilot-tools extension），让 Pi 自己调整能力。开源。
 
 **Tweet 版**：
-> Pilot = Pi 的管理平面 + 能力操作系统。CLI / Web UI / Extension 三入口，包 / 会话 / profile / 消耗 / 体检 / 能力组合全覆盖。开源。
+> Pilot = Pi 的 Co-pilot + 能力操作系统。CLI / Web UI / Agent 三入口；包 / 会话 / profile / 消耗 / 体检 / 能力组合 / 双向桥 全覆盖。开源。
 
 ---
 
 ## 4. 模块总览（v0.1 已实现的 6 个 + 远期）
 
-| 模块 | v0.1 状态 | 关键命令 |
+| 模块 | 状态 | 关键命令 / 入口 |
 |---|---|---|
-| **Pack** | ✅ | `pack ls/search/info/install` |
-| **Session** | ✅ | `session ls/search` |
-| **Profile** | v0.3 | `profile ls/use/create/set/apply` |
-| **Stats** | v0.3 | `stats today/week/by-model/by-pack` |
+| **Pack** | ✅ | `pack ls/search/info/install/uninstall` |
+| **Session** | ✅ | `session ls/search` + Web `/sessions/[id]` 详情 |
+| **Profile** | ✅ | `profile ls/use/create/set/apply` |
+| **Stats** | ✅ | `stats today/week/by-model/by-pack` |
 | **Doctor** | ✅ | `doctor` / `doctor --json` |
-| **Server** | v0.2 | `server`（127.0.0.1:17361） |
-| **Web UI** | v0.3.5 | `ui`（3 个只读页） |
-| **Forge** | v0.4 | `forge search/inspect/absorb/eval/build` |
-| **Avatar** | v0.5 | `avatar create/add/run/diff` |
+| **Server** | ✅ | `server`（127.0.0.1:17361） |
+| **Web UI** | ✅ | Next.js 16 + Tailwind 4，~20 路由 |
+| **Forge** | ✅ | `forge search/inspect/absorb/eval/build` |
+| **Avatar** | ✅ | `avatar ls/capture/diff/apply`（含 dry-run） |
+| **Capability diff** | ✅ | `capability diff <a> <b>` + Web `/capabilities/diff` |
+| **Pilot agent** | v0.5.4 NEW | `pilot agent [--cwd X]` 起 Pi，自动装 `pilot-tools` extension |
+| **Pilot-tools extension** | v0.5.4 NEW | 给 Pi 的 LLM 暴露 ~10 个 Pilot 命令作为工具 |
 
 ---
 
-## 5. 三段式路线图
+## 5. 三段式路线图（v0.5.4 修正）
 
 | 阶段 | 版本 | 周期 | 重点 |
 |---|---|---|---|
 | **看见 Pi** | v0.1.x | 已发 | pack / session / doctor 基础 |
-| **管理 Pi** | v0.2 - v0.3.5 | 2-3 月 | service 抽象 + server + Web UI + profile + session tree |
-| **进化 Pi** | v0.4 - v1.0 | 4-6 月 | Forge + Avatars + Session snapshot + pi extension |
+| **管理 Pi** | v0.2 - v0.3.5 | 已发 | service 抽象 + server + Web UI + profile + session tree |
+| **进化 Pi** | v0.4 - v0.5.3 | 已发 | Forge + Avatars + Session snapshot + Capability diff |
+| **和 Pi 一起跑** | v0.5.4 - v0.6.x | 进行中 | `pilot agent` 起 Pi + `pilot-tools` extension 让 Pi 调 Pilot + Web 嵌入 |
 
-详细见 [`docs/roadmap.md`](./docs/roadmap.md)。
+详细见 [`docs/roadmap.md`](./docs/roadmap.md) 和 [`docs/roadmap-pi-grounded.md`](./docs/roadmap-pi-grounded.md)。
 
 ---
 
@@ -141,7 +158,7 @@
 
 ## 9. 不要做
 
-- ❌ 替代 Pi 做 agent
+- ❌ 替代 Pi 跑活（Pi 是 source of truth，Pilot 是 Co-pilot）
 - ❌ 复制 Pi 的 session / package / model
 - ❌ 抓取闭源产品内部 prompt
 - ❌ 承诺"等价 Claude Code / Codex / Kimi"
@@ -150,9 +167,10 @@
 - ❌ 直接 patch 全局 `~/.pi/agent/settings.json`（除非显式 apply）
 - ❌ 把 server 暴露到 0.0.0.0
 - ❌ 跳过 eval 直接 promote 能力到库
+- ❌ 在不告诉用户的情况下偷偷重写 Pi 的 prompt（pilot-tools extension 只能暴露显式声明的工具给 LLM）
 
 ---
 
-## 10. 一句话总结
+## 10. 一句话总结（v0.5.4 修正）
 
-> Pilot 是 Pi 的**管理平面** + 能力操作系统。Pi 跑活，Pilot 管 Pi；Forge 让 Pi 吸收扩展生态，Avatars 让不同会话树拥有不同能力。
+> Pilot 是 Pi 的 **Co-pilot**：看见 Pi、管 Pi、给 Pi 装工具。Forge 让 Pi 吸收扩展生态，Avatars 让不同项目拥有不同能力组合；`pilot agent` + `pilot-tools` extension 让 Pi 跑活时 LLM 自己就能调 Pilot 的命令来调整能力。

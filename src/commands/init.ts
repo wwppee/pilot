@@ -36,6 +36,10 @@ import { isPiInstalled } from "../core/pi-cli.js";
 import { pilotDir } from "../core/types.js";
 import type { Command, PilotContext } from "../core/types.js";
 import { isPortOpen } from "../utils/net.js";
+import {
+  installPilotTools,
+  resolveInstallDir,
+} from "../core/extension-installer.js";
 
 export const manifest: Command = {
   name: "init",
@@ -56,6 +60,8 @@ interface InitReport {
   serverStarted: boolean;
   serverUrl?: string;
   token?: string;
+  /** v0.5.4: status of pilot-tools extension install (created / already-linked / replaced / "") */
+  extensionAction: string;
   steps: string[];
 }
 
@@ -86,6 +92,19 @@ export async function run(args: string[], ctx: PilotContext): Promise<number> {
 
   const piInstalled = await isPiInstalled();
   const fdInstalled = await isCommandAvailable("fd");
+
+  // ── v0.5.4: install pilot-tools extension so `pilot agent`
+  //    works out of the box. Idempotent — no-op if already linked.
+  let extensionAction = "";
+  if (piInstalled) {
+    try {
+      const here = resolveInstallDir(dirname(fileURLToPath(import.meta.url)));
+      const r = await installPilotTools(here);
+      if (r.ok) extensionAction = r.action;
+    } catch {
+      /* install is best-effort; user can retry via `pilot agent` */
+    }
+  }
 
   // ── Run doctor for the real report ──────────────────────
   const report = await ctx.service.runDoctor();
@@ -172,6 +191,11 @@ export async function run(args: string[], ctx: PilotContext): Promise<number> {
       `Try the policy demo: ${kleur.cyan("pilot policy new demo && pilot policy apply demo && pilot policy show demo")}`,
     );
   }
+  if (piInstalled) {
+    steps.push(
+      `Launch Pi with Pilot's tools loaded: ${kleur.cyan("pilot agent")} (Co-pilot mode)`,
+    );
+  }
   steps.push(`Run ${kleur.cyan("pilot --help")} to see all commands`);
 
   const result: InitReport = {
@@ -187,6 +211,7 @@ export async function run(args: string[], ctx: PilotContext): Promise<number> {
     serverStarted,
     ...(serverUrl ? { serverUrl } : {}),
     ...(token ? { token } : {}),
+    extensionAction,
     steps,
   };
 
@@ -238,6 +263,16 @@ function printBanner(r: InitReport, noOpen: boolean): void {
     if (r.serverUrl) lines.push(`    URL:   ${kleur.cyan(r.serverUrl)}`);
     if (r.token)
       lines.push(`    Token: ${kleur.dim(r.token.slice(0, 12) + "…")}`);
+  }
+
+  // v0.5.4: pilot-tools extension status (Co-pilot bridge).
+  if (r.extensionAction === "created") {
+    lines.push("");
+    lines.push(kleur.green("  ✓ pilot-tools extension installed"));
+    lines.push(kleur.dim("    Pi's LLM can now call Pilot commands"));
+  } else if (r.extensionAction === "replaced") {
+    lines.push("");
+    lines.push(kleur.green("  ✓ pilot-tools extension re-linked"));
   }
 
   // Cheatsheet

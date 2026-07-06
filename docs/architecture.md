@@ -1,14 +1,15 @@
 # Architecture
 
-> v0.1 单包结构。v0.2 起转为 pnpm monorepo。
+> v0.1 单包结构。v0.2 起转为 pnpm monorepo（实际已 flatten 回单包，详见 src/）。
 
 ## 1. 边界（最重要的部分）
 
-### `~/.pi/agent/`（Pi 拥有，Pilot 主要读）
+### `~/.pi/agent/`（Pi 拥有，Pilot 通过 extension 协作）
 
 | 路径 | Pi 写 | Pilot 读 | Pilot 写 |
 |---|---|---|---|
-| `extensions/` | ✅ | ✅ | ❌（用 `pi install`） |
+| `extensions/pilot-tools.ts` | ❌ | ✅ | ⚠️ **仅 symlink**（v0.5.4+ NEW；指到 `~/.pilot/extensions/pilot-tools.ts`） |
+| `extensions/其他` | ✅ | ✅ | ❌（用 `pi install`） |
 | `skills/` | ✅ | ✅ | ❌ |
 | `prompt-templates/` | ✅ | ✅ | ❌ |
 | `themes/` | ✅ | ✅ | ❌ |
@@ -19,6 +20,8 @@
 ### `~/.pilot/`（Pilot 自己维护）
 
 ```
+extensions/         # v0.5.4 NEW: pilot-tools.ts 真源（source of truth）
+                    # ~/.pi/agent/extensions/pilot-tools.ts 软链到这里
 teams/                # Meta-pack TOML（v0.2）
 profiles/             # 命名 profile（v0.3）
 capabilities/         # 能力库（v0.4）
@@ -36,11 +39,13 @@ forge-state.json      # 当前项目能力使能快照（v0.4）
 runtime/              # 临时 runtime 隔离（v0.5）
 ```
 
-**关键原则**：
+**关键原则**（v0.5.4 修正）：
 - Pilot 不复制 Pi 的 session、package、model、settings
-- Pilot 可以创建自己的配置目录、缓存、能力库
+- Pilot 可以创建自己的配置目录、缓存、能力库、**extension 真源**
+- Pilot 通过软链把 extension 暴露给 Pi；**只暴露 pilot-tools.ts**（不污染 Pi 的 extension 目录）
 - Profile 默认用 overlay，**不直接 patch 全局 settings.json**
-- 只有用户显式执行 `pilot profile apply` / `pilot avatar install` 时，才写入 `~/.pi/agent/`
+- 只有用户显式执行 `pilot profile apply` / `pilot avatar apply` 时，才写入 `~/.pi/agent/`
+- Pilot **不替代** Pi 跑活，但是 Pi 跑活的最佳搭档（双向桥）
 
 ## 2. 目录结构（v0.2 起 monorepo）
 

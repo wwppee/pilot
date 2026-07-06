@@ -1,7 +1,7 @@
 {
   "name": "pilot",
-  "version": "0.5.3",
-  "description": "Pilot — management plane for pi.dev coding agent. Pack manager, session manager, profile manager, stats, and doctor.",
+  "version": "0.5.4",
+  "description": "Pilot — co-pilot for pi.dev coding agent. Pack manager, session manager, profile manager, stats, doctor, and a Pi extension that lets Pi's LLM call Pilot commands mid-conversation.",
   "type": "module",
   "main": "./dist/cli.js",
   "bin": {
@@ -13,7 +13,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && mkdir -p dist/extensions && cp src/extensions/*.ts dist/extensions/",
     "dev": "tsx src/cli.ts",
     "start": "node dist/cli.js",
     "test": "vitest run",
@@ -24,6 +24,7 @@
     "lint": "eslint src test --max-warnings 0",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" && (cd web && npx prettier --write .)",
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\" && (cd web && npx prettier --check .)",
+    "copy-extension": "mkdir -p dist/extensions && cp src/extensions/*.ts dist/extensions/",
     "release": "np"
   },
   "keywords": [
