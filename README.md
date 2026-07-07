@@ -1,21 +1,29 @@
 # Pilot
 
-> **Pi 跑活，Pilot 管 Pi。**
+> **Pilot — 自主智能体工具。规划任务、选择工具、编排流程、自主迭代。**
 >
-> Pilot 不运行 agent，只管理 Pi：包、会话、profile、policy、消耗、健康状态、可视化画布。
+> Pilot 在 Pi 的旁边，帮你**看见 pi 在做什么、管 pi 的配置、规划复杂任务、编排多步执行、根据反馈自主调整路线**。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Node ≥ 20](https://img.shields.io/badge/node-%E2%89%A520-green.svg)](https://nodejs.org)
 [![CI](https://img.shields.io/github/actions/workflow/status/wwppee/pilot/ci.yml?label=CI)](https://github.com/wwppee/pilot/actions)
 [![Latest release](https://img.shields.io/github/v/release/wwppee/pilot)](https://github.com/wwppee/pilot/releases/latest)
 
-[Pi](https://pi.dev) 是一个极简的终端编码 agent。**Pilot 是 Pi 的"管理平面"（management plane）**——它不是 runtime，不替代 pi，也不复刻 pi 的功能。它在 pi 的旁边，帮你**看见 pi 在做什么、管 pi 的配置、把 pi 的扩展生态沉淀成可组合的资产**。
+[Pi](https://pi.dev) 是一个极简的终端编码 agent。**Pilot 是 Pi 的"能力操作系统"**——它不只是管理面板，更是**规划层和编排层**。Pilot 不运行 LLM，但它能：
+
+- **规划任务** — 把一个目标分解为有序的 Tasks 和 Steps
+- **选择工具** — 根据任务目标推荐合适的工具和 Profile
+- **编排流程** — 安排步骤时序、管理依赖、处理条件分支
+- **自主迭代** — 执行 → 观察结果 → 调整计划 → 继续执行（v0.7.0）
+- **管理 Pi** — 包、会话、profile、policy、消耗、Avatar、Capability
+
+核心理念：**Pilot 规划，Pi 执行。工具层干涉，无需 Pi 配合。**
 
 ## 三句话讲清
 
-1. **`pilot dashboard`** —— 一键起本地 Web UI，看会话、看消耗、看工具、看策略。
-2. **`pilot policy`** —— 写 TOML 规则，自动生成 pi extension 在下次启动时强制执行（`/usr/bin/rm -rf /` 直接 blocked）。
-3. **`pilot compose`** —— 把 session / pack / profile / policy / capability 拖到画布上自由摆，跨 reload 保留。
+1. **`pilot plan new "实现用户登录"`** —— 创建一个执行计划，把目标分解为步骤，安排工具和流程。
+2. **`pilot policy apply safe-bash`** —— 写 TOML 规则，自动生成 pi extension 在下次启动时强制执行。
+3. **`pilot dashboard`** —— 一键起本地 Web UI，看会话、看消耗、管理计划、可视化编排。
 
 ## 30 秒上手
 
@@ -71,6 +79,12 @@ pilot dashboard --prod
 | `pilot policy apply safe-bash` | 生成 pi extension + 自动加载 | 策略生效 |
 | `pilot policy check safe-bash bash --arg command='rm -rf /'` | 试一条规则 | 调试策略 |
 | `pilot capability ls` | 看本地 capability 库（v0.4+ 沉淀的资产） | 复用以前的探索 |
+| `pilot plan new "实现用户登录"` | 创建执行计划 — 分解目标为 Tasks/Steps | 开始一个多步任务 |
+| `pilot plan ls` | 列出所有计划 | 查看计划状态 |
+| `pilot plan show <id>` | 查看计划详情（Tasks / Steps / 状态） | 了解执行进度 |
+| `pilot plan run <id>` | 开始执行计划 | 启动编排 |
+| `pilot plan pause <id>` | 暂停执行中的计划 | 需要干预时 |
+| `pilot plan suggest-tools "解析 CSV"` | 根据目标推荐工具和 Profile | 选择最佳工具组合 |
 
 > 网络测试 (`pilot pack install`、`pilot pack search`、forge 等) 在 sandbox/CI 里设 `PILOT_SKIP_NETWORK=1` 可以跳过；本地跑不需要。
 
@@ -137,15 +151,16 @@ scripts/
 tests/             # 单测
 ```
 
-## 5 个核心概念
+## 6 个核心概念
 
 | 概念 | 是什么 | 在哪儿 |
 |---|---|---|
+| **Plan** | 一个执行计划 — 把用户目标分解为有序 Tasks 和 Steps，支持 sequential/parallel/adaptive 策略 | `~/.pilot/plans/<id>.toml` |
 | **Pack** | 一个 pi extension / skill / theme / prompt 包 | `~/.pi/agent/npm/` (源), `pilot/pack` 管 |
 | **Profile** | 一组"换模型 + 换 team + 换 thinking"的预设 | `~/.pilot/profiles/<name>.toml` |
 | **Policy** | 工具白/黑名单 + 路径 deny + 命令 deny + 敏感 redact + HITL | `~/.pilot/policy/<name>.toml` → 生成 `~/.pilot/extensions/pilot-policy-<name>.ts` |
 | **Capability** | 把 npm 包"蒸馏"成可复用的能力定义 (L1 referenced / L2 wrapped) | `~/.pilot/capabilities/` |
-| **Compose** | 一个保存的视觉布局：哪些 session / pack / profile / policy 在一起 | Web UI localStorage + JSON 导出 |
+| **Compose** | 视觉编排画布：拖拽 entities 到 sandbox，跨 reload 保留 | Web UI localStorage + JSON 导出 |
 
 ## 一个真实的工作流
 
@@ -218,32 +233,29 @@ const POLICY = {
 
 ## 设计原则（也是边界）
 
-1. **Pi 是 source of truth。** Pilot 永远不复制 Pi 的 session / package / model / settings —— 它读，但几乎不写。
+1. **Pi 是 source of truth。** Pilot 读 Pi 的数据，在需要干涉时直接写入 settings.json / extensions（经用户确认）。
 2. **`~/.pilot/` 是 Pilot 自己的。** 不污染 `~/.pi/agent/`，除非用户显式 `apply`。撤销就是 `unapply` + 删 TOML。
 3. **不抓取闭源产品的内部实现。** 我们复刻的是"公开可观察的工作流行为"，不是源码。
 4. **不承诺"等价 Claude Code"。** 表述永远是 "inspired by"，每个 capability 都标 L1 / L2 / L3 / L4 来自程度。
-5. **Pilot 是 management plane，不是 runtime interceptor。** 我们不替你跑 pi。pi 该崩还是崩 —— 我们只是让你知道它崩了、为什么崩、怎么避免下次。
+5. **Pilot 规划，Pi 执行。** Pilot 做任务分解、工具选择、流程编排；Pi 做实际的代码生成和工具调用。Pilot 可以通过工具层直接修改 Pi 的行为。
 
-## 路线图（实际跑过的）
+## 路线图
 
-- ✅ v0.1-v0.4.0：包、会话、profile、server、Web UI、stats、capability、forge
-- ✅ v0.4.2：**usage + tool + context** — 看 pi 在花多少钱、看它能调啥工具、看 AGENTS.md 是否加载
-- ✅ v0.4.3：**policy** — 真·能 enforce 的策略，TOML → pi extension 闭环
-- ✅ v0.4.4：**compose** — 视觉画布，把 entities 拖到 sandbox 摆着
-- ✅ v0.4.5：**cozy 2.5D skin** — `/compose` 一键切到 cream/sage 沙盘
-- ✅ v0.4.6：**init + dashboard --prod + release.sh** — 首次引导 + 生产模式 + 一键发版
-- ✅ v0.4.7：**edit policy in browser + browser API proxy** — policy 编辑搬上 Web；浏览器透过 Next.js `/api/pilot/*` 代理访问 server，token 永远在 server 侧
-- ⏭️ v0.5：block-to-block 箭头、sandbox rotate/zoom、policy 版本控制
+- ✅ v0.1-v0.5.6：包、会话、profile、server、Web UI、stats、capability、forge、policy、compose、avatar、co-pilot 模式
+- 🔨 v0.6.0：**Agent 能力层 — Plan 数据模型 + 任务规划 + 工具推荐 + Plan CRUD API**
+- ⏳ v0.7.0：**自适应执行引擎 — 反馈分析 + 错误恢复 + 自主循环迭代**
+- ⏳ v0.8.0：**工作流模板 — 从历史 Plan 提取可复用模板**
+- ⏳ v0.9.0：**多 Plan 编排 — DAG 依赖 + 并行执行**
 
-完整 roadmap：[`docs/roadmap-pi-grounded.md`](./docs/roadmap-pi-grounded.md)。
+完整 roadmap：[`docs/roadmap.md`](./docs/roadmap.md)、[`docs/roadmap-agent.md`](./docs/roadmap-agent.md)。
 
 ## 数字
 
-- **270 / 270** 单测（`npm run test:offline` ~6 秒跑完，离线，0 网络）
-- **43 / 43** Web vitest（v0.4.8 加了 23 个 axe-core a11y 测试）
+- **454 / 456** 单测（`npm run test:offline` ~7 秒跑完，离线，0 网络）
+- **100 / 100** Web vitest
 - **TypeScript strict 0 errors**
-- Web build 18 个路由
-- 14 个 CLI 命令（init / dashboard / server / pack / session / profile / stats / usage / tool / context / policy / capability / forge / doctor）
+- Web build 20+ 个路由
+- 16 个 CLI 命令（init / dashboard / server / pack / session / profile / stats / usage / tool / context / policy / capability / forge / doctor / agent / **plan**）
 - 1 条命令发布：`./scripts/release.sh <version>`
 
 ## 可访问性（v0.4.8 起）
@@ -280,49 +292,14 @@ cd web && npx vitest run tests/a11y.test.tsx
 # 23 tests, <200ms
 ```
 
-## 开发者入门
-
-```bash
-git clone https://github.com/wwppee/pilot.git
-cd pilot
-npm install
-npm run dev -- doctor        # tsx 直接跑 src/cli.ts
-npm run test:offline         # 全部单测，离线 ~7 秒
-npm run build                # tsc → dist/
-```
-
-发版（v0.4.6+ 一条命令）：
-
-```bash
-./scripts/release.sh 0.4.6            # 自动 bump + test + tag + GitHub release
-./scripts/release.sh patch            # 自动 bump patch
-./scripts/release.sh --dry-run 0.4.6 # 看流程不真改
-```
-
-目录结构（5 秒看懂）：
-
-```
-src/
-  core/        # PilotService + 所有数据模型（policy / tool / session / …）
-  commands/    # CLI 子命令；每个文件 export {manifest, run}
-  server/      # Fastify HTTP API（127.0.0.1:17361）
-  utils/       # logger / io / net / shell helpers
-  cli.ts       # 入口
-web/
-  src/app/     # Next.js App Router 页面（/ /compose /policy / …）
-  src/lib/     # 类型 + pilot client helper
-scripts/
-  release.sh        # 一键发版（v0.4.6+）
-  make-release.sh   # 老的手工发版（保留兼容）
-tests/             # 单测
-```
-
 ## 文档
 
 - [`PILOT.md`](./PILOT.md) — 30 秒设计总览
 - [`docs/vision.md`](./docs/vision.md) — Pilot 是什么、不是什么、长期形态
 - [`docs/architecture.md`](./docs/architecture.md) — 模块边界 + 安全模型
-- [`docs/roadmap-pi-grounded.md`](./docs/roadmap-pi-grounded.md) — 已对齐 pi 真实能力、不脑补的 roadmap
+- [`docs/roadmap.md`](./docs/roadmap.md) — 三段式路线图 high-level overview
+- [`docs/roadmap-agent.md`](./docs/roadmap-agent.md) — **Agent 能力层路线图 — Plan / Task / Step / Executor / Feedback**
+- [`docs/roadmap-pi-grounded.md`](./docs/roadmap-pi-grounded.md) — 以 Pi 实际能力为锚的详细 roadmap
 - [`docs/visual-style.md`](./docs/visual-style.md) — 3 层视觉栈（modern canvas + 2.5D cozy + real web UI）
 
 ## 贡献

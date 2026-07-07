@@ -31,6 +31,7 @@ import * as contextCmd from "./commands/context.js";
 import * as policyCmd from "./commands/policy.js";
 import * as initCmd from "./commands/init.js";
 import * as agentCmd from "./commands/agent.js";
+import * as planCmd from "./commands/plan.js";
 
 /** All registered top-level commands. */
 const commands = [
@@ -49,6 +50,7 @@ const commands = [
   policyCmd,
   initCmd,
   agentCmd,
+  planCmd,
 ] as const;
 
 async function main(): Promise<void> {

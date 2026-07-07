@@ -100,6 +100,7 @@ import {
   unlink as unlinkFile,
   stat as statFile,
 } from "node:fs/promises";
+import type { Plan, Task, Step, ToolSuggestion } from "./plan.js";
 
 export interface CreateServiceOptions {
   /**
@@ -211,6 +212,22 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
     applyPolicy: (name) => applyPolicyByName(name, home),
     unapplyPolicy: (name) => unapplyPolicyByName(name, home),
     checkPolicyCall: (name, call) => checkPolicyCallByName(name, call, home),
+
+    // ─── Plans (v0.6.0 — Agent capability layer) ────
+    listPlans: () => listPlansFromHome(home),
+    getPlan: (id) => readPlanFromHome(id, home),
+    createPlan: (input) => createPlanInHome(input, home),
+    updatePlan: (id, input) => updatePlanInHome(id, input, home),
+    deletePlan: (id) => deletePlanFromHome(id, home),
+    startPlan: (id) => startPlanInHome(id, home),
+    pausePlan: (id) => pausePlanInHome(id, home),
+    resumePlan: (id) => resumePlanInHome(id, home),
+    cancelPlan: (id) => cancelPlanInHome(id, home),
+    updateTask: (planId, taskId, updates) =>
+      updateTaskInHome(planId, taskId, updates, home),
+    updateStep: (planId, taskId, stepId, updates) =>
+      updateStepInHome(planId, taskId, stepId, updates, home),
+    suggestTools: (goal) => suggestToolsFromHome(goal, home),
   };
 }
 
@@ -568,4 +585,207 @@ async function checkPolicyCallByName(
 }> {
   const policy = await readPolicyFromHome(name, home);
   return { policy, decision: checkPolicyInEngine(call, policy) };
+}
+
+// ─── Plans (v0.6.0 — Agent capability layer) ───────────────
+
+async function listPlansFromHome(home?: string): Promise<Plan[]> {
+  const { listPlans, ensurePlanDirs } = await import("./plan.js");
+  await ensurePlanDirs(home);
+  return listPlans(home);
+}
+
+async function readPlanFromHome(
+  id: string,
+  home?: string,
+): Promise<Plan | null> {
+  const { readPlan } = await import("./plan.js");
+  return readPlan(id, home);
+}
+
+async function createPlanInHome(
+  input: Partial<Plan> & { goal: string },
+  home?: string,
+): Promise<Plan> {
+  const {
+    generatePlanId,
+    deriveTitle,
+    writePlan,
+    ensurePlanDirs,
+    appendPlanEvent,
+  } = await import("./plan.js");
+  await ensurePlanDirs(home);
+  const id = generatePlanId();
+  const plan = await writePlan(
+    id,
+    {
+      ...input,
+      title: input.title ?? deriveTitle(input.goal),
+    },
+    home,
+  );
+  await appendPlanEvent(
+    {
+      timestamp: new Date().toISOString(),
+      planId: id,
+      type: "plan_created",
+      data: { goal: input.goal, strategy: plan.strategy },
+    },
+    home,
+  );
+  return plan;
+}
+
+async function updatePlanInHome(
+  id: string,
+  input: Partial<Plan>,
+  home?: string,
+): Promise<Plan> {
+  const { writePlan, readPlan } = await import("./plan.js");
+  const existing = await readPlan(id, home);
+  if (!existing) throw new Error(`Plan not found: ${id}`);
+  return writePlan(id, input, home);
+}
+
+async function deletePlanFromHome(id: string, home?: string): Promise<boolean> {
+  const { deletePlan } = await import("./plan.js");
+  return deletePlan(id, home);
+}
+
+async function startPlanInHome(id: string, home?: string): Promise<Plan> {
+  const { writePlan, readPlan, appendPlanEvent } = await import("./plan.js");
+  const plan = await readPlan(id, home);
+  if (!plan) throw new Error(`Plan not found: ${id}`);
+  if (plan.status === "running")
+    throw new Error(`Plan is already running: ${id}`);
+  if (plan.status === "completed")
+    throw new Error(`Plan is already completed: ${id}`);
+  const now = new Date().toISOString();
+  const updated = await writePlan(
+    id,
+    { status: "running", startedAt: plan.startedAt ?? now },
+    home,
+  );
+  await appendPlanEvent(
+    { timestamp: now, planId: id, type: "plan_started", data: {} },
+    home,
+  );
+  return updated;
+}
+
+async function pausePlanInHome(id: string, home?: string): Promise<Plan> {
+  const { writePlan, readPlan, appendPlanEvent } = await import("./plan.js");
+  const plan = await readPlan(id, home);
+  if (!plan) throw new Error(`Plan not found: ${id}`);
+  if (plan.status !== "running")
+    throw new Error(`Plan is not running (current: ${plan.status}): ${id}`);
+  const updated = await writePlan(id, { status: "paused" }, home);
+  await appendPlanEvent(
+    {
+      timestamp: new Date().toISOString(),
+      planId: id,
+      type: "plan_paused",
+      data: {},
+    },
+    home,
+  );
+  return updated;
+}
+
+async function resumePlanInHome(id: string, home?: string): Promise<Plan> {
+  const { writePlan, readPlan, appendPlanEvent } = await import("./plan.js");
+  const plan = await readPlan(id, home);
+  if (!plan) throw new Error(`Plan not found: ${id}`);
+  if (plan.status !== "paused")
+    throw new Error(`Plan is not paused (current: ${plan.status}): ${id}`);
+  const updated = await writePlan(id, { status: "running" }, home);
+  await appendPlanEvent(
+    {
+      timestamp: new Date().toISOString(),
+      planId: id,
+      type: "plan_resumed",
+      data: {},
+    },
+    home,
+  );
+  return updated;
+}
+
+async function cancelPlanInHome(id: string, home?: string): Promise<Plan> {
+  const { writePlan, readPlan, appendPlanEvent } = await import("./plan.js");
+  const plan = await readPlan(id, home);
+  if (!plan) throw new Error(`Plan not found: ${id}`);
+  if (plan.status !== "running" && plan.status !== "paused")
+    throw new Error(
+      `Plan cannot be cancelled (current: ${plan.status}): ${id}`,
+    );
+  const now = new Date().toISOString();
+  const updated = await writePlan(
+    id,
+    { status: "cancelled", completedAt: now },
+    home,
+  );
+  await appendPlanEvent(
+    { timestamp: now, planId: id, type: "plan_cancelled", data: {} },
+    home,
+  );
+  return updated;
+}
+
+async function updateTaskInHome(
+  planId: string,
+  taskId: string,
+  updates: Partial<Task>,
+  home?: string,
+): Promise<Plan> {
+  const { readPlan, writePlan } = await import("./plan.js");
+  const plan = await readPlan(planId, home);
+  if (!plan) throw new Error(`Plan not found: ${planId}`);
+  const taskIdx = plan.tasks.findIndex((t) => t.id === taskId);
+  if (taskIdx === -1) throw new Error(`Task not found: ${taskId}`);
+  const existingTask = plan.tasks[taskIdx]!;
+  plan.tasks[taskIdx] = { ...existingTask, ...updates };
+  return writePlan(planId, plan, home);
+}
+
+async function updateStepInHome(
+  planId: string,
+  taskId: string,
+  stepId: string,
+  updates: Partial<Step>,
+  home?: string,
+): Promise<Plan> {
+  const { readPlan, writePlan } = await import("./plan.js");
+  const plan = await readPlan(planId, home);
+  if (!plan) throw new Error(`Plan not found: ${planId}`);
+  const task = plan.tasks.find((t) => t.id === taskId);
+  if (!task) throw new Error(`Task not found: ${taskId}`);
+  const stepIdx = task.steps.findIndex((s) => s.id === stepId);
+  if (stepIdx === -1) throw new Error(`Step not found: ${stepId}`);
+  const existingStep = task.steps[stepIdx]!;
+  task.steps[stepIdx] = { ...existingStep, ...updates };
+  return writePlan(planId, plan, home);
+}
+
+async function suggestToolsFromHome(
+  goal: string,
+  home?: string,
+): Promise<ToolSuggestion> {
+  const { suggestTools } = await import("./plan.js");
+  const [tools, profiles] = await Promise.all([
+    listToolInventory(home),
+    listProfiles(home),
+  ]);
+  const toolItems = tools.map((t) => ({
+    name: t.name,
+    source: t.source,
+    safety: t.safety,
+    description: t.description,
+  }));
+  const profileItems = profiles.map((p) => ({
+    name: p.name,
+    ...(p.model ? { model: p.model } : {}),
+    ...(p.packages ? { packages: p.packages } : {}),
+  }));
+  return suggestTools(goal, toolItems, profileItems);
 }

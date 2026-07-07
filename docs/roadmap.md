@@ -4,7 +4,7 @@
 >
 > 每段都是独立可交付的小版本，按周迭代，不跨段承诺。
 >
-> **2026-07 状态**：阶段一（v0.1）和阶段二（v0.2 - v0.3.x）已全部发完。阶段三"进化 Pi"已走到 **v0.4.8**。v0.4.x 的真实路径详见 [`docs/roadmap-pi-grounded.md`](./roadmap-pi-grounded.md)；本文件保留三段式叙事骨架作为 high-level overview。
+> **2026-07-07 校准**：阶段一和阶段二已全部发完。阶段三走到 **v0.5.6**。从 v0.6.0 开始，Pilot 的定位从"Pi 的管理面板"升级为**自主智能体工具**——新增 Plan（任务规划）、Agent Loop（自主执行）、Workflow（工作流编排）三大能力。详见 [`docs/roadmap-agent.md`](./roadmap-agent.md)。
 >
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
@@ -64,7 +64,7 @@
 
 ## 阶段三：进化 Pi（v0.4 - v1.0，进行中）
 
-**目标**：让 Pilot 成为 Pi 的能力操作系统。
+**目标**：让 Pilot 成为**自主智能体工具**——不只是管理 Pi，更能规划任务、编排执行、自主迭代。
 
 | 版本 | 状态 | 周期 | 内容 |
 |---|---|---|---|
@@ -77,11 +77,45 @@
 | **v0.4.6** | ✅ 已发 | — | 基础设施：`pilot init` + `dashboard --prod` + standalone build + `release.sh` 一条龙 |
 | **v0.4.7** | ✅ 已发 | — | 浏览器编辑 policy（7 字段表单 + token 不进浏览器） |
 | **v0.4.8** | ✅ 已发 | — | WebUI a11y（WCAG AA + keyboard nav + axe-core 23 测试） |
-| **v0.4.9** | ⏳ 待发 | 1 周 | typecheck hotfix + docs sync + npm publish 自动 |
-| **v0.5.0** | ⏳ 计划 | 4-6 周 | Avatars + Session snapshot + 能力差异可视化 + Replay mode |
-| **v0.6.0** | ⏳ 计划 | 2 周 | Pi extension（`/pilot` slash 命令） |
-| **v0.7.0** | ⏳ 计划 | 2 周 | 多 Pi 编排（团队 / 服务端 / 本地） |
+| **v0.4.9-v0.5.6** | ✅ 已发 | — | Avatars + Co-pilot 模式 + Profile 真正生效 + Bug 修复 |
+| **v0.6.0** | 🔨 进行中 | 3-4 周 | **★ Agent 能力层：Plan 数据模型 + 任务规划 + 工具推荐 + Plan CRUD API** |
+| **v0.7.0** | ⏳ 计划 | 3-4 周 | **自适应执行引擎：反馈分析 + 错误恢复 + 自主循环迭代** |
+| **v0.8.0** | ⏳ 计划 | 2-3 周 | 工作流模板 + 组合复用（从历史 Plan 提取模板） |
+| **v0.9.0** | ⏳ 计划 | 2-3 周 | 多 Plan 编排（DAG 依赖 + 并行执行） |
 | **v1.0.0** | ⏳ 计划 | 1 月 | 稳定 + 文档 + 申请收录 pi.dev/packages |
+
+### v0.6.0 关键内容（Agent 能力层 — Plan 数据模型）
+
+详见 [`docs/roadmap-agent.md`](./roadmap-agent.md)。
+
+**核心新增**：
+- **Plan 数据模型** — Plan / Task / Step 三层结构，支持 sequential / parallel / adaptive 策略
+- **StepAction** — 8 种动作类型（pilot_command / pi_session / profile_switch / pack_install / policy_apply / condition / wait / manual）
+- **Plan CRUD API** — 完整的 REST 端点 + Server Actions
+- **工具推荐** — 基于目标描述匹配可用工具和 Profile
+- **CLI 命令** — `pilot plan new/ls/show/run/pause/resume`
+- **存储** — `~/.pilot/plans/` (TOML) + `~/.pilot/plans-history/` (JSONL)
+
+### v0.7.0 关键内容（自适应执行引擎）
+
+- **PlanExecutor** — 执行引擎，AsyncIterable<PlanEvent> 流式输出
+- **FeedbackEngine** — 分析步骤结果，分类 pass/fail/partial
+- **RecoveryStrategy** — 5 种恢复策略（retry / alternative / skip / escalate / replan）
+- **自适应循环** — 执行 → 观察结果 → 调整计划 → 继续执行
+- **Web UI** — Plan 执行状态实时展示（WebSocket 或轮询）
+
+### v0.8.0 关键内容（工作流模板）
+
+- **WorkflowTemplate** — 从历史 Plan 提取可复用的模板
+- **内置模板** — code-review / bug-fix / feature-impl / refactor / onboard-pkg
+- **模板实例化** — 用模板 + 参数生成具体 Plan
+- **Compose 集成** — Plan 执行结果可视化展示在 Compose 画布
+
+### v0.9.0 关键内容（多 Plan 编排）
+
+- **PlanComposition** — 多个 Plan 的 DAG 依赖编排
+- **并行执行** — 无依赖的 Plan 同时执行
+- **跨 Plan 数据流** — 一个 Plan 的输出作为另一个的输入
 
 ### v0.4.x 真实路径（与原 plan 的差异）
 
@@ -167,6 +201,7 @@ pi install npm:@pilot/pi-extension
 | 文档 | 作用 |
 |---|---|
 | **本文件（`roadmap.md`）** | 三段式 high-level 叙事 + 阶段边界 |
+| **[`docs/roadmap-agent.md`](./roadmap-agent.md)** | **Agent 能力层路线图** — Plan / Task / Step / Executor / Feedback |
 | **[`docs/roadmap-pi-grounded.md`](./roadmap-pi-grounded.md)** | v0.4.x 真实路径 + 以 Pi 实际能力为锚的 11 个 toggle + 详细规划 |
 | **[`docs/v0.4.2-dev-plan.md`](./v0.4.2-dev-plan.md)** | v0.4.2 具体实施（已被实际发布覆盖，仅作 audit） |
 | **[`docs/retired/roadmap-v1.0.md`](./retired/roadmap-v1.0.md)** | 已作废的 v3 终极版宏图（保留为 audit trail） |

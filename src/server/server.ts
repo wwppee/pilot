@@ -546,6 +546,97 @@ export async function startServer(
     return service.checkPolicyCall(req.params.name, { name: tool, args });
   });
 
+  // ─── Plans (v0.6.0 — Agent capability layer) ────
+
+  app.get("/plans", async () => service.listPlans());
+
+  app.post<{ Body: { goal: string; [key: string]: unknown } }>(
+    "/plans",
+    async (req) => {
+      const { goal, ...rest } = req.body;
+      if (!goal || typeof goal !== "string") {
+        throw Object.assign(new Error("goal is required"), {
+          statusCode: 400,
+        });
+      }
+      return service.createPlan({
+        goal,
+        ...(rest as Partial<import("../core/plan.js").Plan>),
+      });
+    },
+  );
+
+  app.get<{ Params: { id: string } }>("/plans/:id", async (req) => {
+    const plan = await service.getPlan(req.params.id);
+    if (!plan) {
+      throw Object.assign(new Error("plan not found"), { statusCode: 404 });
+    }
+    return plan;
+  });
+
+  app.put<{
+    Params: { id: string };
+    Body: Partial<import("../core/plan.js").Plan>;
+  }>("/plans/:id", async (req) => {
+    return service.updatePlan(req.params.id, req.body);
+  });
+
+  app.delete<{ Params: { id: string } }>("/plans/:id", async (req) => {
+    const deleted = await service.deletePlan(req.params.id);
+    if (!deleted) {
+      throw Object.assign(new Error("plan not found"), { statusCode: 404 });
+    }
+    return { ok: true };
+  });
+
+  // Plan execution control
+  app.post<{ Params: { id: string } }>("/plans/:id/start", async (req) =>
+    service.startPlan(req.params.id),
+  );
+
+  app.post<{ Params: { id: string } }>("/plans/:id/pause", async (req) =>
+    service.pausePlan(req.params.id),
+  );
+
+  app.post<{ Params: { id: string } }>("/plans/:id/resume", async (req) =>
+    service.resumePlan(req.params.id),
+  );
+
+  app.post<{ Params: { id: string } }>("/plans/:id/cancel", async (req) =>
+    service.cancelPlan(req.params.id),
+  );
+
+  // Task / Step updates (manual intervention)
+  app.put<{
+    Params: { id: string; taskId: string };
+    Body: Partial<import("../core/plan.js").Task>;
+  }>("/plans/:id/tasks/:taskId", async (req) =>
+    service.updateTask(req.params.id, req.params.taskId, req.body),
+  );
+
+  app.put<{
+    Params: { id: string; taskId: string; stepId: string };
+    Body: Partial<import("../core/plan.js").Step>;
+  }>("/plans/:id/tasks/:taskId/steps/:stepId", async (req) =>
+    service.updateStep(
+      req.params.id,
+      req.params.taskId,
+      req.params.stepId,
+      req.body,
+    ),
+  );
+
+  // Tool / Profile suggestion
+  app.post<{ Body: { goal: string } }>("/plans/suggest-tools", async (req) => {
+    const { goal } = req.body;
+    if (!goal || typeof goal !== "string") {
+      throw Object.assign(new Error("goal is required"), {
+        statusCode: 400,
+      });
+    }
+    return service.suggestTools(goal);
+  });
+
   // ─── Centralized error handler ──────────────────────
 
   app.setErrorHandler((err: unknown, _req, reply) => {

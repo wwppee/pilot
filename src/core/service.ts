@@ -42,6 +42,7 @@ import type {
   AvatarApplyOptions,
 } from "./avatar.js";
 import type { CapabilityDiff } from "./capability-diff.js";
+import type { Plan, Task, Step, ToolSuggestion } from "./plan.js";
 
 export type PolicyDecision = ReturnType<typeof checkPolicy>;
 
@@ -361,4 +362,63 @@ export interface PilotService {
 
   /** Fetch a single capability by id. Returns null if not found or invalid. */
   getCapability(id: string): Promise<Capability | null>;
+
+  // ─── Plans (v0.6.0 — Agent capability layer) ─────────
+
+  /** List all plans, most-recently-updated first. */
+  listPlans(): Promise<Plan[]>;
+
+  /** Fetch a single plan by id. Returns null if not found. */
+  getPlan(id: string): Promise<Plan | null>;
+
+  /** Create a new plan. Returns the created plan. */
+  createPlan(input: Partial<Plan> & { goal: string }): Promise<Plan>;
+
+  /** Update an existing plan. Returns the updated plan. */
+  updatePlan(id: string, input: Partial<Plan>): Promise<Plan>;
+
+  /** Delete a plan. Returns true if it existed. */
+  deletePlan(id: string): Promise<boolean>;
+
+  /**
+   * Start plan execution — sets status to "running".
+   * Actual step execution lands in v0.7.0 PlanExecutor.
+   */
+  startPlan(id: string): Promise<Plan>;
+
+  /** Pause a running plan. */
+  pausePlan(id: string): Promise<Plan>;
+
+  /** Resume a paused plan. */
+  resumePlan(id: string): Promise<Plan>;
+
+  /** Cancel a running or paused plan. */
+  cancelPlan(id: string): Promise<Plan>;
+
+  /**
+   * Update a single task within a plan.
+   * Used for manual intervention (retry, skip, edit).
+   */
+  updateTask(
+    planId: string,
+    taskId: string,
+    updates: Partial<Task>,
+  ): Promise<Plan>;
+
+  /**
+   * Update a single step within a task.
+   * Used for manual retry or output injection.
+   */
+  updateStep(
+    planId: string,
+    taskId: string,
+    stepId: string,
+    updates: Partial<Step>,
+  ): Promise<Plan>;
+
+  /**
+   * Suggest tools and profiles based on a goal description.
+   * Uses keyword matching (v0.6.0 baseline).
+   */
+  suggestTools(goal: string): Promise<ToolSuggestion>;
 }
