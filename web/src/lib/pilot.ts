@@ -151,6 +151,8 @@ import type {
   ToolPolicyInput,
   PolicyDecision,
   ComposeCatalog,
+  Plan,
+  PlanToolSuggestion,
 } from "./types.js";
 
 export const api = {
@@ -365,6 +367,24 @@ export const api = {
 
   // ─── Compose catalog (v0.4.4+) ────────────────────────────
   composeCatalog: () => pilot<ComposeCatalog>("/compose/catalog"),
+
+  // ─── Plans (v0.5.7+ — Agent capability layer) ──────────
+  plans: () => pilot<Plan[]>("/plans"),
+  plan: async (id: string): Promise<Plan | null> => {
+    try {
+      return await pilot<Plan>(`/plans/${encodeName(id)}`);
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (status === 404) return null;
+      throw e;
+    }
+  },
+  suggestTools: (goal: string) =>
+    pilot<PlanToolSuggestion>("/plans/suggest-tools", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ goal }),
+    }),
 };
 
 function encodeName(name: string): string {

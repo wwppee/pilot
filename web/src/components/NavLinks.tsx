@@ -34,7 +34,8 @@ type LabelKey =
   | "nav.profiles"
   | "nav.capabilities"
   | "nav.forge"
-  | "nav.avatars";
+  | "nav.avatars"
+  | "nav.plans";
 
 interface NavItem {
   href: string;
@@ -64,6 +65,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       { href: "/context", labelKey: "nav.context" },
       { href: "/capabilities", labelKey: "nav.capabilities" },
       { href: "/avatars", labelKey: "nav.avatars" },
+      { href: "/plans", labelKey: "nav.plans" },
     ],
   },
   {

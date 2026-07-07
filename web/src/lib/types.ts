@@ -502,3 +502,152 @@ export interface ComposeState {
   /** Optional human-readable name for this layout. */
   name?: string;
 }
+
+// ─── Plans (v0.5.7+ — Agent capability layer) ──────────────────
+//
+// Mirrors `core/plan.ts` (PlanSchema / TaskSchema / StepSchema).
+// Web is a separate package so we hand-maintain a minimal copy.
+// Keep in sync when the core schema changes.
+
+export type PlanStatus =
+  | "draft"
+  | "running"
+  | "paused"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export type PlanStrategy = "sequential" | "parallel" | "adaptive";
+
+export type TaskStatus =
+  | "pending"
+  | "running"
+  | "completed"
+  | "failed"
+  | "skipped"
+  | "blocked";
+
+export type StepStatus =
+  | "pending"
+  | "running"
+  | "completed"
+  | "failed"
+  | "skipped";
+
+/**
+ * StepAction — discriminated union of the 8 action types a Step can run.
+ * `then`/`else` (for `condition`) and `condition` (for `wait`) carry
+ * raw JSON to avoid a Zod-style circular type. The Web renders them
+ * verbatim — they aren't executed here.
+ */
+export type StepAction =
+  | { type: "pilot_command"; command: string; args?: string[] }
+  | { type: "pi_session"; prompt: string; profile?: string; cwd?: string }
+  | { type: "profile_switch"; profile: string }
+  | { type: "pack_install"; source: string }
+  | { type: "policy_apply"; policy: string }
+  | {
+      type: "condition";
+      check: string;
+      then: Array<Record<string, unknown>>;
+      else: Array<Record<string, unknown>>;
+    }
+  | { type: "wait"; condition: string; timeoutMs?: number }
+  | { type: "manual"; prompt: string };
+
+export interface StepOutput {
+  success: boolean;
+  summary?: string;
+  data?: Record<string, unknown>;
+  error?: string;
+  durationMs?: number;
+  tokensUsed?: number;
+}
+
+export interface PlanStep {
+  id: string;
+  description: string;
+  action: StepAction;
+  status: StepStatus;
+  input: Record<string, unknown>;
+  output?: StepOutput;
+  retryCount: number;
+  maxRetries: number;
+  startedAt?: string;
+  completedAt?: string;
+}
+
+export interface TaskResult {
+  success: boolean;
+  summary?: string;
+  totalTokens?: number;
+  totalCost?: number;
+  durationMs?: number;
+}
+
+export interface PlanTask {
+  id: string;
+  description: string;
+  status: TaskStatus;
+  steps: PlanStep[];
+  dependsOn: string[];
+  profile?: string;
+  requiredTools: string[];
+  estimatedTokens?: number;
+  result?: TaskResult;
+  startedAt?: string;
+  completedAt?: string;
+}
+
+export interface PlanContext {
+  cwd?: string;
+  activeProfile?: string;
+  avatar?: string;
+  env?: Record<string, string>;
+  gitBranch?: string;
+}
+
+export interface PlanResult {
+  success: boolean;
+  summary?: string;
+  totalTokens: number;
+  totalCost: number;
+  durationMs: number;
+  tasksCompleted: number;
+  tasksTotal: number;
+}
+
+export interface Plan {
+  id: string;
+  goal: string;
+  title?: string;
+  status: PlanStatus;
+  strategy: PlanStrategy;
+  tasks: PlanTask[];
+  context: PlanContext;
+  result?: PlanResult;
+  createdAt: string;
+  updatedAt: string;
+  startedAt?: string;
+  completedAt?: string;
+}
+
+/**
+ * Tool / profile suggestion returned by `POST /plans/suggest-tools`.
+ * Mirrors core/plan.ts `ToolSuggestion`.
+ */
+export interface PlanToolSuggestion {
+  goal: string;
+  matchedTools: Array<{
+    name: string;
+    source: string;
+    safety: string;
+    reason: string;
+  }>;
+  matchedProfiles: Array<{
+    name: string;
+    model?: string;
+    packages?: string[];
+    reason: string;
+  }>;
+}

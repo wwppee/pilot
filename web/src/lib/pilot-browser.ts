@@ -45,6 +45,8 @@ import type {
   ToolPolicyInput,
   PolicyDecision,
   ComposeCatalog,
+  Plan,
+  PlanToolSuggestion,
 } from "./types.js";
 
 /** All browser requests go through this Next.js rewrite. */
@@ -292,6 +294,24 @@ export const browserApi = {
     ),
 
   composeCatalog: () => browserFetch<ComposeCatalog>("/compose/catalog"),
+
+  // ─── Plans (v0.5.7+) ──────────────────────────────────
+  plans: () => browserFetch<Plan[]>("/plans"),
+  plan: async (id: string): Promise<Plan | null> => {
+    try {
+      return await browserFetch<Plan>(`/plans/${encodeName(id)}`);
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (status === 404) return null;
+      throw e;
+    }
+  },
+  suggestTools: (goal: string) =>
+    browserFetch<PlanToolSuggestion>("/plans/suggest-tools", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ goal }),
+    }),
 };
 
 /** Convenience alias: most client code can do `import { api as ... }`. */

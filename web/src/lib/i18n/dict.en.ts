@@ -22,6 +22,7 @@ const en: Dict = {
   "nav.forge": "Forge",
   "nav.capabilities": "Capabilities",
   "nav.avatars": "Avatars",
+  "nav.plans": "Plans",
   // v0.4.14: nav groups
   "nav.groupInspect": "Inspect",
   "nav.groupManage": "Manage",
@@ -487,5 +488,81 @@ const en: Dict = {
   "avatars.apply.steps": "Steps",
   "avatars.apply.noOp":
     "Nothing to do — current state already matches this Avatar.",
+
+  // Plans (v0.5.7+ — Agent capability layer)
+  "plans.h1": "Plans",
+  "plans.subtitle":
+    "Execution plans — break a goal into tasks and steps. Real execution lands in v0.6.0; this page manages the data + lifecycle.",
+  "plans.empty.title": "No plans yet.",
+  "plans.empty.hint":
+    'A Plan captures a goal, the tasks it breaks into, and the steps each task runs. Create one from the CLI (`pilot plan new "your goal"`) or via the New Plan button. v0.5.7 ships the data model; the executor comes in v0.6.0.',
+  "plans.empty.cta": "New Plan",
+  "plans.col.id": "ID",
+  "plans.col.status": "Status",
+  "plans.col.strategy": "Strategy",
+  "plans.col.tasks": "Tasks",
+  "plans.col.updated": "Updated",
+  "plans.col.goal": "Goal",
+  "plans.status.draft": "draft",
+  "plans.status.running": "running",
+  "plans.status.paused": "paused",
+  "plans.status.completed": "completed",
+  "plans.status.failed": "failed",
+  "plans.status.cancelled": "cancelled",
+  "plans.strategy.sequential": "sequential",
+  "plans.strategy.parallel": "parallel",
+  "plans.strategy.adaptive": "adaptive",
+  "plans.action.start": "Start",
+  "plans.action.pause": "Pause",
+  "plans.action.resume": "Resume",
+  "plans.action.cancel": "Cancel",
+  "plans.action.delete": "Delete",
+  "plans.action.created": "Plan created",
+  "plans.action.paused": "Plan paused",
+  "plans.action.resumed": "Plan resumed",
+  "plans.action.cancelled": "Plan cancelled",
+  "plans.action.deleted": "Plan deleted",
+  "plans.action.failed": "Action failed",
+  "plans.detail.h1": "Plan · {id}",
+  "plans.detail.goal": "Goal",
+  "plans.detail.strategy": "Strategy",
+  "plans.detail.created": "Created",
+  "plans.detail.updated": "Updated",
+  "plans.detail.started": "Started",
+  "plans.detail.completed": "Completed",
+  "plans.detail.context": "Context",
+  "plans.detail.cwd": "CWD",
+  "plans.detail.profile": "Profile",
+  "plans.detail.tasks": "Tasks",
+  "plans.detail.steps": "Steps",
+  "plans.detail.noTasks":
+    "No tasks yet. v0.5.7 ships the data model — add tasks via the API or the future executor.",
+  "plans.detail.actions": "Actions",
+  "plans.detail.startHint":
+    "Start sets the plan to running and logs the `plan_started` event. The actual executor lands in v0.6.0.",
+  "plans.detail.executorNote":
+    "(execution engine coming in v0.6.0 — status set to running)",
+  "plans.detail.confirmDelete":
+    "Delete this Plan? The plan + its event log will be removed. Cannot be undone.",
+  "plans.new.h1": "New Plan",
+  "plans.new.subtitle":
+    'Give it a goal. Pilot derives a short title, sets strategy to "sequential", and creates a draft. You can add tasks via the API or wait for the v0.6.0 executor.',
+  "plans.new.goalLabel": "Goal",
+  "plans.new.goalPlaceholder": "e.g. 实现用户登录功能",
+  "plans.new.submit": "Create Plan",
+  "plans.new.cancel": "Cancel",
+  "plans.new.errorEmpty": "Goal cannot be empty.",
+  "plans.suggest.title": "Suggest tools",
+  "plans.suggest.subtitle":
+    "Based on the goal, pick tools + profile keywords from what's installed. Currently a v0.5.7 baseline (keyword match) — LLM-based matching lands with the v0.6.0 executor.",
+  "plans.suggest.label": "Goal",
+  "plans.suggest.placeholder": "e.g. parse CSV with Python",
+  "plans.suggest.button": "Suggest",
+  "plans.suggest.matchedTools": "Matched tools",
+  "plans.suggest.matchedProfiles": "Matched profiles",
+  "plans.suggest.noneTools":
+    "No matching tools. All available tools are listed under /tools.",
+  "plans.suggest.noneProfiles":
+    "No matching profiles. All available profiles are listed under /profiles.",
 };
 export default en;

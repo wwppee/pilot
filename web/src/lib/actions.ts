@@ -446,3 +446,98 @@ export async function dryRunAvatarForm(formData: FormData): Promise<void> {
     );
   }
 }
+
+// ─── Plans (v0.5.7+ — Agent capability layer) ───────────────────
+//
+// Lifecycle ops route through ctx.service in core, so all five
+// (start / pause / resume / cancel / delete) emit the matching
+// JSONL event in ~/.pilot/plans-history/<id>_<ts>.jsonl.
+
+// Internal helper — POST /plans/:id/<op> with CSRF, redirect on result.
+async function planAction(
+  id: string,
+  op: "start" | "pause" | "resume" | "cancel",
+  successQuery: string,
+): Promise<void> {
+  const res = await pilotWithCsrf(`/plans/${encodeURIComponent(id)}/${op}`, {
+    method: "POST",
+  });
+  if (res.ok) {
+    redirect(`/plans/${encodeURIComponent(id)}?${successQuery}=1`);
+  } else {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    redirect(
+      `/plans/${encodeURIComponent(id)}?error=${encodeURIComponent(body.error ?? `${op} failed`)}`,
+    );
+  }
+}
+
+export async function startPlanForm(formData: FormData): Promise<void> {
+  const id = formData.get("id");
+  if (typeof id !== "string" || id.length === 0) return;
+  await planAction(id, "start", "started");
+}
+
+export async function pausePlanForm(formData: FormData): Promise<void> {
+  const id = formData.get("id");
+  if (typeof id !== "string" || id.length === 0) return;
+  await planAction(id, "pause", "paused");
+}
+
+export async function resumePlanForm(formData: FormData): Promise<void> {
+  const id = formData.get("id");
+  if (typeof id !== "string" || id.length === 0) return;
+  await planAction(id, "resume", "resumed");
+}
+
+export async function cancelPlanForm(formData: FormData): Promise<void> {
+  const id = formData.get("id");
+  if (typeof id !== "string" || id.length === 0) return;
+  await planAction(id, "cancel", "cancelled");
+}
+
+export async function deletePlanForm(formData: FormData): Promise<void> {
+  const id = formData.get("id");
+  if (typeof id !== "string" || id.length === 0) return;
+
+  const res = await pilotWithCsrf(`/plans/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+  if (res.ok) {
+    redirect(`/plans?deleted=1&id=${encodeURIComponent(id)}`);
+  } else {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    redirect(
+      `/plans?error=${encodeURIComponent(body.error ?? "delete failed")}`,
+    );
+  }
+}
+
+/**
+ * Create a new plan from a single goal input. The server derives the
+ * short title, sets strategy="sequential", and seeds context.cwd from
+ * the server process. After creation, redirects to /plans/[id]?created=1.
+ */
+export async function createPlanForm(formData: FormData): Promise<void> {
+  const goal = formData.get("goal");
+  if (typeof goal !== "string" || goal.trim().length === 0) {
+    redirect(`/plans/new?error=${encodeURIComponent("Goal cannot be empty.")}`);
+    return;
+  }
+
+  const res = await pilotWithCsrf(`/plans`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ goal: goal.trim() }),
+  });
+  if (res.ok) {
+    const body = (await res.json()) as { id?: string };
+    const id = body.id ?? "unknown";
+    redirect(`/plans/${encodeURIComponent(id)}?created=1`);
+  } else {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    redirect(
+      `/plans/new?error=${encodeURIComponent(body.error ?? "create failed")}`,
+    );
+  }
+}
