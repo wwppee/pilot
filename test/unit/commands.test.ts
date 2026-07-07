@@ -15,6 +15,7 @@ import * as packCmd from "../../src/commands/pack.js";
 import * as sessionCmd from "../../src/commands/session.js";
 import * as doctorCmd from "../../src/commands/doctor.js";
 import * as profileCmd from "../../src/commands/profile.js";
+import * as planCmd from "../../src/commands/plan.js";
 
 import type { PilotService } from "../../src/core/service.js";
 import type {
@@ -25,7 +26,7 @@ import type {
   SessionInfo,
 } from "../../src/core/types.js";
 import type { Profile, ProfileInput } from "../../src/core/profile.js";
-import type { DoctorReport } from "../../src/core/service.js";
+import type { DoctorReport, Plan } from "../../src/core/service.js";
 
 // ─── Mock factory ──────────────────────────────────────────
 
@@ -46,6 +47,15 @@ function makeMockService(
   getProfile: ReturnType<typeof vi.fn>;
   setProfile: ReturnType<typeof vi.fn>;
   deleteProfile: ReturnType<typeof vi.fn>;
+  listPlans: ReturnType<typeof vi.fn>;
+  getPlan: ReturnType<typeof vi.fn>;
+  createPlan: ReturnType<typeof vi.fn>;
+  startPlan: ReturnType<typeof vi.fn>;
+  pausePlan: ReturnType<typeof vi.fn>;
+  resumePlan: ReturnType<typeof vi.fn>;
+  cancelPlan: ReturnType<typeof vi.fn>;
+  deletePlan: ReturnType<typeof vi.fn>;
+  suggestTools: ReturnType<typeof vi.fn>;
 } {
   return {
     listPacks: vi.fn(async () => [] as InstalledPack[]),
@@ -71,6 +81,81 @@ function makeMockService(
       updatedAt: "2026-07-01T00:00:00Z",
     })),
     deleteProfile: vi.fn(async () => true),
+    listPlans: vi.fn(async () => [] as Plan[]),
+    getPlan: vi.fn(async () => null),
+    createPlan: vi.fn(
+      async (input: { goal: string; title?: string; context?: object }) =>
+        ({
+          id: "mock-plan-id",
+          goal: input.goal,
+          title: input.title,
+          status: "draft",
+          strategy: "sequential",
+          tasks: [],
+          context: input.context ?? {},
+          createdAt: "2026-07-07T00:00:00Z",
+          updatedAt: "2026-07-07T00:00:00Z",
+        }) as Plan,
+    ),
+    startPlan: vi.fn(
+      async (id: string) =>
+        ({
+          id,
+          goal: "mock",
+          status: "running",
+          strategy: "sequential",
+          tasks: [],
+          context: {},
+          createdAt: "2026-07-07T00:00:00Z",
+          updatedAt: "2026-07-07T00:00:00Z",
+        }) as Plan,
+    ),
+    pausePlan: vi.fn(
+      async (id: string) =>
+        ({
+          id,
+          goal: "mock",
+          status: "paused",
+          strategy: "sequential",
+          tasks: [],
+          context: {},
+          createdAt: "2026-07-07T00:00:00Z",
+          updatedAt: "2026-07-07T00:00:00Z",
+        }) as Plan,
+    ),
+    resumePlan: vi.fn(
+      async (id: string) =>
+        ({
+          id,
+          goal: "mock",
+          status: "running",
+          strategy: "sequential",
+          tasks: [],
+          context: {},
+          createdAt: "2026-07-07T00:00:00Z",
+          updatedAt: "2026-07-07T00:00:00Z",
+        }) as Plan,
+    ),
+    cancelPlan: vi.fn(
+      async (id: string) =>
+        ({
+          id,
+          goal: "mock",
+          status: "cancelled",
+          strategy: "sequential",
+          tasks: [],
+          context: {},
+          createdAt: "2026-07-07T00:00:00Z",
+          updatedAt: "2026-07-07T00:00:00Z",
+          completedAt: "2026-07-07T00:00:00Z",
+        }) as Plan,
+    ),
+    deletePlan: vi.fn(async () => true),
+    suggestTools: vi.fn(async () => ({
+      goal: "",
+      matchedTools: [],
+      matchedProfiles: [],
+    })),
     ...overrides,
   };
 }
@@ -617,5 +702,228 @@ describe("commands use ctx.service (not direct core) > pilot forge", () => {
     expect(__test__.isValidCapabilityId("foo-bar")).toBe(true);
     expect(__test__.isValidCapabilityId("FooBar")).toBe(false);
     expect(__test__.isValidCapabilityId("foo--bar")).toBe(false);
+  });
+});
+
+// ─── plan command (v0.5.7 Agent capability layer) ──────────────
+//
+// v0.5.7 rewrote commands/plan.ts to route ALL lifecycle operations
+// through ctx.service instead of calling writePlan/readPlan directly.
+// These tests verify that:
+//   1. Each CLI subcommand hits the corresponding service method
+//   2. Service errors propagate as exit code 1 + error log
+//   3. plan new never calls writePlan directly (event log integrity)
+
+describe("pilot plan (v0.5.7 routes everything through service)", () => {
+  describe("plan new", () => {
+    it("calls ctx.service.createPlan with goal + auto-derived title", async () => {
+      const svc = makeMockService({
+        createPlan: vi.fn(
+          async (input: { goal: string; title?: string }) =>
+            ({
+              id: "abc123",
+              goal: input.goal,
+              title: input.title,
+              status: "draft",
+              strategy: "sequential",
+              tasks: [],
+              context: { cwd: "/tmp" },
+              createdAt: "2026-07-07T00:00:00Z",
+              updatedAt: "2026-07-07T00:00:00Z",
+            }) as Plan,
+        ),
+      });
+      const code = await planCmd.run(["new", "实现用户登录"], makeCtx(svc));
+      expect(code).toBe(0);
+      expect(svc.createPlan).toHaveBeenCalledTimes(1);
+      const call = svc.createPlan.mock.calls[0]![0];
+      expect(call.goal).toBe("实现用户登录");
+      expect(call.title).toBeTruthy();
+    });
+
+    it("returns 1 with no goal", async () => {
+      const svc = makeMockService();
+      const code = await planCmd.run(["new"], makeCtx(svc));
+      expect(code).toBe(1);
+      expect(svc.createPlan).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("plan ls", () => {
+    it("calls ctx.service.listPlans", async () => {
+      const svc = makeMockService({
+        listPlans: vi.fn(
+          async () =>
+            [
+              {
+                id: "p1",
+                goal: "g1",
+                title: "t1",
+                status: "draft",
+                strategy: "sequential",
+                tasks: [],
+                context: {},
+                createdAt: "2026-07-07T00:00:00Z",
+                updatedAt: "2026-07-07T00:00:00Z",
+              },
+            ] as Plan[],
+        ),
+      });
+      const code = await planCmd.run(["ls"], makeCtx(svc));
+      expect(code).toBe(0);
+      expect(svc.listPlans).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns 0 with helpful message when empty", async () => {
+      const svc = makeMockService();
+      const code = await planCmd.run(["ls"], makeCtx(svc));
+      expect(code).toBe(0);
+    });
+  });
+
+  describe("plan show", () => {
+    it("calls ctx.service.getPlan", async () => {
+      const svc = makeMockService({
+        getPlan: vi.fn(
+          async (id: string) =>
+            ({
+              id,
+              goal: "test",
+              status: "draft",
+              strategy: "sequential",
+              tasks: [],
+              context: {},
+              createdAt: "2026-07-07T00:00:00Z",
+              updatedAt: "2026-07-07T00:00:00Z",
+            }) as Plan,
+        ),
+      });
+      const code = await planCmd.run(["show", "p1"], makeCtx(svc));
+      expect(code).toBe(0);
+      expect(svc.getPlan).toHaveBeenCalledWith("p1");
+    });
+
+    it("returns 1 when plan missing", async () => {
+      const svc = makeMockService({ getPlan: vi.fn(async () => null) });
+      const code = await planCmd.run(["show", "nope"], makeCtx(svc));
+      expect(code).toBe(1);
+    });
+  });
+
+  describe("plan run", () => {
+    it("calls ctx.service.startPlan (Bug 2 fix — service routes events)", async () => {
+      const svc = makeMockService({
+        startPlan: vi.fn(
+          async (id: string) =>
+            ({
+              id,
+              goal: "g",
+              status: "running",
+              strategy: "sequential",
+              tasks: [],
+              context: {},
+              createdAt: "2026-07-07T00:00:00Z",
+              updatedAt: "2026-07-07T00:00:00Z",
+            }) as Plan,
+        ),
+      });
+      const code = await planCmd.run(["run", "p1"], makeCtx(svc));
+      expect(code).toBe(0);
+      expect(svc.startPlan).toHaveBeenCalledWith("p1");
+    });
+
+    it("returns 1 + error log when service throws (plan already completed)", async () => {
+      const svc = makeMockService({
+        startPlan: vi.fn(async () => {
+          throw new Error("Plan is already completed: p1");
+        }),
+      });
+      const code = await planCmd.run(["run", "p1"], makeCtx(svc));
+      expect(code).toBe(1);
+    });
+  });
+
+  describe("plan pause / resume / cancel", () => {
+    it("pause calls ctx.service.pausePlan", async () => {
+      const svc = makeMockService();
+      const code = await planCmd.run(["pause", "p1"], makeCtx(svc));
+      expect(code).toBe(0);
+      expect(svc.pausePlan).toHaveBeenCalledWith("p1");
+    });
+
+    it("resume calls ctx.service.resumePlan", async () => {
+      const svc = makeMockService();
+      const code = await planCmd.run(["resume", "p1"], makeCtx(svc));
+      expect(code).toBe(0);
+      expect(svc.resumePlan).toHaveBeenCalledWith("p1");
+    });
+
+    it("cancel calls ctx.service.cancelPlan", async () => {
+      const svc = makeMockService();
+      const code = await planCmd.run(["cancel", "p1"], makeCtx(svc));
+      expect(code).toBe(0);
+      expect(svc.cancelPlan).toHaveBeenCalledWith("p1");
+    });
+
+    it("pause returns 1 when service throws (plan not running)", async () => {
+      const svc = makeMockService({
+        pausePlan: vi.fn(async () => {
+          throw new Error("Plan is not running (current: completed): p1");
+        }),
+      });
+      const code = await planCmd.run(["pause", "p1"], makeCtx(svc));
+      expect(code).toBe(1);
+    });
+  });
+
+  describe("plan delete", () => {
+    it("calls ctx.service.deletePlan", async () => {
+      const svc = makeMockService();
+      const code = await planCmd.run(["delete", "p1"], makeCtx(svc));
+      expect(code).toBe(0);
+      expect(svc.deletePlan).toHaveBeenCalledWith("p1");
+    });
+
+    it("returns 1 when deletePlan reports false (not found)", async () => {
+      const svc = makeMockService({
+        deletePlan: vi.fn(async () => false),
+      });
+      const code = await planCmd.run(["delete", "p1"], makeCtx(svc));
+      expect(code).toBe(1);
+    });
+  });
+
+  describe("plan suggest-tools", () => {
+    it("calls ctx.service.suggestTools with the goal", async () => {
+      const svc = makeMockService({
+        suggestTools: vi.fn(async (goal: string) => ({
+          goal,
+          matchedTools: [
+            { name: "read", source: "built-in", safety: "safe", reason: "x" },
+          ],
+          matchedProfiles: [],
+        })),
+      });
+      const code = await planCmd.run(
+        ["suggest-tools", "read a file"],
+        makeCtx(svc),
+      );
+      expect(code).toBe(0);
+      expect(svc.suggestTools).toHaveBeenCalledWith("read a file");
+    });
+
+    it("returns 1 with no goal", async () => {
+      const svc = makeMockService();
+      const code = await planCmd.run(["suggest-tools"], makeCtx(svc));
+      expect(code).toBe(1);
+    });
+  });
+
+  describe("unknown subcommand", () => {
+    it("returns 1", async () => {
+      const svc = makeMockService();
+      const code = await planCmd.run(["bogus"], makeCtx(svc));
+      expect(code).toBe(1);
+    });
   });
 });

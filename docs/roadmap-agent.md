@@ -36,7 +36,10 @@ Pilot 的 Agent 能力层遵循以下原则：
 └─────────────────────────────────────────────────────────┘
 ```
 
-## v0.6.0 — Plan 数据模型 + 基础规划
+## v0.5.7 — Plan 数据模型 + 基础规划（已发）
+
+> v0.5.7 是 Agent 能力层的第一块砖：数据模型 + CRUD + CLI。
+> 真正的执行器、反馈循环、模板提取是 v0.6.0+ 的事。
 
 ### 核心数据结构
 
@@ -113,7 +116,6 @@ PUT    /plans/:id/tasks/:taskId         # 手动更新任务
 
 # 工具选择（基于上下文推荐）
 POST   /plans/suggest-tools              # 根据目标推荐工具组合
-POST   /plans/suggest-profile            # 根据任务推荐 Profile
 ```
 
 ### CLI 命令
@@ -127,7 +129,6 @@ pilot plan pause <id>                      # 暂停
 pilot plan resume <id>                     # 恢复
 
 pilot plan suggest-tools "解析 CSV"        # 推荐工具
-pilot plan suggest-profile "code-review"   # 推荐 Profile
 ```
 
 ## v0.7.0 — 自适应执行 + 反馈循环

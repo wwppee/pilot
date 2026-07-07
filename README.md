@@ -242,10 +242,10 @@ const POLICY = {
 ## 路线图
 
 - ✅ v0.1-v0.5.6：包、会话、profile、server、Web UI、stats、capability、forge、policy、compose、avatar、co-pilot 模式
-- 🔨 v0.6.0：**Agent 能力层 — Plan 数据模型 + 任务规划 + 工具推荐 + Plan CRUD API**
-- ⏳ v0.7.0：**自适应执行引擎 — 反馈分析 + 错误恢复 + 自主循环迭代**
-- ⏳ v0.8.0：**工作流模板 — 从历史 Plan 提取可复用模板**
-- ⏳ v0.9.0：**多 Plan 编排 — DAG 依赖 + 并行执行**
+- ✅ v0.5.7：**Agent 能力层基线 — Plan 数据模型 + 任务规划 + 工具推荐 + Plan CRUD API + CLI**（执行引擎留 v0.6.0）
+- ⏳ v0.6.0：**自适应执行引擎 — 反馈分析 + 错误恢复 + 自主循环迭代**
+- ⏳ v0.7.0：**工作流模板 — 从历史 Plan 提取可复用模板**
+- ⏳ v0.8.0：**多 Plan 编排 — DAG 依赖 + 并行执行**
 
 完整 roadmap：[`docs/roadmap.md`](./docs/roadmap.md)、[`docs/roadmap-agent.md`](./docs/roadmap-agent.md)。
 

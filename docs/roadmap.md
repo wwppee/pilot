@@ -4,7 +4,7 @@
 >
 > 每段都是独立可交付的小版本，按周迭代，不跨段承诺。
 >
-> **2026-07-07 校准**：阶段一和阶段二已全部发完。阶段三走到 **v0.5.6**。从 v0.6.0 开始，Pilot 的定位从"Pi 的管理面板"升级为**自主智能体工具**——新增 Plan（任务规划）、Agent Loop（自主执行）、Workflow（工作流编排）三大能力。详见 [`docs/roadmap-agent.md`](./roadmap-agent.md)。
+> **2026-07-07 校准**：阶段一和阶段二已全部发完。阶段三走到 **v0.5.7**（Plan 数据模型 + CRUD + CLI 基线）。从 v0.5.7 开始，Pilot 的定位从"Pi 的管理面板"升级为**自主智能体工具**——新增 Plan（任务规划）、Agent Loop（自主执行）、Workflow（工作流编排）三大能力。详见 [`docs/roadmap-agent.md`](./roadmap-agent.md)。
 >
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
@@ -78,13 +78,13 @@
 | **v0.4.7** | ✅ 已发 | — | 浏览器编辑 policy（7 字段表单 + token 不进浏览器） |
 | **v0.4.8** | ✅ 已发 | — | WebUI a11y（WCAG AA + keyboard nav + axe-core 23 测试） |
 | **v0.4.9-v0.5.6** | ✅ 已发 | — | Avatars + Co-pilot 模式 + Profile 真正生效 + Bug 修复 |
-| **v0.6.0** | 🔨 进行中 | 3-4 周 | **★ Agent 能力层：Plan 数据模型 + 任务规划 + 工具推荐 + Plan CRUD API** |
-| **v0.7.0** | ⏳ 计划 | 3-4 周 | **自适应执行引擎：反馈分析 + 错误恢复 + 自主循环迭代** |
-| **v0.8.0** | ⏳ 计划 | 2-3 周 | 工作流模板 + 组合复用（从历史 Plan 提取模板） |
-| **v0.9.0** | ⏳ 计划 | 2-3 周 | 多 Plan 编排（DAG 依赖 + 并行执行） |
+| **v0.5.7** | ✅ 已发 | — | **★ Agent 能力层基线：Plan 数据模型 + 任务规划 + 工具推荐 + Plan CRUD API + CLI** |
+| **v0.6.0** | ⏳ 计划 | 3-4 周 | **自适应执行引擎：反馈分析 + 错误恢复 + 自主循环迭代** |
+| **v0.7.0** | ⏳ 计划 | 2-3 周 | 工作流模板 + 组合复用（从历史 Plan 提取模板） |
+| **v0.8.0** | ⏳ 计划 | 2-3 周 | 多 Plan 编排（DAG 依赖 + 并行执行） |
 | **v1.0.0** | ⏳ 计划 | 1 月 | 稳定 + 文档 + 申请收录 pi.dev/packages |
 
-### v0.6.0 关键内容（Agent 能力层 — Plan 数据模型）
+### v0.5.7 关键内容（Agent 能力层 — Plan 数据模型基线）
 
 详见 [`docs/roadmap-agent.md`](./roadmap-agent.md)。
 
@@ -93,10 +93,11 @@
 - **StepAction** — 8 种动作类型（pilot_command / pi_session / profile_switch / pack_install / policy_apply / condition / wait / manual）
 - **Plan CRUD API** — 完整的 REST 端点 + Server Actions
 - **工具推荐** — 基于目标描述匹配可用工具和 Profile
-- **CLI 命令** — `pilot plan new/ls/show/run/pause/resume`
+- **CLI 命令** — `pilot plan new/ls/show/run/pause/resume/cancel/delete/suggest-tools`
 - **存储** — `~/.pilot/plans/` (TOML) + `~/.pilot/plans-history/` (JSONL)
+- **事件日志** — 每个生命周期动作（plan_created / started / paused / resumed / cancelled / deleted）记一条 JSONL 事件，方便后续执行器回放
 
-### v0.7.0 关键内容（自适应执行引擎）
+### v0.6.0 关键内容（自适应执行引擎）
 
 - **PlanExecutor** — 执行引擎，AsyncIterable<PlanEvent> 流式输出
 - **FeedbackEngine** — 分析步骤结果，分类 pass/fail/partial
@@ -104,14 +105,14 @@
 - **自适应循环** — 执行 → 观察结果 → 调整计划 → 继续执行
 - **Web UI** — Plan 执行状态实时展示（WebSocket 或轮询）
 
-### v0.8.0 关键内容（工作流模板）
+### v0.7.0 关键内容（工作流模板）
 
 - **WorkflowTemplate** — 从历史 Plan 提取可复用的模板
 - **内置模板** — code-review / bug-fix / feature-impl / refactor / onboard-pkg
 - **模板实例化** — 用模板 + 参数生成具体 Plan
 - **Compose 集成** — Plan 执行结果可视化展示在 Compose 画布
 
-### v0.9.0 关键内容（多 Plan 编排）
+### v0.8.0 关键内容（多 Plan 编排）
 
 - **PlanComposition** — 多个 Plan 的 DAG 依赖编排
 - **并行执行** — 无依赖的 Plan 同时执行
@@ -142,17 +143,20 @@
 - **A/B diff** — 两个 session 同 prompt 不同 profile 的差异可视化
 - **6 阶段 trace 可视化** — 每步标注属于 strategy / planner / retrieval / toolSelector / executor / validator / output
 
-### v0.6.0 关键内容（Pi extension）
+### v0.5.4 关键内容（Co-pilot 模式 / pilot agent）
 
 ```bash
-pi install npm:@pilot/pi-extension
+pilot agent                  # 起 pi 子进程，自动加载 pilot-tools extension
+pilot agent --profile work   # 用 work profile 启动
 ```
 
-装上后 pi 内部可用：
-- `/pilot stats today`
-- `/pilot session search "JWT"`
-- `/pilot doctor`
-- `/pilot ui` — 在 pi 内打开 Web UI
+Pi 内部可用 13 个 LLM 工具（通过 `pilot-tools` extension）：
+- `pack_install / pack_uninstall / pack_list`
+- `profile_activate / profile_list`
+- `session_search / session_info`
+- `stats`（今日/本周消耗）
+- `avatar_capture / avatar_diff / avatar_apply`
+- `forge_search / capability_diff / doctor`
 
 ### v1.0 标志
 

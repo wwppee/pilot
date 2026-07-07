@@ -648,8 +648,20 @@ async function updatePlanInHome(
 }
 
 async function deletePlanFromHome(id: string, home?: string): Promise<boolean> {
-  const { deletePlan } = await import("./plan.js");
-  return deletePlan(id, home);
+  const { deletePlan, appendPlanEvent } = await import("./plan.js");
+  const deleted = await deletePlan(id, home);
+  if (deleted) {
+    await appendPlanEvent(
+      {
+        timestamp: new Date().toISOString(),
+        planId: id,
+        type: "plan_deleted",
+        data: {},
+      },
+      home,
+    );
+  }
+  return deleted;
 }
 
 async function startPlanInHome(id: string, home?: string): Promise<Plan> {

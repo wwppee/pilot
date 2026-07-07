@@ -322,7 +322,13 @@ export type StepStatus = z.infer<typeof StepStatusSchema>;
 /** Generate a plan ID from timestamp. */
 export function generatePlanId(): string {
   const now = new Date();
-  const ts = now.toISOString().replace(/[-:T]/g, "").slice(0, 15);
+  // Strip ISO separators AND the millisecond decimal + Z so the
+  // timestamp portion is purely digits — matches the format used
+  // by appendPlanEvent for event log filenames.
+  const ts = now
+    .toISOString()
+    .replace(/[-:T.Z]/g, "")
+    .slice(0, 15);
   const rnd = Math.random().toString(36).slice(2, 8);
   return `${ts}_${rnd}`;
 }
@@ -347,8 +353,10 @@ export async function readPlan(
   try {
     const file = planPath(id, home);
     const raw = await readFile(file, "utf-8");
-    const data = parseToml(raw) as unknown;
-    return PlanSchema.parse(data);
+    const data = parseToml(raw) as Record<string, unknown>;
+    // Re-inject id before validation — writePlan strips it from TOML
+    // (the filename IS the id) but the schema still requires the field.
+    return PlanSchema.parse({ ...data, id });
   } catch {
     return null;
   }
@@ -538,6 +546,7 @@ export type PlanEventType =
   | "plan_completed"
   | "plan_failed"
   | "plan_cancelled"
+  | "plan_deleted"
   | "task_started"
   | "task_completed"
   | "task_failed"

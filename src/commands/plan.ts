@@ -1,11 +1,17 @@
 /**
- * `pilot plan` — Agent capability layer (v0.6.0).
+ * `pilot plan` — Agent capability layer (v0.5.7).
  *
  * Manages execution Plans: create, list, show, run, pause, resume.
  *
  * Plans break a user goal into ordered Tasks with concrete Steps.
  * Each Step has a typed action (pilot_command, pi_session,
  * profile_switch, pack_install, etc.).
+ *
+ * All lifecycle ops route through `ctx.service` so:
+ *   - Event log entries (`plan_created` / `plan_started` / etc.) are emitted
+ *   - Validation is centralized in service-impl
+ *   - The future PlanExecutor can hook into `service.startPlan` without
+ *     needing to also patch the CLI
  *
  * Usage:
  *   pilot plan new "实现用户登录功能"
@@ -21,16 +27,7 @@
 
 import kleur from "kleur";
 import type { Command, PilotContext } from "../core/types.js";
-import {
-  generatePlanId,
-  deriveTitle,
-  listPlans,
-  readPlan,
-  writePlan,
-  deletePlan,
-  ensurePlanDirs,
-  suggestTools,
-} from "../core/plan.js";
+import { deriveTitle, ensurePlanDirs } from "../core/plan.js";
 
 export const manifest: Command = {
   name: "plan",
@@ -92,33 +89,24 @@ async function planNew(args: string[], ctx: PilotContext): Promise<number> {
 
   await ensurePlanDirs(ctx.home);
 
-  const id = generatePlanId();
-  const title = deriveTitle(goal);
+  const plan = await ctx.service.createPlan({
+    goal,
+    title: deriveTitle(goal),
+    context: { cwd: process.cwd() },
+  });
 
-  const plan = await writePlan(
-    id,
-    {
-      goal,
-      title,
-      status: "draft",
-      strategy: "sequential",
-      context: { cwd: process.cwd() },
-    },
-    ctx.home,
-  );
-
-  ctx.logger.success(`✓ Plan created: ${kleur.cyan(id)}`);
+  ctx.logger.success(`✓ Plan created: ${kleur.cyan(plan.id)}`);
   ctx.logger.info(`  Goal: ${plan.goal}`);
-  ctx.logger.info(`  Title: ${plan.title}`);
+  ctx.logger.info(`  Title: ${plan.title ?? "(untitled)"}`);
   ctx.logger.info(`  Status: ${plan.status}`);
-  ctx.logger.dim(`  View:  pilot plan show ${id}`);
-  ctx.logger.dim(`  Run:   pilot plan run ${id}`);
+  ctx.logger.dim(`  View:  pilot plan show ${plan.id}`);
+  ctx.logger.dim(`  Run:   pilot plan run ${plan.id}`);
 
   return 0;
 }
 
 async function planLs(ctx: PilotContext): Promise<number> {
-  const plans = await listPlans(ctx.home);
+  const plans = await ctx.service.listPlans();
 
   if (plans.length === 0) {
     ctx.logger.info("No plans yet. Create one:");
@@ -144,7 +132,7 @@ async function planShow(args: string[], ctx: PilotContext): Promise<number> {
     return 1;
   }
 
-  const plan = await readPlan(id, ctx.home);
+  const plan = await ctx.service.getPlan(id);
   if (!plan) {
     ctx.logger.error(`Plan not found: ${id}`);
     return 1;
@@ -234,68 +222,25 @@ async function planRun(args: string[], ctx: PilotContext): Promise<number> {
     return 1;
   }
 
-  const plan = await readPlan(id, ctx.home);
-  if (!plan) {
-    ctx.logger.error(`Plan not found: ${id}`);
-    return 1;
+  let plan;
+  try {
+    plan = await ctx.service.startPlan(id);
+  } catch (err) {
+    return handleServiceError(err, ctx);
   }
 
-  if (plan.status === "running") {
-    ctx.logger.warn("Plan is already running.");
-    return 0;
-  }
-
-  if (plan.status === "completed") {
-    ctx.logger.warn(
-      "Plan is already completed. Create a new plan or reset this one.",
-    );
-    return 1;
-  }
-
-  // Update status to running
-  const now = new Date().toISOString();
-  await writePlan(
-    id,
-    {
-      ...plan,
-      status: "running",
-      startedAt: plan.startedAt ?? now,
-    },
-    ctx.home,
-  );
-
-  ctx.logger.success(`▶ Plan started: ${kleur.cyan(id)}`);
+  ctx.logger.success(`▶ Plan started: ${kleur.cyan(plan.id)}`);
+  ctx.logger.info(`  Strategy: ${plan.strategy}`);
+  ctx.logger.info(`  Tasks:    ${plan.tasks.length}`);
 
   if (plan.tasks.length === 0) {
     ctx.logger.warn("  No tasks to execute. Add tasks first.");
     return 0;
   }
 
-  // Execute tasks sequentially (v0.6.0 baseline)
-  // Future versions will implement the full executor with feedback
-  for (let i = 0; i < plan.tasks.length; i++) {
-    const task = plan.tasks[i]!;
-    if (!task) continue;
-
-    // Check dependencies
-    for (const depId of task.dependsOn) {
-      const dep = plan.tasks.find((t) => t.id === depId);
-      if (!dep || dep.status !== "completed") {
-        ctx.logger.warn(
-          `  Task "${task.description}" blocked by dependency "${depId}"`,
-        );
-        task.status = "blocked";
-        continue;
-      }
-    }
-
-    ctx.logger.info(
-      `  Task ${i + 1}/${plan.tasks.length}: ${task.description}`,
-    );
-    // In v0.6.0, we only update the status. The actual executor comes in v0.7.0.
-    ctx.logger.dim("  (execution engine coming in v0.7.0)");
-  }
-
+  ctx.logger.dim(
+    "  (execution engine coming in v0.7.0 — status set to running)",
+  );
   return 0;
 }
 
@@ -306,18 +251,12 @@ async function planPause(args: string[], ctx: PilotContext): Promise<number> {
     return 1;
   }
 
-  const plan = await readPlan(id, ctx.home);
-  if (!plan) {
-    ctx.logger.error(`Plan not found: ${id}`);
-    return 1;
+  try {
+    await ctx.service.pausePlan(id);
+  } catch (err) {
+    return handleServiceError(err, ctx);
   }
 
-  if (plan.status !== "running") {
-    ctx.logger.warn(`Plan is not running (current status: ${plan.status})`);
-    return 1;
-  }
-
-  await writePlan(id, { ...plan, status: "paused" }, ctx.home);
   ctx.logger.success(`⏸ Plan paused: ${kleur.cyan(id)}`);
   return 0;
 }
@@ -329,18 +268,12 @@ async function planResume(args: string[], ctx: PilotContext): Promise<number> {
     return 1;
   }
 
-  const plan = await readPlan(id, ctx.home);
-  if (!plan) {
-    ctx.logger.error(`Plan not found: ${id}`);
-    return 1;
+  try {
+    await ctx.service.resumePlan(id);
+  } catch (err) {
+    return handleServiceError(err, ctx);
   }
 
-  if (plan.status !== "paused") {
-    ctx.logger.warn(`Plan is not paused (current status: ${plan.status})`);
-    return 1;
-  }
-
-  await writePlan(id, { ...plan, status: "running" }, ctx.home);
   ctx.logger.success(`▶ Plan resumed: ${kleur.cyan(id)}`);
   return 0;
 }
@@ -352,28 +285,12 @@ async function planCancel(args: string[], ctx: PilotContext): Promise<number> {
     return 1;
   }
 
-  const plan = await readPlan(id, ctx.home);
-  if (!plan) {
-    ctx.logger.error(`Plan not found: ${id}`);
-    return 1;
+  try {
+    await ctx.service.cancelPlan(id);
+  } catch (err) {
+    return handleServiceError(err, ctx);
   }
 
-  if (plan.status !== "running" && plan.status !== "paused") {
-    ctx.logger.warn(
-      `Plan cannot be cancelled (current status: ${plan.status})`,
-    );
-    return 1;
-  }
-
-  await writePlan(
-    id,
-    {
-      ...plan,
-      status: "cancelled",
-      completedAt: new Date().toISOString(),
-    },
-    ctx.home,
-  );
   ctx.logger.success(`✕ Plan cancelled: ${kleur.cyan(id)}`);
   return 0;
 }
@@ -385,7 +302,7 @@ async function planDelete(args: string[], ctx: PilotContext): Promise<number> {
     return 1;
   }
 
-  const deleted = await deletePlan(id, ctx.home);
+  const deleted = await ctx.service.deletePlan(id);
   if (!deleted) {
     ctx.logger.error(`Plan not found: ${id}`);
     return 1;
@@ -405,25 +322,7 @@ async function planSuggestTools(
     return 1;
   }
 
-  const [tools, profiles] = await Promise.all([
-    ctx.service.listTools(),
-    ctx.service.listProfiles(),
-  ]);
-
-  const toolItems = tools.map((t) => ({
-    name: t.name,
-    source: t.source,
-    safety: t.safety,
-    description: t.description,
-  }));
-
-  const profileItems = profiles.map((p) => ({
-    name: p.name,
-    ...(p.model ? { model: p.model } : {}),
-    ...(p.packages ? { packages: p.packages } : {}),
-  }));
-
-  const suggestion = suggestTools(goal, toolItems, profileItems);
+  const suggestion = await ctx.service.suggestTools(goal);
 
   if (suggestion.matchedTools.length > 0) {
     ctx.logger.info(kleur.bold("Matched tools:"));
@@ -432,7 +331,8 @@ async function planSuggestTools(
     }
   } else {
     ctx.logger.info("No matching tools found. All available tools:");
-    for (const t of toolItems.slice(0, 10)) {
+    const tools = await ctx.service.listTools();
+    for (const t of tools.slice(0, 10)) {
       ctx.logger.dim(`  ${t.name} (${t.source})`);
     }
   }
@@ -448,7 +348,8 @@ async function planSuggestTools(
   } else {
     ctx.logger.info("");
     ctx.logger.info("No matching profiles. Available:");
-    for (const p of profileItems.slice(0, 5)) {
+    const profiles = await ctx.service.listProfiles();
+    for (const p of profiles.slice(0, 5)) {
       ctx.logger.dim(`  ${p.name}${p.model ? ` (model: ${p.model})` : ""}`);
     }
   }
@@ -457,6 +358,19 @@ async function planSuggestTools(
 }
 
 // ─── Helpers ────────────────────────────────────────────────
+
+/**
+ * Convert a service-layer Error into a user-friendly CLI message and exit code.
+ * Service throws plain `Error` with messages like "Plan not found: xxx" or
+ * "Plan is not running (current: completed): xxx" — pass them through.
+ */
+function handleServiceError(err: unknown, ctx: PilotContext): number {
+  const msg = err instanceof Error ? err.message : String(err);
+  // Service errors already start with a useful phrase ("Plan not found",
+  // "Plan cannot be cancelled", "Plan is already running", etc.).
+  ctx.logger.error(msg);
+  return 1;
+}
 
 function statusColorOf(status: string): (s: string) => string {
   switch (status) {
@@ -500,26 +414,26 @@ function stepStatusColorOf(status: string): (s: string) => string {
   return taskStatusColorOf(status);
 }
 
-function formatAction(action: Record<string, unknown>): string {
+function formatAction(action: import("../core/plan.js").StepAction): string {
   switch (action.type) {
     case "pilot_command":
-      return `pilot ${(action as { command: string }).command} ${((action as { args: string[] }).args ?? []).join(" ")}`;
+      return `pilot ${action.command} ${action.args.join(" ")}`.trim();
     case "pi_session":
-      return `pi session: "${(action as { prompt: string }).prompt.slice(0, 50)}..."`;
+      return `pi session: "${action.prompt.slice(0, 50)}..."`;
     case "profile_switch":
-      return `switch profile: ${(action as { profile: string }).profile}`;
+      return `switch profile: ${action.profile}`;
     case "pack_install":
-      return `install: ${(action as { source: string }).source}`;
+      return `install: ${action.source}`;
     case "policy_apply":
-      return `apply policy: ${(action as { policy: string }).policy}`;
+      return `apply policy: ${action.policy}`;
     case "condition":
-      return `condition: ${(action as { check: string }).check.slice(0, 50)}`;
+      return `condition: ${action.check.slice(0, 50)}`;
     case "wait":
-      return `wait: ${(action as { condition: string }).condition.slice(0, 50)}`;
+      return `wait: ${action.condition.slice(0, 50)}`;
     case "manual":
-      return `manual: ${(action as { prompt: string }).prompt.slice(0, 50)}`;
+      return `manual: ${action.prompt.slice(0, 50)}`;
     default:
-      return String(action.type);
+      return String((action as { type: string }).type);
   }
 }
 
