@@ -57,6 +57,22 @@ import {
 import { aggregateStats } from "./stats.js";
 import { listToolInventory } from "./tool-inventory.js";
 import {
+  appendPlanEvent,
+  // P1#8: Plan functions imported statically (was dynamic) to match
+  // the project's "all imports static" style. Lazy-import was a v0.5.7
+  // v0.5.7-beta code smell — no circular-dep reason to keep it.
+  deletePlan as deletePlanCore,
+  deriveTitle,
+  ensurePlanDirs,
+  generatePlanId,
+  listPlans as listPlansCore,
+  PlanError,
+  PlanErrors,
+  readPlan as readPlanCore,
+  writePlan as writePlanCore,
+} from "./plan.js";
+import { suggestTools as suggestToolsCore } from "./plan.js";
+import {
   traceToolCalls,
   type ToolCallEvent,
   type ToolTraceFilter,
@@ -590,33 +606,24 @@ async function checkPolicyCallByName(
 // ─── Plans (v0.6.0 — Agent capability layer) ───────────────
 
 async function listPlansFromHome(home?: string): Promise<Plan[]> {
-  const { listPlans, ensurePlanDirs } = await import("./plan.js");
   await ensurePlanDirs(home);
-  return listPlans(home);
+  return listPlansCore(home);
 }
 
 async function readPlanFromHome(
   id: string,
   home?: string,
 ): Promise<Plan | null> {
-  const { readPlan } = await import("./plan.js");
-  return readPlan(id, home);
+  return readPlanCore(id, home);
 }
 
 async function createPlanInHome(
   input: Partial<Plan> & { goal: string },
   home?: string,
 ): Promise<Plan> {
-  const {
-    generatePlanId,
-    deriveTitle,
-    writePlan,
-    ensurePlanDirs,
-    appendPlanEvent,
-  } = await import("./plan.js");
   await ensurePlanDirs(home);
   const id = generatePlanId();
-  const plan = await writePlan(
+  const plan = await writePlanCore(
     id,
     {
       ...input,
@@ -641,15 +648,27 @@ async function updatePlanInHome(
   input: Partial<Plan>,
   home?: string,
 ): Promise<Plan> {
-  const { writePlan, readPlan } = await import("./plan.js");
-  const existing = await readPlan(id, home);
-  if (!existing) throw new Error(`Plan not found: ${id}`);
-  return writePlan(id, input, home);
+  const existing = await readPlanCore(id, home);
+  if (!existing) throw PlanErrors.notFound(id);
+
+  // Status / lifecycle state are server-controlled. Only the dedicated
+  // /plans/:id/{start,pause,resume,cancel} endpoints can mutate them.
+  // This prevents clients from doing PUT {status: "completed"} to skip
+  // the state machine. P0#1 from v0.5.7 review.
+  const sanitized: Partial<Plan> = { ...input };
+  delete (sanitized as Record<string, unknown>).id;
+  delete sanitized.status;
+  delete sanitized.startedAt;
+  delete sanitized.completedAt;
+  delete sanitized.result;
+  delete sanitized.createdAt;
+  delete sanitized.updatedAt;
+
+  return writePlanCore(id, sanitized, home);
 }
 
 async function deletePlanFromHome(id: string, home?: string): Promise<boolean> {
-  const { deletePlan, appendPlanEvent } = await import("./plan.js");
-  const deleted = await deletePlan(id, home);
+  const deleted = await deletePlanCore(id, home);
   if (deleted) {
     await appendPlanEvent(
       {
@@ -665,15 +684,12 @@ async function deletePlanFromHome(id: string, home?: string): Promise<boolean> {
 }
 
 async function startPlanInHome(id: string, home?: string): Promise<Plan> {
-  const { writePlan, readPlan, appendPlanEvent } = await import("./plan.js");
-  const plan = await readPlan(id, home);
-  if (!plan) throw new Error(`Plan not found: ${id}`);
-  if (plan.status === "running")
-    throw new Error(`Plan is already running: ${id}`);
-  if (plan.status === "completed")
-    throw new Error(`Plan is already completed: ${id}`);
+  const plan = await readPlanCore(id, home);
+  if (!plan) throw PlanErrors.notFound(id);
+  if (plan.status === "running") throw PlanErrors.alreadyRunning(id);
+  if (plan.status === "completed") throw PlanErrors.alreadyCompleted(id);
   const now = new Date().toISOString();
-  const updated = await writePlan(
+  const updated = await writePlanCore(
     id,
     { status: "running", startedAt: plan.startedAt ?? now },
     home,
@@ -686,12 +702,10 @@ async function startPlanInHome(id: string, home?: string): Promise<Plan> {
 }
 
 async function pausePlanInHome(id: string, home?: string): Promise<Plan> {
-  const { writePlan, readPlan, appendPlanEvent } = await import("./plan.js");
-  const plan = await readPlan(id, home);
-  if (!plan) throw new Error(`Plan not found: ${id}`);
-  if (plan.status !== "running")
-    throw new Error(`Plan is not running (current: ${plan.status}): ${id}`);
-  const updated = await writePlan(id, { status: "paused" }, home);
+  const plan = await readPlanCore(id, home);
+  if (!plan) throw PlanErrors.notFound(id);
+  if (plan.status !== "running") throw PlanErrors.notRunning(id, plan.status);
+  const updated = await writePlanCore(id, { status: "paused" }, home);
   await appendPlanEvent(
     {
       timestamp: new Date().toISOString(),
@@ -705,12 +719,10 @@ async function pausePlanInHome(id: string, home?: string): Promise<Plan> {
 }
 
 async function resumePlanInHome(id: string, home?: string): Promise<Plan> {
-  const { writePlan, readPlan, appendPlanEvent } = await import("./plan.js");
-  const plan = await readPlan(id, home);
-  if (!plan) throw new Error(`Plan not found: ${id}`);
-  if (plan.status !== "paused")
-    throw new Error(`Plan is not paused (current: ${plan.status}): ${id}`);
-  const updated = await writePlan(id, { status: "running" }, home);
+  const plan = await readPlanCore(id, home);
+  if (!plan) throw PlanErrors.notFound(id);
+  if (plan.status !== "paused") throw PlanErrors.notPaused(id, plan.status);
+  const updated = await writePlanCore(id, { status: "running" }, home);
   await appendPlanEvent(
     {
       timestamp: new Date().toISOString(),
@@ -724,15 +736,12 @@ async function resumePlanInHome(id: string, home?: string): Promise<Plan> {
 }
 
 async function cancelPlanInHome(id: string, home?: string): Promise<Plan> {
-  const { writePlan, readPlan, appendPlanEvent } = await import("./plan.js");
-  const plan = await readPlan(id, home);
-  if (!plan) throw new Error(`Plan not found: ${id}`);
+  const plan = await readPlanCore(id, home);
+  if (!plan) throw PlanErrors.notFound(id);
   if (plan.status !== "running" && plan.status !== "paused")
-    throw new Error(
-      `Plan cannot be cancelled (current: ${plan.status}): ${id}`,
-    );
+    throw PlanErrors.cannotCancel(id, plan.status);
   const now = new Date().toISOString();
-  const updated = await writePlan(
+  const updated = await writePlanCore(
     id,
     { status: "cancelled", completedAt: now },
     home,
@@ -750,14 +759,13 @@ async function updateTaskInHome(
   updates: Partial<Task>,
   home?: string,
 ): Promise<Plan> {
-  const { readPlan, writePlan } = await import("./plan.js");
-  const plan = await readPlan(planId, home);
-  if (!plan) throw new Error(`Plan not found: ${planId}`);
+  const plan = await readPlanCore(planId, home);
+  if (!plan) throw PlanErrors.notFound(planId);
   const taskIdx = plan.tasks.findIndex((t) => t.id === taskId);
-  if (taskIdx === -1) throw new Error(`Task not found: ${taskId}`);
+  if (taskIdx === -1) throw new PlanError(`Task not found: ${taskId}`, 404);
   const existingTask = plan.tasks[taskIdx]!;
   plan.tasks[taskIdx] = { ...existingTask, ...updates };
-  return writePlan(planId, plan, home);
+  return writePlanCore(planId, plan, home);
 }
 
 async function updateStepInHome(
@@ -767,23 +775,21 @@ async function updateStepInHome(
   updates: Partial<Step>,
   home?: string,
 ): Promise<Plan> {
-  const { readPlan, writePlan } = await import("./plan.js");
-  const plan = await readPlan(planId, home);
-  if (!plan) throw new Error(`Plan not found: ${planId}`);
+  const plan = await readPlanCore(planId, home);
+  if (!plan) throw PlanErrors.notFound(planId);
   const task = plan.tasks.find((t) => t.id === taskId);
-  if (!task) throw new Error(`Task not found: ${taskId}`);
+  if (!task) throw new PlanError(`Task not found: ${taskId}`, 404);
   const stepIdx = task.steps.findIndex((s) => s.id === stepId);
-  if (stepIdx === -1) throw new Error(`Step not found: ${stepId}`);
+  if (stepIdx === -1) throw new PlanError(`Step not found: ${stepId}`, 404);
   const existingStep = task.steps[stepIdx]!;
   task.steps[stepIdx] = { ...existingStep, ...updates };
-  return writePlan(planId, plan, home);
+  return writePlanCore(planId, plan, home);
 }
 
 async function suggestToolsFromHome(
   goal: string,
   home?: string,
 ): Promise<ToolSuggestion> {
-  const { suggestTools } = await import("./plan.js");
   const [tools, profiles] = await Promise.all([
     listToolInventory(home),
     listProfiles(home),
@@ -799,5 +805,5 @@ async function suggestToolsFromHome(
     ...(p.model ? { model: p.model } : {}),
     ...(p.packages ? { packages: p.packages } : {}),
   }));
-  return suggestTools(goal, toolItems, profileItems);
+  return suggestToolsCore(goal, toolItems, profileItems);
 }

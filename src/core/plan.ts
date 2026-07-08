@@ -126,14 +126,6 @@ const PolicyApplyActionSchema = z.object({
   policy: z.string(),
 });
 
-/** Conditional branching — sub-steps stored as raw JSON (validated lazily to break Zod circular ref). */
-const ConditionActionSchema = z.object({
-  type: z.literal("condition"),
-  check: z.string(),
-  then: z.array(z.record(z.unknown())).default([]),
-  else: z.array(z.record(z.unknown())).default([]),
-});
-
 /** Wait for an external condition. */
 const WaitActionSchema = z.object({
   type: z.literal("wait"),
@@ -148,23 +140,7 @@ const ManualActionSchema = z.object({
   prompt: z.string(),
 });
 
-// ─── StepAction union ──
-
-/** Discriminated union of all step actions. Condition stores sub-steps as raw JSON. */
-export const StepActionSchema = z.discriminatedUnion("type", [
-  PilotCommandActionSchema,
-  PiSessionActionSchema,
-  ProfileSwitchActionSchema,
-  PackInstallActionSchema,
-  PolicyApplyActionSchema,
-  ConditionActionSchema as unknown as z.ZodDiscriminatedUnionOption<"type">,
-  WaitActionSchema,
-  ManualActionSchema,
-]);
-
-export type StepAction = z.infer<typeof StepActionSchema>;
-
-// ─── StepOutput schema ─────────────────────────────────────
+// ─── StepOutput schema (used by both SubStep + Step) ────────
 
 export const StepOutputSchema = z.object({
   /** Whether the step succeeded. */
@@ -182,6 +158,78 @@ export const StepOutputSchema = z.object({
 });
 
 export type StepOutput = z.infer<typeof StepOutputSchema>;
+
+/**
+ * SubStepAction — what a `condition` action's then/else children can be.
+ *
+ * P0#5 (v0.5.7 review): the original `z.record(z.unknown())` accepted
+ * any garbage; the executor would crash trying to use it as a Step.
+ * We now validate children as proper SubSteps.
+ *
+ * Sub-steps are deliberately restricted — they can be any leaf action
+ * but **NOT** a nested `condition`. This avoids the mutual-recursion
+ * problem (a condition inside a condition inside a condition...) and
+ * keeps the future executor implementation small. Users compose
+ * complex branching with parallel tasks instead.
+ */
+const SubStepActionSchema = z.discriminatedUnion("type", [
+  PilotCommandActionSchema,
+  PiSessionActionSchema,
+  ProfileSwitchActionSchema,
+  PackInstallActionSchema,
+  PolicyApplyActionSchema,
+  WaitActionSchema,
+  ManualActionSchema,
+]);
+
+/**
+ * SubStep is a Step without the `condition` action. Used as the
+ * element type of `condition.then` / `condition.else`.
+ */
+const SubStepSchema = z.object({
+  id: z.string(),
+  description: z.string(),
+  action: SubStepActionSchema,
+  status: StepStatusSchema.default("pending"),
+  /** Input parameters for the action. */
+  input: z.record(z.unknown()).default({}),
+  /** Output from execution (populated after completion). */
+  output: StepOutputSchema.optional(),
+  /** How many times this step has been retried. */
+  retryCount: z.number().default(0),
+  /** Maximum retries before marking as failed. Default 2. */
+  maxRetries: z.number().default(2),
+  /** Timestamps. */
+  startedAt: z.string().optional(),
+  completedAt: z.string().optional(),
+});
+
+/** Conditional branching — sub-steps are validated as SubSteps. */
+const ConditionActionSchema = z.object({
+  type: z.literal("condition"),
+  check: z.string(),
+  then: z.array(SubStepSchema).default([]),
+  else: z.array(SubStepSchema).default([]),
+});
+
+// ─── StepAction union ──
+
+/** Discriminated union of all step actions. */
+export const StepActionSchema = z.discriminatedUnion("type", [
+  PilotCommandActionSchema,
+  PiSessionActionSchema,
+  ProfileSwitchActionSchema,
+  PackInstallActionSchema,
+  PolicyApplyActionSchema,
+  ConditionActionSchema,
+  WaitActionSchema,
+  ManualActionSchema,
+]);
+
+export type StepAction = z.infer<typeof StepActionSchema>;
+
+/** SubStep — a Step without the `condition` action. */
+export type SubStep = z.infer<typeof SubStepSchema>;
 
 // ─── Step schema ────────────────────────────────────────────
 
@@ -317,6 +365,44 @@ export type PlanStrategy = z.infer<typeof PlanStrategySchema>;
 export type TaskStatus = z.infer<typeof TaskStatusSchema>;
 export type StepStatus = z.infer<typeof StepStatusSchema>;
 
+// ─── PlanError (HTTP status for service-layer errors) ────────
+
+/**
+ * P1#10 (v0.5.7 review): service-layer errors carry an HTTP status
+ * so the server's error handler can map them correctly. Without
+ * this, a "Plan not found" would be 500 instead of 404, and an
+ * invalid state transition ("Plan is already completed") would be
+ * 500 instead of 409. The CLI just shows the message — the status
+ * is ignored outside the server.
+ */
+export class PlanError extends Error {
+  constructor(
+    message: string,
+    readonly statusCode: number,
+  ) {
+    super(message);
+    this.name = "PlanError";
+  }
+}
+
+/**
+ * Pre-built common error factories. Use these so error messages +
+ * status codes stay consistent across service methods.
+ */
+export const PlanErrors = {
+  notFound: (id: string) => new PlanError(`Plan not found: ${id}`, 404),
+  alreadyRunning: (id: string) =>
+    new PlanError(`Plan is already running: ${id}`, 409),
+  alreadyCompleted: (id: string) =>
+    new PlanError(`Plan is already completed: ${id}`, 409),
+  notRunning: (id: string, current: string) =>
+    new PlanError(`Plan is not running (current: ${current}): ${id}`, 409),
+  notPaused: (id: string, current: string) =>
+    new PlanError(`Plan is not paused (current: ${current}): ${id}`, 409),
+  cannotCancel: (id: string, current: string) =>
+    new PlanError(`Plan cannot be cancelled (current: ${current}): ${id}`, 409),
+};
+
 // ─── Plan ID generation ──────────────────────────────────────
 
 /** Generate a plan ID from timestamp. */
@@ -345,20 +431,54 @@ export function generateStepId(): string {
 
 // ─── Read / write ──────────────────────────────────────────
 
-/** Read and parse a plan TOML. Returns null on any error. */
+/**
+ * Read and parse a plan TOML.
+ *
+ * Returns null when the file doesn't exist (ENOENT). Throws a
+ * `PlanError` with status 500 if the file exists but the content is
+ * invalid TOML or doesn't match `PlanSchema` — that's a corruption,
+ * not a "missing" case, and silently returning null would hide it.
+ *
+ * P1#6 (v0.5.7 review): the original implementation swallowed ALL
+ * errors, making it impossible to tell "plan not found" from "plan
+ * file is corrupt". With this split, the service layer can map
+ * missing → 404 and corrupt → 500 + operator-visible error message.
+ */
 export async function readPlan(
   id: string,
   home?: string,
 ): Promise<Plan | null> {
+  const file = planPath(id, home);
+  let raw: string;
   try {
-    const file = planPath(id, home);
-    const raw = await readFile(file, "utf-8");
-    const data = parseToml(raw) as Record<string, unknown>;
+    raw = await readFile(file, "utf-8");
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === "ENOENT") return null;
+    // Any other read error (permission, IO) → bubble up; the service
+    // layer will log + wrap.
+    throw new PlanError(
+      `Failed to read plan ${id}: ${(e as Error).message}`,
+      500,
+    );
+  }
+  let data: Record<string, unknown>;
+  try {
+    data = parseToml(raw) as Record<string, unknown>;
+  } catch (e) {
+    throw new PlanError(
+      `Plan ${id} has invalid TOML: ${(e as Error).message}`,
+      500,
+    );
+  }
+  try {
     // Re-inject id before validation — writePlan strips it from TOML
     // (the filename IS the id) but the schema still requires the field.
     return PlanSchema.parse({ ...data, id });
-  } catch {
-    return null;
+  } catch (e) {
+    throw new PlanError(
+      `Plan ${id} failed schema validation: ${(e as Error).message}`,
+      500,
+    );
   }
 }
 

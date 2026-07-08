@@ -716,7 +716,11 @@ describe("commands use ctx.service (not direct core) > pilot forge", () => {
 
 describe("pilot plan (v0.5.7 routes everything through service)", () => {
   describe("plan new", () => {
-    it("calls ctx.service.createPlan with goal + auto-derived title", async () => {
+    it("calls ctx.service.createPlan with goal; service derives title", async () => {
+      // v0.5.7: the CLI doesn't pre-derive title — service.createPlan
+      // (via core/plan.ts) does it. The CLI just forwards goal +
+      // context.cwd. This keeps the CLI thin and lets the title
+      // logic stay in one place.
       const svc = makeMockService({
         createPlan: vi.fn(
           async (input: { goal: string; title?: string }) =>
@@ -738,7 +742,10 @@ describe("pilot plan (v0.5.7 routes everything through service)", () => {
       expect(svc.createPlan).toHaveBeenCalledTimes(1);
       const call = svc.createPlan.mock.calls[0]![0];
       expect(call.goal).toBe("实现用户登录");
-      expect(call.title).toBeTruthy();
+      // CLI doesn't pass title; service is responsible for deriving it
+      expect(call.title).toBeUndefined();
+      // CLI does pass context.cwd so the plan knows where it was created
+      expect(call.context?.cwd).toBeTruthy();
     });
 
     it("returns 1 with no goal", async () => {

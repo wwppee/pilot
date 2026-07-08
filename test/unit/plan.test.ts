@@ -15,7 +15,13 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, rmSync, readdirSync, existsSync } from "node:fs";
+import {
+  mkdtempSync,
+  rmSync,
+  readdirSync,
+  existsSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readFileSync } from "node:fs";
@@ -33,6 +39,9 @@ import {
   planPath,
   plansDir,
   plansHistoryDir,
+  PlanError,
+  PlanErrors,
+  type StepAction,
 } from "../../src/core/plan.js";
 
 let fakeHome: string;
@@ -72,15 +81,21 @@ describe("readPlan (Bug 1 regression: id is re-injected before schema parse)", (
     expect(back?.strategy).toBe("sequential");
   });
 
-  it("survives a plan file that exists but has missing required fields (returns null)", async () => {
-    // Write a partial TOML that lacks `goal` — PlanSchema requires it.
+  it("throws PlanError(500) when a plan file has missing required fields", async () => {
+    // P1#6 (v0.5.7 review): the old behavior swallowed this and
+    // returned null. The new behavior surfaces it as a 500 PlanError
+    // so "missing" (404) and "corrupt" (500) stay distinguishable.
     const id = generatePlanId();
     const file = planPath(id, fakeHome);
     const fs = await import("node:fs/promises");
     await fs.writeFile(file, 'status = "draft"\n', "utf-8");
 
-    const back = await readPlan(id, fakeHome);
-    expect(back).toBeNull();
+    await expect(readPlan(id, fakeHome)).rejects.toThrow(PlanError);
+    try {
+      await readPlan(id, fakeHome);
+    } catch (e) {
+      expect((e as PlanError).statusCode).toBe(500);
+    }
   });
 });
 
@@ -351,5 +366,187 @@ describe("ensurePlanDirs", () => {
     } finally {
       rmSync(fresh, { recursive: true, force: true });
     }
+  });
+});
+
+// ─── P0#5 — condition sub-steps are validated, not free-form ─────
+
+describe("condition sub-steps (P0#5 regression)", () => {
+  it("PlanSchema.parse accepts a condition with leaf-action sub-steps", async () => {
+    const id = generatePlanId();
+    await writePlan(
+      id,
+      {
+        goal: "test condition",
+        tasks: [
+          {
+            id: "t1",
+            description: "branch on flag",
+            steps: [
+              {
+                id: "s1",
+                description: "if",
+                action: {
+                  type: "condition",
+                  check: "branch.flag == true",
+                  then: [
+                    {
+                      id: "s1a",
+                      description: "ls",
+                      action: {
+                        type: "pilot_command",
+                        command: "tool",
+                        args: ["ls"],
+                      },
+                    },
+                  ],
+                  else: [
+                    {
+                      id: "s1b",
+                      description: "wait",
+                      action: {
+                        type: "wait",
+                        condition: "ready",
+                        timeoutMs: 1000,
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+      },
+      fakeHome,
+    );
+
+    const back = await readPlan(id, fakeHome);
+    expect(back?.tasks[0]?.steps[0]?.action.type).toBe("condition");
+  });
+
+  it("PlanSchema.parse rejects a condition with a nested condition in sub-steps", async () => {
+    const id = generatePlanId();
+    await expect(
+      writePlan(
+        id,
+        {
+          goal: "nested condition attempt",
+          tasks: [
+            {
+              id: "t1",
+              description: "nope",
+              steps: [
+                {
+                  id: "s1",
+                  description: "outer",
+                  action: {
+                    type: "condition",
+                    check: "x",
+                    then: [
+                      {
+                        id: "s1a",
+                        description: "inner",
+                        action: {
+                          type: "condition",
+                          check: "y",
+                          then: [],
+                          else: [],
+                        },
+                      },
+                    ],
+                    else: [],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+        fakeHome,
+      ),
+    ).rejects.toThrow();
+  });
+});
+
+// ─── P1#6 — readPlan distinguishes missing from corrupt ─────────
+
+describe("readPlan (P1#6: missing vs corrupt)", () => {
+  it("returns null when file doesn't exist (ENOENT)", async () => {
+    const back = await readPlan("definitely-not-here", fakeHome);
+    expect(back).toBeNull();
+  });
+
+  it("throws PlanError (500) when TOML is invalid", async () => {
+    const id = generatePlanId();
+    const file = planPath(id, fakeHome);
+    writeFileSync(file, "this is not valid TOML = = = {{{\n", "utf-8");
+    await expect(readPlan(id, fakeHome)).rejects.toThrow(PlanError);
+    try {
+      await readPlan(id, fakeHome);
+    } catch (e) {
+      expect((e as PlanError).statusCode).toBe(500);
+    }
+  });
+
+  it("throws PlanError (500) when schema validation fails", async () => {
+    const id = generatePlanId();
+    const file = planPath(id, fakeHome);
+    // Valid TOML but missing required `goal` field
+    writeFileSync(file, 'title = "no goal here"\n', "utf-8");
+    await expect(readPlan(id, fakeHome)).rejects.toThrow(PlanError);
+  });
+});
+
+// ─── P1#10 — PlanErrors factory + PlanError class ───────────────
+
+describe("PlanError + PlanErrors factory (P1#10)", () => {
+  it("PlanError carries statusCode for HTTP mapping", () => {
+    const e = new PlanError("bad", 409);
+    expect(e.message).toBe("bad");
+    expect(e.statusCode).toBe(409);
+    expect(e.name).toBe("PlanError");
+  });
+
+  it("PlanErrors.notFound returns a 404 PlanError", () => {
+    const e = PlanErrors.notFound("abc");
+    expect(e).toBeInstanceOf(PlanError);
+    expect(e.statusCode).toBe(404);
+    expect(e.message).toContain("abc");
+  });
+
+  it("PlanErrors.alreadyRunning / alreadyCompleted use 409", () => {
+    expect(PlanErrors.alreadyRunning("x").statusCode).toBe(409);
+    expect(PlanErrors.alreadyCompleted("x").statusCode).toBe(409);
+  });
+
+  it("PlanErrors.notRunning / notPaused / cannotCancel include current status in message", () => {
+    const a = PlanErrors.notRunning("p1", "draft");
+    expect(a.statusCode).toBe(409);
+    expect(a.message).toContain("draft");
+    const b = PlanErrors.notPaused("p1", "running");
+    expect(b.statusCode).toBe(409);
+    expect(b.message).toContain("running");
+    const c = PlanErrors.cannotCancel("p1", "completed");
+    expect(c.statusCode).toBe(409);
+    expect(c.message).toContain("completed");
+  });
+});
+
+// ─── StepAction discriminated union (P0#5 type safety) ──────────
+
+describe("StepAction discriminated union shape (P0#5)", () => {
+  it("8 action types are present in the union", () => {
+    // Type-level only: each action's .type is one of the 8 literals.
+    const actions: StepAction[] = [
+      { type: "pilot_command", command: "x", args: [] },
+      { type: "pi_session", prompt: "p" },
+      { type: "profile_switch", profile: "default" },
+      { type: "pack_install", source: "npm:foo" },
+      { type: "policy_apply", policy: "safe-bash" },
+      { type: "condition", check: "x", then: [], else: [] },
+      { type: "wait", condition: "ready", timeoutMs: 1000 },
+      { type: "manual", prompt: "do it" },
+    ];
+    const types = new Set(actions.map((a) => a.type));
+    expect(types.size).toBe(8);
   });
 });

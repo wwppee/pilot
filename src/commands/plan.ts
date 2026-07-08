@@ -27,7 +27,6 @@
 
 import kleur from "kleur";
 import type { Command, PilotContext } from "../core/types.js";
-import { deriveTitle, ensurePlanDirs } from "../core/plan.js";
 
 export const manifest: Command = {
   name: "plan",
@@ -87,13 +86,18 @@ async function planNew(args: string[], ctx: PilotContext): Promise<number> {
     return 1;
   }
 
-  await ensurePlanDirs(ctx.home);
-
-  const plan = await ctx.service.createPlan({
-    goal,
-    title: deriveTitle(goal),
-    context: { cwd: process.cwd() },
-  });
+  // service.createPlan derives the short title (auto-strips common
+  // prefixes, truncates to 60 chars) and ensures plan directories
+  // exist — the CLI doesn't need to import core/plan directly.
+  let plan;
+  try {
+    plan = await ctx.service.createPlan({
+      goal,
+      context: { cwd: process.cwd() },
+    });
+  } catch (err) {
+    return handleServiceError(err, ctx);
+  }
 
   ctx.logger.success(`✓ Plan created: ${kleur.cyan(plan.id)}`);
   ctx.logger.info(`  Goal: ${plan.goal}`);
@@ -106,7 +110,12 @@ async function planNew(args: string[], ctx: PilotContext): Promise<number> {
 }
 
 async function planLs(ctx: PilotContext): Promise<number> {
-  const plans = await ctx.service.listPlans();
+  let plans;
+  try {
+    plans = await ctx.service.listPlans();
+  } catch (err) {
+    return handleServiceError(err, ctx);
+  }
 
   if (plans.length === 0) {
     ctx.logger.info("No plans yet. Create one:");
@@ -132,7 +141,12 @@ async function planShow(args: string[], ctx: PilotContext): Promise<number> {
     return 1;
   }
 
-  const plan = await ctx.service.getPlan(id);
+  let plan;
+  try {
+    plan = await ctx.service.getPlan(id);
+  } catch (err) {
+    return handleServiceError(err, ctx);
+  }
   if (!plan) {
     ctx.logger.error(`Plan not found: ${id}`);
     return 1;
@@ -302,7 +316,12 @@ async function planDelete(args: string[], ctx: PilotContext): Promise<number> {
     return 1;
   }
 
-  const deleted = await ctx.service.deletePlan(id);
+  let deleted;
+  try {
+    deleted = await ctx.service.deletePlan(id);
+  } catch (err) {
+    return handleServiceError(err, ctx);
+  }
   if (!deleted) {
     ctx.logger.error(`Plan not found: ${id}`);
     return 1;
@@ -432,8 +451,12 @@ function formatAction(action: import("../core/plan.js").StepAction): string {
       return `wait: ${action.condition.slice(0, 50)}`;
     case "manual":
       return `manual: ${action.prompt.slice(0, 50)}`;
-    default:
-      return String((action as { type: string }).type);
+    // Exhaustive over all StepAction variants above; the default
+    // only fires if a new variant lands without updating this switch.
+    default: {
+      const _exhaustive: never = action;
+      return String(_exhaustive);
+    }
   }
 }
 

@@ -82,8 +82,11 @@ pilot dashboard --prod
 | `pilot plan new "实现用户登录"` | 创建执行计划 — 分解目标为 Tasks/Steps | 开始一个多步任务 |
 | `pilot plan ls` | 列出所有计划 | 查看计划状态 |
 | `pilot plan show <id>` | 查看计划详情（Tasks / Steps / 状态） | 了解执行进度 |
-| `pilot plan run <id>` | 开始执行计划 | 启动编排 |
+| `pilot plan run <id>` | 开始执行计划 | 启动编排（v0.5.7 仅设状态；执行器在 v0.6.0） |
 | `pilot plan pause <id>` | 暂停执行中的计划 | 需要干预时 |
+| `pilot plan resume <id>` | 恢复已暂停的计划 | 继续执行 |
+| `pilot plan cancel <id>` | 取消计划 | 放弃或终止 |
+| `pilot plan delete <id>` | 删除计划（+ 事件日志） | 清理不再需要的 |
 | `pilot plan suggest-tools "解析 CSV"` | 根据目标推荐工具和 Profile | 选择最佳工具组合 |
 
 > 网络测试 (`pilot pack install`、`pilot pack search`、forge 等) 在 sandbox/CI 里设 `PILOT_SKIP_NETWORK=1` 可以跳过；本地跑不需要。

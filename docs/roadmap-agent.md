@@ -110,12 +110,13 @@ POST   /plans/:id/resume         # 恢复
 POST   /plans/:id/cancel         # 取消
 
 # Task 操作
-POST   /plans/:id/tasks/:taskId/retry    # 重试失败任务
-POST   /plans/:id/tasks/:taskId/skip    # 跳过任务
-PUT    /plans/:id/tasks/:taskId         # 手动更新任务
+PUT    /plans/:id/tasks/:taskId         # 手动更新任务 (v0.5.7+)
+PUT    /plans/:id/tasks/:taskId/steps/:stepId   # 手动更新步骤 (v0.5.7+)
+# POST /plans/:id/tasks/:taskId/retry    # 重试失败任务 (v0.6.0 — PlanExecutor)
+# POST /plans/:id/tasks/:taskId/skip    # 跳过任务 (v0.6.0 — PlanExecutor)
 
 # 工具选择（基于上下文推荐）
-POST   /plans/suggest-tools              # 根据目标推荐工具组合
+POST   /plans/suggest-tools              # 根据目标推荐工具组合 (v0.5.7+)
 ```
 
 ### CLI 命令

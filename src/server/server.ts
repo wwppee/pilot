@@ -550,21 +550,74 @@ export async function startServer(
 
   app.get("/plans", async () => service.listPlans());
 
-  app.post<{ Body: { goal: string; [key: string]: unknown } }>(
-    "/plans",
-    async (req) => {
-      const { goal, ...rest } = req.body;
-      if (!goal || typeof goal !== "string") {
-        throw Object.assign(new Error("goal is required"), {
-          statusCode: 400,
-        });
-      }
-      return service.createPlan({
-        goal,
-        ...(rest as Partial<import("../core/plan.js").Plan>),
+  // v0.5.7 review P0#2: tighten the create body — only `goal` is
+  // required, and `title` / `context` are the only other accepted
+  // fields. Everything else (status, strategy, tasks, result,
+  // timestamps) is server-controlled and silently stripped so a
+  // client can't inject e.g. {status: "completed"}.
+  app.post<{
+    Body: {
+      goal?: unknown;
+      title?: unknown;
+      context?: unknown;
+    };
+  }>("/plans", async (req) => {
+    const body = req.body ?? {};
+    const { goal, title, context } = body as {
+      goal?: unknown;
+      title?: unknown;
+      context?: unknown;
+    };
+    if (typeof goal !== "string" || goal.trim().length === 0) {
+      throw Object.assign(new Error("goal is required (non-empty string)"), {
+        statusCode: 400,
       });
-    },
-  );
+    }
+    // Build the input as `Partial<Plan>` but make sure `goal` is
+    // always present so it matches the service's `goal: string`
+    // required field. Without this, exactOptionalPropertyTypes
+    // rejects the call (Plan has optional `goal` under Partial, but
+    // service.createPlan requires it).
+    const input: {
+      goal: string;
+      title?: string;
+      context?: Record<string, string>;
+    } = {
+      goal: goal.trim(),
+    };
+    if (typeof title === "string" && title.length > 0) {
+      input.title = title;
+    }
+    if (context && typeof context === "object") {
+      // The server fills `cwd`; only forward a narrow allow-list.
+      const ctx: Record<string, string> = {};
+      const c = context as Record<string, unknown>;
+      if (typeof c["activeProfile"] === "string") {
+        ctx["activeProfile"] = c["activeProfile"];
+      }
+      if (typeof c["gitBranch"] === "string") {
+        ctx["gitBranch"] = c["gitBranch"];
+      }
+      if (Object.keys(ctx).length > 0) {
+        input.context = ctx;
+      }
+    }
+    return service.createPlan(input);
+  });
+
+  // P1#9 (v0.5.7 review): define static /plans/suggest-tools BEFORE
+  // any /plans/:id wildcard. Fastify's find-my-way does prefer static
+  // over dynamic, so this is defensive — but if someone adds a route
+  // like /plans/:id/something later, the order stops being load-bearing.
+  app.post<{ Body: { goal: string } }>("/plans/suggest-tools", async (req) => {
+    const { goal } = req.body;
+    if (!goal || typeof goal !== "string") {
+      throw Object.assign(new Error("goal is required"), {
+        statusCode: 400,
+      });
+    }
+    return service.suggestTools(goal);
+  });
 
   app.get<{ Params: { id: string } }>("/plans/:id", async (req) => {
     const plan = await service.getPlan(req.params.id);
@@ -626,20 +679,15 @@ export async function startServer(
     ),
   );
 
-  // Tool / Profile suggestion
-  app.post<{ Body: { goal: string } }>("/plans/suggest-tools", async (req) => {
-    const { goal } = req.body;
-    if (!goal || typeof goal !== "string") {
-      throw Object.assign(new Error("goal is required"), {
-        statusCode: 400,
-      });
-    }
-    return service.suggestTools(goal);
-  });
+  // Tool / Profile suggestion — moved above /plans/:id (P1#9).
+  // See the comment near the top of the Plan routes block.
 
   // ─── Centralized error handler ──────────────────────
 
   app.setErrorHandler((err: unknown, _req, reply) => {
+    // P1#10: service-layer errors carry their own statusCode via
+    // PlanError (404 not found, 409 invalid state transition).
+    // Fastify defaults to 500 unless we set reply.code().
     const e = err as { statusCode?: number; message?: string };
     const status = e.statusCode ?? 500;
     reply.code(status).send({ error: e.message ?? "internal error" });
