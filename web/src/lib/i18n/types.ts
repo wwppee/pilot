@@ -106,6 +106,18 @@ export type Dict = {
   "loading.policyForm": string;
   "error.couldntLoad.title": string;
   "error.couldntLoad.body": string;
+  // v0.5.10+: root error boundary + 404 page.
+  "error.boundary.title": string;
+  "error.boundary.body": string;
+  "error.boundary.retry": string;
+  "error.boundary.backHome": string;
+  "error.boundary.digest": string;
+  "error.notFound.code": string;
+  "error.notFound.title": string;
+  "error.notFound.body": string;
+  // v0.5.10+: loading skeleton copy.
+  "loading.skeleton": string;
+  "loading.skeletonHint": string;
   "status.unsaved": string;
   "status.saving": string;
 

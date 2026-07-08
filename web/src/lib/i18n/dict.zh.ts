@@ -90,6 +90,20 @@ const zh: Dict = {
   "error.couldntLoad.title": "加载失败",
   "error.couldntLoad.body":
     "是否 `pilot server` 没在跑？试试 `pilot server start`。",
+  // v0.5.10+: 根级错误边界 + 404。
+  "error.boundary.title": "出错了",
+  "error.boundary.body":
+    "页面渲染时遇到意外错误。下方显示了具体原因——你的数据没有丢失。可以重试，或返回首页。",
+  "error.boundary.retry": "重试",
+  "error.boundary.backHome": "← 返回首页",
+  "error.boundary.digest": "错误参考号：",
+  "error.notFound.code": "404",
+  "error.notFound.title": "页面不存在",
+  "error.notFound.body":
+    "你访问的页面不存在（或已被移除）。从下方选一个页面继续浏览。",
+  // v0.5.10+: 骨架屏文案。
+  "loading.skeleton": "加载中…",
+  "loading.skeletonHint": "如果停留超过几秒，可能是 Pilot 服务连不上。",
   "status.unsaved": "有未保存的修改",
   "status.saving": "保存中…",
 
@@ -226,8 +240,7 @@ const zh: Dict = {
   "packages.field.no": "否",
   "packages.install.h2": "安装",
   "packages.install.alreadyInstalled": "已安装。重新运行可更新。",
-  "packages.install.notInstalled":
-    "尚未安装。可通过 pilot CLI 或此 Web UI 安装。",
+  "packages.install.notInstalled": "尚未安装。可通过 pilot CLI 或本页安装。",
   "packages.install.update": "更新 {name}",
   "packages.install.install": "安装 {name}",
   "packages.install.underHood.before": "底层运行 ",
@@ -241,11 +254,11 @@ const zh: Dict = {
   "profiles.descriptionPlaceholder": "这份配置用来做什么？",
   "profiles.saved": "配置已更新。",
   "profiles.model": "模型",
-  "profiles.provider": "provider",
+  "profiles.provider": "Provider",
   "profiles.thinking": "思考",
   "profiles.packages": "包",
-  "profiles.description": "简介（一句话）",
-  "profiles.notes": "备注（详细）",
+  "profiles.description": "一句话简介",
+  "profiles.notes": "详细备注",
   "profiles.notesPlaceholder": "这份配置为什么存在？什么时候应该用？",
   "profiles.activate": "设为活跃",
   "profiles.active": "活跃中",
@@ -286,7 +299,7 @@ const zh: Dict = {
   "home.link.seeAll": "看全部 →",
   "home.link.manage": "管理 →",
   "home.empty.sessions": "暂无会话。",
-  "home.empty.packs": "暂无已装包。",
+  "home.empty.packs": "暂无已安装包。",
   "home.refreshHint": "10 秒自动刷新 · 已更新",
   "home.quickStart.aria": "快速开始",
   "home.emptyState.title": "欢迎使用 Pilot",
@@ -402,13 +415,13 @@ const zh: Dict = {
 
   // Compose
   "compose.h1": "编排",
-  "compose.subtitle": "从侧栏拖拽方块规划会话 — 另存为配置、应用、运行。",
+  "compose.subtitle": "从侧栏拖拽方块规划会话，可另存为配置、应用或运行。",
   "compose.inspector": "检视器",
   "compose.emptyCanvas": "画布为空 — 选中侧栏项后按 {key} 添加。",
 
   // Profiles
   "profiles.h1": "配置",
-  "profiles.subtitle": "共 {n} 个配置 · 存储在 ~/.pilot/profiles/",
+  "profiles.subtitle": "共 {n} 份配置，存于 ~/.pilot/profiles/",
   "profiles.newNameLabel": "新配置名（kebab-case）",
   "profiles.newNamePlaceholder": "my-work",
   "profiles.empty": "暂无配置。用上方表单创建。",
@@ -420,7 +433,7 @@ const zh: Dict = {
   "profiles.fromSession.modelLabel": "检测到的模型",
   "profiles.fromSession.toolsLabel": "本次 session 用到的工具",
   "profiles.fromSession.noTools": "（未记录到工具调用）",
-  "profiles.fromSession.notFound": "无法加载 session 模板 — 文件可能已被清理。",
+  "profiles.fromSession.notFound": "无法加载 session 模板，文件可能已被清理。",
   "profiles.fromSession.cta": "基于此 session 创建 profile →",
   "sessions.createProfileCta": "基于此 session 创建 profile",
 
@@ -470,14 +483,14 @@ const zh: Dict = {
   "capabilities.refreshHint": "15 秒自动刷新",
   "capabilities.empty": "暂无已安装能力。Forge 在 v0.4 推出。",
   "capabilities.sources": "{n} 个来源",
-  "capabilities.requires": "需要 {n}",
-  "capabilities.conflicts": "冲突 {n}",
+  "capabilities.requires": "依赖 {n} 个",
+  "capabilities.conflicts": "与 {n} 个冲突",
   "capabilities.diffLink": "与…对比",
 
   // Capability diff (v0.5.1+)
-  "capdiff.h1": "Capability 对比",
+  "capdiff.h1": "能力对比",
   "capdiff.subtitle":
-    "比较两个吸收后的 Capability，按字段展示 match / drift / missing / extra。",
+    "逐字段对比两个吸收后的能力，标记 match / drift / missing / extra。",
   "capdiff.pickerA": "Capability A",
   "capdiff.pickerB": "Capability B",
   "capdiff.pickerPlaceholder": "— 选择 —",
@@ -641,12 +654,13 @@ const zh: Dict = {
   "plans.detail.actions": "操作",
   "plans.detail.startHint":
     "开始会把计划设为 running 并写一条 `plan_started` 事件。真正的执行器在 v0.6.0。",
-  "plans.detail.executorNote": "（执行引擎 v0.6.0 来 — 状态已置为 running）",
+  "plans.detail.executorNote":
+    "（v0.6.0 执行引擎到来前，状态会被置为 running）",
   "plans.detail.confirmDelete":
-    "删除这个计划？计划 + 事件日志都会清掉，不可撤销。",
+    "删除这个计划？计划及其事件日志都会清除，不可撤销。",
   "plans.new.h1": "新建计划",
   "plans.new.subtitle":
-    "给它一个目标。Pilot 会自动派生短标题、策略默认 sequential、状态为 draft。任务可以通过 API 加，或等 v0.6.0 执行器。",
+    "填一个目标。Pilot 会自动派生标题、默认策略 sequential、初始状态 draft。任务可通过 API 添加，或等待 v0.6.0 执行器。",
   "plans.new.goalLabel": "目标",
   "plans.new.goalPlaceholder": "例如：实现用户登录功能",
   "plans.new.submit": "创建计划",
@@ -660,7 +674,8 @@ const zh: Dict = {
   "plans.suggest.button": "推荐",
   "plans.suggest.matchedTools": "匹配的工具",
   "plans.suggest.matchedProfiles": "匹配的 Profile",
-  "plans.suggest.noneTools": "没匹配到工具。所有已安装工具见 /tools。",
-  "plans.suggest.noneProfiles": "没匹配到 Profile。所有 Profile 见 /profiles。",
+  "plans.suggest.noneTools": "没有匹配的工具。查看所有已装工具请到 /tools。",
+  "plans.suggest.noneProfiles":
+    "没有匹配的 Profile。查看所有 Profile 请到 /profiles。",
 };
 export default zh;

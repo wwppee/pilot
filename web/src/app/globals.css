@@ -79,6 +79,35 @@ a:hover {
   background: var(--surface-2);
 }
 
+/* ─── Skeleton shimmer (v0.5.10+) ───────────────────────── */
+/* Used by <Skeleton /> components during async data load. The
+   pulse runs 1.6s; prefers-reduced-motion disables it (see
+   bottom of file). */
+.skeleton-bar {
+  height: 10px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 0%,
+    color-mix(in srgb, var(--surface-2) 60%, var(--text-muted) 12%) 50%,
+    var(--surface-2) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+}
+.skeleton-stack {
+  display: flex;
+  flex-direction: column;
+}
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
 .kbd {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px;
@@ -271,6 +300,11 @@ a:focus-visible[data-active="true"] {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+
+  /* v0.5.10+: skeleton bars stay put instead of shimmering. */
+  .skeleton-bar {
+    animation: none;
   }
 
   .skip-link {

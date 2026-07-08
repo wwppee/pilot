@@ -92,6 +92,21 @@ const en: Dict = {
   "error.couldntLoad.title": "Couldn't load",
   "error.couldntLoad.body":
     "Is `pilot server` running? Try `pilot server start`.",
+  // v0.5.10+: root error boundary + 404.
+  "error.boundary.title": "Something went wrong",
+  "error.boundary.body":
+    "An unexpected error stopped this page from rendering. The error is shown below — your data isn't lost. You can retry, or head back to the dashboard.",
+  "error.boundary.retry": "Retry",
+  "error.boundary.backHome": "← back to dashboard",
+  "error.boundary.digest": "Reference:",
+  "error.notFound.code": "404",
+  "error.notFound.title": "Page not found",
+  "error.notFound.body":
+    "The page you tried to open doesn't exist (anymore). Pick a top-level page from the list below to keep going.",
+  // v0.5.10+: loading skeleton copy.
+  "loading.skeleton": "Loading…",
+  "loading.skeletonHint":
+    "If this takes longer than a few seconds, the Pilot server may not be reachable.",
   "status.unsaved": "Unsaved changes",
   "status.saving": "Saving…",
 
