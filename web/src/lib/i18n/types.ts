@@ -238,6 +238,10 @@ export type Dict = {
   "sessions.col.entries": string;
   "sessions.col.size": string;
   "sessions.col.model": string;
+  // v0.5.9+: short preview of first user message — gives the list
+  // scanability. Empty for sessions with no user-role entry.
+  "sessions.col.topic": string;
+  "sessions.topic.empty": string;
   // Snapshot banner (v0.4.13+)
   "sessions.snapshot.h2": string;
   "sessions.snapshot.captured": string;
@@ -297,6 +301,8 @@ export type Dict = {
   "context.section.loaded.subtitle": string;
   "context.section.info.title": string;
   "context.section.info.subtitle": string;
+  // v0.5.9+: friendly error when /context fails to load.
+  "context.error.title": string;
 
   // policy
   "policy.h1": string;

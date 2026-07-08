@@ -228,11 +228,14 @@ const zh: Dict = {
   "sessions.subtitle": "{home} 下共 {n} 个会话 · 最近的在前。",
   "sessions.empty": "还没有会话。运行 pi 来创建。",
   "sessions.col.id": "ID",
-  "sessions.col.cwd": "目录",
-  "sessions.col.lastUsed": "最后使用",
-  "sessions.col.entries": "条数",
+  "sessions.col.cwd": "CWD",
+  "sessions.col.lastUsed": "最近使用",
+  "sessions.col.entries": "条目数",
   "sessions.col.size": "大小",
   "sessions.col.model": "模型",
+  // v0.5.9+
+  "sessions.col.topic": "主题",
+  "sessions.topic.empty": "（无用户消息）",
 
   // 快照条幅 (v0.4.13+)
   "sessions.snapshot.h2": "快照",
@@ -292,6 +295,7 @@ const zh: Dict = {
     "在 {cwd} 下 pi 可能加载进系统提示的文件。镜像 pi 的 `loadProjectContextFiles` 算法。",
   "context.empty":
     "未找到上下文文件。在此目录创建 `AGENTS.md` 或 `CLAUDE.md`。",
+  "context.error.title": "无法加载上下文：{error}",
   "context.section.loaded.title": "Pi 已加载",
   "context.section.loaded.subtitle": "会话开始时注入到系统提示",
   "context.section.info.title": "仅供查看",

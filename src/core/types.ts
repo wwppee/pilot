@@ -370,6 +370,13 @@ export interface SessionInfo {
   cwd?: string;
   /** File size in bytes. */
   sizeBytes: number;
+  /**
+   * v0.5.9+: short preview of the first user message in this session,
+   * truncated to ~120 chars. Used by the Web sessions list to give
+   * each row a "what was I working on?" hint. Empty if the session
+   * has no user-role entry or it fails to parse.
+   */
+  firstUserPreview?: string;
 }
 
 // ─── Command runtime ────────────────────────────────────────────────

@@ -1,5 +1,9 @@
 /**
  * /sessions — list all sessions.
+ *
+ * v0.5.9+: added a Topic column showing the first user message
+ * preview (≤120 chars). Each row is now self-describing — users can
+ * scan their history without clicking into each one.
  */
 import Link from "next/link";
 export const dynamic = "force-dynamic";
@@ -27,6 +31,7 @@ export default async function SessionsPage() {
     s: sessions.length === 1 ? "" : "s",
     home,
   });
+  const topicEmpty = renderT(locale, "sessions.topic.empty");
 
   return (
     <div className="space-y-6">
@@ -56,7 +61,12 @@ export default async function SessionsPage() {
               <thead className="surface-2 text-left">
                 <tr>
                   <th className="px-3 py-2 font-medium">ID</th>
-                  <th className="px-3 py-2 font-medium">CWD</th>
+                  <th className="px-3 py-2 font-medium">
+                    <T k="sessions.col.topic" />
+                  </th>
+                  <th className="px-3 py-2 font-medium">
+                    <T k="sessions.col.cwd" />
+                  </th>
                   <th className="px-3 py-2 font-medium">
                     <T k="sessions.col.lastUsed" />
                   </th>
@@ -82,6 +92,17 @@ export default async function SessionsPage() {
                         {s.id.slice(0, 20)}
                         {s.id.length > 20 ? "…" : ""}
                       </Link>
+                    </td>
+                    <td className="px-3 py-2 text-xs max-w-md">
+                      {s.firstUserPreview ? (
+                        <span className="text-[var(--text)] line-clamp-2">
+                          {s.firstUserPreview}
+                        </span>
+                      ) : (
+                        <span className="italic text-[var(--text-muted)]">
+                          {topicEmpty}
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-2 font-mono text-xs text-[var(--text-muted)] max-w-xs truncate">
                       {s.cwd}

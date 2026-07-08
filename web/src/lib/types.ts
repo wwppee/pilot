@@ -34,6 +34,13 @@ export interface SessionInfo {
   startedAt?: string;
   lastUsedAt?: string;
   model?: string;
+  /**
+   * v0.5.9+: short preview of the first user message in this session
+   * (≤120 chars). Drives the Topic column on /sessions so users can
+   * scan their history without clicking into each one. Empty string
+   * for sessions with no user-role entry.
+   */
+  firstUserPreview?: string;
 }
 
 /**

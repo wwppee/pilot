@@ -57,7 +57,7 @@ export default async function ContextPage({
 
       {error ? (
         <div className="surface rounded-lg p-4 text-sm text-[var(--text-muted)]">
-          Couldn&apos;t load context: {error}
+          {renderT(locale, "context.error.title", { error })}
         </div>
       ) : refs.length === 0 ? (
         <div className="surface rounded-lg p-8 text-sm text-[var(--text-muted)] italic text-center">

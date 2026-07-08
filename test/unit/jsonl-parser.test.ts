@@ -556,4 +556,187 @@ describe("v3 format (pi v3 JSONL)", () => {
       rmSync(join(path, ".."), { recursive: true, force: true });
     }
   });
+
+  // ─── v0.5.9+ firstUserPreview ────────────────────────────────
+
+  it("readSessionInfo captures firstUserPreview from legacy {type:user, data:{text:...}}", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "pilot-test-"));
+    try {
+      const path = join(dir, "session.jsonl");
+      const entries = [
+        {
+          id: "u1",
+          type: "user",
+          timestamp: "2026-07-01T10:00:00Z",
+          data: { text: "find me a good coffee shop" },
+        },
+        {
+          id: "a1",
+          type: "assistant",
+          timestamp: "2026-07-01T10:00:05Z",
+          data: { model: "gpt-5", text: "I recommend..." },
+        },
+      ];
+      writeFileSync(path, entries.map((e) => JSON.stringify(e)).join("\n"));
+
+      const info = await readSessionInfo(path, "session");
+      expect(info.firstUserPreview).toBe("find me a good coffee shop");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("readSessionInfo captures firstUserPreview from v3 message.role=user", async () => {
+    const path = buildV3({ model: "claude-sonnet-4-5" });
+    try {
+      const info = await readSessionInfo(path, "session");
+      // buildV3 always emits a user message with content "hello"
+      expect(info.firstUserPreview).toBe("hello");
+    } finally {
+      rmSync(join(path, ".."), { recursive: true, force: true });
+    }
+  });
+
+  it("readSessionInfo extracts user text from v3 message.content array (first text block)", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "pilot-test-"));
+    try {
+      const path = join(dir, "session.jsonl");
+      const entries = [
+        {
+          type: "session",
+          version: 3,
+          cwd: "/tmp/x",
+        },
+        {
+          id: "u1",
+          type: "message",
+          timestamp: "2026-07-01T10:00:00Z",
+          message: {
+            role: "user",
+            content: [
+              { type: "image", url: "https://example.com/cat.png" },
+              { type: "text", text: "what's in this picture?" },
+            ],
+            timestamp: 1720423200000,
+          },
+        },
+      ];
+      writeFileSync(path, entries.map((e) => JSON.stringify(e)).join("\n"));
+
+      const info = await readSessionInfo(path, "session");
+      expect(info.firstUserPreview).toBe("what's in this picture?");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("readSessionInfo truncates firstUserPreview to 120 chars + ellipsis", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "pilot-test-"));
+    try {
+      const path = join(dir, "session.jsonl");
+      const longText = "a".repeat(200);
+      const entries = [
+        {
+          id: "u1",
+          type: "user",
+          timestamp: "2026-07-01T10:00:00Z",
+          data: { text: longText },
+        },
+      ];
+      writeFileSync(path, entries.map((e) => JSON.stringify(e)).join("\n"));
+
+      const info = await readSessionInfo(path, "session");
+      expect(info.firstUserPreview).toBeDefined();
+      expect(info.firstUserPreview?.length).toBe(120);
+      expect(info.firstUserPreview?.endsWith("…")).toBe(true);
+      // 119 a's + ellipsis. Confirm it's the truncated prefix.
+      expect(info.firstUserPreview?.startsWith("a".repeat(119))).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("readSessionInfo leaves firstUserPreview undefined when no user entry exists", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "pilot-test-"));
+    try {
+      const path = join(dir, "session.jsonl");
+      const entries = [
+        {
+          type: "session",
+          version: 3,
+          cwd: "/tmp/x",
+        },
+        {
+          id: "a1",
+          type: "message",
+          timestamp: "2026-07-01T10:00:05Z",
+          message: {
+            role: "assistant",
+            content: [{ type: "text", text: "I'm alone here" }],
+            api: "anthropic-messages",
+            provider: "anthropic",
+            model: "claude-opus-4-6",
+            usage: {
+              input: 0,
+              output: 1,
+              cacheRead: 0,
+              cacheWrite: 0,
+              totalTokens: 1,
+              cost: {
+                input: 0,
+                output: 0,
+                cacheRead: 0,
+                cacheWrite: 0,
+                total: 0,
+              },
+            },
+            stopReason: "stop",
+            timestamp: 1720423201000,
+          },
+        },
+      ];
+      writeFileSync(path, entries.map((e) => JSON.stringify(e)).join("\n"));
+
+      const info = await readSessionInfo(path, "session");
+      expect(info.firstUserPreview).toBeUndefined();
+      expect(info.model).toBe("claude-opus-4-6");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("readSessionInfo captures only the FIRST user entry (not later ones)", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "pilot-test-"));
+    try {
+      const path = join(dir, "session.jsonl");
+      const entries = [
+        {
+          id: "u1",
+          type: "user",
+          timestamp: "2026-07-01T10:00:00Z",
+          data: { text: "first prompt" },
+        },
+        {
+          id: "a1",
+          parentId: "u1",
+          type: "assistant",
+          timestamp: "2026-07-01T10:00:05Z",
+          data: { model: "gpt-5", text: "first reply" },
+        },
+        {
+          id: "u2",
+          parentId: "a1",
+          type: "user",
+          timestamp: "2026-07-01T10:00:10Z",
+          data: { text: "second prompt" },
+        },
+      ];
+      writeFileSync(path, entries.map((e) => JSON.stringify(e)).join("\n"));
+
+      const info = await readSessionInfo(path, "session");
+      expect(info.firstUserPreview).toBe("first prompt");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });

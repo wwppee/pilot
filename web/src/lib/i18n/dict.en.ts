@@ -240,6 +240,9 @@ const en: Dict = {
   "sessions.col.entries": "Entries",
   "sessions.col.size": "Size",
   "sessions.col.model": "Model",
+  // v0.5.9+
+  "sessions.col.topic": "Topic",
+  "sessions.topic.empty": "(no user message)",
 
   // Snapshot banner (v0.4.13+)
   "sessions.snapshot.h2": "Snapshot",
@@ -304,6 +307,7 @@ const en: Dict = {
     "Files visible from {cwd} that pi may load into its system prompt. Mirrors pi's `loadProjectContextFiles` algorithm.",
   "context.empty":
     "No context files found. Create an `AGENTS.md` or `CLAUDE.md` in this directory.",
+  "context.error.title": "Couldn't load context: {error}",
   "context.section.loaded.title": "Loaded by pi",
   "context.section.loaded.subtitle":
     "Injected into the system prompt at session start",

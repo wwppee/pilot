@@ -53,8 +53,14 @@ export async function* readEntries(
 /**
  * Extract lightweight metadata about a session without loading every entry.
  *
- * Stops reading as soon as it has the model + entry count + timestamps,
- * which is usually within the first ~50 lines for normal sessions.
+ * Stops reading as soon as it has the model + first user preview +
+ * entry count + timestamps, which is usually within the first ~50
+ * lines for normal sessions. After all four are found we stop the
+ * stream — saves I/O on multi-MB sessions.
+ *
+ * v0.5.9+: also captures the first user-role entry's preview (longer
+ * truncation than the tree's 100 chars since this drives the sessions
+ * list "Topic" column).
  */
 export async function readSessionInfo(
   filePath: string,
@@ -64,6 +70,7 @@ export async function readSessionInfo(
   let startedAt: string | undefined;
   let lastUsedAt: string | undefined;
   let model: string | undefined;
+  let firstUserPreview: string | undefined;
 
   for await (const entry of readEntries(filePath)) {
     entries += 1;
@@ -73,6 +80,14 @@ export async function readSessionInfo(
 
     const m = extractModelFromEntry(entry);
     if (!model && m) model = m;
+
+    if (!firstUserPreview) {
+      const preview = extractFirstUserPreviewFromEntry(entry);
+      if (preview) firstUserPreview = preview;
+    }
+    // Note: we deliberately don't break early — we keep counting the
+    // rest of the entries. The `if (!x)` guards above make the model
+    // and preview extraction zero-cost on subsequent iterations.
   }
 
   const stat = statSync(filePath);
@@ -84,7 +99,66 @@ export async function readSessionInfo(
     entries,
     ...(model !== undefined ? { model } : {}),
     sizeBytes: stat.size,
+    ...(firstUserPreview !== undefined ? { firstUserPreview } : {}),
   };
+}
+
+/**
+ * v0.5.9+: extract first user-role entry's preview.
+ *
+ * Handles both v3 (`entry.type === "message"` + `entry.message.role === "user"`)
+ * and legacy (`entry.type === "user"` + `entry.data` payload). Returns
+ * undefined for non-user entries or when no text content is found.
+ *
+ * Truncates to 120 chars (longer than tree's 100 since this drives a
+ * dedicated "Topic" column).
+ */
+function extractFirstUserPreviewFromEntry(
+  entry: SessionEntry,
+): string | undefined {
+  const role = roleOf(entry);
+  if (role !== "user") return undefined;
+  const text = extractUserText(entry);
+  if (!text) return undefined;
+  // Truncate so total length never exceeds 120: take 119 chars + "…".
+  return text.length > 120 ? text.slice(0, 119) + "…" : text;
+}
+
+function roleOf(entry: SessionEntry): string | undefined {
+  if (entry.type === "message" && entry.message) {
+    const r = (entry.message as { role?: unknown }).role;
+    if (typeof r === "string") return r;
+  }
+  if (entry.type === "user") return "user";
+  return undefined;
+}
+
+function extractUserText(entry: SessionEntry): string | undefined {
+  // v3: entry.message.content
+  if (entry.type === "message" && entry.message) {
+    const c = (entry.message as { content?: unknown }).content;
+    if (typeof c === "string" && c.length > 0) return c;
+    if (Array.isArray(c)) {
+      for (const block of c) {
+        if (block && typeof block === "object") {
+          const b = block as Record<string, unknown>;
+          if (b["type"] === "text" && typeof b["text"] === "string") {
+            return b["text"];
+          }
+        }
+      }
+    }
+    return undefined;
+  }
+  // Legacy: entry.data.{text|content|message}
+  if (entry.data && typeof entry.data === "object") {
+    const d = entry.data as Record<string, unknown>;
+    for (const key of ["text", "content", "message"]) {
+      const v = d[key];
+      if (typeof v === "string" && v.length > 0) return v;
+    }
+  }
+  return undefined;
 }
 
 /**
