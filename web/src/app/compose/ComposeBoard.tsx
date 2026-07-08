@@ -39,15 +39,40 @@ import type {
 } from "../../lib/types";
 import { useT } from "@/components/I18n";
 
-const KIND_META: Record<
-  ComposeEntityKind,
-  { label: string; emoji: string; tint: string }
-> = {
-  session: { label: "Session", emoji: "💬", tint: "var(--accent)" },
-  pack: { label: "Pack", emoji: "📦", tint: "#d49050" },
-  profile: { label: "Profile", emoji: "🎛", tint: "#7b8fa1" },
-  policy: { label: "Policy", emoji: "🛡", tint: "#9c5fbb" },
-  capability: { label: "Capability", emoji: "🧩", tint: "#4f7a64" },
+/**
+ * Per-kind visual metadata. `label` is a translator function so we
+ * can localize the entity names without having to keep them in sync
+ * via constants. Emoji + tint stay constant — they map to brand
+ * colors that don't vary by locale.
+ */
+type KindMeta = { label: string; emoji: string; tint: string };
+type KindMetaBuilder = (t: (k: string) => string) => KindMeta;
+const KIND_META: Record<ComposeEntityKind, KindMetaBuilder> = {
+  session: (t) => ({
+    label: t("compose.entity.session"),
+    emoji: "💬",
+    tint: "var(--accent)",
+  }),
+  pack: (t) => ({
+    label: t("compose.entity.pack"),
+    emoji: "📦",
+    tint: "#d49050",
+  }),
+  profile: (t) => ({
+    label: t("compose.entity.profile"),
+    emoji: "🎛",
+    tint: "#7b8fa1",
+  }),
+  policy: (t) => ({
+    label: t("compose.entity.policy"),
+    emoji: "🛡",
+    tint: "#9c5fbb",
+  }),
+  capability: (t) => ({
+    label: t("compose.entity.capability"),
+    emoji: "🧩",
+    tint: "#4f7a64",
+  }),
 };
 
 const STORAGE_KEY = "pilot-compose-state";
@@ -358,30 +383,30 @@ export default function ComposeBoard({
         case "ArrowLeft":
           e.preventDefault();
           moveBlock(selectedId, -big, 0);
-          announce(`Moved block left ${big} pixels`);
+          announce(t("compose.announce.movedLeft", { n: big }));
           break;
         case "ArrowRight":
           e.preventDefault();
           moveBlock(selectedId, big, 0);
-          announce(`Moved block right ${big} pixels`);
+          announce(t("compose.announce.movedRight", { n: big }));
           break;
         case "ArrowUp":
           e.preventDefault();
           moveBlock(selectedId, 0, -big);
-          announce(`Moved block up ${big} pixels`);
+          announce(t("compose.announce.movedUp", { n: big }));
           break;
         case "ArrowDown":
           e.preventDefault();
           moveBlock(selectedId, 0, big);
-          announce(`Moved block down ${big} pixels`);
+          announce(t("compose.announce.movedDown", { n: big }));
           break;
         case "Escape":
           setSelectedId(null);
-          announce("Selection cleared");
+          announce(t("compose.announce.selectionCleared"));
           break;
       }
     },
-    [selectedId, moveBlock, announce],
+    [selectedId, moveBlock, announce, t],
   );
 
   // ─── Export / Import ─────────────────────────────────────
@@ -397,29 +422,36 @@ export default function ComposeBoard({
     URL.revokeObjectURL(url);
   }, [state]);
 
-  const importJson = useCallback((file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const parsed = JSON.parse(String(reader.result)) as ComposeState;
-        if (parsed.version !== 1 || !Array.isArray(parsed.blocks)) {
-          alert("Invalid compose file (version mismatch)");
-          return;
+  const importJson = useCallback(
+    (file: File) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(String(reader.result)) as ComposeState;
+          if (parsed.version !== 1 || !Array.isArray(parsed.blocks)) {
+            alert(t("compose.alert.invalidVersion"));
+            return;
+          }
+          setState(parsed);
+        } catch (e) {
+          alert(
+            t("compose.alert.invalidJson", {
+              msg: e instanceof Error ? e.message : String(e),
+            }),
+          );
         }
-        setState(parsed);
-      } catch (e) {
-        alert(`Invalid JSON: ${e instanceof Error ? e.message : String(e)}`);
-      }
-    };
-    reader.readAsText(file);
-  }, []);
+      };
+      reader.readAsText(file);
+    },
+    [t],
+  );
 
   const resetCanvas = useCallback(() => {
     if (state.blocks.length === 0) return;
-    if (!confirm("Remove all blocks from the canvas?")) return;
+    if (!confirm(t("compose.confirm.removeAll"))) return;
     setState(emptyState());
     setSelectedId(null);
-  }, [state.blocks.length]);
+  }, [state.blocks.length, t]);
 
   const selectedBlock = selectedId
     ? (state.blocks.find((b) => b.id === selectedId) ?? null)
@@ -435,11 +467,10 @@ export default function ComposeBoard({
     }> = [];
     const maybe = <K extends ComposeEntityKind>(
       kind: K,
-      label: string,
-      emoji: string,
       list: ComposeEntity[],
     ) => {
       if (filter !== "all" && filter !== kind) return;
+      const meta = KIND_META[kind](t);
       const items = q
         ? list.filter(
             (e) =>
@@ -447,15 +478,23 @@ export default function ComposeBoard({
               (e.sublabel?.toLowerCase().includes(q) ?? false),
           )
         : list;
-      if (items.length > 0) sections.push({ kind, label, emoji, items });
+      if (items.length > 0)
+        sections.push({
+          kind,
+          label: meta.label,
+          emoji: meta.emoji,
+          items,
+        });
     };
-    maybe("session", "Sessions", "💬", initialCatalog.sessions);
-    maybe("pack", "Packs", "📦", initialCatalog.packs);
-    maybe("profile", "Profiles", "🎛", initialCatalog.profiles);
-    maybe("policy", "Policies", "🛡", initialCatalog.policies);
-    maybe("capability", "Capabilities", "🧩", initialCatalog.capabilities);
+    maybe("session", initialCatalog.sessions);
+    maybe("pack", initialCatalog.packs);
+    maybe("profile", initialCatalog.profiles);
+    maybe("policy", initialCatalog.policies);
+    maybe("capability", initialCatalog.capabilities);
     return sections;
-  }, [initialCatalog, filter, search]);
+    // t is intentionally stable (from useTranslate); re-running when
+    // search/filter/catalog changes is enough.
+  }, [initialCatalog, filter, search, t]);
 
   return (
     <div className="compose-grid">
@@ -478,17 +517,20 @@ export default function ComposeBoard({
             >
               all
             </button>
-            {(Object.keys(KIND_META) as ComposeEntityKind[]).map((k) => (
-              <button
-                key={k}
-                type="button"
-                onClick={() => setFilter(k)}
-                data-active={filter === k}
-                title={KIND_META[k].label}
-              >
-                {KIND_META[k].emoji}
-              </button>
-            ))}
+            {(Object.keys(KIND_META) as ComposeEntityKind[]).map((k) => {
+              const meta = KIND_META[k](t);
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setFilter(k)}
+                  data-active={filter === k}
+                  title={meta.label}
+                >
+                  {meta.emoji}
+                </button>
+              );
+            })}
           </div>
         </div>
         <div className="compose-sidebar-body">
@@ -505,7 +547,7 @@ export default function ComposeBoard({
                     type="button"
                     key={`${sec.kind}:${e.id}`}
                     className="compose-sidebar-item"
-                    style={{ borderLeftColor: KIND_META[sec.kind].tint }}
+                    style={{ borderLeftColor: KIND_META[sec.kind](t).tint }}
                     onPointerDown={(ev) => startSidebarDrag(e, ev)}
                     onClick={() => addBlockAtCenter(e)}
                     aria-label={`Add ${sec.label.toLowerCase()} "${e.label}" to canvas`}
@@ -602,11 +644,13 @@ export default function ComposeBoard({
             data-active={viewMode === "cozy"}
             title={
               viewMode === "modern"
-                ? "Switch to 2.5D cozy sandbox skin"
-                : "Switch back to modern flat look"
+                ? t("compose.viewMode.tooltip.cozy")
+                : t("compose.viewMode.tooltip.modern")
             }
           >
-            {viewMode === "modern" ? "🌿 Cozy" : "🌑 Modern"}
+            {viewMode === "modern"
+              ? t("compose.viewMode.cozy")
+              : t("compose.viewMode.modern")}
           </button>
           <span className="compose-inspector-divider" />
           <button type="button" onClick={exportJson} className="btn small">
@@ -657,7 +701,7 @@ function ComposeBlockView({
   onDelete: () => void;
 }) {
   const t = useT();
-  const meta = KIND_META[block.kind];
+  const meta = KIND_META[block.kind](t);
   // In cozy mode we override the border tint per kind with the warm
   // palette so blocks read as "cubes" against cream sand.
   const cozyTint = (
@@ -722,7 +766,8 @@ function BlockInspector({
   onDelete: () => void;
   catalogEntity: ComposeEntity | undefined;
 }) {
-  const meta = KIND_META[block.kind];
+  const t = useT();
+  const meta = KIND_META[block.kind](t);
   const stale = !catalogEntity;
   const href = block.href ?? catalogEntity?.href;
   return (

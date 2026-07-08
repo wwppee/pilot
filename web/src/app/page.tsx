@@ -10,7 +10,7 @@ import { headers } from "next/headers";
 import { api } from "@/lib/pilot";
 import { AutoRefresh, LivePulse } from "@/components/AutoRefresh";
 import { T } from "@/components/I18n";
-import { negotiateLocale, renderT } from "@/lib/i18n";
+import { negotiateLocale, renderT, type Locale } from "@/lib/i18n";
 import type {
   Capability,
   Pack,
@@ -99,7 +99,7 @@ export default async function DashboardPage() {
     <div className="space-y-10">
       <AutoRefresh intervalMs={10_000} />
 
-      {hasNothing && <EmptyState />}
+      {hasNothing && <EmptyState locale={locale} />}
 
       <header className="flex items-center justify-between">
         <div>
@@ -361,7 +361,7 @@ function Empty({ msg }: { msg: string }) {
 // Three-card quick-start shown when the dashboard would otherwise
 // render four near-empty sections. Renders only when sessionCount,
 // packCount, profileCount, capabilityCount are all 0.
-function EmptyState() {
+function EmptyState({ locale }: { locale: Locale }) {
   const cards = [
     {
       titleKey: "home.emptyState.card1Title" as const,
@@ -390,7 +390,7 @@ function EmptyState() {
         background:
           "linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%)",
       }}
-      aria-label="Quick start"
+      aria-label={renderT(locale, "home.quickStart.aria")}
     >
       <h2 className="text-lg font-semibold mb-1">
         <T k="home.emptyState.title" />

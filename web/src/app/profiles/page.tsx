@@ -186,17 +186,9 @@ export default async function ProfilesPage({ searchParams }: PageProps) {
       {profiles.length === 0 ? (
         <EmptyState
           title={renderT(locale, "profiles.empty")}
-          hint={
-            <>
-              A profile bundles a model + thinking level + provider + package
-              list. Use the <strong>Create profile</strong> form above to make
-              one, then activate it from a profile card. Activated profiles are
-              written to <code className="kbd">~/.pi/agent/settings.json</code>{" "}
-              and picked up by Pi on next launch.
-            </>
-          }
+          hint={<>{renderT(locale, "profiles.empty.hint")}</>}
           actionHref="/profiles/new"
-          actionLabel="Open the profile form"
+          actionLabel={renderT(locale, "profiles.openForm")}
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

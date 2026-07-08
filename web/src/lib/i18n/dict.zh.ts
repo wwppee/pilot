@@ -34,6 +34,9 @@ const zh: Dict = {
   // Footer
   "footer.copy": "pilot-web v{version} · 提供读、策略、编排三大功能",
   "footer.endpoint": "服务监听地址",
+  // v0.5.10+: 布局 <meta> 标签 i18n。
+  "meta.title": "Pilot — pi.dev 管理平面",
+  "meta.description": "本地仪表板，展示 pi 会话、包、配置、策略与统计。",
 
   // Language switcher
   "lang.label": "语言",
@@ -131,6 +134,51 @@ const zh: Dict = {
   "policy.applyFailed": "应用失败：{msg}",
   "policy.unapplyFailed": "取消应用失败：{msg}",
   "policy.confirmDeleteProfile": '删除 "{name}"？此操作不可恢复。',
+  // v0.5.10+: PolicyForm 扩展状态 + 字段提示。
+  "policy.form.saveFirstApply": "请先保存修改，再应用。",
+  "policy.form.extensionRemoved": "扩展已移除",
+  "policy.form.extensionNotApplied": "扩展未应用",
+  "policy.form.extensionWrittenTo": "已写入扩展至 {path}",
+  "policy.form.errorPrefix": "错误：{msg}",
+  "policy.form.savedAt": "✓ 已保存于 {time}",
+  "policy.form.ruleCount.one": "{n} 条规则",
+  "policy.form.ruleCount.many": "{n} 条规则",
+  "policy.form.descriptionPlaceholder": "一句话说明此策略强制执行的内容",
+  "policy.form.label.allow": "允许",
+  "policy.form.label.paths": "路径",
+  "policy.form.label.cmds": "命令",
+  "policy.form.label.redact": "脱敏",
+  "policy.form.label.hitl": "人工审批",
+  "policy.form.label.unknown": "判定",
+  // v0.5.10+: 字段分组标题 + 提示 + 占位符。
+  "policy.form.field.allow.legend": "allow · 独占白名单（仅这些工具可执行）",
+  "policy.form.field.allow.hint":
+    "留空允许所有工具（受 deny 约束）。非空时，仅这些工具可用。",
+  "policy.form.field.allow.placeholder": "read\nls",
+  "policy.form.field.deny.legend": "deny · 禁止调用的工具",
+  "policy.form.field.deny.hint": "deny 优先级高于 allow。每行一个工具名。",
+  "policy.form.field.deny.placeholder": "bash\nwrite\nedit",
+  "policy.form.field.denyPaths.legend":
+    "denyPaths · read / edit / write 的 glob 路径黑名单",
+  "policy.form.field.denyPaths.hint":
+    "通配符：* = 除 / 外任意字符，** = 任意路径段。",
+  "policy.form.field.denyPaths.placeholder": "**/.env\n**/.env.*\n/etc/**",
+  "policy.form.field.denyCommands.legend":
+    "denyCommands · 阻止的 bash 命令正则",
+  "policy.form.field.denyCommands.hint":
+    "JavaScript 正则语法。在 TOML 中反斜杠需双写（例如 \\s）。",
+  "policy.form.field.denyCommands.placeholder": "^rm\\s+-rf\\s+/\n^mkfs",
+  "policy.form.field.sensitivePatterns.legend":
+    "sensitivePatterns · 从工具结果中脱敏",
+  "policy.form.field.sensitivePatterns.hint":
+    "若合法则按正则匹配，否则按子串匹配。常用于：API key、密码。",
+  "policy.form.field.sensitivePatterns.placeholder":
+    "sk-[A-Za-z0-9]{20,}\nghp_[A-Za-z0-9]{20,}",
+  "policy.form.field.requireApproval.legend":
+    "requireApproval · 需人工确认的工具",
+  "policy.form.field.requireApproval.hint":
+    "在工具运行前，生成的扩展中触发 ctx.ui.confirm()。",
+  "policy.form.field.requireApproval.placeholder": "bash\nwrite",
 
   // Compose
   "compose.searchPlaceholder": "搜索…",
@@ -142,9 +190,51 @@ const zh: Dict = {
   "compose.canvasSelectBlock":
     "点击画布上的方块查看详情。按 {del} 删除，按 {esc} 取消选中。",
   "compose.removeBlock": "移除方块",
+  // v0.5.10+: 实体标签（单复数 + 分组标题）。
+  "compose.entity.session": "会话",
+  "compose.entity.pack": "包",
+  "compose.entity.profile": "配置",
+  "compose.entity.policy": "策略",
+  "compose.entity.capability": "能力",
+  "compose.section.sessions": "会话",
+  "compose.section.packs": "包",
+  "compose.section.profiles": "配置",
+  "compose.section.policies": "策略",
+  "compose.section.capabilities": "能力",
+  // v0.5.10+: 屏幕阅读器播报 + 弹窗确认。
+  "compose.announce.movedLeft": "方块向左移动 {n} 像素",
+  "compose.announce.movedRight": "方块向右移动 {n} 像素",
+  "compose.announce.movedUp": "方块向上移动 {n} 像素",
+  "compose.announce.movedDown": "方块向下移动 {n} 像素",
+  "compose.announce.selectionCleared": "已取消选中",
+  "compose.confirm.removeAll": "清空画布上的所有方块？",
+  "compose.alert.invalidVersion": "无效的 compose 文件（版本不匹配）",
+  "compose.alert.invalidJson": "无效的 JSON：{msg}",
+  // v0.5.10+: 视图模式切换（modern ↔ cozy 2.5D）。
+  "compose.viewMode.cozy": "🌿 Cozy",
+  "compose.viewMode.modern": "🌑 Modern",
+  "compose.viewMode.tooltip.cozy": "切换到 2.5D Cozy 沙盒皮肤",
+  "compose.viewMode.tooltip.modern": "切回现代扁平风格",
 
   // Packages
   "packages.noPacksHint": "还没装包。试试 `pilot pack search subagent`。",
+  // v0.5.10+: 包详情页。
+  "packages.field.source": "来源",
+  "packages.field.enabled": "已启用",
+  "packages.field.homepage": "主页",
+  "packages.field.yes": "是",
+  "packages.field.no": "否",
+  "packages.install.h2": "安装",
+  "packages.install.alreadyInstalled": "已安装。重新运行可更新。",
+  "packages.install.notInstalled":
+    "尚未安装。可通过 pilot CLI 或此 Web UI 安装。",
+  "packages.install.update": "更新 {name}",
+  "packages.install.install": "安装 {name}",
+  "packages.install.underHood.before": "底层运行 ",
+  "packages.install.underHood.after": "",
+  "packages.uninstall.confirm":
+    "确认卸载此包？将从 Pi 中移除，并清理由此包生成的任何配置。",
+  "packages.uninstall.h2": "卸载",
 
   // Profiles [name]
   "profiles.editHeading": "编辑",
@@ -165,6 +255,10 @@ const zh: Dict = {
   "profiles.noActive":
     "暂无活跃配置。点击任一配置卡的「设为活跃」按钮即可指定。",
   "profiles.activateFailed": "激活失败：{msg}",
+  // v0.5.10+: 配置列表空状态 + 跳转按钮文案。
+  "profiles.empty.hint":
+    "一份配置包含模型 + 思考强度 + provider + 包列表。用上方的「新建配置」表单创建一份，再从配置卡上设为活跃。已激活的配置会写入 ~/.pi/agent/settings.json，Pi 下次启动时自动加载。",
+  "profiles.openForm": "打开配置表单",
 
   // Context
   "context.loadedTitle": "Pi 已加载",
@@ -194,6 +288,7 @@ const zh: Dict = {
   "home.empty.sessions": "暂无会话。",
   "home.empty.packs": "暂无已装包。",
   "home.refreshHint": "10 秒自动刷新 · 已更新",
+  "home.quickStart.aria": "快速开始",
   "home.emptyState.title": "欢迎使用 Pilot",
   "home.emptyState.subtitle": "Pilot 帮你读取并管理 pi 的状态。三步快速上手：",
   "home.emptyState.card1Title": "创建配置",
@@ -453,6 +548,10 @@ const zh: Dict = {
   "avatars.confirmDelete": "删除 {cwd} 的 Avatar？",
   "avatars.capturedToast": "已捕获 {cwd} 的 Avatar",
   "avatars.deletedToast": "已删除 {cwd} 的 Avatar",
+  // v0.5.10+: 列表空状态提示 + 跳转按钮文案。
+  "avatars.empty.hint":
+    "用上方的「捕获当前状态」表单锁定本项目的预期配置（活跃配置、模型、已装包、生成的策略文件）。之后这些项有变动时，你会立即看到漂移。",
+  "avatars.captureFirst": "捕获你的第一个 Avatar",
   "avatars.diffLink": "查看差异",
   "avatars.captured": "已捕获",
   "avatars.profile": "profile",

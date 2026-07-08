@@ -10,6 +10,10 @@
  * We replaced the native `confirm()` dialog with an inline two-step
  * confirm pattern (button → "Confirm delete?" → button) so the
  * deletion is accessible and doesn't trigger a system-modal dialog.
+ *
+ * v0.5.10+: section metadata is now i18n. SECTION_DEFS is a function
+ * that resolves labels/hints/placeholders via the translator. Hint
+ * is optional — fields without a hint (e.g. deny) get an empty hint.
  */
 
 import { useState } from "react";
@@ -28,62 +32,59 @@ type SaveState =
   | { kind: "saved"; at: string }
   | { kind: "error"; message: string };
 
-const SECTION_DEFS: Array<{
+type SectionDef = {
   field: keyof ToolPolicyInput;
-  legend: string;
-  hint: string;
   rows: number;
-  placeholder: string;
   /** Generate a stable id for label / input / describedby. */
   id: string;
-}> = [
+  /** i18n key suffix for this field — keys always live under
+   *  `policy.form.field.{suffix}.{legend,hint,placeholder}`. The
+   *  hint key is optional (omit if the field has no hint). */
+  i18nKey: string;
+  /** hint present? When false, the hint JSX is skipped. */
+  hasHint: boolean;
+};
+
+/**
+ * Static section metadata. Localized strings live in the dict files
+ * (`policy.form.field.{i18nKey}.{legend,hint,placeholder}`).
+ */
+const SECTION_DEFS: SectionDef[] = [
   {
     field: "allow",
     id: "policy-allow",
-    legend: "allow · exclusive allowlist (only these tools may run)",
-    hint: "Leave empty to allow all (modulo deny). If non-empty, only these tools work.",
+    i18nKey: "allow",
+    hasHint: true,
     rows: 4,
-    placeholder: "read\nls",
   },
-  {
-    field: "deny",
-    id: "policy-deny",
-    legend: "deny · tools that cannot be called",
-    hint: "deny wins over allow. One tool name per line.",
-    rows: 4,
-    placeholder: "bash\nwrite\nedit",
-  },
+  { field: "deny", id: "policy-deny", i18nKey: "deny", hasHint: true, rows: 4 },
   {
     field: "denyPaths",
     id: "policy-denyPaths",
-    legend: "denyPaths · glob patterns for read / edit / write",
-    hint: "Globs: * = any chars except /, ** = any path segments.",
+    i18nKey: "denyPaths",
+    hasHint: true,
     rows: 4,
-    placeholder: "**/.env\n**/.env.*\n/etc/**",
   },
   {
     field: "denyCommands",
     id: "policy-denyCommands",
-    legend: "denyCommands · regex for bash commands to block",
-    hint: "JavaScript regex syntax. Backslashes must be doubled in TOML.",
+    i18nKey: "denyCommands",
+    hasHint: true,
     rows: 4,
-    placeholder: "^rm\\s+-rf\\s+/\n^mkfs",
   },
   {
     field: "sensitivePatterns",
     id: "policy-sensitivePatterns",
-    legend: "sensitivePatterns · redact from tool results",
-    hint: "Used as regex when valid; substring otherwise. Common: API keys, passwords.",
+    i18nKey: "sensitivePatterns",
+    hasHint: true,
     rows: 4,
-    placeholder: "sk-[A-Za-z0-9]{20,}\nghp_[A-Za-z0-9]{20,}",
   },
   {
     field: "requireApproval",
     id: "policy-requireApproval",
-    legend: "requireApproval · tools that pause for human confirmation",
-    hint: "Triggers ctx.ui.confirm() in the generated extension before the tool runs.",
+    i18nKey: "requireApproval",
+    hasHint: true,
     rows: 3,
-    placeholder: "bash\nwrite",
   },
 ];
 
@@ -151,14 +152,14 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
 
   async function onApply(): Promise<void> {
     if (isDirty) {
-      setApplyMessage("Save changes first, then apply.");
+      setApplyMessage(t("policy.form.saveFirstApply"));
       return;
     }
     setBusy(true);
     setApplyMessage(null);
     try {
       const { path } = await api.applyPolicy(initialPolicy.name);
-      setApplyMessage(`Extension written to ${path}`);
+      setApplyMessage(t("policy.form.extensionWrittenTo", { path }));
     } catch (err) {
       const msg =
         err instanceof PilotApiError ? err.message : (err as Error).message;
@@ -174,7 +175,9 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
     try {
       const { removed } = await api.unapplyPolicy(initialPolicy.name);
       setApplyMessage(
-        removed ? "Extension removed" : "Extension was not applied",
+        removed
+          ? t("policy.form.extensionRemoved")
+          : t("policy.form.extensionNotApplied"),
       );
     } catch (err) {
       const msg =
@@ -234,7 +237,12 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
           )}
           {!applyMessage && saveState.kind === "idle" && !isDirty && (
             <span className="muted small">
-              {ruleCount} rule{ruleCount === 1 ? "" : "s"}
+              {t(
+                ruleCount === 1
+                  ? "policy.form.ruleCount.one"
+                  : "policy.form.ruleCount.many",
+                { n: ruleCount },
+              )}
             </span>
           )}
           {!applyMessage && saveState.kind === "idle" && isDirty && (
@@ -245,12 +253,14 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
           )}
           {!applyMessage && saveState.kind === "saved" && (
             <span className="ok small">
-              ✓ Saved at {new Date(saveState.at).toLocaleTimeString()}
+              {t("policy.form.savedAt", {
+                time: new Date(saveState.at).toLocaleTimeString(),
+              })}
             </span>
           )}
           {saveState.kind === "error" && (
             <span className="error small" role="alert">
-              Error: {saveState.message}
+              {t("policy.form.errorPrefix", { msg: saveState.message })}
             </span>
           )}
         </p>
@@ -266,7 +276,7 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
           type="text"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="One-line summary of what this policy enforces"
+          placeholder={t("policy.form.descriptionPlaceholder")}
           className="policy-edit-input"
         />
       </div>
@@ -279,6 +289,15 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
           saveState.kind === "error" &&
           arrays[def.field] !==
             (initialPolicy[def.field] as string[]).join("\n");
+        const fullLegend = t(`policy.form.field.${def.i18nKey}.legend`);
+        // Strip the "{name} · " prefix from the legend — the
+        // field-name badge renders that part separately as a colored
+        // pill. We display only the descriptive suffix.
+        const legendSuffix = fullLegend.includes("·")
+          ? fullLegend.split("·").slice(1).join("·").trim()
+          : fullLegend;
+        const hint = t(`policy.form.field.${def.i18nKey}.hint`);
+        const placeholder = t(`policy.form.field.${def.i18nKey}.placeholder`);
         return (
           <fieldset
             className="policy-edit-section"
@@ -287,12 +306,12 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
           >
             <legend>
               <span className={`rule-name ${ruleNameClass(def.field)}`}>
-                {def.field}
+                {t(`policy.form.label.${ruleNameClass(def.field)}`)}
               </span>{" "}
-              {def.legend.split("·").slice(1).join("·").trim()}
+              {legendSuffix}
             </legend>
             <label htmlFor={inputId} className="sr-only">
-              {def.legend}
+              {fullLegend}
             </label>
             <textarea
               id={inputId}
@@ -300,7 +319,7 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
               onChange={(e) =>
                 setArrays((a) => ({ ...a, [def.field]: e.target.value }))
               }
-              placeholder={def.placeholder}
+              placeholder={placeholder}
               rows={def.rows}
               className="policy-edit-textarea"
               spellCheck={false}
@@ -308,7 +327,7 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
               aria-describedby={hintId}
             />
             <p id={hintId} className="muted small">
-              {def.hint}
+              {hint}
             </p>
           </fieldset>
         );

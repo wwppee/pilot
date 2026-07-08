@@ -142,10 +142,19 @@ export default async function PackageDetailPage({
 
           <div className="surface rounded-lg p-4 text-sm">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              <Field label="Source" value={pack.source} />
-              <Field label="Enabled" value={pack.enabled ? "yes" : "no"} />
               <Field
-                label="Homepage"
+                label={renderT(locale, "packages.field.source")}
+                value={pack.source}
+              />
+              <Field
+                label={renderT(locale, "packages.field.enabled")}
+                value={renderT(
+                  locale,
+                  pack.enabled ? "packages.field.yes" : "packages.field.no",
+                )}
+              />
+              <Field
+                label={renderT(locale, "packages.field.homepage")}
                 value={
                   pack.homepage ? (
                     <a href={pack.homepage} className="text-xs break-all">
@@ -161,12 +170,15 @@ export default async function PackageDetailPage({
 
           <div className="surface rounded-lg p-4">
             <h2 className="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-3">
-              Install
+              {renderT(locale, "packages.install.h2")}
             </h2>
             <p className="text-xs text-[var(--text-muted)] mb-3">
-              {pack.enabled
-                ? "Already installed. Re-run to update."
-                : "Not yet installed. Install via the pilot CLI or this Web UI."}
+              {renderT(
+                locale,
+                pack.enabled
+                  ? "packages.install.alreadyInstalled"
+                  : "packages.install.notInstalled",
+              )}
             </p>
             <form
               action={installPackForm}
@@ -178,11 +190,18 @@ export default async function PackageDetailPage({
                 className="px-4 py-2 text-sm rounded text-[var(--bg)]"
                 style={{ background: "var(--accent-2)" }}
               >
-                {pack.enabled ? "Update" : "Install"} {pack.name}
+                {renderT(
+                  locale,
+                  pack.enabled
+                    ? "packages.install.update"
+                    : "packages.install.install",
+                  { name: pack.name },
+                )}
               </button>
               <span className="text-xs text-[var(--text-muted)]">
-                runs <code className="kbd">pilot pack install {pack.name}</code>{" "}
-                under the hood
+                {renderT(locale, "packages.install.underHood.before")}
+                <code className="kbd">pilot pack install {pack.name}</code>
+                {renderT(locale, "packages.install.underHood.after")}
               </span>
             </form>
 
@@ -197,8 +216,9 @@ export default async function PackageDetailPage({
                 <input type="hidden" name="name" value={pack.name} />
                 <UninstallButton name={pack.name} />
                 <span className="text-xs text-[var(--text-muted)]">
-                  runs{" "}
+                  {renderT(locale, "packages.install.underHood.before")}
                   <code className="kbd">pilot pack uninstall {pack.name}</code>
+                  {renderT(locale, "packages.install.underHood.after")}
                 </span>
               </form>
             )}

@@ -53,6 +53,9 @@ export type Dict = {
   // ─── Footer ──────────────────────────────────────────────────
   "footer.copy": string;
   "footer.endpoint": string;
+  // v0.5.10+: layout <meta> tag i18n.
+  "meta.title": string;
+  "meta.description": string;
 
   // ─── Language switcher ───────────────────────────────────────
   "lang.label": string;
@@ -142,6 +145,42 @@ export type Dict = {
   "policy.applyFailed": string;
   "policy.unapplyFailed": string;
   "policy.confirmDeleteProfile": string;
+  // v0.5.10+: PolicyForm extension status + field hints + short labels.
+  "policy.form.saveFirstApply": string;
+  "policy.form.extensionRemoved": string;
+  "policy.form.extensionNotApplied": string;
+  "policy.form.extensionWrittenTo": string;
+  "policy.form.errorPrefix": string;
+  "policy.form.savedAt": string;
+  "policy.form.ruleCount.one": string;
+  "policy.form.ruleCount.many": string;
+  "policy.form.descriptionPlaceholder": string;
+  "policy.form.label.allow": string;
+  "policy.form.label.paths": string;
+  "policy.form.label.cmds": string;
+  "policy.form.label.redact": string;
+  "policy.form.label.hitl": string;
+  "policy.form.label.unknown": string;
+  // v0.5.10+: section legends + hints + placeholders for each
+  // ToolPolicy field. These were hardcoded English in SECTION_DEFS.
+  "policy.form.field.allow.legend": string;
+  "policy.form.field.allow.hint": string;
+  "policy.form.field.allow.placeholder": string;
+  "policy.form.field.deny.legend": string;
+  "policy.form.field.deny.hint": string;
+  "policy.form.field.deny.placeholder": string;
+  "policy.form.field.denyPaths.legend": string;
+  "policy.form.field.denyPaths.hint": string;
+  "policy.form.field.denyPaths.placeholder": string;
+  "policy.form.field.denyCommands.legend": string;
+  "policy.form.field.denyCommands.hint": string;
+  "policy.form.field.denyCommands.placeholder": string;
+  "policy.form.field.sensitivePatterns.legend": string;
+  "policy.form.field.sensitivePatterns.hint": string;
+  "policy.form.field.sensitivePatterns.placeholder": string;
+  "policy.form.field.requireApproval.legend": string;
+  "policy.form.field.requireApproval.hint": string;
+  "policy.form.field.requireApproval.placeholder": string;
 
   // ─── Compose ────────────────────────────────────────────────
   "compose.searchPlaceholder": string;
@@ -151,9 +190,49 @@ export type Dict = {
   "compose.canvasEmpty": string;
   "compose.canvasSelectBlock": string;
   "compose.removeBlock": string;
+  // v0.5.10+: entity labels (singular + plural section header).
+  "compose.entity.session": string;
+  "compose.entity.pack": string;
+  "compose.entity.profile": string;
+  "compose.entity.policy": string;
+  "compose.entity.capability": string;
+  "compose.section.sessions": string;
+  "compose.section.packs": string;
+  "compose.section.profiles": string;
+  "compose.section.policies": string;
+  "compose.section.capabilities": string;
+  // v0.5.10+: live-region announcements + keyboard hints.
+  "compose.announce.movedLeft": string;
+  "compose.announce.movedRight": string;
+  "compose.announce.movedUp": string;
+  "compose.announce.movedDown": string;
+  "compose.announce.selectionCleared": string;
+  "compose.confirm.removeAll": string;
+  "compose.alert.invalidVersion": string;
+  "compose.alert.invalidJson": string;
+  // v0.5.10+: view-mode toggle (modern ↔ cozy 2.5D skin).
+  "compose.viewMode.cozy": string;
+  "compose.viewMode.modern": string;
+  "compose.viewMode.tooltip.cozy": string;
+  "compose.viewMode.tooltip.modern": string;
 
   // ─── Packages ───────────────────────────────────────────────
   "packages.noPacksHint": string;
+  // v0.5.10+: pack detail page (was hardcoded English).
+  "packages.field.source": string;
+  "packages.field.enabled": string;
+  "packages.field.homepage": string;
+  "packages.field.yes": string;
+  "packages.field.no": string;
+  "packages.install.h2": string;
+  "packages.install.alreadyInstalled": string;
+  "packages.install.notInstalled": string;
+  "packages.install.update": string;
+  "packages.install.install": string;
+  "packages.install.underHood.before": string;
+  "packages.install.underHood.after": string;
+  "packages.uninstall.confirm": string;
+  "packages.uninstall.h2": string;
 
   // ─── Profiles [name] ────────────────────────────────────────
   "profiles.editHeading": string;
@@ -173,6 +252,9 @@ export type Dict = {
   "profiles.clearedToast": string;
   "profiles.noActive": string;
   "profiles.activateFailed": string;
+  // v0.5.10+: profiles list empty state (long hint text + actionLabel).
+  "profiles.empty.hint": string;
+  "profiles.openForm": string;
 
   // ─── Context ────────────────────────────────────────────────
   "context.loadedTitle": string;
@@ -203,6 +285,8 @@ export type Dict = {
   "home.empty.packs": string;
   "home.refreshHint": string;
   "home.emptyState.title": string;
+  // v0.5.10+: home quick-start aria-label.
+  "home.quickStart.aria": string;
   "home.emptyState.subtitle": string;
   "home.emptyState.card1Title": string;
   "home.emptyState.card1Body": string;
@@ -446,6 +530,9 @@ export type Dict = {
   "avatars.confirmDelete": string;
   "avatars.capturedToast": string;
   "avatars.deletedToast": string;
+  // v0.5.10+: list empty hint + capture-first actionLabel.
+  "avatars.empty.hint": string;
+  "avatars.captureFirst": string;
   "avatars.diffLink": string;
   "avatars.captured": string;
   "avatars.profile": string;

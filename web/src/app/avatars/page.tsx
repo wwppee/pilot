@@ -125,16 +125,9 @@ export default async function AvatarsPage({ searchParams }: PageProps) {
       {avatars.length === 0 ? (
         <EmptyState
           title={renderT(locale, "avatars.empty")}
-          hint={
-            <>
-              Use the <strong>Capture current state</strong> form above to lock
-              in this project's expected setup (active profile, model, installed
-              packs, generated policy files). You'll then see drift when any of
-              those change.
-            </>
-          }
+          hint={<>{renderT(locale, "avatars.empty.hint")}</>}
           actionHref="/avatars"
-          actionLabel="Capture your first Avatar"
+          actionLabel={renderT(locale, "avatars.captureFirst")}
         />
       ) : (
         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">

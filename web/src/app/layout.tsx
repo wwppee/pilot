@@ -5,7 +5,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { Outfit, JetBrains_Mono } from "next/font/google";
 import { api } from "@/lib/pilot";
-import { negotiateLocale, type Locale } from "@/lib/i18n";
+import { negotiateLocale, type Locale, translate } from "@/lib/i18n";
 import { I18nProvider, T } from "@/components/I18n";
 import { NavLinks } from "@/components/NavLinks";
 import { renderT } from "@/lib/i18n";
@@ -26,10 +26,23 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "Pilot — pi.dev management plane",
-  description: "Local dashboard for pi sessions, packs, profiles, and stats.",
-};
+// v0.5.10+: <meta> tags are now locale-aware via generateMetadata.
+// Previously hardcoded English in metadata — bad for non-en SEO and
+// browser tabs in zh users. generateMetadata runs per-request so we
+// can pull the negotiated locale.
+export async function generateMetadata(): Promise<Metadata> {
+  let acceptLanguage: string | null = null;
+  try {
+    acceptLanguage = (await headers()).get("accept-language");
+  } catch {
+    /* static generation */
+  }
+  const locale = negotiateLocale(acceptLanguage);
+  return {
+    title: translate(locale, "meta.title"),
+    description: translate(locale, "meta.description"),
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: "#0b0d10",

@@ -35,6 +35,10 @@ const en: Dict = {
   "footer.copy":
     "pilot-web v{version} · reads + policy + compose over pilot server",
   "footer.endpoint": "server expected at",
+  // v0.5.10+: layout <meta> tag i18n.
+  "meta.title": "Pilot — pi.dev management plane",
+  "meta.description":
+    "Local dashboard for pi sessions, packs, profiles, policies, and stats.",
 
   // Language switcher
   "lang.label": "Language",
@@ -133,6 +137,54 @@ const en: Dict = {
   "policy.applyFailed": "Apply failed: {msg}",
   "policy.unapplyFailed": "Unapply failed: {msg}",
   "policy.confirmDeleteProfile": 'Delete "{name}"? This cannot be undone.',
+  // v0.5.10+: PolicyForm extension status + field hints.
+  "policy.form.saveFirstApply": "Save changes first, then apply.",
+  "policy.form.extensionRemoved": "Extension removed",
+  "policy.form.extensionNotApplied": "Extension was not applied",
+  "policy.form.extensionWrittenTo": "Extension written to {path}",
+  "policy.form.errorPrefix": "Error: {msg}",
+  "policy.form.savedAt": "✓ Saved at {time}",
+  "policy.form.ruleCount.one": "{n} rule",
+  "policy.form.ruleCount.many": "{n} rules",
+  "policy.form.descriptionPlaceholder":
+    "One-line summary of what this policy enforces",
+  "policy.form.label.allow": "allow",
+  "policy.form.label.paths": "paths",
+  "policy.form.label.cmds": "cmds",
+  "policy.form.label.redact": "redact",
+  "policy.form.label.hitl": "HITL",
+  "policy.form.label.unknown": "decision",
+  // v0.5.10+: section metadata.
+  "policy.form.field.allow.legend":
+    "allow · exclusive allowlist (only these tools may run)",
+  "policy.form.field.allow.hint":
+    "Leave empty to allow all (modulo deny). If non-empty, only these tools work.",
+  "policy.form.field.allow.placeholder": "read\nls",
+  "policy.form.field.deny.legend": "deny · tools that cannot be called",
+  "policy.form.field.deny.hint":
+    "deny wins over allow. One tool name per line.",
+  "policy.form.field.deny.placeholder": "bash\nwrite\nedit",
+  "policy.form.field.denyPaths.legend":
+    "denyPaths · glob patterns for read / edit / write",
+  "policy.form.field.denyPaths.hint":
+    "Globs: * = any chars except /, ** = any path segments.",
+  "policy.form.field.denyPaths.placeholder": "**/.env\n**/.env.*\n/etc/**",
+  "policy.form.field.denyCommands.legend":
+    "denyCommands · regex for bash commands to block",
+  "policy.form.field.denyCommands.hint":
+    "JavaScript regex syntax. Backslashes must be doubled in TOML.",
+  "policy.form.field.denyCommands.placeholder": "^rm\\s+-rf\\s+/\n^mkfs",
+  "policy.form.field.sensitivePatterns.legend":
+    "sensitivePatterns · redact from tool results",
+  "policy.form.field.sensitivePatterns.hint":
+    "Used as regex when valid; substring otherwise. Common: API keys, passwords.",
+  "policy.form.field.sensitivePatterns.placeholder":
+    "sk-[A-Za-z0-9]{20,}\nghp_[A-Za-z0-9]{20,}",
+  "policy.form.field.requireApproval.legend":
+    "requireApproval · tools that pause for human confirmation",
+  "policy.form.field.requireApproval.hint":
+    "Triggers ctx.ui.confirm() in the generated extension before the tool runs.",
+  "policy.form.field.requireApproval.placeholder": "bash\nwrite",
 
   // Compose
   "compose.searchPlaceholder": "Search…",
@@ -144,10 +196,52 @@ const en: Dict = {
   "compose.canvasSelectBlock":
     "Click a block on the canvas to inspect it. Press {del} to remove it, or {esc} to deselect.",
   "compose.removeBlock": "Remove block",
+  // v0.5.10+: entity labels.
+  "compose.entity.session": "Session",
+  "compose.entity.pack": "Pack",
+  "compose.entity.profile": "Profile",
+  "compose.entity.policy": "Policy",
+  "compose.entity.capability": "Capability",
+  "compose.section.sessions": "Sessions",
+  "compose.section.packs": "Packs",
+  "compose.section.profiles": "Profiles",
+  "compose.section.policies": "Policies",
+  "compose.section.capabilities": "Capabilities",
+  // v0.5.10+: live-region announcements + alerts.
+  "compose.announce.movedLeft": "Moved block left {n} pixels",
+  "compose.announce.movedRight": "Moved block right {n} pixels",
+  "compose.announce.movedUp": "Moved block up {n} pixels",
+  "compose.announce.movedDown": "Moved block down {n} pixels",
+  "compose.announce.selectionCleared": "Selection cleared",
+  "compose.confirm.removeAll": "Remove all blocks from the canvas?",
+  "compose.alert.invalidVersion": "Invalid compose file (version mismatch)",
+  "compose.alert.invalidJson": "Invalid JSON: {msg}",
+  // v0.5.10+: view-mode toggle.
+  "compose.viewMode.cozy": "🌿 Cozy",
+  "compose.viewMode.modern": "🌑 Modern",
+  "compose.viewMode.tooltip.cozy": "Switch to 2.5D cozy sandbox skin",
+  "compose.viewMode.tooltip.modern": "Switch back to modern flat look",
 
   // Packages
   "packages.noPacksHint":
     "No packs installed yet. Try `pilot pack search subagent`.",
+  // v0.5.10+: pack detail page.
+  "packages.field.source": "Source",
+  "packages.field.enabled": "Enabled",
+  "packages.field.homepage": "Homepage",
+  "packages.field.yes": "yes",
+  "packages.field.no": "no",
+  "packages.install.h2": "Install",
+  "packages.install.alreadyInstalled": "Already installed. Re-run to update.",
+  "packages.install.notInstalled":
+    "Not yet installed. Install via the pilot CLI or this Web UI.",
+  "packages.install.update": "Update {name}",
+  "packages.install.install": "Install {name}",
+  "packages.install.underHood.before": "runs ",
+  "packages.install.underHood.after": " under the hood",
+  "packages.uninstall.confirm":
+    "Uninstall this pack? It will be removed from Pi and any settings generated from it will be cleaned up.",
+  "packages.uninstall.h2": "Uninstall",
 
   // Profiles [name]
   "profiles.editHeading": "Edit",
@@ -170,6 +264,10 @@ const en: Dict = {
   "profiles.noActive":
     "No profile is active yet. Click Activate on any profile to set one.",
   "profiles.activateFailed": "Could not activate: {msg}",
+  // v0.5.10+: list empty-state hint + actionLabel.
+  "profiles.empty.hint":
+    "A profile bundles a model + thinking level + provider + package list. Use the Create profile form above to make one, then activate it from a profile card. Activated profiles are written to ~/.pi/agent/settings.json and picked up by Pi on next launch.",
+  "profiles.openForm": "Open the profile form",
 
   // Context
   "context.loadedTitle": "Loaded by pi",
@@ -199,6 +297,7 @@ const en: Dict = {
   "home.empty.sessions": "No sessions yet.",
   "home.empty.packs": "No packs installed.",
   "home.refreshHint": "auto-refresh 10s · updated now",
+  "home.quickStart.aria": "Quick start",
   "home.emptyState.title": "Welcome to Pilot",
   "home.emptyState.subtitle":
     "Pilot reads your pi state and lets you manage it. Three quick wins to get started:",
@@ -474,6 +573,10 @@ const en: Dict = {
   "avatars.confirmDelete": "Delete Avatar for {cwd}?",
   "avatars.capturedToast": "Captured Avatar for {cwd}",
   "avatars.deletedToast": "Deleted Avatar for {cwd}",
+  // v0.5.10+: list empty hint + capture-first actionLabel.
+  "avatars.empty.hint":
+    "Use the Capture current state form above to lock in this project's expected setup (active profile, model, installed packs, generated policy files). You'll then see drift when any of those change.",
+  "avatars.captureFirst": "Capture your first Avatar",
   "avatars.diffLink": "view diff",
   "avatars.captured": "captured",
   "avatars.profile": "profile",
