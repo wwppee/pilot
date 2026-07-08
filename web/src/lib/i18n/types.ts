@@ -341,6 +341,26 @@ export type Dict = {
   "sessions.tree.expandAll": string;
   "sessions.tree.collapseAll": string;
   "sessions.tree.matchCount": string;
+  // v0.5.8+: filter chip labels per node type. Bucketized — `system`
+  // covers all meta types (compaction, label, session_info, etc.).
+  "sessions.tree.types.user": string;
+  "sessions.tree.types.assistant": string;
+  "sessions.tree.types.tool": string;
+  "sessions.tree.types.system": string;
+  "sessions.tree.types.model_change": string;
+  "sessions.tree.types.thinking_level_change": string;
+  // v0.5.8+: stats row labels above the tree.
+  "sessions.tree.cols.cwd": string;
+  "sessions.tree.cols.totalNodes": string;
+  "sessions.tree.cols.maxDepth": string;
+  "sessions.tree.cols.models": string;
+  "sessions.tree.h2": string;
+  "sessions.tree.noData": string;
+  // v0.5.8+: error / empty state on the detail page.
+  "sessions.backToList": string;
+  "sessions.error.title": string;
+  "sessions.error.hint": string;
+  "sessions.error.retry": string;
 
   // capabilities
   "capabilities.h1": string;

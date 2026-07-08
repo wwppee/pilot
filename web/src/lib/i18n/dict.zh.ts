@@ -344,6 +344,26 @@ const zh: Dict = {
   "sessions.tree.expandAll": "全部展开",
   "sessions.tree.collapseAll": "全部折叠",
   "sessions.tree.matchCount": "{n} 处匹配",
+  // v0.5.8+: filter chip labels per node type (see types.ts).
+  "sessions.tree.types.user": "用户",
+  "sessions.tree.types.assistant": "助手",
+  "sessions.tree.types.tool": "工具",
+  "sessions.tree.types.system": "系统",
+  "sessions.tree.types.model_change": "模型",
+  "sessions.tree.types.thinking_level_change": "思考",
+  // v0.5.8+: stats row labels above the tree.
+  "sessions.tree.cols.cwd": "cwd",
+  "sessions.tree.cols.totalNodes": "总节点",
+  "sessions.tree.cols.maxDepth": "最大深度",
+  "sessions.tree.cols.models": "模型",
+  "sessions.tree.h2": "会话树",
+  "sessions.tree.noData": "暂无会话树数据。",
+  // v0.5.8+: error / empty state on the detail page.
+  "sessions.backToList": "← 返回会话列表",
+  "sessions.error.title": "无法加载此会话",
+  "sessions.error.hint":
+    "请确保 Pilot 服务已启动。可在 Dashboard 启动，或运行： pilot server",
+  "sessions.error.retry": "重试",
 
   // Capabilities
   "capabilities.h1": "能力",

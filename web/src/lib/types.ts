@@ -36,14 +36,55 @@ export interface SessionInfo {
   model?: string;
 }
 
+/**
+ * v0.5.8+: every display type the server's `readSessionTree` can emit.
+ *
+ * Mirrors the union produced by `core/jsonl-parser.ts displayTypeForEntry`:
+ *   - legacy (pre-v0.4.2) entries: `"user" | "assistant" | "tool" | "system"`
+ *   - pi v3 message roles:         `"user" | "assistant" | "toolResult" |
+ *                                    "bashExecution" | "custom" | "branchSummary" |
+ *                                    "compactionSummary"`
+ *   - pi v3 entry meta:            `"model_change" | "thinking_level_change" |
+ *                                    "compaction" | "branch_summary" | "custom" |
+ *                                    "custom_message" | "label" | "session_info"`
+ *   - empty root placeholder:      `"empty"`
+ *
+ * Keep in sync when core/jsonl-parser.ts adds a new entry type or role.
+ */
+export type SessionTreeNodeType =
+  // legacy
+  | "user"
+  | "assistant"
+  | "tool"
+  | "system"
+  // pi v3 message roles
+  | "toolResult"
+  | "bashExecution"
+  | "custom"
+  | "branchSummary"
+  | "compactionSummary"
+  // pi v3 entry meta
+  | "model_change"
+  | "thinking_level_change"
+  | "compaction"
+  | "branch_summary"
+  | "custom_message"
+  | "label"
+  | "session_info"
+  // empty root placeholder (zero-entry session)
+  | "empty"
+  // anything core emits we haven't enumerated yet — strings are
+  // exhaustive by definition, so unknown types fall through here.
+  | (string & {});
+
 export interface SessionTreeNode {
   id: string;
-  type: "user" | "assistant" | "tool" | "system";
+  type: SessionTreeNodeType;
   timestamp?: string;
   preview: string;
-  /** Tool name if type === 'tool'. */
+  /** Tool name if type === 'tool' or 'toolResult'. */
   toolName?: string;
-  /** Model id if type === 'assistant'. */
+  /** Model id if type === 'assistant' or 'model_change'. */
   model?: string;
   /** Recursive children. */
   children: SessionTreeNode[];

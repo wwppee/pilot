@@ -8,6 +8,12 @@
  *     profile and generated policy extensions at capture time.
  *
  * The snapshot is "best-knowledge" — see core/session-snapshot.ts.
+ *
+ * v0.5.8: error / no-tree / missing-tree states now render a friendly
+ * surface with a Retry button and a hint about `pilot server`. The
+ * previous "fetch failed" raw dump was confusing — most users hit it
+ * because the Pilot server wasn't running. The hint nudges them to
+ * either start the dashboard or run `pilot server` directly.
  */
 import Link from "next/link";
 import { headers } from "next/headers";
@@ -21,6 +27,7 @@ import type {
   SessionTree,
 } from "@/lib/types";
 import { SessionTreeExplorer } from "@/components/SessionTreeExplorer";
+import { RetryButton } from "@/components/RetryButton";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -70,19 +77,27 @@ export default async function SessionTreePage({ params }: PageProps) {
     return (
       <div className="space-y-6">
         <div className="text-xs text-[var(--text-muted)]">
-          <Link href="/sessions">← back to sessions</Link>
+          <Link href="/sessions">{renderT(locale, "sessions.backToList")}</Link>
         </div>
-        <div className="surface rounded-lg p-4 text-sm text-[var(--error)]">
-          {error}
-        </div>
+        <ErrorSurface
+          error={error}
+          backHref="/sessions"
+          backLabel={renderT(locale, "sessions.backToList")}
+          locale={locale}
+        />
       </div>
     );
   }
 
   if (!tree) {
     return (
-      <div className="surface rounded-lg p-4 text-sm text-[var(--text-muted)] italic">
-        No tree data.
+      <div className="space-y-6">
+        <div className="text-xs text-[var(--text-muted)]">
+          <Link href="/sessions">{renderT(locale, "sessions.backToList")}</Link>
+        </div>
+        <div className="surface rounded-lg p-4 text-sm text-[var(--text-muted)] italic">
+          {renderT(locale, "sessions.tree.noData")}
+        </div>
       </div>
     );
   }
@@ -90,7 +105,7 @@ export default async function SessionTreePage({ params }: PageProps) {
   return (
     <div className="space-y-6">
       <div className="text-xs text-[var(--text-muted)] flex items-center justify-between">
-        <Link href="/sessions">← back to sessions</Link>
+        <Link href="/sessions">{renderT(locale, "sessions.backToList")}</Link>
         <Link
           href={`/profiles?from=${encodeURIComponent(tree.id)}`}
           className="text-[var(--accent)] hover:underline"
@@ -104,11 +119,21 @@ export default async function SessionTreePage({ params }: PageProps) {
           <code className="kbd">{tree.id}</code>
         </h1>
         <div className="text-xs text-[var(--text-muted)] mt-2 grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Stat label="cwd" value={session?.cwd ?? "—"} mono />
-          <Stat label="total nodes" value={String(tree.totalNodes)} />
-          <Stat label="max depth" value={String(tree.maxDepth)} />
           <Stat
-            label="models"
+            label={renderT(locale, "sessions.tree.cols.cwd")}
+            value={session?.cwd ?? "—"}
+            mono
+          />
+          <Stat
+            label={renderT(locale, "sessions.tree.cols.totalNodes")}
+            value={String(tree.totalNodes)}
+          />
+          <Stat
+            label={renderT(locale, "sessions.tree.cols.maxDepth")}
+            value={String(tree.maxDepth)}
+          />
+          <Stat
+            label={renderT(locale, "sessions.tree.cols.models")}
             value={tree.models.length === 0 ? "—" : tree.models.join(", ")}
             mono
           />
@@ -121,9 +146,50 @@ export default async function SessionTreePage({ params }: PageProps) {
 
       <div className="surface rounded-lg p-4 overflow-x-auto">
         <h2 className="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-3">
-          Tree
+          {renderT(locale, "sessions.tree.h2")}
         </h2>
         <SessionTreeExplorer root={tree.root} locale={locale} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * v0.5.8+: friendly error surface. The raw fetch error stays visible
+ * (it usually contains the ECONNREFUSED or DNS error), but we wrap it
+ * with a title + server-start hint + Retry button. RSC — Retry uses
+ * router.refresh() via a tiny client wrapper below.
+ */
+function ErrorSurface({
+  error,
+  backHref,
+  backLabel,
+  locale,
+}: {
+  error: string;
+  backHref: string;
+  backLabel: string;
+  locale: Locale;
+}) {
+  return (
+    <div className="surface rounded-lg p-4 space-y-3">
+      <div className="text-sm font-medium">
+        {renderT(locale, "sessions.error.title")}
+      </div>
+      <div className="text-xs text-[var(--text-muted)]">
+        {renderT(locale, "sessions.error.hint")}
+      </div>
+      <pre className="text-xs text-[var(--error)] whitespace-pre-wrap break-words surface-2 rounded p-2">
+        {error}
+      </pre>
+      <div className="flex items-center gap-3 pt-1">
+        <RetryButton label={renderT(locale, "sessions.error.retry")} />
+        <Link
+          href={backHref}
+          className="text-xs text-[var(--accent)] hover:underline"
+        >
+          {backLabel}
+        </Link>
       </div>
     </div>
   );

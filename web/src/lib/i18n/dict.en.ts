@@ -360,6 +360,26 @@ const en: Dict = {
   "sessions.tree.expandAll": "expand all",
   "sessions.tree.collapseAll": "collapse all",
   "sessions.tree.matchCount": "{n} match{es}",
+  // v0.5.8+: filter chip labels per node type (see types.ts).
+  "sessions.tree.types.user": "User",
+  "sessions.tree.types.assistant": "Assistant",
+  "sessions.tree.types.tool": "Tool",
+  "sessions.tree.types.system": "System",
+  "sessions.tree.types.model_change": "Model",
+  "sessions.tree.types.thinking_level_change": "Thinking",
+  // v0.5.8+: stats row labels above the tree.
+  "sessions.tree.cols.cwd": "cwd",
+  "sessions.tree.cols.totalNodes": "total nodes",
+  "sessions.tree.cols.maxDepth": "max depth",
+  "sessions.tree.cols.models": "models",
+  "sessions.tree.h2": "Tree",
+  "sessions.tree.noData": "No tree data.",
+  // v0.5.8+: error / empty state on the detail page.
+  "sessions.backToList": "← back to sessions",
+  "sessions.error.title": "Couldn't load this session",
+  "sessions.error.hint":
+    "Make sure the Pilot server is running. Start it from the dashboard, or run: pilot server",
+  "sessions.error.retry": "Retry",
 
   // Capabilities
   "capabilities.h1": "Capabilities",

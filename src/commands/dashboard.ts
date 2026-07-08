@@ -174,11 +174,22 @@ export async function run(args: string[], ctx: PilotContext): Promise<number> {
   }
 
   const script = prod ? "start" : "dev";
+  // v0.5.8: forward PILOT_TOKEN to the web process so the web doesn't
+  // have to read ~/.pilot/server.token from disk. If we started the
+  // server in-process, we already know the token. If --no-server, fall
+  // back to whatever the user already has in their env.
+  const tokenEnv: Record<string, string | undefined> = {};
+  if (serverHandle?.token) {
+    tokenEnv["PILOT_TOKEN"] = serverHandle.token;
+  } else if (process.env["PILOT_TOKEN"]) {
+    tokenEnv["PILOT_TOKEN"] = process.env["PILOT_TOKEN"];
+  }
   const proc = spawn("npm", ["run", script], {
     cwd: webDir,
     stdio: "inherit",
     env: {
       ...process.env,
+      ...tokenEnv,
       PORT: String(webPort),
       PILOT_SERVER_URL: `http://127.0.0.1:${PILOT_PORT}`,
     },

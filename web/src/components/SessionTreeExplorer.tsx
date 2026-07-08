@@ -18,18 +18,97 @@
  *      most common case — sessions with lots of bash/read churn are
  *      a lot easier to read with tools hidden.
  *
+ * v0.5.8+: chip set expanded to cover pi v3 meta types (model_change,
+ * thinking_level_change) and bucketizes everything else under
+ * "system" (compaction / branch_summary / label / session_info /
+ * custom / custom_message / bashExecution / branchSummary /
+ * compactionSummary / toolResult). The actual `node.type` is still
+ * shown in the row label so users can tell what kind of meta entry
+ * they're looking at.
+ *
  * i18n: takes a `t` function from the parent so it stays consistent
  * with the rest of the page.
  */
 
 import { useCallback, useMemo, useState } from "react";
-import type { SessionTreeNode } from "@/lib/types";
+import type { SessionTreeNode, SessionTreeNodeType } from "@/lib/types";
 import { translate } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/types";
 
-export type NodeTypeFilter = "user" | "assistant" | "tool" | "system";
+/**
+ * The 6 filter buckets the UI exposes. The server can emit ~16 distinct
+ * type strings (see `SessionTreeNodeType`); we bucket the rare ones
+ * under `system` so the chip row stays scannable.
+ */
+export type NodeTypeFilter =
+  | "user"
+  | "assistant"
+  | "tool"
+  | "system"
+  | "model_change"
+  | "thinking_level_change";
 
-const ALL_TYPES: NodeTypeFilter[] = ["user", "assistant", "tool", "system"];
+const ALL_TYPES: NodeTypeFilter[] = [
+  "user",
+  "assistant",
+  "tool",
+  "system",
+  "model_change",
+  "thinking_level_change",
+];
+
+/**
+ * Bucketize a server-emitted type into one of the 6 filter buckets.
+ * Anything we haven't enumerated falls under `system` (the "rare
+ * meta" bucket) so the chip set doesn't grow unbounded.
+ */
+function bucketOf(type: SessionTreeNodeType): NodeTypeFilter {
+  switch (type) {
+    case "user":
+      return "user";
+    case "assistant":
+      return "assistant";
+    case "tool":
+    case "toolResult":
+    case "bashExecution":
+      // v3 names for what legacy called "tool".
+      return "tool";
+    case "model_change":
+      return "model_change";
+    case "thinking_level_change":
+      return "thinking_level_change";
+    case "system":
+    case "compaction":
+    case "branch_summary":
+    case "custom":
+    case "custom_message":
+    case "label":
+    case "session_info":
+    case "branchSummary":
+    case "compactionSummary":
+    case "empty":
+    default:
+      return "system";
+  }
+}
+
+/** CSS color variable for a bucket — falls back to --type-unknown. */
+function colorVarForBucket(bucket: NodeTypeFilter): string {
+  return `var(--type-${bucket}, var(--type-unknown))`;
+}
+
+/** Friendly label for the type shown in the row (capitalized). */
+function displayLabelForType(type: SessionTreeNodeType): string {
+  if (!type) return "—";
+  // Most v3 meta types are snake_case — split and capitalize so the
+  // label doesn't shout MODEL_CHANGE at users. Camel-case v3 roles
+  // get a space inserted before capitals.
+  return type
+    .replace(/_/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
 interface Props {
   root: SessionTreeNode;
@@ -168,22 +247,21 @@ function Toolbar({
       >
         {ALL_TYPES.map((type) => {
           const hidden = hiddenTypes.has(type);
+          const color = colorVarForBucket(type);
           return (
             <button
               key={type}
               type="button"
               aria-pressed={!hidden}
               onClick={() => onToggleType(type)}
-              className="px-2 py-0.5 rounded text-[10px] uppercase tracking-wide border"
+              className="px-2 py-0.5 rounded text-[10px] tracking-wide border"
               style={{
-                color: hidden ? "var(--text-muted)" : `var(--type-${type})`,
-                borderColor: hidden
-                  ? "var(--surface-2)"
-                  : `var(--type-${type})`,
+                color: hidden ? "var(--text-muted)" : color,
+                borderColor: hidden ? "var(--surface-2)" : color,
                 background: hidden ? "transparent" : "var(--surface-2)",
               }}
             >
-              {type}
+              {t(`sessions.tree.types.${type}`)}
             </button>
           );
         })}
@@ -229,7 +307,8 @@ function Row({
   query,
   t: _t,
 }: RowProps) {
-  const isHidden = hiddenTypes.has(node.type as NodeTypeFilter);
+  const bucket = bucketOf(node.type);
+  const isHidden = hiddenTypes.has(bucket);
   if (isHidden) return null;
 
   const isCollapsed = collapsed.has(node.id);
@@ -270,13 +349,14 @@ function Row({
           {hasChildren ? (isCollapsed ? "▸" : "▾") : "·"}
         </button>
         <span
-          className="uppercase tracking-wide text-[10px]"
+          className="tracking-wide text-[10px] font-medium"
           style={{
-            color: `var(--type-${node.type})`,
-            minWidth: "64px",
+            color: colorVarForBucket(bucket),
+            minWidth: "80px",
           }}
+          title={node.type}
         >
-          {node.type}
+          {displayLabelForType(node.type)}
         </span>
         <span
           className="flex-1 text-[var(--text-muted)] line-clamp-2"

@@ -13,6 +13,21 @@
   --error: #ff6b6b;
   --border: #2a3038;
 
+  /* ─── Session tree node types (v0.5.8+) ───────────────── */
+  /* Each `SessionTreeNode.type` resolves to one of these. Filter chips
+     in SessionTreeExplorer use the same names so on/off state and color
+     stay in lockstep. "system" is the muted neutral used for any
+     bucketized meta type we haven't enumerated (compaction, label,
+     session_info, custom_message, branchSummary, compactionSummary,
+     branch_summary, bashExecution). */
+  --type-user: #79c0ff; /* matches --accent */
+  --type-assistant: #56d364; /* matches --accent-2 */
+  --type-tool: #f0b400; /* matches --warn */
+  --type-system: #8a9099; /* matches --text-muted */
+  --type-model_change: #d2a8ff; /* soft purple — distinct from primary */
+  --type-thinking_level_change: #ffa657; /* warm orange */
+  --type-unknown: #8a9099; /* fallback for type we haven't catalogued */
+
   /* ─── Cozy 2.5D sandbox palette (v0.4.5) ──────────────────── */
   /* Cream background, sage primary, amber accent — per
      docs/visual-style.md Layer 2. Fonts: Outfit (sans), JetBrains
