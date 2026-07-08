@@ -113,11 +113,7 @@ export default async function AvatarsPage({ searchParams }: PageProps) {
             className="mt-1 w-full surface-2 rounded px-3 py-2 text-sm font-mono outline-none focus:border-[var(--accent)]"
           />
         </label>
-        <button
-          type="submit"
-          className="px-4 py-2 text-sm rounded text-[var(--bg)]"
-          style={{ background: "var(--accent)" }}
-        >
+        <button type="submit" className="btn">
           {renderT(locale, "avatars.captureCta")}
         </button>
       </form>

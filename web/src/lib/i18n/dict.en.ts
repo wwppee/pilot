@@ -258,12 +258,19 @@ const en: Dict = {
   "compose.inspector.stale":
     "Not in current catalog — entity may have been deleted. Block is preserved with cached label.",
   "compose.aria.selected": ", selected",
+  "compose.inspector.blockCount": "{n, plural, one {# block} other {# blocks}}",
+  "compose.inspector.openDetail": "Open detail page →",
+  "compose.inspector.remove": "Remove",
+  "compose.announce.removedBlock": "Removed block {label}",
+  "compose.announce.addedBlock": "Added {label} block to canvas",
+  "compose.aria.addEntity": "Add {kind} “{label}” to canvas",
   // v0.5.11+ currency formatting.
   "currency.usd": "${amount}",
 
   // Packages
   "packages.noPacksHint":
     "No packs installed yet. Try `pilot pack search subagent`.",
+  "packages.installed.emptyHint": "Try {cmd}.",
   // v0.5.10+: pack detail page.
   "packages.field.source": "Source",
   "packages.field.enabled": "Enabled",
@@ -307,6 +314,7 @@ const en: Dict = {
   "profiles.empty.hint":
     "A profile bundles a model + thinking level + provider + package list. Use the Create profile form above to make one, then activate it from a profile card. Activated profiles are written to ~/.pi/agent/settings.json and picked up by Pi on next launch.",
   "profiles.openForm": "Open the profile form",
+  "profiles.packageCount": "{n, plural, one {# package} other {# packages}}",
 
   // Context
   "context.loadedTitle": "Loaded by pi",
@@ -337,6 +345,9 @@ const en: Dict = {
   "home.empty.packs": "No packs installed.",
   "home.refreshHint": "auto-refresh 10s · updated now",
   "home.quickStart.aria": "Quick start",
+  // v0.5.12+
+  "home.unit.messages": "{n} msgs",
+  "home.unit.calls": "{n} calls",
   "home.emptyState.title": "Welcome to Pilot",
   "home.emptyState.subtitle":
     "Pilot reads your pi state and lets you manage it. Three quick wins to get started:",
@@ -372,6 +383,8 @@ const en: Dict = {
   "sessions.h1": "Sessions",
   "sessions.subtitle": "{n} session{s} under {home} · most recent first.",
   "sessions.empty": "No sessions yet. Run pi to create one.",
+  "sessions.empty.hint":
+    "Pilot reads Pi's session JSONL from {dir}. Run {cmd} in any project to create your first session — it'll show up here on the next page refresh.",
   "sessions.col.id": "ID",
   "sessions.col.cwd": "CWD",
   "sessions.col.lastUsed": "Last used",
@@ -418,12 +431,16 @@ const en: Dict = {
     "No usage data yet. Run pi with a real model to record tokens and cost.",
   "usage.empty.model": "No model data.",
   "usage.empty.day": "No daily data.",
+  "usage.empty.hint": "Run {cmd} with a real model to record tokens + cost.",
   "usage.showingLastN": "(showing last 14 of {n} days)",
+  "usage.loadError": "Couldn’t load usage: {message}",
 
   // Tools
   "tools.h1": "Tool inventory",
   "tools.subtitle":
     "{n} tool{s} available to pi — built-in ({builtin}), npm extensions ({npm}).",
+  "tools.empty.hint":
+    "Run {cmd} in any project to populate its {dir} directory.",
   "tools.empty":
     "No tools discovered. Run pi once to initialize the directory.",
   "tools.section.builtin.title": "Built-in",
@@ -438,11 +455,13 @@ const en: Dict = {
   "tools.col.safety": "Safety",
   "tools.col.description": "Description",
   "tools.col.status": "Status",
+  "tools.loadError": "Couldn’t load tools: {message}",
 
   // Context
   "context.h1": "Project context",
   "context.subtitle":
     "Files visible from {cwd} that pi may load into its system prompt. Mirrors pi's `loadProjectContextFiles` algorithm.",
+  "context.empty.hint": "Create {file1} or {file2} in this directory.",
   "context.empty":
     "No context files found. Create an `AGENTS.md` or `CLAUDE.md` in this directory.",
   "context.error.title": "Couldn't load context: {error}",
@@ -451,6 +470,16 @@ const en: Dict = {
     "Injected into the system prompt at session start",
   "context.section.info.title": "Informational only",
   "context.section.info.subtitle": "Visible in Pilot; not auto-loaded by pi",
+  // v0.5.12+: discovery rules panel.
+  "context.discovery.h2": "How discovery works",
+  "context.discovery.filenames": "Filename priority",
+  "context.discovery.filenamesHint":
+    "First hit wins per directory. AGENTS.md beats AGENTS.MD beats CLAUDE.md beats CLAUDE.MD.",
+  "context.discovery.paths": "Search path",
+  "context.discovery.pathsHint":
+    "1. ~/.pi/agent/ (global)  →  2. cwd  →  3. each parent directory up to filesystem root.",
+  "context.discovery.info":
+    "Only canonical names (AGENTS.md / AGENTS.MD / CLAUDE.md / CLAUDE.MD) get loaded into pi's prompt. README.md, .cursor/rules, and CONTRIBUTING.md are Pilot-only — informational, never sent to the model.",
 
   // Policy
   "policy.h1": "Tool Policies",
@@ -528,6 +557,7 @@ const en: Dict = {
   "capabilities.subtitle": "{n} capability installed · Forge ships in v0.4.",
   "capabilities.refreshHint": "auto-refresh 15s",
   "capabilities.empty": "No capabilities installed yet. Forge ships in v0.4.",
+  "capabilities.empty.hint": "Absorb a pack from {link}.",
   "capabilities.sources": "{n} source(s)",
   "capabilities.requires": "requires {n}",
   "capabilities.conflicts": "conflicts {n}",

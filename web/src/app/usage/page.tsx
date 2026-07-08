@@ -12,6 +12,7 @@ import { api } from "@/lib/pilot";
 export const dynamic = "force-dynamic";
 import { T } from "@/components/I18n";
 import { EmptyState } from "@/components/EmptyState";
+import { RichT } from "@/components/RichT";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { UsageReport } from "@/lib/types";
 
@@ -95,16 +96,19 @@ export default async function UsagePage({
 
       {error ? (
         <div className="surface rounded-lg p-4 text-sm text-[var(--text-muted)]">
-          Couldn&apos;t load usage: {error}
+          {renderT(locale, "usage.loadError", { message: error })}
         </div>
       ) : !report ? null : report.totalAssistantMessages === 0 ? (
         <EmptyState
           title={renderT(locale, "usage.empty")}
           hint={
-            <>
-              Run <code className="kbd">pi</code> with a real model to record
-              tokens + cost.
-            </>
+            <RichT
+              locale={locale}
+              k="usage.empty.hint"
+              values={{
+                cmd: <code className="kbd">pi</code>,
+              }}
+            />
           }
         />
       ) : (
@@ -134,7 +138,7 @@ export default async function UsagePage({
 
           {/* By model */}
           <div className="surface rounded-lg overflow-hidden">
-            <div className="px-4 py-2 surface-2 text-xs uppercase tracking-wide text-[var(--text-muted)]">
+            <div className="px-4 py-2 surface-2 section-h2">
               <T k="usage.byModel.title" />
             </div>
             {report.byModel.length === 0 ? (
@@ -212,7 +216,7 @@ export default async function UsagePage({
 
           {/* By day */}
           <div className="surface rounded-lg overflow-hidden">
-            <div className="px-4 py-2 surface-2 text-xs uppercase tracking-wide text-[var(--text-muted)]">
+            <div className="px-4 py-2 surface-2 section-h2">
               <T k="usage.byDay.title" />
             </div>
             {report.byDay.length === 0 ? (

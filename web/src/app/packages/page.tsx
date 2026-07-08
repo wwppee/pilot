@@ -11,6 +11,7 @@ import { api } from "@/lib/pilot";
 import type { Pack } from "@/lib/types";
 import { T } from "@/components/I18n";
 import { EmptyState } from "@/components/EmptyState";
+import { RichT } from "@/components/RichT";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 
 interface SearchPageProps {
@@ -75,12 +76,12 @@ export default async function PackagesPage({ searchParams }: SearchPageProps) {
 
       {searchList && (
         <section>
-          <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)] mb-3">
+          <h2 className="section-h2 mb-3">
             <T k="packages.searchResultsFor" params={{ q: query }} />
           </h2>
           <div className="surface rounded-lg overflow-hidden">
             {searchList.length === 0 ? (
-              <div className="text-sm text-[var(--text-muted)] italic px-3 py-6 text-center">
+              <div className="text-sm text-[var(--text-muted)] italic p-4 text-center">
                 <T k="packages.nothingMatches" />
               </div>
             ) : (
@@ -109,16 +110,20 @@ export default async function PackagesPage({ searchParams }: SearchPageProps) {
       )}
 
       <section>
-        <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)] mb-3">
+        <h2 className="section-h2 mb-3">
           <T k="packages.installed" />
         </h2>
         {installedList.length === 0 ? (
           <EmptyState
             title={renderT(locale, "packages.noPacksHint")}
             hint={
-              <>
-                Try <code className="kbd">pilot pack search subagent</code>.
-              </>
+              <RichT
+                locale={locale}
+                k="packages.installed.emptyHint"
+                values={{
+                  cmd: <code className="kbd">pilot pack search subagent</code>,
+                }}
+              />
             }
           />
         ) : (
@@ -127,7 +132,7 @@ export default async function PackagesPage({ searchParams }: SearchPageProps) {
               <Link
                 key={p.name}
                 href={`/packages/${p.name}`}
-                className="surface rounded-lg p-3 hover:bg-[var(--surface-2)] block"
+                className="surface rounded-lg p-4 hover:bg-[var(--surface-2)] block"
               >
                 <div className="flex items-start justify-between mb-1">
                   <code className="kbd">{p.name}</code>

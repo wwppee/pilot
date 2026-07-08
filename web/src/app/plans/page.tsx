@@ -66,17 +66,10 @@ export default async function PlansPage({ searchParams }: PageProps) {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link
-            href="/plans/suggest-tools"
-            className="px-3 py-2 text-sm rounded surface-2 text-[var(--text)] hover:border-[var(--accent)]"
-          >
+          <Link href="/plans/suggest-tools" className="btn secondary">
             <T k="plans.suggest.button" /> →
           </Link>
-          <Link
-            href="/plans/new"
-            className="px-3 py-2 text-sm rounded text-[var(--bg)]"
-            style={{ background: "var(--accent)" }}
-          >
+          <Link href="/plans/new" className="btn">
             + <T k="plans.empty.cta" />
           </Link>
         </div>

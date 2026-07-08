@@ -173,11 +173,7 @@ export default async function ProfilesPage({ searchParams }: PageProps) {
           {template?.model && (
             <input type="hidden" name="model" value={template.model} />
           )}
-          <button
-            type="submit"
-            className="px-4 py-2 text-sm rounded text-[var(--bg)]"
-            style={{ background: "var(--accent)" }}
-          >
+          <button type="submit" className="btn">
             <T k="btn.create" />
           </button>
         </div>
@@ -207,12 +203,21 @@ export default async function ProfilesPage({ searchParams }: PageProps) {
                 <div className="space-y-1 text-xs text-[var(--text-muted)]">
                   {p.model && (
                     <div>
-                      model: <code className="kbd">{p.model}</code>
+                      {renderT(locale, "profiles.model")}:{" "}
+                      <code className="kbd">{p.model}</code>
                     </div>
                   )}
-                  {p.thinking && <div>thinking: {p.thinking}</div>}
+                  {p.thinking && (
+                    <div>
+                      {renderT(locale, "profiles.thinking")}: {p.thinking}
+                    </div>
+                  )}
                   {p.packages && p.packages.length > 0 && (
-                    <div>{p.packages.length} package(s)</div>
+                    <div>
+                      {renderT(locale, "profiles.packageCount", {
+                        n: p.packages.length,
+                      })}
+                    </div>
                   )}
                 </div>
               </Link>

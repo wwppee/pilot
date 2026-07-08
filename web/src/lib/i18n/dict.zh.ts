@@ -251,11 +251,18 @@ const zh: Dict = {
   "compose.inspector.stale":
     "不在当前目录里 — 实体可能已被删除。块本身保留，并使用缓存的标签。",
   "compose.aria.selected": "（已选中）",
+  "compose.inspector.blockCount": "{n} 个块",
+  "compose.inspector.openDetail": "打开详情页 →",
+  "compose.inspector.remove": "移除",
+  "compose.announce.removedBlock": "已移除块 {label}",
+  "compose.announce.addedBlock": "已将 {label} 块加入画布",
+  "compose.aria.addEntity": "将 {kind} “{label}” 加入画布",
   // v0.5.11+ 货币格式。
   "currency.usd": "US${amount}",
 
   // Packages
   "packages.noPacksHint": "还没装包。试试 `pilot pack search subagent`。",
+  "packages.installed.emptyHint": "试试 {cmd}。",
   // v0.5.10+: 包详情页。
   "packages.field.source": "来源",
   "packages.field.enabled": "已启用",
@@ -296,6 +303,7 @@ const zh: Dict = {
   "profiles.empty.hint":
     "一份配置包含模型 + 思考强度 + provider + 包列表。用上方的「新建配置」表单创建一份，再从配置卡上设为活跃。已激活的配置会写入 ~/.pi/agent/settings.json，Pi 下次启动时自动加载。",
   "profiles.openForm": "打开配置表单",
+  "profiles.packageCount": "{n} 个包",
 
   // Context
   "context.loadedTitle": "Pi 已加载",
@@ -326,6 +334,9 @@ const zh: Dict = {
   "home.empty.packs": "暂无已安装包。",
   "home.refreshHint": "10 秒自动刷新 · 已更新",
   "home.quickStart.aria": "快速开始",
+  // v0.5.12+
+  "home.unit.messages": "{n} 条消息",
+  "home.unit.calls": "{n} 次",
   "home.emptyState.title": "欢迎使用 Pilot",
   "home.emptyState.subtitle": "Pilot 帮你读取并管理 pi 的状态。三步快速上手：",
   "home.emptyState.card1Title": "创建配置",
@@ -359,6 +370,8 @@ const zh: Dict = {
   "sessions.h1": "会话",
   "sessions.subtitle": "{home} 下共 {n} 个会话 · 最近的在前。",
   "sessions.empty": "还没有会话。运行 pi 来创建。",
+  "sessions.empty.hint":
+    "Pilot 从 {dir} 读取 Pi 的会话 JSONL。在任意项目里运行 {cmd} 创建第一个会话，刷新本页即可看到。",
   "sessions.col.id": "ID",
   "sessions.col.cwd": "CWD",
   "sessions.col.lastUsed": "最近使用",
@@ -402,12 +415,15 @@ const zh: Dict = {
   "usage.empty": "暂无用量数据。运行 pi（带真实模型）以记录 token 与成本。",
   "usage.empty.model": "暂无模型数据。",
   "usage.empty.day": "暂无每日数据。",
+  "usage.empty.hint": "运行 {cmd}（带真实模型）以记录 token 与成本。",
   "usage.showingLastN": "（显示最近 14 天，共 {n} 天）",
+  "usage.loadError": "无法加载用量数据：{message}",
 
   // Tools
   "tools.h1": "工具清单",
   "tools.subtitle":
     "当前配置下 pi 可用的工具 — 内置 {builtin} 个，npm 扩展 {npm} 个。",
+  "tools.empty.hint": "在任意项目里运行 {cmd} 以初始化其 {dir} 目录。",
   "tools.empty": "暂未发现工具。运行 pi 一次以初始化目录。",
   "tools.section.builtin.title": "内置",
   "tools.section.builtin.subtitle": "Pi 自带（见 `pi --help`）",
@@ -420,11 +436,13 @@ const zh: Dict = {
   "tools.col.safety": "安全",
   "tools.col.description": "描述",
   "tools.col.status": "状态",
+  "tools.loadError": "无法加载工具列表：{message}",
 
   // Context
   "context.h1": "项目上下文",
   "context.subtitle":
     "在 {cwd} 下 pi 可能加载进系统提示的文件。镜像 pi 的 `loadProjectContextFiles` 算法。",
+  "context.empty.hint": "在当前目录创建 {file1} 或 {file2}。",
   "context.empty":
     "未找到上下文文件。在此目录创建 `AGENTS.md` 或 `CLAUDE.md`。",
   "context.error.title": "无法加载上下文：{error}",
@@ -432,6 +450,16 @@ const zh: Dict = {
   "context.section.loaded.subtitle": "会话开始时注入到系统提示",
   "context.section.info.title": "仅供查看",
   "context.section.info.subtitle": "Pilot 可见，Pi 不会自动加载",
+  // v0.5.12+: 发现规则面板。
+  "context.discovery.h2": "发现逻辑",
+  "context.discovery.filenames": "文件名优先级",
+  "context.discovery.filenamesHint":
+    "每个目录只取首个命中：AGENTS.md > AGENTS.MD > CLAUDE.md > CLAUDE.MD。",
+  "context.discovery.paths": "搜索路径",
+  "context.discovery.pathsHint":
+    "1. ~/.pi/agent/（全局）→ 2. 当前目录 → 3. 逐级向上直到文件系统根。",
+  "context.discovery.info":
+    "只有规范文件名（AGENTS.md / AGENTS.MD / CLAUDE.md / CLAUDE.MD）会被加载进 pi 的提示。README.md、.cursor/rules、CONTRIBUTING.md 仅 Pilot 可见，不会发给模型。",
 
   // Policy
   "policy.h1": "工具策略",
@@ -506,6 +534,7 @@ const zh: Dict = {
   "capabilities.subtitle": "已安装 {n} 个能力 · Forge 在 v0.4 推出。",
   "capabilities.refreshHint": "15 秒自动刷新",
   "capabilities.empty": "暂无已安装能力。Forge 在 v0.4 推出。",
+  "capabilities.empty.hint": "从 {link} 吸收一个包。",
   "capabilities.sources": "{n} 个来源",
   "capabilities.requires": "依赖 {n} 个",
   "capabilities.conflicts": "与 {n} 个冲突",

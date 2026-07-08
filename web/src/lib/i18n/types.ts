@@ -247,11 +247,20 @@ export type Dict = {
   "compose.filterAll": string;
   "compose.inspector.stale": string;
   "compose.aria.selected": string;
+  "compose.inspector.blockCount": string;
+  "compose.inspector.openDetail": string;
+  "compose.inspector.remove": string;
+  "compose.announce.removedBlock": string;
+  "compose.announce.addedBlock": string;
+  "compose.aria.addEntity": string;
   // v0.5.11+ currency formatting.
   "currency.usd": string;
 
   // ─── Packages ───────────────────────────────────────────────
   "packages.noPacksHint": string;
+  // v0.5.12: EmptyState hint with <code>cmd</code> — uses {cmd} placeholder
+  // for the inline command; consumed by <RichT>.
+  "packages.installed.emptyHint": string;
   // v0.5.10+: pack detail page (was hardcoded English).
   "packages.field.source": string;
   "packages.field.enabled": string;
@@ -289,6 +298,7 @@ export type Dict = {
   // v0.5.10+: profiles list empty state (long hint text + actionLabel).
   "profiles.empty.hint": string;
   "profiles.openForm": string;
+  "profiles.packageCount": string;
 
   // ─── Context ────────────────────────────────────────────────
   "context.loadedTitle": string;
@@ -321,6 +331,9 @@ export type Dict = {
   "home.emptyState.title": string;
   // v0.5.10+: home quick-start aria-label.
   "home.quickStart.aria": string;
+  // v0.5.12+: dashboard unit labels.
+  "home.unit.messages": string;
+  "home.unit.calls": string;
   "home.emptyState.subtitle": string;
   "home.emptyState.card1Title": string;
   "home.emptyState.card1Body": string;
@@ -350,6 +363,7 @@ export type Dict = {
   "sessions.h1": string;
   "sessions.subtitle": string;
   "sessions.empty": string;
+  "sessions.empty.hint": string;
   "sessions.col.id": string;
   "sessions.col.cwd": string;
   "sessions.col.lastUsed": string;
@@ -393,12 +407,15 @@ export type Dict = {
   "usage.empty": string;
   "usage.empty.model": string;
   "usage.empty.day": string;
+  "usage.empty.hint": string;
   "usage.showingLastN": string;
+  "usage.loadError": string;
 
   // tools
   "tools.h1": string;
   "tools.subtitle": string;
   "tools.empty": string;
+  "tools.empty.hint": string;
   "tools.section.builtin.title": string;
   "tools.section.builtin.subtitle": string;
   "tools.section.local.title": string;
@@ -410,15 +427,25 @@ export type Dict = {
   "tools.col.safety": string;
   "tools.col.description": string;
   "tools.col.status": string;
+  "tools.loadError": string;
 
   // context
   "context.h1": string;
   "context.subtitle": string;
   "context.empty": string;
+  "context.empty.hint": string;
   "context.section.loaded.title": string;
   "context.section.loaded.subtitle": string;
   "context.section.info.title": string;
   "context.section.info.subtitle": string;
+  // v0.5.12+: discovery rules panel — show the user the search priority
+  // + path so they understand "why this file showed up".
+  "context.discovery.h2": string;
+  "context.discovery.filenames": string;
+  "context.discovery.filenamesHint": string;
+  "context.discovery.paths": string;
+  "context.discovery.pathsHint": string;
+  "context.discovery.info": string;
   // v0.5.9+: friendly error when /context fails to load.
   "context.error.title": string;
 
@@ -491,6 +518,7 @@ export type Dict = {
   "capabilities.subtitle": string;
   "capabilities.refreshHint": string;
   "capabilities.empty": string;
+  "capabilities.empty.hint": string;
   "capabilities.sources": string;
   "capabilities.requires": string;
   "capabilities.conflicts": string;

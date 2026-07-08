@@ -12,6 +12,7 @@ import { api } from "@/lib/pilot";
 import type { SessionInfo } from "@/lib/types";
 import { T } from "@/components/I18n";
 import { EmptyState } from "@/components/EmptyState";
+import { RichT } from "@/components/RichT";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 
 export default async function SessionsPage() {
@@ -47,12 +48,14 @@ export default async function SessionsPage() {
           <EmptyState
             title={renderT(locale, "sessions.empty")}
             hint={
-              <>
-                Pilot reads Pi's session JSONL from{" "}
-                <code className="kbd">~/.pi/agent/sessions/</code>. Run{" "}
-                <code className="kbd">pi</code> in any project to create your
-                first session — it'll show up here on the next page refresh.
-              </>
+              <RichT
+                locale={locale}
+                k="sessions.empty.hint"
+                values={{
+                  dir: <code className="kbd">~/.pi/agent/sessions/</code>,
+                  cmd: <code className="kbd">pi</code>,
+                }}
+              />
             }
           />
         ) : (

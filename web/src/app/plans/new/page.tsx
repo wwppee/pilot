@@ -84,10 +84,7 @@ export default async function NewPlanPage({ searchParams }: PageProps) {
           <SubmitButton pendingLabel="…">
             + <T k="plans.new.submit" />
           </SubmitButton>
-          <Link
-            href="/plans"
-            className="px-4 py-2 text-sm rounded surface-2 text-[var(--text-muted)]"
-          >
+          <Link href="/plans" className="btn secondary">
             <T k="plans.new.cancel" />
           </Link>
         </div>

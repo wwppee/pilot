@@ -10,6 +10,7 @@ import { headers } from "next/headers";
 import { api } from "@/lib/pilot";
 import { AutoRefresh, LivePulse } from "@/components/AutoRefresh";
 import { T } from "@/components/I18n";
+import { EmptyState } from "@/components/EmptyState";
 import { negotiateLocale, renderT, type Locale } from "@/lib/i18n";
 import type {
   Capability,
@@ -99,7 +100,7 @@ export default async function DashboardPage() {
     <div className="space-y-10">
       <AutoRefresh intervalMs={10_000} />
 
-      {hasNothing && <EmptyState locale={locale} />}
+      {hasNothing && <EmptyStateCards locale={locale} />}
 
       <header className="flex items-center justify-between">
         <div>
@@ -119,7 +120,7 @@ export default async function DashboardPage() {
       </header>
 
       <section>
-        <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)] mb-3">
+        <h2 className="section-h2 mb-3">
           <T k="home.section.today" />
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -169,7 +170,9 @@ export default async function DashboardPage() {
                 {stats.byModel.map((m) => (
                   <li key={m.model} className="flex justify-between text-sm">
                     <code className="kbd">{m.model}</code>
-                    <span>{m.messages} msg</span>
+                    <span>
+                      {renderT(locale, "home.unit.messages", { n: m.messages })}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -184,7 +187,9 @@ export default async function DashboardPage() {
                 {stats.byTool.slice(0, 6).map((t) => (
                   <li key={t.tool} className="flex justify-between">
                     <code className="kbd">{t.tool}</code>
-                    <span>{t.count} calls</span>
+                    <span>
+                      {renderT(locale, "home.unit.calls", { n: t.count })}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -195,7 +200,7 @@ export default async function DashboardPage() {
 
       <section>
         <div className="flex items-baseline justify-between mb-3">
-          <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)]">
+          <h2 className="section-h2">
             <T k="home.section.recentSessions" />
           </h2>
           <Link
@@ -207,10 +212,19 @@ export default async function DashboardPage() {
           </Link>
         </div>
         <div className="surface rounded-lg overflow-hidden">
-          {sessions && sessions.length === 0 && (
-            <Empty msg={renderT(locale, "home.empty.sessions")} />
-          )}
-          {sessions && sessions.length > 0 && (
+          {sessions && sessions.length === 0 ? (
+            <div className="p-4">
+              <EmptyState
+                title={renderT(locale, "home.empty.sessions")}
+                hint={
+                  <>
+                    Run <code className="kbd">pi</code> in any project to create
+                    a session.
+                  </>
+                }
+              />
+            </div>
+          ) : sessions && sessions.length > 0 ? (
             <table className="w-full text-sm">
               <thead className="surface-2 text-left">
                 <tr>
@@ -255,13 +269,13 @@ export default async function DashboardPage() {
                 ))}
               </tbody>
             </table>
-          )}
+          ) : null}
         </div>
       </section>
 
       <section>
         <div className="flex items-baseline justify-between mb-3">
-          <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)]">
+          <h2 className="section-h2">
             <T k="home.section.installedPacks" />
           </h2>
           <Link
@@ -273,11 +287,24 @@ export default async function DashboardPage() {
           </Link>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-          {packs && packs.length === 0 && (
-            <Empty msg={renderT(locale, "home.empty.packs")} />
+          {packs && packs.length === 0 ? (
+            <div className="col-span-full">
+              <EmptyState
+                title={renderT(locale, "home.empty.packs")}
+                hint={
+                  <>
+                    Search <code className="kbd">pilot pack search</code> to
+                    find packs.
+                  </>
+                }
+              />
+            </div>
+          ) : (
+            packs &&
+            packs
+              .slice(0, 6)
+              .map((p) => <PackCard key={p.name} pack={p} locale={locale} />)
           )}
-          {packs &&
-            packs.slice(0, 6).map((p) => <PackCard key={p.name} pack={p} />)}
         </div>
       </section>
     </div>
@@ -326,11 +353,11 @@ function StatCard({
   );
 }
 
-function PackCard({ pack }: { pack: Pack }) {
+function PackCard({ pack, locale }: { pack: Pack; locale: Locale }) {
   return (
     <Link
       href={`/packages/${pack.name}`}
-      className="surface rounded-lg p-3 hover:bg-[var(--surface-2)] block"
+      className="surface rounded-lg p-4 hover:bg-[var(--surface-2)] block"
     >
       <div className="flex items-start justify-between">
         <code className="kbd">{pack.name}</code>
@@ -366,15 +393,14 @@ function PackCard({ pack }: { pack: Pack }) {
   );
 }
 
-function Empty({ msg }: { msg: string }) {
-  return <p className="hint italic text-center py-6">{msg}</p>;
-}
-
-// ─── EmptyState (v0.4.12) ──────────────────────────────────────
+// ─── EmptyStateCards (v0.4.12) ──────────────────────────────────
 // Three-card quick-start shown when the dashboard would otherwise
 // render four near-empty sections. Renders only when sessionCount,
-// packCount, profileCount, capabilityCount are all 0.
-function EmptyState({ locale }: { locale: Locale }) {
+// packCount, profileCount, capabilityCount are all 0. Renamed from
+// EmptyState in v0.5.12 because the imported <EmptyState> component
+// is the canonical "this list is empty" empty state — this is the
+// 3-card onboarding tour, semantically different.
+function EmptyStateCards({ locale }: { locale: Locale }) {
   const cards = [
     {
       titleKey: "home.emptyState.card1Title" as const,

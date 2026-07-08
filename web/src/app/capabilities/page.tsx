@@ -8,6 +8,7 @@ import { api } from "@/lib/pilot";
 import { AutoRefresh, LivePulse } from "@/components/AutoRefresh";
 import { T } from "@/components/I18n";
 import { EmptyState } from "@/components/EmptyState";
+import { RichT } from "@/components/RichT";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { Capability } from "@/lib/types";
 
@@ -47,13 +48,20 @@ export default async function CapabilitiesPage() {
         <EmptyState
           title={renderT(locale, "capabilities.empty")}
           hint={
-            <>
-              Absorb a pack from{" "}
-              <a className="text-[var(--accent)] hover:underline" href="/forge">
-                /forge
-              </a>
-              .
-            </>
+            <RichT
+              locale={locale}
+              k="capabilities.empty.hint"
+              values={{
+                link: (
+                  <a
+                    className="text-[var(--accent)] hover:underline"
+                    href="/forge"
+                  >
+                    /forge
+                  </a>
+                ),
+              }}
+            />
           }
         />
       ) : (

@@ -11,6 +11,7 @@ import { api } from "@/lib/pilot";
 export const dynamic = "force-dynamic";
 import { T } from "@/components/I18n";
 import { EmptyState } from "@/components/EmptyState";
+import { RichT } from "@/components/RichT";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { ToolInventoryItem } from "@/lib/types";
 
@@ -53,16 +54,20 @@ export default async function ToolsPage() {
 
       {error ? (
         <div className="surface rounded-lg p-4 text-sm text-[var(--error)]">
-          Couldn&apos;t load tools: {error}
+          {renderT(locale, "tools.loadError", { message: error })}
         </div>
       ) : tools.length === 0 ? (
         <EmptyState
           title={renderT(locale, "tools.empty")}
           hint={
-            <>
-              Run <code className="kbd">pi</code> in any project to populate its{" "}
-              <code className="kbd">~/.pi/agent/</code> directory.
-            </>
+            <RichT
+              locale={locale}
+              k="tools.empty.hint"
+              values={{
+                cmd: <code className="kbd">pi</code>,
+                dir: <code className="kbd">~/.pi/agent/</code>,
+              }}
+            />
           }
         />
       ) : (
@@ -105,7 +110,7 @@ function ToolSection({
 }) {
   return (
     <div className="surface rounded-lg overflow-hidden">
-      <div className="px-4 py-2 surface-2 text-xs uppercase tracking-wide text-[var(--text-muted)] flex items-baseline gap-3">
+      <div className="px-4 py-2 surface-2 section-h2 flex items-baseline gap-3">
         <span className="font-medium text-[var(--text)]">{title}</span>
         <span>{subtitle}</span>
       </div>

@@ -56,22 +56,22 @@ const KIND_META: Record<ComposeEntityKind, KindMetaBuilder> = {
   pack: (t) => ({
     label: t("compose.entity.pack"),
     emoji: "📦",
-    tint: "#d49050",
+    tint: "var(--cozy-accent-2)",
   }),
   profile: (t) => ({
     label: t("compose.entity.profile"),
     emoji: "🎛",
-    tint: "#7b8fa1",
+    tint: "var(--cozy-profile)",
   }),
   policy: (t) => ({
     label: t("compose.entity.policy"),
     emoji: "🛡",
-    tint: "#9c5fbb",
+    tint: "var(--hitl)",
   }),
   capability: (t) => ({
     label: t("compose.entity.capability"),
     emoji: "🧩",
-    tint: "#4f7a64",
+    tint: "var(--cozy-accent)",
   }),
 };
 
@@ -321,7 +321,8 @@ export default function ComposeBoard({
       setState((s) => ({ ...s, blocks: s.blocks.filter((b) => b.id !== id) }));
       setSelectedId(null);
       const removed = state.blocks.find((b) => b.id === id);
-      if (removed) announce(`Removed block ${removed.label}`);
+      if (removed)
+        announce(t("compose.announce.removedBlock", { label: removed.label }));
     },
     [announce, state.blocks],
   );
@@ -351,7 +352,7 @@ export default function ComposeBoard({
         return { ...s, blocks: [...s.blocks, block] };
       });
       setSelectedId(/* will be set after state update */ null);
-      announce(`Added ${entity.label} block to canvas`);
+      announce(t("compose.announce.addedBlock", { label: entity.label }));
     },
     [announce],
   );
@@ -550,7 +551,10 @@ export default function ComposeBoard({
                     style={{ borderLeftColor: KIND_META[sec.kind](t).tint }}
                     onPointerDown={(ev) => startSidebarDrag(e, ev)}
                     onClick={() => addBlockAtCenter(e)}
-                    aria-label={`Add ${sec.label.toLowerCase()} "${e.label}" to canvas`}
+                    aria-label={t("compose.aria.addEntity", {
+                      kind: sec.label.toLowerCase(),
+                      label: e.label,
+                    })}
                     title={t("compose.dragHint")}
                   >
                     <div className="compose-sidebar-label">{e.label}</div>
@@ -612,8 +616,7 @@ export default function ComposeBoard({
         <div className="compose-inspector-header">
           <h3>{t("compose.inspector")}</h3>
           <span className="muted small">
-            {state.blocks.length} block
-            {state.blocks.length === 1 ? "" : "s"}
+            {t("compose.inspector.blockCount", { n: state.blocks.length })}
           </span>
         </div>
         {selectedBlock ? (
@@ -709,7 +712,7 @@ function ComposeBlockView({
       session: "var(--cozy-accent)",
       pack: "var(--cozy-accent-2)",
       profile: "var(--cozy-text-muted)",
-      policy: "#9c5fbb",
+      policy: "var(--hitl)",
       capability: "var(--cozy-accent)",
     } as const
   )[block.kind];
@@ -806,11 +809,11 @@ function BlockInspector({
       <div className="compose-inspector-actions">
         {href ? (
           <a className="btn small" href={href}>
-            Open detail page →
+            {t("compose.inspector.openDetail")}
           </a>
         ) : null}
         <button type="button" className="btn small danger" onClick={onDelete}>
-          Remove
+          {t("compose.inspector.remove")}
         </button>
       </div>
     </div>

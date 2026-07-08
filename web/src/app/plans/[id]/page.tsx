@@ -364,10 +364,7 @@ export default async function PlanDetailPage({
               {can.pause && (
                 <form action={pausePlanForm}>
                   <input type="hidden" name="id" value={plan.id} />
-                  <button
-                    type="submit"
-                    className="px-4 py-2 text-sm rounded surface-2 text-[var(--text)] hover:border-[var(--accent-2)]"
-                  >
+                  <button type="submit" className="btn secondary">
                     ⏸ <T k="plans.action.pause" />
                   </button>
                 </form>
@@ -375,10 +372,7 @@ export default async function PlanDetailPage({
               {can.resume && (
                 <form action={resumePlanForm}>
                   <input type="hidden" name="id" value={plan.id} />
-                  <button
-                    type="submit"
-                    className="px-4 py-2 text-sm rounded surface-2 text-[var(--text)] hover:border-[var(--accent-2)]"
-                  >
+                  <button type="submit" className="btn secondary">
                     ▶ <T k="plans.action.resume" />
                   </button>
                 </form>
@@ -386,11 +380,7 @@ export default async function PlanDetailPage({
               {can.cancel && (
                 <form action={cancelPlanForm}>
                   <input type="hidden" name="id" value={plan.id} />
-                  <button
-                    type="submit"
-                    className="px-4 py-2 text-sm rounded surface-2 text-[var(--text)] hover:border-[var(--error)]"
-                    style={{ color: "var(--error)" }}
-                  >
+                  <button type="submit" className="btn danger">
                     ✕ <T k="plans.action.cancel" />
                   </button>
                 </form>
