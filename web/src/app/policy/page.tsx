@@ -3,16 +3,26 @@
  *
  * v0.4.3: list policies, see what's applied (extension installed),
  * apply/unapply, and run a dry-run check against a tool call.
+ *
+ * v0.5.11: full design overhaul — replaces the orphan-CSS-class
+ * pattern (`.card`, `.badge`, `.form`, etc. were never defined)
+ * with Tailwind utilities + the design-token classes added in
+ * v0.5.11 (`.card`, `.subtitle`, `.stats`, `.rule-list`,
+ * `.section-h2`, `.pill`). Card paddings, section heading sizes,
+ * and empty states now match the rest of the app.
  */
-
 import { Suspense } from "react";
+import { headers } from "next/headers";
 import { api, PilotApiError } from "../../lib/pilot";
 import type { ToolPolicy } from "../../lib/types";
 import { T } from "@/components/I18n";
+import { EmptyState } from "@/components/EmptyState";
+import { SkeletonCard } from "@/components/Skeleton";
 import { createPolicyForm } from "@/lib/actions";
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
+import { negotiateLocale, renderT } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -65,42 +75,61 @@ function totalRules(p: ToolPolicy): number {
   );
 }
 
-export default function PolicyPage() {
+export default async function PolicyPage() {
+  let acceptLanguage: string | null = null;
+  try {
+    acceptLanguage = (await headers()).get("accept-language");
+  } catch {
+    /* static generation */
+  }
+  const locale = negotiateLocale(acceptLanguage);
+
   return (
-    <main>
-      <h1>
-        <T k="policy.h1" />
-      </h1>
-      <p className="subtitle">
-        <T k="policy.subtitle" />
-      </p>
+    <div className="space-y-8">
+      <header>
+        <h1 className="text-2xl font-bold mb-1">
+          <T k="policy.h1" />
+        </h1>
+        <p className="subtitle">
+          <T k="policy.subtitle" />
+        </p>
+      </header>
+
       <Suspense
         fallback={
-          <p>
-            <T k="loading.policies" />
-          </p>
+          <div className="space-y-3">
+            <SkeletonCard lines={2} />
+            <SkeletonCard lines={4} />
+            <SkeletonCard lines={6} />
+          </div>
         }
       >
-        <PolicyList />
+        <PolicyList locale={locale} />
       </Suspense>
-      <hr />
-      {/* v0.4.12: New Policy form — was CLI-only before. */}
+
+      <hr className="border-[var(--border)]" />
       <NewPolicyCard />
-      <hr />
+      <hr className="border-[var(--border)]" />
       <DryRun />
-    </main>
+    </div>
   );
 }
 
-async function PolicyList() {
+async function PolicyList({
+  locale,
+}: {
+  locale: ReturnType<typeof negotiateLocale>;
+}) {
   const { policies, applyState, error } = await loadPolicies();
   if (error) {
     return (
-      <section className="card error">
-        <h2>
+      <section className="surface rounded-lg p-4 card error">
+        <h2 className="text-lg font-semibold mb-2">
           <T k="error.couldntLoad.title" />: policies
         </h2>
-        <pre>{error}</pre>
+        <pre className="text-xs text-[var(--error)] whitespace-pre-wrap break-words surface-2 rounded p-2 mb-3">
+          {error}
+        </pre>
         <p className="hint">
           <T k="policy.serverHint" />
         </p>
@@ -109,19 +138,15 @@ async function PolicyList() {
   }
   if (policies.length === 0) {
     return (
-      <section className="card empty">
-        <h2>
-          <T k="policy.empty.title" />
-        </h2>
-        <p>
-          <T k="policy.empty.body" />
-        </p>
-      </section>
+      <EmptyState
+        title={renderT(locale, "policy.empty.title")}
+        hint={<>{renderT(locale, "policy.empty.body")}</>}
+      />
     );
   }
   return (
     <section>
-      <h2>
+      <h2 className="section-h2">
         <T k="policy.h1" /> ({policies.length})
       </h2>
       <div className="card-grid">
@@ -129,29 +154,40 @@ async function PolicyList() {
           const a = applyState[p.name];
           const rules = totalRules(p);
           return (
-            <article key={p.name} className="card">
-              <header>
-                <h3>{p.name}</h3>
+            <article
+              key={p.name}
+              className="surface rounded-lg p-4 space-y-2 card-hover"
+            >
+              <header className="flex items-baseline justify-between">
+                <h3 className="font-semibold font-mono">{p.name}</h3>
                 {a?.installed ? (
-                  <span className="badge ok">● applied</span>
+                  <span className="pill ok">
+                    {renderT(locale, "policy.card.applied")}
+                  </span>
                 ) : (
-                  <span className="badge warn">○ not applied</span>
+                  <span className="pill warn">
+                    {renderT(locale, "policy.card.notApplied")}
+                  </span>
                 )}
               </header>
-              {p.description ? <p className="muted">{p.description}</p> : null}
+              {p.description ? <p className="hint">{p.description}</p> : null}
               <div className="stats">
                 <span>
-                  <strong>{rules}</strong> rules
+                  <strong>
+                    {renderT(locale, "policy.card.rulesCount", { n: rules })}
+                  </strong>
                 </span>
-                <span className="muted">
-                  updated {new Date(p.updatedAt).toLocaleString()}
+                <span className="hint">
+                  {renderT(locale, "policy.card.updatedAt", {
+                    when: new Date(p.updatedAt).toLocaleString(),
+                  })}
                 </span>
               </div>
               <ul className="rule-list">
                 {p.deny.length > 0 && (
                   <li>
                     <span className="rule-name">
-                      <T k="policy.denyBadge" />
+                      {renderT(locale, "policy.denyBadge")}
                     </span>{" "}
                     <code>{p.deny.join(", ")}</code>
                   </li>
@@ -159,44 +195,53 @@ async function PolicyList() {
                 {p.allow.length > 0 && (
                   <li>
                     <span className="rule-name">
-                      <T k="policy.allowBadge" />
+                      {renderT(locale, "policy.allowBadge")}
                     </span>{" "}
                     <code>{p.allow.join(", ")}</code>
                   </li>
                 )}
                 {p.denyPaths.length > 0 && (
                   <li>
-                    <span className="rule-name">paths</span>{" "}
+                    <span className="rule-name">
+                      {renderT(locale, "policy.fieldLabel.paths")}
+                    </span>{" "}
                     <code>{p.denyPaths.join(", ")}</code>
                   </li>
                 )}
                 {p.denyCommands.length > 0 && (
                   <li>
-                    <span className="rule-name">cmds</span>{" "}
+                    <span className="rule-name">
+                      {renderT(locale, "policy.fieldLabel.cmds")}
+                    </span>{" "}
                     <code>{p.denyCommands.join(", ")}</code>
                   </li>
                 )}
                 {p.sensitivePatterns.length > 0 && (
                   <li>
-                    <span className="rule-name">redact</span>{" "}
+                    <span className="rule-name">
+                      {renderT(locale, "policy.fieldLabel.redact")}
+                    </span>{" "}
                     <code>{p.sensitivePatterns.join(", ")}</code>
                   </li>
                 )}
                 {p.requireApproval.length > 0 && (
                   <li>
                     <span className="rule-name">
-                      <T k="policy.hitlBadge" />
+                      {renderT(locale, "policy.hitlBadge")}
                     </span>{" "}
                     <code>{p.requireApproval.join(", ")}</code>
                   </li>
                 )}
               </ul>
-              <footer className="muted mono policy-card-footer">
-                <span>ext: {a?.installed ? `${a.bytes}B` : "—"}</span>
+              <footer className="policy-card-footer text-xs text-[var(--text-muted)] font-mono">
+                <span>
+                  {a?.installed
+                    ? renderT(locale, "policy.card.extSize", { bytes: a.bytes })
+                    : renderT(locale, "policy.card.extMissing")}
+                </span>
                 <a
                   href={`/policy/${encodeURIComponent(p.name)}/edit`}
                   className="policy-card-edit-link"
-                  aria-label={undefined}
                 >
                   <T k="btn.edit" /> →
                 </a>
@@ -209,7 +254,21 @@ async function PolicyList() {
   );
 }
 
-async function DryRun() {
+function DryRun() {
+  return (
+    <section className="surface rounded-lg p-4">
+      <h2 className="section-h2">
+        <T k="policy.tryRule.h2" />
+      </h2>
+      <p className="subtitle">
+        <T k="policy.dryRun.subtitle" />
+      </p>
+      <DryRunForm />
+    </section>
+  );
+}
+
+async function DryRunForm() {
   let policies: ToolPolicy[] = [];
   let error: string | null = null;
   try {
@@ -221,69 +280,62 @@ async function DryRun() {
         : (e as Error).message;
   }
 
-  return (
-    <section>
-      <h2>
-        <T k="policy.tryRule.h2" />
-      </h2>
-      <p className="subtitle">
-        Run a dry-run check: which policy rule fires (if any) for a given tool
-        call?
+  if (error) {
+    return <p className="error text-sm">{error}</p>;
+  }
+  if (policies.length === 0) {
+    return (
+      <p className="hint">
+        <T k="policy.tryRule.noPolicies" />
       </p>
-      {error ? (
-        <p className="error">{error}</p>
-      ) : policies.length === 0 ? (
-        <p className="muted">
-          <T k="policy.tryRule.noPolicies" />
-        </p>
-      ) : (
-        <form action="/api/policy-check" method="post" className="form">
-          <div className="form-row">
-            <label htmlFor="policy">
-              <T k="policy.tryRule.policyLabel" />
-            </label>
-            <select
-              id="policy"
-              name="name"
-              required
-              defaultValue={policies[0]?.name ?? ""}
-            >
-              {policies.map((p) => (
-                <option key={p.name} value={p.name}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="form-row">
-            <label htmlFor="tool">
-              <T k="policy.tryRule.toolLabel" />
-            </label>
-            <select id="tool" name="tool" defaultValue="bash">
-              <option value="bash">bash</option>
-              <option value="read">read</option>
-              <option value="edit">edit</option>
-              <option value="write">write</option>
-            </select>
-          </div>
-          <div className="form-row">
-            <label htmlFor="args">
-              <T k="policy.tryRule.argsLabel" />
-            </label>
-            <input
-              id="args"
-              name="args"
-              type="text"
-              defaultValue='{"command":"ls -la"}'
-              placeholder='{"command":"rm -rf /"}'
-            />
-          </div>
-          <button type="submit" className="btn">
-            <T k="policy.tryRule.runCheck" />
-          </button>
-        </form>
-      )}
-    </section>
+    );
+  }
+  return (
+    <form action="/api/policy-check" method="post" className="form">
+      <div className="form-row">
+        <label htmlFor="policy">
+          <T k="policy.tryRule.policyLabel" />
+        </label>
+        <select
+          id="policy"
+          name="name"
+          required
+          defaultValue={policies[0]?.name ?? ""}
+        >
+          {policies.map((p) => (
+            <option key={p.name} value={p.name}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="form-row">
+        <label htmlFor="tool">
+          <T k="policy.tryRule.toolLabel" />
+        </label>
+        <select id="tool" name="tool" defaultValue="bash">
+          <option value="bash">bash</option>
+          <option value="read">read</option>
+          <option value="edit">edit</option>
+          <option value="write">write</option>
+        </select>
+      </div>
+      <div className="form-row">
+        <label htmlFor="args">
+          <T k="policy.tryRule.argsLabel" />
+        </label>
+        <input
+          id="args"
+          name="args"
+          type="text"
+          defaultValue='{"command":"ls -la"}'
+          placeholder='{"command":"rm -rf /"}'
+        />
+      </div>
+      <button type="submit" className="btn">
+        <T k="policy.tryRule.runCheck" />
+      </button>
+    </form>
   );
 }
 
@@ -291,13 +343,12 @@ async function DryRun() {
 
 function NewPolicyCard() {
   return (
-    <section className="card">
-      <h2>
+    <section className="surface rounded-lg p-4">
+      <h2 className="section-h2">
         <T k="policy.newCard.title" />
       </h2>
       <p className="subtitle">
-        Pick a starter template, give it a kebab-case name, and you'll land on
-        the edit page to refine.
+        <T k="policy.newCard.subtitle" />
       </p>
       <form action={createPolicyForm} className="form">
         <div className="form-row">
@@ -311,12 +362,11 @@ function NewPolicyCard() {
             pattern="[a-z0-9]+(-[a-z0-9]+)*"
             placeholder="safe-bash"
             required
-            className="surface-2 rounded px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
           />
         </div>
 
         <fieldset className="form-row" style={{ border: 0, padding: 0 }}>
-          <legend className="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-2">
+          <legend>
             <T k="policy.newCard.templateLabel" />
           </legend>
           <div className="space-y-2">
@@ -362,7 +412,7 @@ function TemplateOption({
     | "policy.newCard.templateEmptyDesc";
 }) {
   return (
-    <label className="flex items-start gap-2 cursor-pointer surface-2 rounded px-3 py-2 hover:bg-[var(--surface)]">
+    <label className="flex items-start gap-2 cursor-pointer surface-2 rounded px-3 py-2 hover:bg-[var(--surface)] card-hover">
       <input
         type="radio"
         name="template"

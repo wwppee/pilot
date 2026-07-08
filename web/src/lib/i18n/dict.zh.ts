@@ -66,6 +66,8 @@ const zh: Dict = {
   "btn.edit": "编辑",
   "btn.filter": "筛选",
   "btn.submit": "提交",
+  // v0.5.11+
+  "status.disabled": "未启用",
   "btn.ariaConfirmDelete": "确认删除策略（再点一次即删除）",
   "btn.ariaDelete": "删除该策略",
   "btn.ariaDeleteProfile": "删除该配置",
@@ -148,6 +150,21 @@ const zh: Dict = {
   "policy.applyFailed": "应用失败：{msg}",
   "policy.unapplyFailed": "取消应用失败：{msg}",
   "policy.confirmDeleteProfile": '删除 "{name}"？此操作不可恢复。',
+  // v0.5.11+: 策略列表页 badge + 文案。
+  "policy.card.applied": "● 已应用",
+  "policy.card.notApplied": "○ 未应用",
+  "policy.card.rulesCount": "{n} 条规则",
+  "policy.card.updatedAt": "更新于 {when}",
+  "policy.card.extSize": "扩展：{bytes}B",
+  "policy.card.extMissing": "扩展：—",
+  "policy.dryRun.subtitle":
+    "试运行一次检查：给定的工具调用会触发哪条策略规则（如有）？",
+  "policy.newCard.subtitle":
+    "选一个起始模板，给它一个 kebab-case 名字，就会跳到编辑页继续细化。",
+  "policy.fieldLabel.paths": "路径",
+  "policy.fieldLabel.cmds": "命令",
+  "policy.fieldLabel.redact": "脱敏",
+  "policy.error.notFound": "找不到策略：",
   // v0.5.10+: PolicyForm 扩展状态 + 字段提示。
   "policy.form.saveFirstApply": "请先保存修改，再应用。",
   "policy.form.extensionRemoved": "扩展已移除",
@@ -229,6 +246,13 @@ const zh: Dict = {
   "compose.viewMode.modern": "🌑 Modern",
   "compose.viewMode.tooltip.cozy": "切换到 2.5D Cozy 沙盒皮肤",
   "compose.viewMode.tooltip.modern": "切回现代扁平风格",
+  // v0.5.11+ misc.
+  "compose.filterAll": "全部",
+  "compose.inspector.stale":
+    "不在当前目录里 — 实体可能已被删除。块本身保留，并使用缓存的标签。",
+  "compose.aria.selected": "（已选中）",
+  // v0.5.11+ 货币格式。
+  "currency.usd": "US${amount}",
 
   // Packages
   "packages.noPacksHint": "还没装包。试试 `pilot pack search subagent`。",
@@ -525,6 +549,8 @@ const zh: Dict = {
   "forge.searchPlaceholder": "试试 'pi-subagent' 或 'pi-git'…",
   "forge.searchButton": "搜索",
   "forge.empty": "暂无结果 — 试试别的关键词。",
+  "forge.empty.unsearched": "在上方输入至少 2 个字符以搜索 npm。",
+  "forge.empty.hint": '试试关键词 "pi-subagent"、"pi-lens" 或 "pi-git"。',
   "forge.resultCount": "{n} 个结果",
   "forge.inspect.h1": "检视 {name}",
   "forge.inspect.version": "版本",

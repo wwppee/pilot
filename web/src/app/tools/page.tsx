@@ -10,6 +10,7 @@ import { headers } from "next/headers";
 import { api } from "@/lib/pilot";
 export const dynamic = "force-dynamic";
 import { T } from "@/components/I18n";
+import { EmptyState } from "@/components/EmptyState";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { ToolInventoryItem } from "@/lib/types";
 
@@ -51,13 +52,19 @@ export default async function ToolsPage() {
       </header>
 
       {error ? (
-        <div className="surface rounded-lg p-4 text-sm text-[var(--text-muted)]">
+        <div className="surface rounded-lg p-4 text-sm text-[var(--error)]">
           Couldn&apos;t load tools: {error}
         </div>
       ) : tools.length === 0 ? (
-        <div className="surface rounded-lg p-8 text-sm text-[var(--text-muted)] italic text-center">
-          <T k="tools.empty" />
-        </div>
+        <EmptyState
+          title={renderT(locale, "tools.empty")}
+          hint={
+            <>
+              Run <code className="kbd">pi</code> in any project to populate its{" "}
+              <code className="kbd">~/.pi/agent/</code> directory.
+            </>
+          }
+        />
       ) : (
         <>
           {builtIns.length > 0 && (

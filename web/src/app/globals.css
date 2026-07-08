@@ -11,6 +11,7 @@
   --accent-2: #56d364;
   --warn: #f0b400;
   --error: #ff6b6b;
+  --hitl: #9c5fbb; /* HITL / requireApproval purple */
   --border: #2a3038;
 
   /* ─── Session tree node types (v0.5.8+) ───────────────── */
@@ -77,6 +78,274 @@ a:hover {
 }
 .surface-2 {
   background: var(--surface-2);
+}
+
+/* ─── Design tokens (v0.5.11+) ───────────────────────────────────────
+ * Single source of truth for shared visual primitives. Pages mix
+ * these global classes with Tailwind utilities for layout; raw
+ * inline styles are reserved for one-off cases.
+ *
+ * Pattern: page sections go .surface.rounded-lg.p-* (card),
+ * buttons live in three tiers (.btn = primary, .btn.secondary,
+ * .btn.danger), badges share .pill/.pill-ok/.pill-warn.
+ *
+ * Card paddings are pinned: regular cards p-4 (Tailwind); big
+ * callouts (EmptyState/error surface) p-6. No more p-3 / p-4 / p-6
+ * mixed willy-nilly.
+ */
+
+/* `.empty`/`card empty` was used by policy/page.tsx and referenced
+   a generic empty-state shape; the canonical component is
+   <EmptyState> — leave .empty alone for fallback plain color. */
+.empty {
+  color: var(--text-muted);
+  text-align: center;
+  padding: 1.5rem 0.75rem;
+}
+
+/* v0.5.11+: card variants. `.card` is the canonical base — pairs
+   with `surface rounded-lg`. State classes (`.card.error`,
+   `.card.empty`) tint the card without losing the surface. */
+.card.error {
+  border-left: 3px solid var(--error);
+}
+.card.empty {
+  border-style: dashed;
+}
+.policy-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  font-size: 11px;
+}
+
+/* Section subtitles (the muted line under h2). Replaces the old
+   ad-hoc `text-xs text-[var(--text-muted)]` everywhere — once. */
+.subtitle {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-top: 4px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+/* Inline hint — the small grey text inside cards/alerts. */
+.hint {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* v0.5.11+: section heading (the "small uppercase" tracking-wide
+   style used as h2-lite across detail pages). ONE canonical size +
+   color so it stays consistent. Use for page-section titles that
+   aren't the page H1. */
+.section-h2 {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+/* Card grid — uniform responsive grid for card layouts.
+   Default: 1 col mobile, 2 cols ≥sm, 3 cols ≥lg. Override via
+   additional Tailwind classes when a page needs different
+   density. */
+.card-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 640px) {
+  .card-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 1024px) {
+  .card-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* v0.5.11+: status badges. Background uses CSS-var color tokens
+   via rgba() so it adapts in light/dark themes. Three states:
+   - `.pill.ok`      → accent-2 (green) at 18% alpha
+   - `.pill.warn`    → warn (orange) at 18%
+   - `.pill.error`   → error (red) at 18%
+   - `.pill.neutral` → text-muted at 12% */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+.pill.ok {
+  color: var(--accent-2);
+  background: color-mix(in srgb, var(--accent-2) 18%, transparent);
+  border-color: color-mix(in srgb, var(--accent-2) 35%, transparent);
+}
+.pill.warn {
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 18%, transparent);
+  border-color: color-mix(in srgb, var(--warn) 35%, transparent);
+}
+.pill.error {
+  color: var(--error);
+  background: color-mix(in srgb, var(--error) 18%, transparent);
+  border-color: color-mix(in srgb, var(--error) 35%, transparent);
+}
+.pill.neutral {
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--text-muted) 12%, transparent);
+  border-color: color-mix(in srgb, var(--text-muted) 25%, transparent);
+}
+
+/* Legacy .badge.* kept as alias so older pages compile;
+   routes to .pill under the hood. v0.5.11+ callers should use
+   .pill.* directly. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+.badge.ok {
+  color: var(--accent-2);
+  background: color-mix(in srgb, var(--accent-2) 18%, transparent);
+  border-color: color-mix(in srgb, var(--accent-2) 35%, transparent);
+}
+.badge.warn {
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 18%, transparent);
+  border-color: color-mix(in srgb, var(--warn) 35%, transparent);
+}
+
+/* Stats line inside cards — used by policy cards, profile cards.
+   Compact horizontal row of label + value. */
+.stats {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+/* v0.5.11+: `.rule-list` — list of rule entries (e.g. policy
+   fields). Each row is short code + examples. */
+.rule-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rule-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.rule-list .rule-name {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  flex-shrink: 0;
+  min-width: 48px;
+  text-align: center;
+}
+
+/* v0.5.11+: form controls. The bare-HTML <input>/<select>/<textarea>
+   gets dark-themed surface treatment via just the .form class on
+   a parent. Eliminates the need for Tailwind class spam on every
+   form input. */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 640px;
+}
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.form-row label,
+.form-row legend {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.form-row input[type="text"],
+.form-row input[type="number"],
+.form-row input[type="email"],
+.form-row input[type="search"],
+.form-row input:not([type]),
+.form-row select,
+.form-row textarea {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--text);
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.1s ease;
+}
+.form-row input:focus-visible,
+.form-row select:focus-visible,
+.form-row textarea:focus-visible {
+  border-color: var(--accent);
+}
+.form-row input::placeholder,
+.form-row textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+/* Status text colors — used inside error/success banners. */
+.error {
+  color: var(--error);
+}
+.ok {
+  color: var(--accent-2);
+}
+
+/* v0.5.11+: hover-on-cards. All page cards use this so Dashboard /
+   Usage / Sessions / etc. feel consistent. Apply class `card-hover`
+   alongside `surface rounded-lg p-4`. */
+.card-hover {
+  transition:
+    background-color 0.1s ease,
+    border-color 0.1s ease,
+    transform 0.1s ease;
+}
+.card-hover:hover {
+  background: var(--surface-2);
+  border-color: var(--accent);
 }
 
 /* ─── Skeleton shimmer (v0.5.10+) ───────────────────────── */

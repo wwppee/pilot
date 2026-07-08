@@ -141,7 +141,7 @@ export default async function PackageDetailPage({
           </header>
 
           <div className="surface rounded-lg p-4 text-sm">
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <Field
                 label={renderT(locale, "packages.field.source")}
                 value={pack.source}

@@ -143,16 +143,16 @@
 }
 
 .rule-name.cmds {
-  background: rgba(212, 144, 80, 0.15);
-  color: #d49050;
+  background: color-mix(in srgb, var(--cozy-accent-2) 18%, transparent);
+  color: var(--cozy-accent-2);
 }
 
 .rule-name.redact {
-  background: rgba(240, 180, 0, 0.15);
+  background: color-mix(in srgb, var(--warn) 18%, transparent);
   color: var(--warn);
 }
 
 .rule-name.HITL {
-  background: rgba(156, 95, 187, 0.15);
-  color: #9c5fbb;
+  background: color-mix(in srgb, var(--hitl) 18%, transparent);
+  color: var(--hitl);
 }

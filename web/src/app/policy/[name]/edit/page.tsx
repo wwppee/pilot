@@ -1,22 +1,12 @@
 /**
  * /policy/[name]/edit — edit a ToolPolicy in the browser.
  *
- * v0.4.7: completes the policy management loop. Before this, you
- * could view policies at /policy but couldn't edit them — you'd have
- * to drop to CLI or hand-edit the TOML file. This page lets you
- * edit all 7 fields (description + 6 rule arrays) and save.
- *
- * Architecture:
- *   - Server component: fetch the policy from the pilot server
- *   - Client component: the form (textarea-based editor for simplicity)
- *   - Save: PUT /policies/:name (already wired in lib/pilot.ts)
- *
- * Why textarea (not fancy tag-list editor)?
- *   - TOML arrays are line-separated; textarea 1-line-1-rule is
- *     familiar from .gitignore / .dockerignore
- *   - 70 lines of code instead of 200
- *   - Easy to paste from anywhere (CLI output, docs, chat)
- *   - Can upgrade to tag-editor later without breaking the contract
+ * v0.4.7: completes the policy management loop.
+ * v0.5.11: rewrote wrapping layout to match the design system
+ * (standard `surface rounded-lg p-4`, `section-h2`, error/empty
+ * patterns, etc). The form itself stays in policy-form.module.css
+ * because it owns textarea + form layout that doesn't belong in
+ * the shared design tokens.
  */
 
 import { Suspense } from "react";
@@ -56,28 +46,39 @@ export default async function EditPolicyPage({ params }: PageProps) {
   const { policy, error } = await loadPolicy(decoded);
 
   return (
-    <main>
-      <header className="policy-edit-header">
-        <h1>
-          <T k="policy.edit.h1" /> <code>{decoded}</code>
+    <div className="space-y-6">
+      <header className="flex items-baseline justify-between gap-3">
+        <h1 className="text-2xl font-bold">
+          <T k="policy.edit.h1" /> <code className="kbd">{decoded}</code>
         </h1>
-        <a href="/policy" className="muted small">
+        <a
+          href="/policy"
+          className="text-xs text-[var(--text-muted)] hover:text-[var(--accent)]"
+        >
           <T k="policy.edit.backToList" />
         </a>
       </header>
 
       {error ? (
-        <section className="card error">
-          <h2>
+        <section className="surface rounded-lg p-4 card error">
+          <h2 className="text-lg font-semibold mb-2">
             <T k="error.couldntLoad.title" />: policy
           </h2>
-          <pre>{error}</pre>
+          <pre className="text-xs text-[var(--error)] whitespace-pre-wrap break-words surface-2 rounded p-2">
+            {error}
+          </pre>
         </section>
       ) : !policy ? (
-        <section className="card empty">
+        <section className="surface rounded-lg p-4 card empty">
           <p>
-            Policy <code>{decoded}</code> not found.{" "}
-            <a href="/policy">
+            <T k="policy.error.notFound" />
+            <code className="kbd ml-2">{decoded}</code>
+          </p>
+          <p className="mt-3">
+            <a
+              href="/policy"
+              className="text-xs text-[var(--accent)] hover:underline"
+            >
               <T k="btn.backToList" />
             </a>
           </p>
@@ -85,7 +86,7 @@ export default async function EditPolicyPage({ params }: PageProps) {
       ) : (
         <Suspense
           fallback={
-            <p>
+            <p className="hint">
               <T k="loading.policyForm" />
             </p>
           }
@@ -93,6 +94,6 @@ export default async function EditPolicyPage({ params }: PageProps) {
           <PolicyForm initialPolicy={policy} />
         </Suspense>
       )}
-    </main>
+    </div>
   );
 }

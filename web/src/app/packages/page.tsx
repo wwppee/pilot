@@ -10,6 +10,7 @@ import { headers } from "next/headers";
 import { api } from "@/lib/pilot";
 import type { Pack } from "@/lib/types";
 import { T } from "@/components/I18n";
+import { EmptyState } from "@/components/EmptyState";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 
 interface SearchPageProps {
@@ -112,9 +113,14 @@ export default async function PackagesPage({ searchParams }: SearchPageProps) {
           <T k="packages.installed" />
         </h2>
         {installedList.length === 0 ? (
-          <div className="surface rounded-lg px-3 py-6 text-sm text-[var(--text-muted)] italic text-center">
-            <T k="packages.noPacksHint" />
-          </div>
+          <EmptyState
+            title={renderT(locale, "packages.noPacksHint")}
+            hint={
+              <>
+                Try <code className="kbd">pilot pack search subagent</code>.
+              </>
+            }
+          />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {installedList.map((p) => (
@@ -144,7 +150,11 @@ export default async function PackagesPage({ searchParams }: SearchPageProps) {
                 )}
                 <div className="flex justify-between text-[10px] text-[var(--text-muted)] font-mono">
                   <span>v{p.version}</span>
-                  <span>{p.enabled ? "enabled" : "disabled"}</span>
+                  <span className={p.enabled ? "" : "text-[var(--warn)]"}>
+                    {p.enabled
+                      ? renderT(locale, "packages.installed")
+                      : renderT(locale, "status.disabled")}
+                  </span>
                 </div>
               </Link>
             ))}

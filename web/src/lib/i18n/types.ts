@@ -85,6 +85,8 @@ export type Dict = {
   "btn.edit": string;
   "btn.filter": string;
   "btn.submit": string;
+  // v0.5.11+ status labels.
+  "status.disabled": string;
   "btn.ariaConfirmDelete": string;
   "btn.ariaDelete": string;
   "btn.ariaDeleteProfile": string;
@@ -157,6 +159,20 @@ export type Dict = {
   "policy.applyFailed": string;
   "policy.unapplyFailed": string;
   "policy.confirmDeleteProfile": string;
+  // v0.5.11+: policy list page (badges + dry-run prose + new-card
+  // template picker intro). Were hardcoded English.
+  "policy.card.applied": string;
+  "policy.card.notApplied": string;
+  "policy.card.rulesCount": string;
+  "policy.card.updatedAt": string;
+  "policy.card.extSize": string;
+  "policy.card.extMissing": string;
+  "policy.dryRun.subtitle": string;
+  "policy.newCard.subtitle": string;
+  "policy.fieldLabel.paths": string;
+  "policy.fieldLabel.cmds": string;
+  "policy.fieldLabel.redact": string;
+  "policy.error.notFound": string;
   // v0.5.10+: PolicyForm extension status + field hints + short labels.
   "policy.form.saveFirstApply": string;
   "policy.form.extensionRemoved": string;
@@ -227,6 +243,12 @@ export type Dict = {
   "compose.viewMode.modern": string;
   "compose.viewMode.tooltip.cozy": string;
   "compose.viewMode.tooltip.modern": string;
+  // v0.5.11+ misc.
+  "compose.filterAll": string;
+  "compose.inspector.stale": string;
+  "compose.aria.selected": string;
+  // v0.5.11+ currency formatting.
+  "currency.usd": string;
 
   // ─── Packages ───────────────────────────────────────────────
   "packages.noPacksHint": string;
@@ -509,6 +531,8 @@ export type Dict = {
   "forge.searchPlaceholder": string;
   "forge.searchButton": string;
   "forge.empty": string;
+  "forge.empty.unsearched": string;
+  "forge.empty.hint": string;
   "forge.resultCount": string;
   "forge.inspect.h1": string;
   "forge.inspect.version": string;

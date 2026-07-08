@@ -7,6 +7,7 @@ import { headers } from "next/headers";
 import { api } from "@/lib/pilot";
 import { AutoRefresh, LivePulse } from "@/components/AutoRefresh";
 import { T } from "@/components/I18n";
+import { EmptyState } from "@/components/EmptyState";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { Capability } from "@/lib/types";
 
@@ -43,9 +44,18 @@ export default async function CapabilitiesPage() {
       </header>
 
       {list.length === 0 ? (
-        <div className="surface rounded-lg px-3 py-6 text-sm text-[var(--text-muted)] italic text-center">
-          <T k="capabilities.empty" />
-        </div>
+        <EmptyState
+          title={renderT(locale, "capabilities.empty")}
+          hint={
+            <>
+              Absorb a pack from{" "}
+              <a className="text-[var(--accent)] hover:underline" href="/forge">
+                /forge
+              </a>
+              .
+            </>
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {list.map((c) => (

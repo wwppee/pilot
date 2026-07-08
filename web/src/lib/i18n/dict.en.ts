@@ -68,6 +68,8 @@ const en: Dict = {
   "btn.edit": "Edit",
   "btn.filter": "Filter",
   "btn.submit": "Submit",
+  // v0.5.11+
+  "status.disabled": "disabled",
   "btn.ariaConfirmDelete": "Confirm delete policy (click again to delete)",
   "btn.ariaDelete": "Delete this policy",
   "btn.ariaDeleteProfile": "Delete this profile",
@@ -152,6 +154,21 @@ const en: Dict = {
   "policy.applyFailed": "Apply failed: {msg}",
   "policy.unapplyFailed": "Unapply failed: {msg}",
   "policy.confirmDeleteProfile": 'Delete "{name}"? This cannot be undone.',
+  // v0.5.11+: policy list page badges + prose.
+  "policy.card.applied": "● applied",
+  "policy.card.notApplied": "○ not applied",
+  "policy.card.rulesCount": "{n} rules",
+  "policy.card.updatedAt": "updated {when}",
+  "policy.card.extSize": "ext: {bytes}B",
+  "policy.card.extMissing": "ext: —",
+  "policy.dryRun.subtitle":
+    "Run a dry-run check: which policy rule fires (if any) for a given tool call?",
+  "policy.newCard.subtitle":
+    "Pick a starter template, give it a kebab-case name, and you'll land on the edit page to refine.",
+  "policy.fieldLabel.paths": "paths",
+  "policy.fieldLabel.cmds": "cmds",
+  "policy.fieldLabel.redact": "redact",
+  "policy.error.notFound": "Policy not found:",
   // v0.5.10+: PolicyForm extension status + field hints.
   "policy.form.saveFirstApply": "Save changes first, then apply.",
   "policy.form.extensionRemoved": "Extension removed",
@@ -236,6 +253,13 @@ const en: Dict = {
   "compose.viewMode.modern": "🌑 Modern",
   "compose.viewMode.tooltip.cozy": "Switch to 2.5D cozy sandbox skin",
   "compose.viewMode.tooltip.modern": "Switch back to modern flat look",
+  // v0.5.11+ misc.
+  "compose.filterAll": "all",
+  "compose.inspector.stale":
+    "Not in current catalog — entity may have been deleted. Block is preserved with cached label.",
+  "compose.aria.selected": ", selected",
+  // v0.5.11+ currency formatting.
+  "currency.usd": "${amount}",
 
   // Packages
   "packages.noPacksHint":
@@ -550,6 +574,8 @@ const en: Dict = {
   "forge.searchPlaceholder": "try 'pi-subagent' or 'pi-git'…",
   "forge.searchButton": "Search",
   "forge.empty": "No results yet — try a query.",
+  "forge.empty.unsearched": "Type at least 2 characters above to search npm.",
+  "forge.empty.hint": 'Try "pi-subagent", "pi-lens", or "pi-git".',
   "forge.resultCount": "{n} result(s)",
   "forge.inspect.h1": "Inspect {name}",
   "forge.inspect.version": "version",

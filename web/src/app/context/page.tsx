@@ -13,6 +13,7 @@ import { headers } from "next/headers";
 import { api } from "@/lib/pilot";
 export const dynamic = "force-dynamic";
 import { T } from "@/components/I18n";
+import { EmptyState } from "@/components/EmptyState";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { ProjectContextRef } from "@/lib/types";
 
@@ -60,9 +61,15 @@ export default async function ContextPage({
           {renderT(locale, "context.error.title", { error })}
         </div>
       ) : refs.length === 0 ? (
-        <div className="surface rounded-lg p-8 text-sm text-[var(--text-muted)] italic text-center">
-          <T k="context.empty" />
-        </div>
+        <EmptyState
+          title={renderT(locale, "context.empty")}
+          hint={
+            <>
+              Create <code className="kbd">AGENTS.md</code> or{" "}
+              <code className="kbd">CLAUDE.md</code> in this directory.
+            </>
+          }
+        />
       ) : (
         <>
           {loaded.length > 0 && (

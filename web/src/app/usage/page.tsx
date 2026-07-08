@@ -11,6 +11,7 @@ import { headers } from "next/headers";
 import { api } from "@/lib/pilot";
 export const dynamic = "force-dynamic";
 import { T } from "@/components/I18n";
+import { EmptyState } from "@/components/EmptyState";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { UsageReport } from "@/lib/types";
 
@@ -82,7 +83,7 @@ export default async function UsagePage({
               href={`/usage?range=${r.key}`}
               className={`px-2.5 py-1 rounded ${
                 r.key === which
-                  ? "bg-[var(--accent)] text-white"
+                  ? "bg-[var(--accent)] text-[var(--bg)]"
                   : "text-[var(--text-muted)] hover:bg-[var(--surface-2)]"
               }`}
             >
@@ -97,9 +98,15 @@ export default async function UsagePage({
           Couldn&apos;t load usage: {error}
         </div>
       ) : !report ? null : report.totalAssistantMessages === 0 ? (
-        <div className="surface rounded-lg p-8 text-sm text-[var(--text-muted)] italic text-center">
-          <T k="usage.empty" />
-        </div>
+        <EmptyState
+          title={renderT(locale, "usage.empty")}
+          hint={
+            <>
+              Run <code className="kbd">pi</code> with a real model to record
+              tokens + cost.
+            </>
+          }
+        />
       ) : (
         <>
           {/* Summary cards */}
@@ -118,7 +125,9 @@ export default async function UsagePage({
             />
             <Card
               label={renderT(locale, "usage.card.totalCost")}
-              value={`$${report.totalCost.toFixed(4)}`}
+              value={renderT(locale, "currency.usd", {
+                amount: report.totalCost.toFixed(4),
+              })}
               accent
             />
           </div>
@@ -190,7 +199,9 @@ export default async function UsagePage({
                         {formatInt(m.totalTokens)}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums font-medium">
-                        ${m.cost.toFixed(4)}
+                        {renderT(locale, "currency.usd", {
+                          amount: m.cost.toFixed(4),
+                        })}
                       </td>
                     </tr>
                   ))}
@@ -234,7 +245,9 @@ export default async function UsagePage({
                         {formatInt(d.totalTokens)} tok
                       </span>
                       <span className="tabular-nums text-xs w-20 text-right">
-                        ${d.cost.toFixed(4)}
+                        {renderT(locale, "currency.usd", {
+                          amount: d.cost.toFixed(4),
+                        })}
                       </span>
                     </div>
                   );

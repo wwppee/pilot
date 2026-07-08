@@ -515,7 +515,7 @@ export default function ComposeBoard({
               onClick={() => setFilter("all")}
               data-active={filter === "all"}
             >
-              all
+              {t("compose.filterAll")}
             </button>
             {(Object.keys(KIND_META) as ComposeEntityKind[]).map((k) => {
               const meta = KIND_META[k](t);
@@ -727,7 +727,7 @@ function ComposeBlockView({
       onPointerDown={onPointerDown}
       role="group"
       tabIndex={selected ? 0 : -1}
-      aria-label={`${meta.label}: ${block.label}${block.sublabel ? `, ${block.sublabel}` : ""}${selected ? ", selected" : ""}`}
+      aria-label={`${meta.label}: ${block.label}${block.sublabel ? `, ${block.sublabel}` : ""}${selected ? t("compose.aria.selected") : ""}`}
       data-block-id={block.id}
     >
       <button
@@ -787,10 +787,7 @@ function BlockInspector({
       </header>
 
       {stale ? (
-        <p className="warn small">
-          ⚠ Not in current catalog — entity may have been deleted. Block is
-          preserved with cached label.
-        </p>
+        <p className="warn small">⚠ {t("compose.inspector.stale")}</p>
       ) : null}
 
       <dl className="compose-inspector-fields">

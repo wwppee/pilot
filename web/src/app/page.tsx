@@ -122,33 +122,38 @@ export default async function DashboardPage() {
         <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)] mb-3">
           <T k="home.section.today" />
         </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <StatCard
             label={renderT(locale, "home.card.sessions")}
             value={stats?.totalSessions ?? 0}
             accent="accent"
+            locale={locale}
           />
           <StatCard
             label={renderT(locale, "home.card.messages")}
             value={stats?.totalMessages ?? 0}
             accent="accent"
+            locale={locale}
           />
           <StatCard
             label={renderT(locale, "home.card.toolCalls")}
             value={stats?.totalToolCalls ?? 0}
             accent="accent-2"
+            locale={locale}
           />
           <StatCard
             label={renderT(locale, "home.card.tokens")}
             value={usage?.totalTokens ?? 0}
             accent="accent-2"
             isTokens
+            locale={locale}
           />
           <StatCard
             label={renderT(locale, "home.card.cost")}
             value={usage ? Math.round(usage.totalCost * 10000) / 10000 : 0}
             accent="warn"
             isFloat
+            locale={locale}
           />
         </div>
       </section>
@@ -287,16 +292,20 @@ function StatCard({
   accent,
   isTokens,
   isFloat,
+  locale,
 }: {
   label: string;
   value: number;
   accent: "accent" | "accent-2" | "warn";
   isTokens?: boolean;
   isFloat?: boolean;
+  locale: Locale;
 }) {
   let display: string;
   if (isFloat) {
-    display = `$${value.toFixed(4)}`;
+    display = renderT(locale, "currency.usd", {
+      amount: value.toFixed(4),
+    });
   } else if (isTokens) {
     display = value.toLocaleString();
   } else {
@@ -343,18 +352,22 @@ function PackCard({ pack }: { pack: Pack }) {
         </p>
       )}
       <div className="text-[10px] text-[var(--text-muted)] mt-2 font-mono">
-        v{pack.version} · {!pack.enabled && "disabled"}
+        v{pack.version}
+        {!pack.enabled && (
+          <>
+            {" · "}
+            <span className="text-[var(--warn)]">
+              {renderT(locale, "status.disabled")}
+            </span>
+          </>
+        )}
       </div>
     </Link>
   );
 }
 
 function Empty({ msg }: { msg: string }) {
-  return (
-    <div className="text-sm text-[var(--text-muted)] italic px-3 py-6 text-center">
-      {msg}
-    </div>
-  );
+  return <p className="hint italic text-center py-6">{msg}</p>;
 }
 
 // ─── EmptyState (v0.4.12) ──────────────────────────────────────

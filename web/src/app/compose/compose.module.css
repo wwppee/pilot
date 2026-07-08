@@ -2,15 +2,32 @@
  * Compose page styles — sidebar + canvas + inspector layout.
  *
  * Uses CSS variables from globals.css for theme integration.
- * Layout: CSS Grid 280px | 1fr | 320px.
+ *
+ * Layout breakpoints (v0.5.11):
+ *   <640px  → single column, vertical stack (sidebar above canvas)
+ *   ≥640px  → 2-col: sidebar | canvas (inspector becomes a drawer
+ *              button + modal; CanvasBlock toolbar moves into a
+ *              bottom action bar)
+ *   ≥1024px → 3-col: sidebar | canvas | inspector (default desktop)
  */
 
 .compose-grid {
   display: grid;
-  grid-template-columns: 280px 1fr 320px;
+  grid-template-columns: 1fr;
   gap: 12px;
-  height: calc(100vh - 200px);
   min-height: 500px;
+}
+@media (min-width: 640px) {
+  .compose-grid {
+    grid-template-columns: 240px 1fr;
+    height: calc(100vh - 200px);
+    min-height: 0;
+  }
+}
+@media (min-width: 1024px) {
+  .compose-grid {
+    grid-template-columns: 280px 1fr 320px;
+  }
 }
 
 /* ─── Sidebar ───────────────────────────────────────────── */
@@ -129,7 +146,8 @@
   touch-action: none;
 }
 .compose-canvas[data-pending="true"] {
-  background-color: #1a1f2a;
+  background-color: var(--surface-2);
+  border-color: var(--accent);
 }
 
 .compose-empty {

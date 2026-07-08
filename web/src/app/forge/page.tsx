@@ -10,6 +10,7 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { api } from "@/lib/pilot";
+import { EmptyState } from "@/components/EmptyState";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/types";
 import type { Pack } from "@/lib/types";
@@ -87,12 +88,13 @@ export default async function ForgePage({ searchParams }: PageProps) {
       </form>
 
       {q.length < 2 ? (
-        <div className="surface rounded-lg px-3 py-6 text-sm text-[var(--text-muted)] italic text-center">
-          {emptyText}
-        </div>
+        <EmptyState
+          title={renderT(locale, "forge.empty.unsearched")}
+          hint={<>{renderT(locale, "forge.empty.hint")}</>}
+        />
       ) : results.length === 0 ? (
-        <div className="surface rounded-lg px-3 py-6 text-sm text-[var(--text-muted)] italic text-center">
-          {resultCountText}
+        <div className="surface rounded-lg p-4 text-sm text-[var(--text-muted)] text-center">
+          {emptyText}
         </div>
       ) : (
         <>
