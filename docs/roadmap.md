@@ -6,6 +6,18 @@
 >
 > **2026-07-07 校准**：阶段一和阶段二已全部发完。阶段三走到 **v0.5.7**（Plan 数据模型 + CRUD + CLI 基线）。从 v0.5.7 开始，Pilot 的定位从"Pi 的管理面板"升级为**自主智能体工具**——新增 Plan（任务规划）、Agent Loop（自主执行）、Workflow（工作流编排）三大能力。详见 [`docs/roadmap-agent.md`](./roadmap-agent.md)。
 >
+> **2026-07-09 校准**：v0.5.7 之后连发 v0.5.8 - v0.5.12 共 5 个版本，全部是 **Web UI 收尾 + 设计系统重构**，没有新功能上线。这是为下一站「Web UI for Plans」铺的视觉 / 可达性 / 国际化底座：
+>
+> | 版本 | 内容 |
+> |---|---|
+> | **v0.5.8** | Session 详情加固：16-type tree union + 6-chip filter bucket + ErrorSurface + RetryButton + 16 个 i18n key |
+> | **v0.5.9** | Sessions 列表 Topic 列：`firstUserPreview` 从 JSONL 提取（≤120 字，兼容 legacy + v3 两种 schema） |
+> | **v0.5.10** | i18n 大扫除（7 个页面的硬编码英文）+ `<Skeleton>` 组件 + `loading.tsx` / `error.tsx` / `not-found.tsx` + zh 自然度打磨 |
+> | **v0.5.11** | 设计系统重构：22 项审计收尾——design tokens（`.card` `.pill` `.section-h2` `.form` 等）+ Policy 页 CSS 全面修复 + ComposeBoard 3-tier 响应式 + 5 种 EmptyState 统一 |
+> | **v0.5.12** | 审计第二轮：`<RichT>` 组件（i18n + ReactNode 占位符）+ 5 种调色板硬编码 → CSS tokens + 7 个内联按钮 → `.btn` + `/context` 加 `<DiscoveryRules>` 折叠面板 + ICU plural 字面量 bug 修复 |
+>
+> 下一站是 **v0.6.0 — PlanExecutor 反馈循环**（原计划 3-4 周）。如果先做「Web UI for Plans」（Plan 状态实时可视化、retry/skip 按钮、Task DAG 图、事件历史时间轴），需要在 v0.6.0 之前单独切一个版本号（候选 v0.5.13）。
+>
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
 ## 阶段一：看见 Pi（v0.1 - v0.3.x，已发）
