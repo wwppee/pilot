@@ -51,6 +51,15 @@
 >
 > 同时**重构**：`pi-rpc-bridge.ts` 把构造器里的 message listener 拆成私有 `onMessage(raw)` 方法（之前 listener 写在 `start()` 里，单测要起真 pi 进程才能触发 dispatch；现在 listener 在构造器注册，方法体可独立单测）。新增 `test/unit/pi-rpc-bridge.test.ts` 5 个用例覆盖 id 回传 / default case / Buffer raw / 非法 JSON / close 幂等。
 >
+> **2026-07-09 校准 (5)**：**v0.5.14.2 已发**——复查 v0.5.14.1 发现 P0#1 修复**不完整**：客户端 `usePiSession.onmessage` 里 id 匹配分支实际没写（`let pending` 声明即 undefined，`if (!pending)` 恒真，永远走 FIFO），仍然会并发死锁。同时 `socket.once("close", ...)` 在某些 `@types/ws` 版本下类型不兼容：
+>
+> | 编号 | 位置 | 修复 |
+> |---|---|---|
+> | **P0#1** | `web/src/lib/usePiSession.ts` | `onmessage` 加真正的 id 匹配：`msg.id` 在 `pendingRef` 里直接 get+delete；找不到再 fallback FIFO by command-type。`PiCommandResponse` 类型加 `id?: string`。 |
+> | **防御** | `src/server/server.ts` L752 | `socket.once("close", ...)` → `socket.on("close", ...)`。`.once` 在 `@types/ws` 不同版本下不总是 declared；`.on` 在 socket 已关闭后等价。 |
+>
+> 新增 `web/tests/use-pi-session.test.tsx` 4 个用例：两个并发 prompt 按 id 分流、FIFO fallback（无 id）、错误响应 reject、30s timeout。
+>
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
 ## 阶段一：看见 Pi（v0.1 - v0.3.x，已发）

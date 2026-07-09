@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### v0.5.14.2 — P0#1 id-matching fix + .once() portability
+
+Bug复查发现 v0.5.14.1 的 P0#1 修复不完整：客户端 `usePiSession.onmessage` 没有真正按 id 匹配，仍然走 FIFO fallback。修了。
+
+**Web (`web/src/lib/usePiSession.ts`)**
+- **P0#1** Fix id matching. The previous `if (!pending)` branch unconditionally fell through to FIFO by command-type — the id-based lookup was missing entirely. Now: if `msg.id` is present and the pending map has it, look up directly; otherwise fall back to FIFO. Two concurrent `prompt` calls now route correctly.
+- Type `PiCommandResponse` gains `id?: string` on both success and failure variants.
+
+**Server (`src/server/server.ts`)**
+- **Defensive** Change `socket.once("close", ...)` to `socket.on("close", ...)` at the WS route. `@types/ws` doesn't always declare `.once()` on its `WebSocket` type (depends on the version installed), and `.on()` is functionally equivalent here (the socket is already closed by the time the callback runs).
+
+**Tests**
+- New `web/tests/use-pi-session.test.tsx` (4 cases): two in-flight same-type commands route by id; FIFO fallback when response has no id; error response rejects the right Promise; 30s timeout fires (`vi.useFakeTimers`).
+- core unit: 522/522 ✓ (unchanged)
+- web: 133/133 ✓ (+4)
+
 ### v0.5.14.1 — Pi RPC bridge hardening (P0/P1/P2 audit follow-up)
 
 Address the 12-item bug report from a self-audit of the v0.5.14 WebSocket bridge. No new features; all changes are correctness / robustness / i18n hygiene.

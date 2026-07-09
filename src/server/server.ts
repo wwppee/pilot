@@ -749,7 +749,12 @@ export async function startServer(
 
     const bridge = new PiRpcBridge(socket);
     liveBridges.add(bridge);
-    socket.once("close", () => {
+    // Use `.on()` rather than `.once()` for portability — the
+    // `ws.WebSocket` type from `@types/ws@8` doesn't always declare
+    // `.once()`, and `socket.on("close", cb)` is functionally
+    // equivalent here (the socket is already closed by the time the
+    // callback runs, so it won't fire again).
+    socket.on("close", () => {
       liveBridges.delete(bridge);
     });
 

@@ -46,8 +46,20 @@ export type PiStreamEvent = {
 };
 
 export type PiCommandResponse =
-  | { kind: "response"; command: string; success: true; data?: unknown }
-  | { kind: "response"; command: string; success: false; error: string };
+  | {
+      kind: "response";
+      command: string;
+      success: true;
+      data?: unknown;
+      id?: string;
+    }
+  | {
+      kind: "response";
+      command: string;
+      success: false;
+      error: string;
+      id?: string;
+    };
 
 export type PiConnectionState =
   | "idle"
@@ -173,15 +185,23 @@ export function usePiSession(opts?: {
       if (msg.kind === "event") {
         setEvents((prev) => [...prev, msg]);
       } else if (msg.kind === "response") {
-        // Match by id (we tag every command with an id; the server
-        // echoes it back on the response — except we only see the
-        // parsed message here. To match without an id, fall back to
-        // command-type + FIFO order — only one in-flight per type).
+        // P0#1 (v0.5.14.1): match pending by id FIRST. We tag every
+        // send() with a unique id; the server echoes the id on its
+        // response (see PiRpcBridge.dispatch). Falling back to FIFO
+        // by command-type was unsafe: two concurrent commands of the
+        // same type (e.g. `prompt` then `abort`) would deadlock —
+        // the first response would resolve the second Promise.
         let pending:
           | { resolve: (v: unknown) => void; reject: (e: Error) => void }
           | undefined;
-        if (!pending) {
-          // No id — match by command + FIFO.
+        if (msg.id && pendingRef.current.has(msg.id)) {
+          pending = pendingRef.current.get(msg.id);
+          pendingRef.current.delete(msg.id);
+        } else {
+          // No id (old bridge, or response from before v0.5.14.1):
+          // fall back to FIFO by command-type. Safe as long as the
+          // caller never issues two in-flight commands of the same
+          // type without ids.
           for (const [k, v] of pendingRef.current) {
             if (k.startsWith(`${msg.command}:`)) {
               pending = v;
