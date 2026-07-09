@@ -247,7 +247,8 @@ export type Dict = {
   "compose.filterAll": string;
   "compose.inspector.stale": string;
   "compose.aria.selected": string;
-  "compose.inspector.blockCount": string;
+  "compose.inspector.blockCount.one": string;
+  "compose.inspector.blockCount.other": string;
   "compose.inspector.openDetail": string;
   "compose.inspector.remove": string;
   "compose.announce.removedBlock": string;
@@ -298,7 +299,8 @@ export type Dict = {
   // v0.5.10+: profiles list empty state (long hint text + actionLabel).
   "profiles.empty.hint": string;
   "profiles.openForm": string;
-  "profiles.packageCount": string;
+  "profiles.packageCount.one": string;
+  "profiles.packageCount.other": string;
 
   // ─── Context ────────────────────────────────────────────────
   "context.loadedTitle": string;
@@ -326,7 +328,9 @@ export type Dict = {
   "home.link.seeAll": string;
   "home.link.manage": string;
   "home.empty.sessions": string;
+  "home.empty.sessions.hint": string;
   "home.empty.packs": string;
+  "home.empty.packs.hint": string;
   "home.refreshHint": string;
   "home.emptyState.title": string;
   // v0.5.10+: home quick-start aria-label.

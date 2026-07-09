@@ -11,6 +11,7 @@ import { api } from "@/lib/pilot";
 import { AutoRefresh, LivePulse } from "@/components/AutoRefresh";
 import { T } from "@/components/I18n";
 import { EmptyState } from "@/components/EmptyState";
+import { RichT } from "@/components/RichT";
 import { negotiateLocale, renderT, type Locale } from "@/lib/i18n";
 import type {
   Capability,
@@ -217,10 +218,13 @@ export default async function DashboardPage() {
               <EmptyState
                 title={renderT(locale, "home.empty.sessions")}
                 hint={
-                  <>
-                    Run <code className="kbd">pi</code> in any project to create
-                    a session.
-                  </>
+                  <RichT
+                    locale={locale}
+                    k="home.empty.sessions.hint"
+                    values={{
+                      cmd: <code className="kbd">pi</code>,
+                    }}
+                  />
                 }
               />
             </div>
@@ -292,10 +296,13 @@ export default async function DashboardPage() {
               <EmptyState
                 title={renderT(locale, "home.empty.packs")}
                 hint={
-                  <>
-                    Search <code className="kbd">pilot pack search</code> to
-                    find packs.
-                  </>
+                  <RichT
+                    locale={locale}
+                    k="home.empty.packs.hint"
+                    values={{
+                      cmd: <code className="kbd">pilot pack search</code>,
+                    }}
+                  />
                 }
               />
             </div>

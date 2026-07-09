@@ -214,9 +214,13 @@ export default async function ProfilesPage({ searchParams }: PageProps) {
                   )}
                   {p.packages && p.packages.length > 0 && (
                     <div>
-                      {renderT(locale, "profiles.packageCount", {
-                        n: p.packages.length,
-                      })}
+                      {renderT(
+                        locale,
+                        p.packages.length === 1
+                          ? "profiles.packageCount.one"
+                          : "profiles.packageCount.other",
+                        { n: p.packages.length },
+                      )}
                     </div>
                   )}
                 </div>

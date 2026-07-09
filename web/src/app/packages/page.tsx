@@ -65,11 +65,7 @@ export default async function PackagesPage({ searchParams }: SearchPageProps) {
           className="flex-1 surface rounded px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
           autoFocus
         />
-        <button
-          type="submit"
-          className="px-4 py-2 text-sm rounded text-[var(--bg)]"
-          style={{ background: "var(--accent)" }}
-        >
+        <button type="submit" className="btn">
           <T k="btn.search" />
         </button>
       </form>

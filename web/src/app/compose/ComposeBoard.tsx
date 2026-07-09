@@ -616,7 +616,12 @@ export default function ComposeBoard({
         <div className="compose-inspector-header">
           <h3>{t("compose.inspector")}</h3>
           <span className="muted small">
-            {t("compose.inspector.blockCount", { n: state.blocks.length })}
+            {t(
+              state.blocks.length === 1
+                ? "compose.inspector.blockCount.one"
+                : "compose.inspector.blockCount.other",
+              { n: state.blocks.length },
+            )}
           </span>
         </div>
         {selectedBlock ? (

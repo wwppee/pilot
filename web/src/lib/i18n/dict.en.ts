@@ -258,7 +258,8 @@ const en: Dict = {
   "compose.inspector.stale":
     "Not in current catalog — entity may have been deleted. Block is preserved with cached label.",
   "compose.aria.selected": ", selected",
-  "compose.inspector.blockCount": "{n, plural, one {# block} other {# blocks}}",
+  "compose.inspector.blockCount.one": "1 block",
+  "compose.inspector.blockCount.other": "{n} blocks",
   "compose.inspector.openDetail": "Open detail page →",
   "compose.inspector.remove": "Remove",
   "compose.announce.removedBlock": "Removed block {label}",
@@ -314,7 +315,8 @@ const en: Dict = {
   "profiles.empty.hint":
     "A profile bundles a model + thinking level + provider + package list. Use the Create profile form above to make one, then activate it from a profile card. Activated profiles are written to ~/.pi/agent/settings.json and picked up by Pi on next launch.",
   "profiles.openForm": "Open the profile form",
-  "profiles.packageCount": "{n, plural, one {# package} other {# packages}}",
+  "profiles.packageCount.one": "1 package",
+  "profiles.packageCount.other": "{n} packages",
 
   // Context
   "context.loadedTitle": "Loaded by pi",
@@ -342,7 +344,9 @@ const en: Dict = {
   "home.link.seeAll": "See all →",
   "home.link.manage": "Manage →",
   "home.empty.sessions": "No sessions yet.",
+  "home.empty.sessions.hint": "Run {cmd} in any project to create a session.",
   "home.empty.packs": "No packs installed.",
+  "home.empty.packs.hint": "Search {cmd} to find packs.",
   "home.refreshHint": "auto-refresh 10s · updated now",
   "home.quickStart.aria": "Quick start",
   // v0.5.12+

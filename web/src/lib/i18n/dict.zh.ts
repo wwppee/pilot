@@ -251,7 +251,8 @@ const zh: Dict = {
   "compose.inspector.stale":
     "不在当前目录里 — 实体可能已被删除。块本身保留，并使用缓存的标签。",
   "compose.aria.selected": "（已选中）",
-  "compose.inspector.blockCount": "{n} 个块",
+  "compose.inspector.blockCount.one": "{n} 个块",
+  "compose.inspector.blockCount.other": "{n} 个块",
   "compose.inspector.openDetail": "打开详情页 →",
   "compose.inspector.remove": "移除",
   "compose.announce.removedBlock": "已移除块 {label}",
@@ -303,7 +304,8 @@ const zh: Dict = {
   "profiles.empty.hint":
     "一份配置包含模型 + 思考强度 + provider + 包列表。用上方的「新建配置」表单创建一份，再从配置卡上设为活跃。已激活的配置会写入 ~/.pi/agent/settings.json，Pi 下次启动时自动加载。",
   "profiles.openForm": "打开配置表单",
-  "profiles.packageCount": "{n} 个包",
+  "profiles.packageCount.one": "{n} 个包",
+  "profiles.packageCount.other": "{n} 个包",
 
   // Context
   "context.loadedTitle": "Pi 已加载",
@@ -331,7 +333,9 @@ const zh: Dict = {
   "home.link.seeAll": "看全部 →",
   "home.link.manage": "管理 →",
   "home.empty.sessions": "暂无会话。",
+  "home.empty.sessions.hint": "在任意项目里运行 {cmd} 以创建第一个会话。",
   "home.empty.packs": "暂无已安装包。",
+  "home.empty.packs.hint": "运行 {cmd} 来搜索包。",
   "home.refreshHint": "10 秒自动刷新 · 已更新",
   "home.quickStart.aria": "快速开始",
   // v0.5.12+
