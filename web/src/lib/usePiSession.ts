@@ -19,11 +19,23 @@
  *
  * v0.5.14+: this is the foundation for the v0.6.0 PlanExecutor
  * (each Plan step that calls pi_session will reuse this hook).
+ *
+ * P0#1 (v0.5.14.1): every `send()` tags its command with a
+ * unique id; the bridge echoes the id back on its response, so we
+ * match pending Promises by id (FIFO fallback for old bridges).
+ * Without id-matching, two in-flight commands of the same type
+ * (e.g. two `prompt`s) would deadlock — the first response would
+ * resolve the second Promise.
+ *
+ * P1#2 (v0.5.14.1): every pending command has a 30s timeout.
+ * Without it, a hung pi subprocess would leave the UI stuck on
+ * "Sending…" forever.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const PILOT_WS_BASE =
   process.env.NEXT_PUBLIC_PILOT_WS_URL ?? "ws://127.0.0.1:17361";
+const COMMAND_TIMEOUT_MS = 30_000;
 
 export type PiStreamEvent = {
   kind: "event";
@@ -84,12 +96,34 @@ export function usePiSession(opts?: {
   const [error, setError] = useState<string | null>(null);
   const [events, setEvents] = useState<PiStreamEvent[]>([]);
 
+  interface PendingCommand {
+    resolve: (v: unknown) => void;
+    reject: (e: Error) => void;
+    timeoutId: ReturnType<typeof setTimeout>;
+  }
+
+  /**
+   * Internal helper: cast a typed resolve to the loose-typed
+   * PendingCommand.resolve. Safe because the call site wraps the
+   * typed resolve inside a closure that adapts `T` → `unknown`.
+   */
+  function wrap<T>(
+    resolve: (value: T | PromiseLike<T>) => void,
+    reject: (reason?: unknown) => void,
+    timeoutId: ReturnType<typeof setTimeout>,
+  ): PendingCommand {
+    return {
+      resolve: (v) => resolve(v as T),
+      reject: (e: Error) => reject(e),
+      timeoutId,
+    };
+  }
+
   const wsRef = useRef<WebSocket | null>(null);
-  // Pending commands keyed by the command's `id` field. Server
-  // echoes the id back on the response so we can match.
-  const pendingRef = useRef<
-    Map<string, { resolve: (v: unknown) => void; reject: (e: Error) => void }>
-  >(new Map());
+  // Pending commands keyed by the unique id we attach to every
+  // command. Server echoes the id back on the response so we can
+  // match precisely (FIFO fallback for old bridges without id echo).
+  const pendingRef = useRef<Map<string, PendingCommand>>(new Map());
 
   const connect = useCallback(async () => {
     if (wsRef.current) return;
@@ -118,9 +152,10 @@ export function usePiSession(opts?: {
     };
     ws.onclose = (ev) => {
       wsRef.current = null;
-      // Reject any in-flight commands.
-      for (const [, { reject }] of pendingRef.current) {
-        reject(new Error(`socket closed (${ev.code} ${ev.reason})`));
+      // Reject any in-flight commands and clear their timeouts.
+      for (const [, pending] of pendingRef.current) {
+        clearTimeout(pending.timeoutId);
+        pending.reject(new Error(`socket closed (${ev.code} ${ev.reason})`));
       }
       pendingRef.current.clear();
       setState("disconnected");
@@ -180,14 +215,28 @@ export function usePiSession(opts?: {
     if (!ws || ws.readyState !== ws.OPEN) {
       return Promise.reject(new Error("not connected"));
     }
-    const id = `${cmd.type}:${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    // Unique request id — server echoes it back so we can match
+    // responses precisely even with multiple in-flight commands of
+    // the same type.
+    const id = `${cmd.type}:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const tagged = { ...cmd, id };
     return new Promise<T>((resolve, reject) => {
-      pendingRef.current.set(id, {
-        resolve: (v) => resolve(v as T),
-        reject,
-      });
-      ws.send(JSON.stringify(tagged));
+      const timeoutId = setTimeout(() => {
+        // Fire-and-forget cleanup: remove from pending map and
+        // reject. The promise rejection unblocks the caller's
+        // try/catch chain so the UI can recover.
+        if (pendingRef.current.delete(id)) {
+          reject(new Error(`command timeout after ${COMMAND_TIMEOUT_MS}ms`));
+        }
+      }, COMMAND_TIMEOUT_MS);
+      pendingRef.current.set(id, wrap<T>(resolve, reject, timeoutId));
+      try {
+        ws.send(JSON.stringify(tagged));
+      } catch (e) {
+        clearTimeout(timeoutId);
+        pendingRef.current.delete(id);
+        reject(e as Error);
+      }
     });
   }, []);
 

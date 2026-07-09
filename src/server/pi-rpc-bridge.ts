@@ -77,7 +77,13 @@ export class PiRpcBridge {
   private rpc: RpcClient | null = null;
   private closed = false;
 
-  constructor(private readonly socket: WebSocket) {}
+  constructor(private readonly socket: WebSocket) {
+    // Register the inbound message listener in the constructor
+    // (not in start()) so tests can exercise dispatch logic without
+    // actually spawning a pi subprocess. The handler early-returns
+    // until `this.rpc` is set in start().
+    this.socket.on("message", (raw) => this.onMessage(raw));
+  }
 
   async start(cwd: string): Promise<void> {
     if (this.closed) return;
@@ -99,42 +105,6 @@ export class PiRpcBridge {
       this.send({ kind: "event", event });
     });
 
-    // Forward pi stderr to the server log so devs can debug.
-    // (We don't send it to the browser — would leak pi internals.)
-    this.rpc.onEvent(() => {
-      // no-op listener just to capture stderr buffering side-effects;
-      // real logging happens via the server's Fastify logger below.
-    });
-
-    // Catch browser→server messages. Each message is an RpcCommand;
-    // we extract the typed fields per command and call the matching
-    // RpcClient method. We do NOT pass the whole RpcCommand through
-    // because each method takes specific positional args (e.g. prompt
-    // takes message + images, getState takes nothing).
-    this.socket.on("message", (raw) => {
-      if (this.closed || !this.rpc) return;
-      let cmd: RpcCommand;
-      try {
-        cmd = JSON.parse(String(raw)) as RpcCommand;
-      } catch (e) {
-        this.send({
-          kind: "response",
-          command: "invalid",
-          success: false,
-          error: `not JSON: ${(e as Error).message}`,
-        });
-        return;
-      }
-      this.dispatch(cmd).catch((e: Error) => {
-        this.send({
-          kind: "response",
-          command: cmd.type,
-          success: false,
-          error: e.message,
-        });
-      });
-    });
-
     // Browser disconnect → stop pi.
     this.socket.on("close", () => {
       void this.close();
@@ -154,6 +124,49 @@ export class PiRpcBridge {
       });
       await this.close();
     }
+  }
+
+  /**
+   * Handle a single inbound WebSocket message. Extracted from the
+   * constructor's `socket.on("message", ...)` callback so the dispatch
+   * logic stays testable in isolation. The listener itself is
+   * registered in the constructor; this method only runs the
+   * per-message logic.
+   */
+  private onMessage(raw: unknown): void {
+    if (this.closed || !this.rpc) return;
+    // `raw` can be Buffer | ArrayBuffer | Buffer[]. For our JSON-
+    // lines protocol it should always be a Buffer / string, but we
+    // handle both safely so a misbehaving client can't crash the
+    // bridge by sending binary.
+    const text = Buffer.isBuffer(raw)
+      ? raw.toString("utf-8")
+      : raw instanceof ArrayBuffer
+        ? new TextDecoder().decode(new Uint8Array(raw))
+        : Array.isArray(raw)
+          ? Buffer.concat(raw).toString("utf-8")
+          : String(raw);
+    let cmd: RpcCommand & { id?: string };
+    try {
+      cmd = JSON.parse(text) as RpcCommand & { id?: string };
+    } catch (e) {
+      this.send({
+        kind: "response",
+        command: "invalid",
+        success: false,
+        error: `not JSON: ${(e as Error).message}`,
+      });
+      return;
+    }
+    this.dispatch(cmd).catch((e: Error) => {
+      this.send({
+        kind: "response",
+        command: cmd.type,
+        id: cmd.id,
+        success: false,
+        error: e.message,
+      });
+    });
   }
 
   /**
@@ -186,9 +199,14 @@ export class PiRpcBridge {
    * have a uniform signature, so reflection-style dispatch is
    * fragile. A literal switch is verbose but obvious.
    */
-  private async dispatch(cmd: RpcCommand): Promise<void> {
+  private async dispatch(cmd: RpcCommand & { id?: string }): Promise<void> {
     if (!this.rpc) return;
     const r = this.rpc;
+    // Capture the request id so the browser can match responses to
+    // pending Promises. Without this, two in-flight commands of the
+    // same type would deadlock (FIFO is unsafe when commands are
+    // not ordered).
+    const id = cmd.id;
     // We capture the response for commands that return data. Others
     // return void — we still send a success response so the browser
     // knows the round-trip completed.
@@ -282,10 +300,26 @@ export class PiRpcBridge {
         case "get_commands":
           data = await r.getCommands();
           break;
+        default: {
+          // Exhaustiveness check — TypeScript narrows `cmd` to `never`
+          // after every case is matched. The cast is safe: if a new
+          // RpcCommand variant ships, this falls through and produces
+          // an error response instead of silently dropping the command.
+          const unknown = cmd as { type: string };
+          this.send({
+            kind: "response",
+            command: unknown.type,
+            id,
+            success: false,
+            error: `unknown command: ${unknown.type}`,
+          });
+          return;
+        }
       }
       this.send({
         kind: "response",
         command: cmd.type,
+        id,
         success: true,
         ...(data !== undefined ? { data } : {}),
       });
@@ -293,6 +327,7 @@ export class PiRpcBridge {
       this.send({
         kind: "response",
         command: cmd.type,
+        id,
         success: false,
         error: (e as Error).message,
       });

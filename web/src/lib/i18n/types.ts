@@ -45,6 +45,28 @@ export type Dict = {
   "nav.plans": string;
   // v0.5.14+: pi RPC playground.
   "nav.playground": string;
+  // v0.5.14+: /playground demo page.
+  "playground.h1": string;
+  "playground.body": string;
+  "playground.bodyWs": string;
+  "playground.bodySpawn": string;
+  "playground.status.idle": string;
+  "playground.status.fetchingToken": string;
+  "playground.status.connecting": string;
+  "playground.status.connected": string;
+  "playground.status.disconnected": string;
+  "playground.status.errorUnknown": string;
+  "playground.action.connect": string;
+  "playground.action.disconnect": string;
+  "playground.action.send": string;
+  "playground.action.newSession": string;
+  "playground.action.abort": string;
+  "playground.prompt.label": string;
+  "playground.prompt.placeholder": string;
+  "playground.events.title": string;
+  "playground.events.clear": string;
+  "playground.events.emptyConnected": string;
+  "playground.events.emptyDisconnected": string;
   "nav.groupInspect": string;
   "nav.groupManage": string;
 

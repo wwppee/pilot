@@ -34,6 +34,23 @@
 >
 > **下一站**：v0.6.0 PlanExecutor。Plan 的 `pi_session` action 直接复用 `usePiSession` + RpcClient 调 `r.prompt()`，不再需要单独的集成层。retry/skip 按钮也会基于 WebSocket 实时刷新（PlanExecutor 写事件 → JSONL → 浏览器收 WS push → 重新渲染）。
 >
+> **2026-07-09 校准 (4)**：**v0.5.14.1 已发**——v0.5.14 WebSocket bridge 的 12 项自审（1 P0 / 4 P1 / 7 P2）全部修复，没有新功能：
+>
+> | 编号 | 位置 | 修复 |
+> |---|---|---|
+> | **P0#1** | `pi-rpc-bridge.ts` + `usePiSession.ts` | 服务端在每条 `kind: "response"` 回传请求 `id`；客户端先按 id 匹配 pending Promise，再回退 FIFO by command type。否则两个并发同类型命令（如 prompt + abort）会死锁。 |
+> | **P1#2** | `usePiSession.ts` | 每条 pending 命令挂 30s `setTimeout`，到时 reject；timeoutId 在响应到达或 reject 时清掉，避免僵尸 setTimeout。 |
+> | **P1#3** | `pi-rpc-bridge.ts` | dispatch `switch` 加 `default` 分支，未知命令返回 `success: false, error: "unknown command: <type>"`。 |
+> | **P1#4** | `server.ts` | WebSocket 路由加 `onClose` 钩子，server 关闭时遍历 `liveBridges` 调 `bridge.close()`，避免 `pi --mode rpc` 孤儿进程。 |
+> | **P1#5** | `pi-rpc-bridge.ts` | `socket.on("message")` 原始 raw 在 parse 前先做 Buffer / ArrayBuffer / Buffer[] → string 转换；测试覆盖 string + Buffer 两种入参。 |
+> | **P1#6** | `api/pi/token/route.ts` | 端点加 localhost-only 检查：解析 `x-forwarded-for` 首跳 + 校验 `127.0.0.1` / `::1` / `localhost` / 空 host，否则 403。同源保护之外多加一层（防注入脚本 fetch）。 |
+> | **P2#7** | `playground/page.tsx` + i18n | 23 个 playground 文案改走 `<T>`。 |
+> | **P2#8** | `usePiSession.ts` + `playground/page.tsx` | `safeStringify()` 包 try/catch，循环引用 payload 不再炸 event log。 |
+> | **P2#10** | `playground/page.tsx` | 事件列表 React key 用 `${type}-${counter}`，不用 array index，避免日志 prepend 时跳行。 |
+> | **P2** | `sessions/[id]/page.tsx` | `$${cost}` 硬编码 → `renderT(locale, "currency.usd", {amount})`。 |
+>
+> 同时**重构**：`pi-rpc-bridge.ts` 把构造器里的 message listener 拆成私有 `onMessage(raw)` 方法（之前 listener 写在 `start()` 里，单测要起真 pi 进程才能触发 dispatch；现在 listener 在构造器注册，方法体可独立单测）。新增 `test/unit/pi-rpc-bridge.test.ts` 5 个用例覆盖 id 回传 / default case / Buffer raw / 非法 JSON / close 幂等。
+>
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
 ## 阶段一：看见 Pi（v0.1 - v0.3.x，已发）

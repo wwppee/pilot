@@ -346,11 +346,16 @@ function SessionInfoCard({
   if (!info) return null;
 
   const duration = info.durationMs > 0 ? formatDuration(info.durationMs) : "—";
+  // Cost uses the locale-aware `currency.usd` formatter (en: `$X`,
+  // zh: `US$X`). Both branches format the same way so the i18n
+  // system handles prefix + decimal separator consistently.
   const cost =
-    info.totalCost > 0
-      ? `$${info.totalCost.toFixed(4)}`
-      : info.totalCost === 0
-        ? "$0.0000"
+    info.totalCost === 0
+      ? renderT(locale, "currency.usd", { amount: "0.0000" })
+      : info.totalCost > 0
+        ? renderT(locale, "currency.usd", {
+            amount: info.totalCost.toFixed(4),
+          })
         : "—";
   const tokens =
     info.totalTokens > 0

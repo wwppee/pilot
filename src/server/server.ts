@@ -718,9 +718,16 @@ export async function startServer(
   // instance per connection; pi is spawned fresh per connection.
   //
   // Auth: client must include `pilot-token` as a subprotocol, e.g.
-  //   new WebSocket(url, ["pilot-token", "<token>"])
+  //   new WebSocket(url, ["pilot-token-<TOKEN>"])
   // The `socket.protocol` after handshake reads back as the joined
   // subprotocols string; we parse out the token and verify.
+  //
+  // P1#4: every live bridge is tracked so `app.close()` (server
+  // shutdown / test teardown) can stop the spawned pi subprocesses
+  // explicitly. Without this, pi children outlive the server and
+  // leak as orphans.
+  const liveBridges = new Set<PiRpcBridge>();
+
   app.get("/api/pi/ws", { websocket: true }, (socket /* _req */) => {
     // @fastify/websocket passes the WebSocket directly. After
     // the handshake `socket.protocol` is the single subprotocol
@@ -741,10 +748,29 @@ export async function startServer(
     }
 
     const bridge = new PiRpcBridge(socket);
+    liveBridges.add(bridge);
+    socket.once("close", () => {
+      liveBridges.delete(bridge);
+    });
+
     const cwd = process.env.HOME ?? process.cwd();
     void bridge.start(cwd).catch((e: Error) => {
       app.log.error(e, "pi rpc bridge failed to start");
     });
+  });
+
+  // Stop every live pi subprocess on server shutdown. Without this
+  // hook, app.close() tears down the HTTP socket but the RpcClient-
+  // spawned pi processes keep running with no parent coordination.
+  app.addHook("onClose", async () => {
+    await Promise.all(
+      Array.from(liveBridges).map((b) =>
+        b.close().catch(() => {
+          // Best-effort — log and move on.
+        }),
+      ),
+    );
+    liveBridges.clear();
   });
 
   // ─── Centralized error handler ──────────────────────

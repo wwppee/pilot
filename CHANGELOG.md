@@ -2,6 +2,39 @@
 
 ## Unreleased
 
+### v0.5.14.1 — Pi RPC bridge hardening (P0/P1/P2 audit follow-up)
+
+Address the 12-item bug report from a self-audit of the v0.5.14 WebSocket bridge. No new features; all changes are correctness / robustness / i18n hygiene.
+
+**Server (`src/server/pi-rpc-bridge.ts`)**
+- **P0#1** Echo the request `id` in every `kind: "response"` so the browser can match by id instead of FIFO by command type. Without this, two in-flight commands of the same type (e.g. `prompt` + `abort`) would deadlock.
+- **P1#3** Add a `default` arm to the dispatch switch that returns `{success: false, error: "unknown command: <type>"}` instead of falling through silently.
+- **P1#5** Decode `Buffer | ArrayBuffer | Buffer[]` raw payloads before `JSON.parse` — the bridge's `socket.on("message", cb)` callback receives typed arrays depending on the WS frame, and `JSON.parse(Buffer)` throws. Tests cover both Buffer and string inputs.
+- **Refactor** Move the constructor-registered listener callback into a private `onMessage(raw)` method so the dispatch logic is unit-testable without spawning pi. The constructor only registers the listener.
+
+**Server (`src/server/server.ts`)**
+- **P1#4** New `onClose` hook on the WebSocket route iterates `liveBridges` and calls `bridge.close()` on every active bridge when the server shuts down. Without this, a SIGTERM leaves orphan `pi --mode rpc` subprocesses.
+
+**Web (`web/src/lib/usePiSession.ts`)**
+- **P0#1** `sendCommand()` now matches pending requests by response id first, falling back to FIFO by command type for backwards compat. Adds a `PendingCommand.timeoutId` field and a 30s `setTimeout` so a hung server doesn't pin a React effect forever.
+- **P2#8** `safeStringify(payload)` wraps `JSON.stringify` in `try/catch` and returns a `{kind: "raw", payload}` envelope on failure so the playground event log still shows something useful for cyclic structures.
+
+**Web (`web/src/app/api/pi/token/route.ts`)**
+- **P1#6** Reject non-localhost requests with 403. Parse `x-forwarded-for` first hop (real client IP behind a reverse proxy), allow `127.0.0.1` / `::1` / `localhost` / empty host. The endpoint already required same-origin but a `fetch()` from an injected script could still steal the token.
+
+**Web (`web/src/app/playground/page.tsx`)**
+- **P2#7** Replace all hardcoded English strings with `<T>` calls. Adds 23 new i18n keys (`playground.*`).
+- **P2#10** Use `${type}-${counter}` as React list keys instead of array indices — preserves scroll position when events are prepended in the log.
+- **P2#8** Use the shared `safeStringify` helper to avoid event-log crashes on cyclic payloads.
+
+**Web (`web/src/app/sessions/[id]/page.tsx`)**
+- Replace hardcoded `$${info.totalCost.toFixed(4)}` with `renderT(locale, "currency.usd", {amount})` so cost display respects locale.
+
+**Tests**
+- core unit: **522/522** ✓ (+5 in `test/unit/pi-rpc-bridge.test.ts`)
+- web: **129/129** ✓ (unchanged)
+- integration smoke: 2/2 skipped by `npm run test:offline` (unchanged)
+
 ### v0.5.14 — Pi RPC bridge (browser → pi via WebSocket)
 
 Pilot server now proxies pi's typed RPC protocol over WebSocket. Browser tabs can `usePiSession()` to spawn a fresh `pi --mode rpc` subprocess and exchange commands + events.
