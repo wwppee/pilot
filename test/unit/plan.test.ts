@@ -36,6 +36,7 @@ import {
   deletePlan,
   suggestTools,
   appendPlanEvent,
+  listPlanEvents,
   planPath,
   plansDir,
   plansHistoryDir,
@@ -349,6 +350,142 @@ describe("appendPlanEvent", () => {
     expect(lines).toHaveLength(3);
     const types = lines.map((l) => JSON.parse(l).type);
     expect(types).toEqual(["plan_created", "plan_started", "plan_completed"]);
+  });
+});
+
+// ─── listPlanEvents (v0.5.13+) ──────────────────────────────
+
+describe("listPlanEvents", () => {
+  it("returns [] when no history directory exists", async () => {
+    const fresh = mkdtempSync(join(tmpdir(), "pilot-events-empty-"));
+    try {
+      const events = await listPlanEvents("nonexistent", fresh);
+      expect(events).toEqual([]);
+    } finally {
+      rmSync(fresh, { recursive: true, force: true });
+    }
+  });
+
+  it("returns [] when history dir exists but has no matching files", async () => {
+    const id = generatePlanId();
+    await appendPlanEvent(
+      {
+        timestamp: "2026-07-07T11:00:00.000Z",
+        planId: "other-plan",
+        type: "plan_created",
+        data: {},
+      },
+      fakeHome,
+    );
+    const events = await listPlanEvents(id, fakeHome);
+    expect(events).toEqual([]);
+  });
+
+  it("returns sorted events for one plan, ignoring others", async () => {
+    const id = generatePlanId();
+    await appendPlanEvent(
+      {
+        timestamp: "2026-07-07T11:00:02.000Z",
+        planId: id,
+        type: "plan_started",
+        data: {},
+      },
+      fakeHome,
+    );
+    await appendPlanEvent(
+      {
+        timestamp: "2026-07-07T11:00:00.000Z",
+        planId: id,
+        type: "plan_created",
+        data: { goal: "g" },
+      },
+      fakeHome,
+    );
+    await appendPlanEvent(
+      {
+        timestamp: "2026-07-07T11:00:01.000Z",
+        planId: id,
+        type: "task_started",
+        data: { taskId: "t1" },
+      },
+      fakeHome,
+    );
+    // unrelated event for a different plan
+    await appendPlanEvent(
+      {
+        timestamp: "2026-07-07T11:00:00.000Z",
+        planId: "unrelated",
+        type: "plan_created",
+        data: {},
+      },
+      fakeHome,
+    );
+
+    const events = await listPlanEvents(id, fakeHome);
+    expect(events.map((e) => e.type)).toEqual([
+      "plan_created",
+      "task_started",
+      "plan_started",
+    ]);
+    // sorted ascending
+    expect(events[0]!.timestamp).toBe("2026-07-07T11:00:00.000Z");
+    expect(events[1]!.timestamp).toBe("2026-07-07T11:00:01.000Z");
+    expect(events[2]!.timestamp).toBe("2026-07-07T11:00:02.000Z");
+  });
+
+  it("merges events from multiple history files (process-restart case)", async () => {
+    const id = generatePlanId();
+    // Two different history files (different timestamps in filename).
+    await appendPlanEvent(
+      {
+        timestamp: "2026-07-07T11:00:00.000Z",
+        planId: id,
+        type: "plan_created",
+        data: {},
+      },
+      fakeHome,
+    );
+    await appendPlanEvent(
+      {
+        timestamp: "2026-07-08T09:00:00.000Z",
+        planId: id,
+        type: "plan_resumed",
+        data: {},
+      },
+      fakeHome,
+    );
+
+    const events = await listPlanEvents(id, fakeHome);
+    expect(events.map((e) => e.type)).toEqual(["plan_created", "plan_resumed"]);
+  });
+
+  it("skips malformed JSONL lines without throwing", async () => {
+    const id = generatePlanId();
+    const dir = plansHistoryDir(fakeHome);
+    // Manually craft a file with a valid line + garbage + another valid line
+    const file = join(dir, `${id}_202607071100000.jsonl`);
+    writeFileSync(
+      file,
+      [
+        JSON.stringify({
+          timestamp: "2026-07-07T11:00:00.000Z",
+          planId: id,
+          type: "plan_created",
+          data: {},
+        }),
+        "this is not json",
+        JSON.stringify({
+          timestamp: "2026-07-07T11:00:01.000Z",
+          planId: id,
+          type: "plan_started",
+          data: {},
+        }),
+      ].join("\n") + "\n",
+      "utf-8",
+    );
+
+    const events = await listPlanEvents(id, fakeHome);
+    expect(events.map((e) => e.type)).toEqual(["plan_created", "plan_started"]);
   });
 });
 

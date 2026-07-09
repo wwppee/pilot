@@ -689,6 +689,60 @@ export async function appendPlanEvent(
   await appendFile(filePath, JSON.stringify(event) + "\n", "utf-8");
 }
 
+/**
+ * v0.5.13+: read every history event for a plan.
+ *
+ * Reads all `plans-history/<id>_*.jsonl` files, parses each line as
+ * a `PlanEvent`, and returns them sorted ascending by timestamp.
+ * Returns [] if no history files exist (plan was never started, or
+ * history was wiped). Does NOT verify the plan exists — callers
+ * should check via `readPlan` first.
+ *
+ * Why we read all matching files instead of one: appendPlanEvent
+ * creates a new file each time the process restarts, so a long-running
+ * plan may have multiple history files. We want every event.
+ */
+export async function listPlanEvents(
+  planId: string,
+  home?: string,
+): Promise<PlanEvent[]> {
+  const dir = plansHistoryDir(home);
+  let entries: string[];
+  try {
+    entries = await readdir(dir);
+  } catch {
+    return [];
+  }
+  const prefix = `${planId}_`;
+  const matching = entries.filter(
+    (e) => e.startsWith(prefix) && e.endsWith(".jsonl"),
+  );
+  if (matching.length === 0) return [];
+
+  const events: PlanEvent[] = [];
+  for (const file of matching) {
+    let raw: string;
+    try {
+      raw = await readFile(join(dir, file), "utf-8");
+    } catch {
+      // Per-file read error: skip. Don't fail the whole listing —
+      // a partial history is still useful.
+      continue;
+    }
+    for (const line of raw.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      try {
+        events.push(JSON.parse(trimmed) as PlanEvent);
+      } catch {
+        // Skip malformed lines — same partial-tolerance rationale.
+      }
+    }
+  }
+  events.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+  return events;
+}
+
 // ─── Ensure directories ─────────────────────────────────────
 
 /** Ensure all plan-related directories exist. */

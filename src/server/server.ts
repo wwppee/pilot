@@ -627,6 +627,17 @@ export async function startServer(
     return plan;
   });
 
+  // v0.5.13+: plan execution history. Static path registered BEFORE
+  // the wildcards further down. Returns [] if the plan has no events
+  // yet (never started) and 404 if the plan doesn't exist.
+  app.get<{ Params: { id: string } }>("/plans/:id/events", async (req) => {
+    const events = await service.getPlanEvents(req.params.id);
+    if (events === null) {
+      throw Object.assign(new Error("plan not found"), { statusCode: 404 });
+    }
+    return events;
+  });
+
   app.put<{
     Params: { id: string };
     Body: Partial<import("../core/plan.js").Plan>;

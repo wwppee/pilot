@@ -152,6 +152,7 @@ import type {
   PolicyDecision,
   ComposeCatalog,
   Plan,
+  PlanEvent,
   PlanToolSuggestion,
 } from "./types.js";
 
@@ -373,6 +374,21 @@ export const api = {
   plan: async (id: string): Promise<Plan | null> => {
     try {
       return await pilot<Plan>(`/plans/${encodeName(id)}`);
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (status === 404) return null;
+      throw e;
+    }
+  },
+  /**
+   * v0.5.13+: read execution history for a plan.
+   * Returns [] when the plan exists but has no events yet
+   * (never started, or history wiped); null when the plan itself
+   * doesn't exist (404).
+   */
+  planEvents: async (id: string): Promise<PlanEvent[] | null> => {
+    try {
+      return await pilot<PlanEvent[]>(`/plans/${encodeName(id)}/events`);
     } catch (e) {
       const status = (e as { status?: number }).status;
       if (status === 404) return null;

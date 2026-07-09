@@ -665,6 +665,39 @@ export interface PlanResult {
   tasksTotal: number;
 }
 
+/**
+ * v0.5.13+: Plan execution event. Mirrors `core/plan.ts` `PlanEvent`.
+ *
+ * Lives in `~/.pilot/plans-history/<plan-id>_<timestamp>.jsonl`.
+ * Each lifecycle transition (created / started / paused / ...) and
+ * each task/step transition appends one event.
+ */
+export type PlanEventType =
+  | "plan_created"
+  | "plan_started"
+  | "plan_paused"
+  | "plan_resumed"
+  | "plan_completed"
+  | "plan_failed"
+  | "plan_cancelled"
+  | "plan_deleted"
+  | "task_started"
+  | "task_completed"
+  | "task_failed"
+  | "task_skipped"
+  | "step_started"
+  | "step_completed"
+  | "step_failed"
+  | "step_retried"
+  | "waiting_human";
+
+export interface PlanEvent {
+  timestamp: string;
+  planId: string;
+  type: PlanEventType;
+  data: Record<string, unknown>;
+}
+
 export interface Plan {
   id: string;
   goal: string;

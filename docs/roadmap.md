@@ -18,6 +18,14 @@
 >
 > 下一站是 **v0.6.0 — PlanExecutor 反馈循环**（原计划 3-4 周）。如果先做「Web UI for Plans」（Plan 状态实时可视化、retry/skip 按钮、Task DAG 图、事件历史时间轴），需要在 v0.6.0 之前单独切一个版本号（候选 v0.5.13）。
 >
+> **2026-07-09 校准 (2)**：**v0.5.13 已发**——Web UI for Plans 的数据层 + UI 骨架先于 PlanExecutor 落地。Plan 详情页从单一任务列表重构为 5 个明确分区（Header / Context / Task graph / Tasks / Event log），并新增 3 个组件：
+>
+> | 版本 | 内容 |
+> |---|---|
+> | **v0.5.13** | Plan 详情页重组：`<PlanStatusPill>`（统一 Plan / Task / Step 三种状态的彩色 pill）+ `<PlanTaskGraph>`（DAG 表格视图，显示每个任务的 dependsOn / blocks 边）+ `<PlanEventTimeline>`（读取 `~/.pilot/plans-history/*.jsonl` 的事件日志）。后端新增 `listPlanEvents()` + `GET /plans/:id/events`。49 个新 i18n key（task/step 状态、action type 标签、event type 标签）+ 重构 `/plans/[id]/page.tsx` 消除所有 section heading 硬编码英文。 |
+>
+> **下一站**：v0.6.0 PlanExecutor（反馈循环）。retry/skip 按钮等实时控制要等 PlanExecutor 就绪——这次 v0.5.13 没做按钮，但 DAG 视图 + 事件时间轴已经为 v0.6.0 的实时刷新铺好了 UI。
+>
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
 ## 阶段一：看见 Pi（v0.1 - v0.3.x，已发）

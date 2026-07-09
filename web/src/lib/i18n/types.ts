@@ -684,6 +684,56 @@ export type Dict = {
   "plans.detail.startHint": string;
   "plans.detail.executorNote": string;
   "plans.detail.confirmDelete": string;
+  // v0.5.13+ — DAG visualization + event timeline + per-step details
+  "plans.detail.dependsOn": string;
+  "plans.detail.retries": string;
+  "plans.detail.action": string;
+  "plans.detail.graph": string;
+  "plans.detail.graph.empty": string;
+  "plans.detail.blocks": string;
+  "plans.detail.events": string;
+  "plans.detail.events.empty": string;
+  "plans.detail.tasksByStatus": string;
+  // Task statuses
+  "plans.taskStatus.pending": string;
+  "plans.taskStatus.running": string;
+  "plans.taskStatus.completed": string;
+  "plans.taskStatus.failed": string;
+  "plans.taskStatus.skipped": string;
+  "plans.taskStatus.blocked": string;
+  // Step statuses
+  "plans.stepStatus.pending": string;
+  "plans.stepStatus.running": string;
+  "plans.stepStatus.completed": string;
+  "plans.stepStatus.failed": string;
+  "plans.stepStatus.skipped": string;
+  // Step action types — shown as compact labels in the step list
+  "plans.actionType.pilot_command": string;
+  "plans.actionType.pi_session": string;
+  "plans.actionType.profile_switch": string;
+  "plans.actionType.pack_install": string;
+  "plans.actionType.policy_apply": string;
+  "plans.actionType.condition": string;
+  "plans.actionType.wait": string;
+  "plans.actionType.manual": string;
+  // Plan event types — shown in the timeline
+  "plans.event.plan_created": string;
+  "plans.event.plan_started": string;
+  "plans.event.plan_paused": string;
+  "plans.event.plan_resumed": string;
+  "plans.event.plan_completed": string;
+  "plans.event.plan_failed": string;
+  "plans.event.plan_cancelled": string;
+  "plans.event.plan_deleted": string;
+  "plans.event.task_started": string;
+  "plans.event.task_completed": string;
+  "plans.event.task_failed": string;
+  "plans.event.task_skipped": string;
+  "plans.event.step_started": string;
+  "plans.event.step_completed": string;
+  "plans.event.step_failed": string;
+  "plans.event.step_retried": string;
+  "plans.event.waiting_human": string;
   "plans.new.h1": string;
   "plans.new.subtitle": string;
   "plans.new.goalLabel": string;

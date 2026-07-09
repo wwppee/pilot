@@ -58,6 +58,7 @@ import { aggregateStats } from "./stats.js";
 import { listToolInventory } from "./tool-inventory.js";
 import {
   appendPlanEvent,
+  listPlanEvents,
   // P1#8: Plan functions imported statically (was dynamic) to match
   // the project's "all imports static" style. Lazy-import was a v0.5.7
   // v0.5.7-beta code smell — no circular-dep reason to keep it.
@@ -116,7 +117,7 @@ import {
   unlink as unlinkFile,
   stat as statFile,
 } from "node:fs/promises";
-import type { Plan, Task, Step, ToolSuggestion } from "./plan.js";
+import type { Plan, Task, Step, ToolSuggestion, PlanEvent } from "./plan.js";
 
 export interface CreateServiceOptions {
   /**
@@ -231,6 +232,7 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
 
     // ─── Plans (v0.6.0 — Agent capability layer) ────
     listPlans: () => listPlansFromHome(home),
+    getPlanEvents: (id) => getPlanEventsFromHome(id, home),
     getPlan: (id) => readPlanFromHome(id, home),
     createPlan: (input) => createPlanInHome(input, home),
     updatePlan: (id, input) => updatePlanInHome(id, input, home),
@@ -608,6 +610,23 @@ async function checkPolicyCallByName(
 async function listPlansFromHome(home?: string): Promise<Plan[]> {
   await ensurePlanDirs(home);
   return listPlansCore(home);
+}
+
+/**
+ * v0.5.13+: read execution history for a plan.
+ *
+ * Returns null if the plan itself doesn't exist (404 from the
+ * server's perspective). Returns [] if the plan exists but has no
+ * events yet (never started). The server should NOT 404 an empty
+ * history — that's a valid state.
+ */
+async function getPlanEventsFromHome(
+  id: string,
+  home?: string,
+): Promise<PlanEvent[] | null> {
+  const plan = await readPlanCore(id, home);
+  if (!plan) return null;
+  return listPlanEvents(id, home);
 }
 
 async function readPlanFromHome(

@@ -42,7 +42,7 @@ import type {
   AvatarApplyOptions,
 } from "./avatar.js";
 import type { CapabilityDiff } from "./capability-diff.js";
-import type { Plan, Task, Step, ToolSuggestion } from "./plan.js";
+import type { Plan, Task, Step, ToolSuggestion, PlanEvent } from "./plan.js";
 
 export type PolicyDecision = ReturnType<typeof checkPolicy>;
 
@@ -421,4 +421,14 @@ export interface PilotService {
    * Uses keyword matching (v0.6.0 baseline).
    */
   suggestTools(goal: string): Promise<ToolSuggestion>;
+
+  /**
+   * v0.5.13+: read the execution history for a plan.
+   *
+   * Reads every `plans-history/<id>_*.jsonl` file and returns the
+   * events sorted by timestamp ascending. Returns [] if no events
+   * exist (the plan was never started, or its history was wiped).
+   * Plan must exist; otherwise returns null.
+   */
+  getPlanEvents(id: string): Promise<PlanEvent[] | null>;
 }

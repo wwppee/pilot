@@ -2,18 +2,22 @@
  * /plans/[id] — Plan detail page.
  *
  * v0.5.7: shows Plan metadata + Tasks + Steps + lifecycle controls
- * (Start / Pause / Resume / Cancel / Delete). Tasks and Steps come
- * from the TOML on disk via service.getPlan().
+ * (Start / Pause / Resume / Cancel / Delete).
+ *
+ * v0.5.13: restructured into explicit sections — Header, Context,
+ * Task graph (DAG view), Tasks (per-task detail), Event log, and
+ * Lifecycle controls. Event log reads from `GET /plans/:id/events`
+ * which surfaces the JSONL history that the executor appends to.
+ * Step list shows action type label + status pill (was raw enum).
  *
  * Why server-component: lifecycle controls are forms that POST to
  * server actions. The page renders status badges with colors that
- * come from the i18n dict + Tailwind-free inline styles. All state
- * stays in the URL via search params (created=1, started=1, etc.).
+ * come from the i18n dict + design tokens.
  */
 import Link from "next/link";
 import { headers } from "next/headers";
 import { api } from "@/lib/pilot";
-import type { Plan, PlanStatus, StepAction } from "@/lib/types";
+import type { Plan, PlanEvent, StepAction } from "@/lib/types";
 import { T } from "@/components/I18n";
 import { SubmitButton, DeleteButton } from "@/components/Buttons";
 import {
@@ -24,6 +28,9 @@ import {
   deletePlanForm,
 } from "@/lib/actions";
 import { negotiateLocale, renderT } from "@/lib/i18n";
+import { PlanStatusPill } from "@/components/PlanStatusPill";
+import { PlanTaskGraph } from "@/components/PlanTaskGraph";
+import { PlanEventTimeline } from "@/components/PlanEventTimeline";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -47,10 +54,14 @@ export default async function PlanDetailPage({
   const decoded = decodeURIComponent(id);
 
   let plan: Plan | null = null;
+  let events: PlanEvent[] | null = null;
   let notFound = false;
   let loadError: string | null = null;
   try {
-    plan = await api.plan(decoded);
+    [plan, events] = await Promise.all([
+      api.plan(decoded),
+      api.planEvents(decoded),
+    ]);
     if (!plan) notFound = true;
   } catch (e) {
     loadError = (e as Error).message;
@@ -63,29 +74,10 @@ export default async function PlanDetailPage({
     /* static generation */
   }
   const locale = negotiateLocale(acceptLanguage);
-
-  const statusLabel = (s: PlanStatus): string =>
-    renderT(locale, `plans.status.${s}`);
-  const statusColor = (s: PlanStatus): string => {
-    switch (s) {
-      case "draft":
-        return "var(--text-muted)";
-      case "running":
-        return "var(--accent)";
-      case "paused":
-        return "var(--accent-2)";
-      case "completed":
-        return "var(--accent-2)";
-      case "failed":
-        return "var(--error)";
-      case "cancelled":
-        return "var(--text-muted)";
-    }
-  };
+  const t = (k: string, params?: Record<string, string | number>) =>
+    renderT(locale, k, params);
 
   // Helper — which lifecycle buttons to show given current status.
-  // Service layer is the real source of truth for transitions; the
-  // client just hides buttons the server would reject anyway.
   const can = {
     start: plan?.status === "draft",
     pause: plan?.status === "running",
@@ -96,9 +88,7 @@ export default async function PlanDetailPage({
   return (
     <div className="space-y-6">
       <div className="text-xs text-[var(--text-muted)]">
-        <Link href="/plans">
-          ← <T k="plans.h1" />
-        </Link>
+        <Link href="/plans">← {t("plans.h1")}</Link>
       </div>
 
       {/* Banner area — banner per search param */}
@@ -108,8 +98,7 @@ export default async function PlanDetailPage({
           style={{ color: "var(--accent-2)" }}
           role="status"
         >
-          ✓ <T k="plans.action.created" />:{" "}
-          <code className="kbd">{decoded}</code>
+          ✓ {t("plans.action.created")}: <code className="kbd">{decoded}</code>
         </div>
       )}
       {sp.started && (
@@ -118,7 +107,7 @@ export default async function PlanDetailPage({
           style={{ color: "var(--accent-2)" }}
           role="status"
         >
-          ▶ <T k="plans.detail.executorNote" />
+          ▶ {t("plans.detail.executorNote")}
         </div>
       )}
       {sp.paused && (
@@ -127,7 +116,7 @@ export default async function PlanDetailPage({
           style={{ color: "var(--accent-2)" }}
           role="status"
         >
-          ⏸ <T k="plans.action.paused" />
+          ⏸ {t("plans.action.paused")}
         </div>
       )}
       {sp.resumed && (
@@ -136,7 +125,7 @@ export default async function PlanDetailPage({
           style={{ color: "var(--accent-2)" }}
           role="status"
         >
-          ▶ <T k="plans.action.resumed" />
+          ▶ {t("plans.action.resumed")}
         </div>
       )}
       {sp.cancelled && (
@@ -145,7 +134,7 @@ export default async function PlanDetailPage({
           style={{ color: "var(--text-muted)" }}
           role="status"
         >
-          ✕ <T k="plans.action.cancelled" />
+          ✕ {t("plans.action.cancelled")}
         </div>
       )}
       {sp.error && (
@@ -177,36 +166,31 @@ export default async function PlanDetailPage({
               <h1 className="text-xl font-bold">
                 <T k="plans.detail.h1" params={{ id: plan.id }} />
               </h1>
-              <span
-                className="text-sm font-medium"
-                style={{ color: statusColor(plan.status) }}
-              >
-                {statusLabel(plan.status)}
-              </span>
+              <PlanStatusPill kind="plan" value={plan.status} t={t} />
             </div>
             <p className="text-sm mt-2 text-[var(--text)]">{plan.goal}</p>
             <div className="text-xs text-[var(--text-muted)] mt-3 flex flex-wrap gap-x-4 gap-y-1">
               <span>
-                <T k="plans.detail.strategy" />:{" "}
+                {t("plans.detail.strategy")}:{" "}
                 <code className="kbd">{plan.strategy}</code>
               </span>
               <span>
-                <T k="plans.detail.created" />:{" "}
+                {t("plans.detail.created")}:{" "}
                 <code className="kbd">{plan.createdAt}</code>
               </span>
               <span>
-                <T k="plans.detail.updated" />:{" "}
+                {t("plans.detail.updated")}:{" "}
                 <code className="kbd">{plan.updatedAt}</code>
               </span>
               {plan.startedAt && (
                 <span>
-                  <T k="plans.detail.started" />:{" "}
+                  {t("plans.detail.started")}:{" "}
                   <code className="kbd">{plan.startedAt}</code>
                 </span>
               )}
               {plan.completedAt && (
                 <span>
-                  <T k="plans.detail.completed" />:{" "}
+                  {t("plans.detail.completed")}:{" "}
                   <code className="kbd">{plan.completedAt}</code>
                 </span>
               )}
@@ -218,7 +202,7 @@ export default async function PlanDetailPage({
             plan.context.activeProfile ||
             plan.context.gitBranch) && (
             <section className="surface rounded-lg p-4">
-              <h2 className="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-2">
+              <h2 className="section-h2 mb-2">
                 <T k="plans.detail.context" />
               </h2>
               <dl className="text-xs grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1">
@@ -254,9 +238,17 @@ export default async function PlanDetailPage({
             </section>
           )}
 
-          {/* Tasks */}
+          {/* Task graph (DAG) */}
           <section className="surface rounded-lg p-4">
-            <h2 className="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-3">
+            <h2 className="section-h2 mb-3">
+              <T k="plans.detail.graph" />
+            </h2>
+            <PlanTaskGraph tasks={plan.tasks} t={t} />
+          </section>
+
+          {/* Tasks — per-task detail with steps */}
+          <section className="surface rounded-lg p-4">
+            <h2 className="section-h2 mb-3">
               <T k="plans.detail.tasks" /> ({plan.tasks.length})
             </h2>
             {plan.tasks.length === 0 ? (
@@ -287,9 +279,7 @@ export default async function PlanDetailPage({
                         </span>
                         <span className="font-medium">{task.description}</span>
                       </p>
-                      <span className="text-xs text-[var(--text-muted)]">
-                        [{task.status}]
-                      </span>
+                      <PlanStatusPill kind="task" value={task.status} t={t} />
                     </div>
                     {(task.profile || task.requiredTools.length > 0) && (
                       <p className="text-xs text-[var(--text-muted)] mt-1">
@@ -302,9 +292,9 @@ export default async function PlanDetailPage({
                         {task.requiredTools.length > 0 && (
                           <span>
                             tools:{" "}
-                            {task.requiredTools.map((t, ti) => (
-                              <span key={t}>
-                                <code className="kbd">{t}</code>
+                            {task.requiredTools.map((toolName, ti) => (
+                              <span key={toolName}>
+                                <code className="kbd">{toolName}</code>
                                 {ti < task.requiredTools.length - 1 ? ", " : ""}
                               </span>
                             ))}
@@ -321,9 +311,24 @@ export default async function PlanDetailPage({
                           >
                             <span className="mr-1">↳</span>
                             <span className="font-mono">
-                              {formatAction(step.action)}
+                              {t(`plans.actionType.${step.action.type}`)}:{" "}
+                              {summarizeAction(step.action)}
                             </span>
-                            <span className="ml-2">[{step.status}]</span>
+                            <span className="ml-2">
+                              <PlanStatusPill
+                                kind="step"
+                                value={step.status}
+                                t={t}
+                              />
+                            </span>
+                            {step.retryCount > 0 && (
+                              <span className="ml-2 text-[10px]">
+                                {t("plans.detail.retries", {
+                                  count: step.retryCount,
+                                  max: step.maxRetries,
+                                })}
+                              </span>
+                            )}
                             {step.output && (
                               <span
                                 className="ml-2"
@@ -347,9 +352,17 @@ export default async function PlanDetailPage({
             )}
           </section>
 
+          {/* Event log — chronological history */}
+          <section className="surface rounded-lg p-4">
+            <h2 className="section-h2 mb-3">
+              <T k="plans.detail.events" /> ({events?.length ?? 0})
+            </h2>
+            <PlanEventTimeline events={events ?? []} t={t} />
+          </section>
+
           {/* Lifecycle controls */}
           <section className="surface rounded-lg p-4">
-            <h2 className="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-3">
+            <h2 className="section-h2 mb-3">
               <T k="plans.detail.actions" />
             </h2>
             <div className="flex flex-wrap gap-2">
@@ -388,9 +401,9 @@ export default async function PlanDetailPage({
               <span className="flex-1" />
               <DeleteButton
                 name={plan.id}
-                label={`🗑 ${renderT(locale, "plans.action.delete")}`}
+                label={`🗑 ${t("plans.action.delete")}`}
                 action={deletePlanForm}
-                confirmMessage={renderT(locale, "plans.detail.confirmDelete")}
+                confirmMessage={t("plans.detail.confirmDelete")}
               />
             </div>
             {can.start && (
@@ -405,23 +418,29 @@ export default async function PlanDetailPage({
   );
 }
 
-function formatAction(action: StepAction): string {
+/**
+ * One-line summary of a step action for the per-step row. We
+ * show the action-type label plus the most informative field
+ * (prompt / command / source / profile / condition) truncated
+ * to keep rows compact.
+ */
+function summarizeAction(action: StepAction): string {
   switch (action.type) {
     case "pilot_command":
       return `pilot ${action.command} ${(action.args ?? []).join(" ")}`.trim();
     case "pi_session":
-      return `pi session: "${action.prompt.slice(0, 60)}${action.prompt.length > 60 ? "…" : ""}"`;
+      return `"${action.prompt.slice(0, 60)}${action.prompt.length > 60 ? "…" : ""}"`;
     case "profile_switch":
-      return `switch profile: ${action.profile}`;
+      return action.profile;
     case "pack_install":
-      return `install: ${action.source}`;
+      return action.source;
     case "policy_apply":
-      return `apply policy: ${action.policy}`;
+      return action.policy;
     case "condition":
-      return `if ${action.check.slice(0, 60)}`;
+      return `if ${action.check.slice(0, 60)}${action.check.length > 60 ? "…" : ""}`;
     case "wait":
-      return `wait: ${action.condition.slice(0, 60)}`;
+      return `${action.condition.slice(0, 60)}${action.condition.length > 60 ? "…" : ""}`;
     case "manual":
-      return `manual: ${action.prompt.slice(0, 60)}`;
+      return `"${action.prompt.slice(0, 60)}${action.prompt.length > 60 ? "…" : ""}"`;
   }
 }
