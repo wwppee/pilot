@@ -21,6 +21,7 @@
 
 import Fastify, { type FastifyInstance } from "fastify";
 import fastifyCookie from "@fastify/cookie";
+import fastifyWebsocket from "@fastify/websocket";
 import { randomUUID } from "node:crypto";
 
 import {
@@ -33,6 +34,7 @@ import { VERSION } from "../core/version.js";
 
 import { readOrCreateToken, TOKEN_HEADER, verifyToken } from "./auth.js";
 import { CSRF_COOKIE, CSRF_HEADER, CsrfState } from "./csrf.js";
+import { PiRpcBridge } from "./pi-rpc-bridge.js";
 
 // ─── Server options ────────────────────────────────────────
 
@@ -116,12 +118,27 @@ export async function startServer(
   });
 
   await app.register(fastifyCookie);
+  // v0.5.14+: WebSocket transport for pi RPC. We don't pass `options`
+  // here because the global onRequest hook already gates by token;
+  // the WS route below re-validates the subprotocol and rejects.
+  await app.register(fastifyWebsocket);
 
   // ─── Hooks: token + origin + CSRF ─────────────────────
 
   app.addHook("onRequest", async (req, reply) => {
     // Health check is unauthenticated (for "is server up?" checks).
     if (req.url === "/health" && req.method === "GET") return;
+
+    // The WebSocket route handles its own auth via the
+    // `pilot-token` subprotocol. We still want the upgrade to
+    // come through without the global hook forcing a header
+    // check (browsers can't add custom headers to WebSocket).
+    if (
+      req.headers.upgrade &&
+      String(req.headers.upgrade).toLowerCase() === "websocket"
+    ) {
+      return;
+    }
 
     // Token check
     const provided = req.headers[TOKEN_HEADER];
@@ -692,6 +709,43 @@ export async function startServer(
 
   // Tool / Profile suggestion — moved above /plans/:id (P1#9).
   // See the comment near the top of the Plan routes block.
+
+  // ─── WebSocket: pi RPC bridge (v0.5.14+) ────────────
+  //
+  // Browser → WebSocket → Pilot server → RpcClient → `pi --mode rpc`.
+  // The browser speaks pi's JSON-lines RPC protocol directly via
+  // `usePiSession()` (see web/src/lib/usePiSession.ts). One bridge
+  // instance per connection; pi is spawned fresh per connection.
+  //
+  // Auth: client must include `pilot-token` as a subprotocol, e.g.
+  //   new WebSocket(url, ["pilot-token", "<token>"])
+  // The `socket.protocol` after handshake reads back as the joined
+  // subprotocols string; we parse out the token and verify.
+  app.get("/api/pi/ws", { websocket: true }, (socket /* _req */) => {
+    // @fastify/websocket passes the WebSocket directly. After
+    // the handshake `socket.protocol` is the single subprotocol
+    // name the server negotiated — we expect a token-as-name
+    // pattern: client passes `["pilot-token-<TOKEN>"]` and we
+    // strip the prefix to verify. Browsers can't add custom
+    // headers to WebSocket, so subprotocol is the only way to
+    // authenticate without a query string (which would leak
+    // into logs).
+    const proto = String(socket.protocol ?? "");
+    const prefix = "pilot-token-";
+    const presentedToken = proto.startsWith(prefix)
+      ? proto.slice(prefix.length)
+      : "";
+    if (!presentedToken || !verifyToken(presentedToken, token)) {
+      socket.close(1008, "unauthorized");
+      return;
+    }
+
+    const bridge = new PiRpcBridge(socket);
+    const cwd = process.env.HOME ?? process.cwd();
+    void bridge.start(cwd).catch((e: Error) => {
+      app.log.error(e, "pi rpc bridge failed to start");
+    });
+  });
 
   // ─── Centralized error handler ──────────────────────
 

@@ -26,6 +26,14 @@
 >
 > **下一站**：v0.6.0 PlanExecutor（反馈循环）。retry/skip 按钮等实时控制要等 PlanExecutor 就绪——这次 v0.5.13 没做按钮，但 DAG 视图 + 事件时间轴已经为 v0.6.0 的实时刷新铺好了 UI。
 >
+> **2026-07-09 校准 (3)**：**v0.5.14 已发**——「Pilot 在浏览器里跑 pi」的目标落地第一段。Pilot server 加 WebSocket 路由 `/api/pi/ws`，每个浏览器 tab 直接连到服务端 spawn 的 `pi --mode rpc` 子进程；web 侧 `<usePiSession>` hook 把 WebSocket 封成 React state，配合 `/playground` 演示页验证整条链路：
+>
+> | 版本 | 内容 |
+> |---|---|
+> | **v0.5.14** | Pi RPC bridge：服务端 `PiRpcBridge` 包 `RpcClient`（来自 `@earendil-works/pi-coding-agent`），通过 30+ 类型化 `RpcCommand` 把 pi 的 RPC 协议映射到 WebSocket。token 通过 `Sec-WebSocket-Protocol` 子协议传递（浏览器 WebSocket API 不能加自定义 header）。web 侧 `<usePiSession>` + `/playground` 演示 prompt/abort/new-session 流式事件。`/api/pi/token` 端点暴露 token 给浏览器（同源 localhost 才安全）。WebSocket 的 onRequest 钩子跳过全局 token 检查；握手后由 `/api/pi/ws` 路由自己读 `socket.protocol` 校验。|
+>
+> **下一站**：v0.6.0 PlanExecutor。Plan 的 `pi_session` action 直接复用 `usePiSession` + RpcClient 调 `r.prompt()`，不再需要单独的集成层。retry/skip 按钮也会基于 WebSocket 实时刷新（PlanExecutor 写事件 → JSONL → 浏览器收 WS push → 重新渲染）。
+>
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
 ## 阶段一：看见 Pi（v0.1 - v0.3.x，已发）

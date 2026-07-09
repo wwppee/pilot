@@ -23,6 +23,7 @@ const en: Dict = {
   "nav.capabilities": "Capabilities",
   "nav.avatars": "Avatars",
   "nav.plans": "Plans",
+  "nav.playground": "Playground",
   // v0.4.14: nav groups
   "nav.groupInspect": "Inspect",
   "nav.groupManage": "Manage",

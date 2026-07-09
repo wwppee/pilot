@@ -23,6 +23,7 @@ const zh: Dict = {
   "nav.capabilities": "能力",
   "nav.avatars": "Avatars",
   "nav.plans": "Plans",
+  "nav.playground": "试玩",
   // v0.4.14: nav groups
   "nav.groupInspect": "查看",
   "nav.groupManage": "管理",

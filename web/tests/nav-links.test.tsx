@@ -36,9 +36,9 @@ describe("NavLinks (v0.4.14 grouped nav)", () => {
     expect(manage).not.toBeNull();
   });
 
-  it("includes all 13 nav items (8 Inspect + 5 Manage)", () => {
+  it("includes all 14 nav items (9 Inspect + 5 Manage)", () => {
     const totalItems = NAV_GROUPS.reduce((n, g) => n + g.items.length, 0);
-    expect(totalItems).toBe(13);
+    expect(totalItems).toBe(14);
     // Spot-check key entries survived the refactor.
     const allHrefs = NAV_GROUPS.flatMap((g) => g.items.map((i) => i.href));
     expect(allHrefs).toContain("/");
@@ -92,7 +92,7 @@ describe("NavLinks (v0.4.14 grouped nav)", () => {
     expect(visibleLabels.length).toBeGreaterThanOrEqual(3);
   });
 
-  it("Inspect group contains 8 items (Dashboard, Sessions, Usage, Tools, Context, Capabilities, Avatars, Plans)", () => {
+  it("Inspect group contains 9 items (Dashboard, Sessions, Usage, Tools, Context, Capabilities, Avatars, Plans, Playground)", () => {
     const inspectGroup = NAV_GROUPS.find(
       (g) => g.labelKey === "nav.groupInspect",
     )!;
@@ -105,6 +105,7 @@ describe("NavLinks (v0.4.14 grouped nav)", () => {
       "nav.capabilities",
       "nav.avatars",
       "nav.plans",
+      "nav.playground",
     ]);
   });
 

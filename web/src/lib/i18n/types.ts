@@ -43,6 +43,8 @@ export type Dict = {
   "nav.capabilities": string;
   "nav.avatars": string;
   "nav.plans": string;
+  // v0.5.14+: pi RPC playground.
+  "nav.playground": string;
   "nav.groupInspect": string;
   "nav.groupManage": string;
 
