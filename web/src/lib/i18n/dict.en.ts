@@ -53,6 +53,15 @@ const en: Dict = {
   "try.developerDetails": "Developer details",
   "try.developerDetailsHint":
     "Raw events from the pi RPC bridge — useful for debugging.",
+  // v0.5.20: SessionTree view of the full conversation DAG.
+  "try.tree.title": "Conversation tree",
+  "try.tree.hint":
+    "Branches show where the conversation forked. Click ↳ on a user prompt to branch from that exact point.",
+  "try.tree.empty": "No tree data — start a prompt to populate.",
+  "try.tree.stats": "{n} nodes",
+  "try.tree.branches.one": "{n} branch",
+  "try.tree.branches.other": "{n} branches",
+  "try.tree.depth": "depth {n}",
   // v0.5.18: /help page — glossary + how-tos for beginners.
   "help.h1": "Help — Pilot for beginners",
   "help.subtitle":

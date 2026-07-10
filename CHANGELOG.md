@@ -2,6 +2,32 @@
 
 ## Unreleased
 
+### v0.5.20 — Session tree visualization on /try
+
+Surface pi's full conversation DAG inside the chat page. The existing bubble-level fork action (v0.5.16) only worked for the visible turn — this version adds a sidebar-style view of all branches so users can see + fork from anywhere in the history.
+
+**New component (`web/src/components/SessionTreeView.tsx`)**
+- Fetches `GET /sessions/:id/tree` and renders a nested unordered list (depth-based indentation, vertical connectors on each level, siblingIndex/siblingCount for branch numbering).
+- Highlights the linear path to the current leaf (best-effort: walk from the latest event timestamp back to root).
+- Each user node gets a hover-revealed `↳` that calls `fork(entryId)` directly with the tree's node id — no need to look up via `get_fork_messages`.
+- Stats line: total nodes / branch count / max depth.
+- Empty / loading / error states.
+
+**Try-page wiring**
+- New collapsible "Conversation tree" `<details>` panel sits between SessionPanel and the chat area.
+- `handleTreeFork(entryId, prompt)` reuses the same `forkedFrom` + local-messages-clear flow as the bubble fork.
+- Extracted `forkByText(text)` so the existing bubble fork and the new tree-row fork share the same `get_fork_messages` lookup path.
+- `latestEventTimestampMs` derived from the events stream powers the "current path" highlight.
+
+**i18n**
+- 6 new keys: `try.tree.title / hint / empty / stats / branches.one+other / depth`.
+
+**Tests**
+- New `web/tests/session-tree.test.ts` (7 cases): flatten linear / branching / deep trees, `findCurrentPath` no-events / linear / branch-divergence, type sanity.
+- core unit: 522/522 ✓
+- web: 170/170 ✓ (+7)
+- format clean (root + web) · lint clean
+
 ### v0.5.19 — Per-page beginner guidance for the remaining 11 pages
 
 v0.5.18 added the shared components (Hint, GlossaryTerm, WelcomeBanner, NavTooltip) and the `/help` page, and applied them to Dashboard / Sessions / Try. This version finishes the pass: every remaining page now opens with a collapsible "What is this?" Hint, and inline jargon is wrapped in `<GlossaryTerm>` so the same definition is used everywhere.

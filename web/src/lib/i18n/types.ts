@@ -79,6 +79,14 @@ export type Dict = {
   "try.tool.args": string;
   "try.developerDetails": string;
   "try.developerDetailsHint": string;
+  // v0.5.20: SessionTree view.
+  "try.tree.title": string;
+  "try.tree.hint": string;
+  "try.tree.empty": string;
+  "try.tree.stats": string;
+  "try.tree.branches.one": string;
+  "try.tree.branches.other": string;
+  "try.tree.depth": string;
   // v0.5.16: pi session tree (rename / clone / fork).
   "try.session.title": string;
   "try.session.unnamed": string;

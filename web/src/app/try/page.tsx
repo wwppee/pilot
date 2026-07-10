@@ -36,6 +36,7 @@ import {
 } from "@/components/SessionPanel";
 import { BubbleActions } from "@/components/BubbleActions";
 import { OverflowMenu, OverflowMenuItem } from "@/components/OverflowMenu";
+import { SessionTreeView } from "@/components/SessionTreeView";
 import { Hint } from "@/components/Hint";
 import { GlossaryTerm } from "@/components/GlossaryTerm";
 
@@ -186,16 +187,27 @@ export default function TryPage() {
       const textBlock = bubble.blocks.find((b) => b.type === "text");
       const bubbleText = textBlock?.type === "text" ? textBlock.text : "";
       if (!bubbleText) throw new Error("no text in bubble to fork from");
+      await forkByText(bubbleText);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [session, sessionState.sessionName, refreshSessionState, t],
+  );
 
+  /**
+   * Fork from any source — bubble or tree node — given a prompt
+   * text. Looks up the matching entryId via `get_fork_messages` and
+   * then invokes the fork RPC.
+   */
+  const forkByText = useCallback(
+    async (text: string) => {
       const forkable = (await session.send({
         type: "get_fork_messages",
       })) as Array<{ entryId: string; text: string }> | unknown;
       const list = Array.isArray(forkable) ? forkable : [];
-      const match = [...list].reverse().find((m) => m.text === bubbleText);
+      const match = [...list].reverse().find((m) => m.text === text);
       if (!match) {
         throw new Error("could not find this message in pi's tree");
       }
-
       setForkedFrom(sessionState.sessionName || t("try.session.unnamed"));
       setLocalUserMessages([]);
       await session.send({ type: "fork", entryId: match.entryId });
@@ -203,6 +215,44 @@ export default function TryPage() {
     },
     [session, sessionState.sessionName, refreshSessionState, t],
   );
+
+  /**
+   * Tree-row fork — called from the SessionTreeView. We don't
+   * have a `bubble` here; we have a `preview` string and an
+   * `entryId` (the tree node id is the JSONL entry id, which is
+   * also pi's fork identifier).
+   */
+  const handleTreeFork = useCallback(
+    async (entryId: string, prompt: string) => {
+      // Prefer direct entryId (no need to look up via
+      // get_fork_messages) — the tree knows the exact id.
+      setForkedFrom(sessionState.sessionName || t("try.session.unnamed"));
+      setLocalUserMessages([]);
+      await session.send({ type: "fork", entryId });
+      await refreshSessionState();
+      // The `prompt` arg is currently informational; keep it on
+      // the signature so future iterations can show "forking from
+      // '<first 40 chars>…'" toasts without changing the contract.
+      void prompt;
+    },
+    [session, sessionState.sessionName, refreshSessionState, t],
+  );
+
+  /**
+   * Latest event timestamp (ms) for the SessionTreeView's
+   * "current path" heuristic. Pulled from the most recent event
+   * whose payload has a timestamp we can parse.
+   */
+  const latestEventTimestampMs = useMemo(() => {
+    for (let i = session.events.length - 1; i >= 0; i--) {
+      const e = session.events[i]!.event as Record<string, unknown>;
+      // message_start / message_end carry the inner message.timestamp
+      const m = e["message"] as Record<string, unknown> | undefined;
+      const t = m?.["timestamp"];
+      if (typeof t === "number") return t;
+    }
+    return undefined;
+  }, [session.events]);
 
   const statusLabel = (() => {
     switch (session.state) {
@@ -380,6 +430,19 @@ export default function TryPage() {
           forkedFrom={forkedFrom}
         />
       </div>
+
+      <details className="surface rounded-lg p-3 text-xs">
+        <summary className="cursor-pointer font-medium">
+          <T k="try.tree.title" />
+        </summary>
+        <div className="mt-2">
+          <SessionTreeView
+            sessionId={sessionState.sessionId || null}
+            latestEventTimestamp={latestEventTimestampMs}
+            onFork={handleTreeFork}
+          />
+        </div>
+      </details>
 
       <section
         ref={scrollRef}

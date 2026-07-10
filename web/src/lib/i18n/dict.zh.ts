@@ -50,6 +50,15 @@ const zh: Dict = {
   "try.tool.args": "参数",
   "try.developerDetails": "开发者详情",
   "try.developerDetailsHint": "pi RPC 桥接的原始事件——便于调试。",
+  // v0.5.20: SessionTree view of the full conversation DAG.
+  "try.tree.title": "对话树",
+  "try.tree.hint":
+    "分支显示对话在哪里分叉。点击用户提示上的 ↳ 从那个点新建分支。",
+  "try.tree.empty": "还没有树数据——发条 prompt 试试。",
+  "try.tree.stats": "{n} 个节点",
+  "try.tree.branches.one": "{n} 个分支",
+  "try.tree.branches.other": "{n} 个分支",
+  "try.tree.depth": "深度 {n}",
   // v0.5.18: /help page — glossary + how-tos for beginners.
   "help.h1": "帮助 — 新手入门",
   "help.subtitle":

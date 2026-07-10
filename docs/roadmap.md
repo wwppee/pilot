@@ -132,6 +132,16 @@
 >
 > Glossary 新增 `tool`（14 项）。`onboarding.test.tsx` +1。core 522/522、web 163/163、format 双清、lint clean。
 >
+> **2026-07-10 校准 (12)**：**v0.5.20 已发**——把 pi 完整会话树画到 `/try` 页面。之前 v0.5.16 的 bubble fork 只能对当前 turn 操作；这版加一个折叠的"Conversation tree"面板，能看见所有分支 + 从任意 user 节点 fork。
+>
+> | 改动 | 位置 |
+> |---|---|
+> | 新组件 `SessionTreeView` | `web/src/components/SessionTreeView.tsx` —— 拉 `GET /sessions/:id/tree`，渲染嵌套 ul（按 depth 缩进 + 垂直连接线 + siblingIndex/siblingCount 标号），高亮当前路径（用 events 时间戳反推），每个 user 节点 hover 出 `↳` 直接 fork。 |
+> | Try 页面接入 | `app/try/page.tsx` —— 在 SessionPanel 和 chat 之间加 `<details>` 折叠面板；抽出 `forkByText` 让 bubble fork 和 tree fork 共用 `get_fork_messages` 查找；新 `latestEventTimestampMs` 给 tree 高亮用。 |
+> | i18n | 6 个新 key（title / hint / empty / stats / branches.one+other / depth）。 |
+>
+> 新增 `web/tests/session-tree.test.ts` 7 个用例（flatten 线性/分支/深树 + findCurrentPath 无事件/线性/分支发散）。core 522/522、web 170/170（+7）、format 双清、lint clean。
+>
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
 ## 阶段一：看见 Pi（v0.1 - v0.3.x，已发）
