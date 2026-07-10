@@ -114,6 +114,24 @@
 >
 > 新增 `web/tests/onboarding.test.tsx` 8 个用例 + `nav-links.test.tsx` 更新。core 522/522、web 163/163（+10）、lint clean、format 双清。剩余 11 个页面（Usage / Tools / Context / Capabilities / Avatars / Plans / Packages / Profiles / Forge / Policy / Compose）的引导下个版本 v0.5.19 走。
 >
+> **2026-07-10 校准 (11)**：**v0.5.19 已发**——v0.5.18 铺完共享组件 + /help + nav + 3 个关键页；这版补全剩下 11 个页面：
+>
+> | 页面 | Hint 主题 | 关键 GlossaryTerm |
+> |---|---|---|
+> | Usage | token / cost / cache 解释 | token, profile |
+> | Tools | 工具是什么 + safety badge | tool, policy |
+> | Context | loaded vs info 文件 | context |
+> | Capabilities | capability 是什么 | capability |
+> | Avatars | avatar vs profile 区别 | avatar, profile |
+> | Plans | plan 是什么 + v0.6.0 executor | plan |
+> | Packages | package 是什么 + 安装流 | pack, tool, capability |
+> | Profiles | profile vs avatar 区别 | profile, capability, avatar |
+> | Forge | forge 是干嘛的 | capability, profile |
+> | Policy | policy 是什么 + apply/unapply | policy |
+> | Compose | compose 是 sandbox 不是配置工具 | capability, profile |
+>
+> Glossary 新增 `tool`（14 项）。`onboarding.test.tsx` +1。core 522/522、web 163/163、format 双清、lint clean。
+>
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
 ## 阶段一：看见 Pi（v0.1 - v0.3.x，已发）
