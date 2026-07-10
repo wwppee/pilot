@@ -163,10 +163,28 @@ export class PlanExecutor {
     this.home = opts.home;
     this.service = opts.service;
     this.dispatchers = new Map();
-    for (const [type, handler] of Object.entries(
-      opts.dispatchers ?? {},
-    ) as Array<[StepAction["type"], ActionHandler]>) {
-      this.dispatchers.set(type, handler);
+    // P2 fix: validate each entry key against the StepAction
+    // union. The previous `as Array<[StepAction["type"], ...]>`
+    // cast silently accepted any string (typos, garbage keys)
+    // and stuffed them into the dispatchers map, where they'd
+    // never fire. Now we skip unknown keys and warn at the
+    // executor boundary (so tests can assert).
+    const validKeys = new Set<StepAction["type"]>([
+      "pilot_command",
+      "pi_session",
+      "profile_switch",
+      "pack_install",
+      "policy_apply",
+      "condition",
+      "wait",
+      "manual",
+    ]);
+    for (const [type, handler] of Object.entries(opts.dispatchers ?? {})) {
+      if (!validKeys.has(type as StepAction["type"])) {
+        console.warn(`PlanExecutor: ignoring unknown dispatcher key "${type}"`);
+        continue;
+      }
+      this.dispatchers.set(type as StepAction["type"], handler);
     }
     // Install defaults if the caller didn't override them.
     if (!this.dispatchers.has("pilot_command")) {
@@ -668,6 +686,12 @@ export class PlanExecutor {
         ? now
         : plan.completedAt,
       ...(result ? { result } : {}),
+      // For cancelled plans, the old `result` (from a prior
+      // completed run that was retried, or the in-flight
+      // aggregate we just wrote) would say `success: true` —
+      // a contradiction. Strip it; the `status: "cancelled"`
+      // is the source of truth.
+      ...(finalStatus === "cancelled" ? { result: undefined } : {}),
     };
     await writePlan(this.planId, updated, this.home);
 
@@ -717,8 +741,16 @@ export class PlanExecutor {
         ms,
       );
     });
+    // P1 fix: attach an independent catch to fn() so any rejection
+    // that arrives AFTER the race has already settled (e.g. the
+    // timeout fired first but fn() rejects a tick later) doesn't
+    // surface as an unhandledRejection. The race still observes
+    // the rejection if it happens FIRST — we just make sure the
+    // promise is "handled" in all cases.
+    const fnPromise = fn();
+    fnPromise.catch(() => undefined);
     try {
-      return await Promise.race([fn(), timeout]);
+      return await Promise.race([fnPromise, timeout]);
     } finally {
       if (timer) clearTimeout(timer);
     }
@@ -772,6 +804,7 @@ const defaultPilotCommandHandler: ActionHandler = async (step, signal) => {
     ...((step.input?.env as Record<string, string>) ?? {}),
   };
 
+  const start = Date.now();
   return new Promise<StepOutput>((resolve, reject) => {
     const child = execFile(
       "pilot",
@@ -797,7 +830,10 @@ const defaultPilotCommandHandler: ActionHandler = async (step, signal) => {
           success: true,
           summary: `pilot ${command} ${args.join(" ")}`.trim(),
           data: { stdout, stderr },
-          durationMs: 0, // set by caller if needed
+          // P1 fix: fill the real wall-clock duration, not a
+          // hardcoded 0. The Step schema propagates this to
+          // the persisted step output.
+          durationMs: Date.now() - start,
         });
       },
     );
@@ -1016,32 +1052,238 @@ async function defaultConditionHandler(
 
 /**
  * Evaluate a condition's `check` string.
- * See defaultConditionHandler for the supported forms.
+ *
+ * v0.6.1: small, safe DSL — no `new Function` / `eval`. Supported:
+ *
+ *   Literals:
+ *     "true" | "false"
+ *
+ *   Step access:
+ *     step.<id>.success           → boolean from stepResults
+ *     step.<id>.output.<key>      → arbitrary output field
+ *     step.<id>.<field>           → alias for output.<field>
+ *
+ *   Combinators (variadic, left-associative):
+ *     and(a, b, ...)              → all truthy
+ *     or(a, b, ...)               → any truthy
+ *     not(a)                      → logical not
+ *     eq(a, b)                    → loose equality
+ *     neq(a, b)                   → loose inequality
+ *     contains(haystack, needle)  → string contains OR array includes
+ *
+ * Whitespace is ignored. Anything not matching the grammar
+ * evaluates to `false` (safe default — typos never accidentally
+ * run the then-branch).
  */
 function evaluateCondition(check: string, executor: PlanExecutor): boolean {
   const trimmed = check.trim();
   if (trimmed === "true") return true;
   if (trimmed === "false") return false;
-  // step.<id>.success lookup
-  const m = /^step\.([\w-]+)\.success$/.exec(trimmed);
-  if (m) {
-    const stepId = m[1]!;
-    return executor.getRecordedStepSuccess(stepId);
-  }
-  // Generic JS expression against a context object. We use
-  // `new Function(...)` rather than `eval` so the parser
-  // can't reach into local scope. The expression is still
-  // arbitrary — plans are user-authored and the executor
-  // runs in-process, so this is acceptable.
+
+  const parser = new ConditionParser(trimmed, executor);
   try {
-    const ctx = executor.getConditionContext();
-    const fn = new Function("ctx", `"use strict"; return (${trimmed});`);
-    return Boolean(fn(ctx));
+    const result = parser.parseExpr();
+    return Boolean(result);
   } catch {
-    // Unparseable expressions default to false so a typo
-    // doesn't accidentally run the then-branch.
     return false;
   }
+}
+
+/**
+ * Tiny hand-rolled parser for the condition DSL. We avoid
+ * `new Function` / `eval` entirely — the parser only ever
+ * walks a fixed grammar and returns primitives, so a hostile
+ * `check` string can't reach the host's runtime.
+ */
+class ConditionParser {
+  private pos = 0;
+
+  constructor(
+    private readonly src: string,
+    private readonly executor: PlanExecutor,
+  ) {}
+
+  /** expr := orExpr */
+  parseExpr(): unknown {
+    const v = this.parseOr();
+    this.skipWs();
+    if (this.pos < this.src.length) {
+      throw new Error(`trailing input at pos ${this.pos}`);
+    }
+    return v;
+  }
+
+  /** orExpr := andExpr ("or" andExpr)* */
+  private parseOr(): unknown {
+    let left = this.parseAnd();
+    while (true) {
+      this.skipWs();
+      if (!this.consumeKeyword("or")) break;
+      const right = this.parseAnd();
+      left = left || right;
+    }
+    return left;
+  }
+
+  /** andExpr := notExpr ("and" notExpr)* */
+  private parseAnd(): unknown {
+    let left = this.parseNot();
+    while (true) {
+      this.skipWs();
+      if (!this.consumeKeyword("and")) break;
+      const right = this.parseNot();
+      left = left && right;
+    }
+    return left;
+  }
+
+  /** notExpr := "not" notExpr | primary */
+  private parseNot(): unknown {
+    this.skipWs();
+    if (this.consumeKeyword("not")) {
+      return !this.parseNot();
+    }
+    return this.parsePrimary();
+  }
+
+  /** primary := literal | stepAccess | combinator | "(" expr ")" */
+  private parsePrimary(): unknown {
+    this.skipWs();
+    if (this.pos >= this.src.length) {
+      throw new Error("unexpected end of input");
+    }
+    const ch = this.src[this.pos];
+    if (ch === "(") {
+      this.pos++;
+      const inner = this.parseOr();
+      this.skipWs();
+      if (this.src[this.pos] !== ")") throw new Error("expected )");
+      this.pos++;
+      return inner;
+    }
+    if (ch === '"' || ch === "'") return this.parseString();
+    // Identifier / step.<id>...
+    const m = /^[A-Za-z_][\w-]*(?:\.[\w-]+)*/.exec(this.src.slice(this.pos));
+    if (!m) throw new Error("expected identifier");
+    const ident = m[0];
+    this.pos += ident.length;
+    // Combinator call?
+    this.skipWs();
+    if (this.src[this.pos] === "(") {
+      return this.parseCombinator(ident);
+    }
+    // Step access?
+    if (ident.startsWith("step.")) {
+      return this.readStepAccess(ident);
+    }
+    // Bare identifier — not in grammar. Treat as a string.
+    return ident;
+  }
+
+  private parseString(): string {
+    const quote = this.src[this.pos];
+    this.pos++;
+    const start = this.pos;
+    while (this.pos < this.src.length && this.src[this.pos] !== quote) {
+      this.pos++;
+    }
+    if (this.pos >= this.src.length) throw new Error("unterminated string");
+    const v = this.src.slice(start, this.pos);
+    this.pos++; // skip closing quote
+    return v;
+  }
+
+  private parseCombinator(name: string): unknown {
+    // Skip the opening paren.
+    this.pos++;
+    const args: unknown[] = [];
+    this.skipWs();
+    if (this.src[this.pos] !== ")") {
+      while (true) {
+        args.push(this.parseOr());
+        this.skipWs();
+        if (this.src[this.pos] === ",") {
+          this.pos++;
+          this.skipWs();
+        } else break;
+      }
+    }
+    if (this.src[this.pos] !== ")") throw new Error("expected )");
+    this.pos++;
+    return this.applyCombinator(name, args);
+  }
+
+  private applyCombinator(name: string, args: unknown[]): unknown {
+    switch (name) {
+      case "not":
+        if (args.length !== 1) throw new Error("not() takes 1 arg");
+        return !args[0];
+      case "and":
+        return args.every((a) => Boolean(a));
+      case "or":
+        return args.some((a) => Boolean(a));
+      case "eq":
+        if (args.length !== 2) throw new Error("eq() takes 2 args");
+        // Loose equality is intentional: `eq("1", 1)` is true
+        // because plan DSLs cross type boundaries (string from
+        // a step's output, number from a constant).
+        return args[0] == args[1]; // eslint-disable-line eqeqeq
+      case "neq":
+        if (args.length !== 2) throw new Error("neq() takes 2 args");
+        return args[0] != args[1]; // eslint-disable-line eqeqeq
+      case "contains":
+        if (args.length !== 2) throw new Error("contains() takes 2 args");
+        return containsValue(args[0], args[1]);
+      default:
+        throw new Error(`unknown combinator ${name}`);
+    }
+  }
+
+  private readStepAccess(ident: string): unknown {
+    // ident like "step.s1.success" or "step.s1.output.foo".
+    const parts = ident.split(".");
+    if (parts.length < 2 || parts[0] !== "step") {
+      throw new Error("expected step.<id>...");
+    }
+    const stepId = parts[1]!;
+    const stepRecord = this.executor.getConditionContext().steps[stepId];
+    if (parts.length === 2) {
+      // step.<id> — boolean (success)
+      return stepRecord?.success === true;
+    }
+    const field = parts[2]!;
+    if (field === "success") return stepRecord?.success === true;
+    // output.<key> or <key>
+    const out = stepRecord?.output as Record<string, unknown> | undefined;
+    if (!out) return undefined;
+    const key = field === "output" ? parts[3] : field;
+    return key !== undefined ? out[key] : undefined;
+  }
+
+  private skipWs(): void {
+    while (this.pos < this.src.length && /\s/.test(this.src[this.pos]!)) {
+      this.pos++;
+    }
+  }
+
+  private consumeKeyword(kw: string): boolean {
+    // kw must be followed by a non-identifier char (or EOF).
+    if (!this.src.startsWith(kw, this.pos)) return false;
+    const next = this.src[this.pos + kw.length];
+    if (next && /[\w-]/.test(next)) return false;
+    this.pos += kw.length;
+    return true;
+  }
+}
+
+function containsValue(haystack: unknown, needle: unknown): boolean {
+  if (typeof haystack === "string" && typeof needle === "string") {
+    return haystack.includes(needle);
+  }
+  if (Array.isArray(haystack)) {
+    return haystack.some((x) => x === needle);
+  }
+  return false;
 }
 
 /**
@@ -1099,27 +1341,23 @@ export class PlanExecutorRegistry {
       ...(home ? { home } : {}),
     });
     this.live.set(planId, exec);
-    // Run fire-and-forget; failures bubble via the run() promise
-    // but we don't await here. The service layer monitors isDone
-    // and cleans up via the `done` callback.
-    void exec.run().catch(() => {
-      // Errors are already recorded as plan_failed events by the
-      // executor's try/catch. We just need to make sure the
-      // registry entry is cleaned up.
-    });
-    // Cleanup hook: when done, evict after a short grace period
-    // (lets pending UI polls see the final state).
-    const cleanup = () => {
-      const e = this.live.get(planId);
-      if (e === exec) {
-        // Small delay so /plans/:id polls can read the
-        // completed state before we forget about it.
-        setTimeout(() => {
-          if (this.live.get(planId) === exec) this.live.delete(planId);
-        }, 1000);
-      }
-    };
-    void exec.run().then(cleanup, cleanup);
+    // Run fire-and-forget. Errors are already recorded as
+    // plan_failed events by the executor's try/catch — we just
+    // need the catch here so an unhandled rejection doesn't
+    // surface to the process. After completion, evict the
+    // registry entry after a short grace period so any pending
+    // UI polls (e.g. /plans/:id) can still read the terminal
+    // state from the live registry before it's gone.
+    void exec
+      .run()
+      .catch(() => undefined)
+      .finally(() => {
+        if (this.live.get(planId) === exec) {
+          setTimeout(() => {
+            if (this.live.get(planId) === exec) this.live.delete(planId);
+          }, 1000);
+        }
+      });
     return exec;
   }
 

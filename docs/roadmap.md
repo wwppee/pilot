@@ -195,6 +195,31 @@
 >
 > 测试：core 546/546（+12）、web 171/171、format 双清、lint clean、`npm run build` 成功、tsc clean。
 >
+> **2026-07-11 校准 (17)**：**v0.6.1 已发** —— 紧接 v0.6.0 的 9 bug 修 + PlanEditor（visual plan builder）。
+>
+> | 编号 | 位置 | 修复 |
+> |---|---|---|
+> | **P0** | `core/plan-executor.ts:1105+1122` | `PlanExecutorRegistry.start` 调了两次 `exec.run()` —— 双 promise + 双 error handler。合并成一次。 |
+> | **P1** | `core/plan-executor.ts:627-671` | `finalize()` 在 cancelled 时没清旧 `result`（之前 completed run 的 `result.success:true` 残留），可能 `status:cancelled` + `success:true` 矛盾。cancelled 显式 `result: undefined`。 |
+> | **P1** | `core/plan-executor.ts:709-725` | `runWithTimeout` 中 `fn()` 在 race 结束后 reject 会触发 `unhandledRejection`。加独立 `fnPromise.catch(() => undefined)` 防泄漏。 |
+> | **P1** | `core/plan-executor.ts:1036-1039` | `evaluateCondition` 用 `new Function("ctx", ...)` 跑任意表达式 —— 代码注入向量。换成手写递归下降 parser，支持 `true` / `false` / `step.<id>.success` / `step.<id>.output.<key>` / `and` / `or` / `not` / `eq` / `neq` / `contains` 闭合 DSL。语法外默认 `false`（typo 不会误跑 then-branch）。 |
+> | **P1** | `core/pi-session-runner.ts:206-210` | `cleanup()` 没 remove signal 上的 abort listener，长 plan 累积闭包。显式 `removeEventListener` + 清空 ref。 |
+> | **P1** | `core/plan-executor.ts:800` | `defaultPilotCommandHandler` 返回 `durationMs: 0`，调用方没填真值。改成 `Date.now() - start`。 |
+> | **P2** | `core/plan-executor.ts:166-168` | `Object.entries(... as ...)` 拼写错误键名静默接收。改成对 `StepAction` union 显式校验 + warn。 |
+> | **P2** | `core/pi-session-runner.ts:192` | `{ ...result, events: undefined }` 产生多余 `events: undefined` 字段。重建 data 对象只发有值的字段。 |
+> | **P3** | `web/components/WelcomeBanner.tsx:101,118` | "Step N" + "Dismiss welcome banner" 仍硬编码英文。换 `t("home.welcome.stepN", {n})` + `t("home.welcome.dismiss")`。 |
+>
+> | 新功能 | 位置 | 内容 |
+> |---|---|---|
+> | **新文件** | `web/components/PlanEditor.tsx` | 可视化 plan 编辑器。goal / title / strategy 字段；任务列表（add / remove / 上移下移 / dependsOn chip 选择器）；每任务可加步骤，每步骤按 action 类型显不同字段（pilot_command 的 command + args、pi_session 的 prompt + cwd、profile_switch / policy_apply 用下拉菜单、condition 显示 DSL 语法提示、wait 显示 timeoutMs、manual 显示 prompt textarea）。Sticky submit bar。<br/>提交走 `createPlanWithTasksForm` server action → 一个 POST 创建完整 plan。 |
+> | **Server route** | `core/server/server.ts:602-650` | `POST /plans` 现在接受 `tasks[]` + `strategy`（之前只接受 goal / title / context）。 |
+> | **i18n** | `web/src/lib/i18n/{types,dict.en,dict.zh}.ts` | 28 个新 `plans.editor.*` 键（goal / title / strategy / tasks / steps / dependsOn / move / remove / 提交 / 错误 / 字段标签）。 |
+> | **新测试** | `web/tests/plan-editor.test.tsx` (9 cases) | 空态 / 初始 goal / 增删任务 / 排序 / action-type 字段切换 / 内联错误（无 fetch）/ 有效提交触发 fetch。 |
+>
+> 关键设计：`<form noValidate>` 关掉 HTML5 native validation（让自定义 inline 错误先跑），goal 改用 `aria-required` 而不是 `required`（屏幕阅读器友好，但 browser 不拦截）。
+>
+> 测试：core **553/553**（+7）、web **180/180**（+9）、format 双清、lint clean、`npm run build` 成功、tsc clean（root + web）。
+>
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
 ## 阶段一：看见 Pi（v0.1 - v0.3.x，已发）

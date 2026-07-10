@@ -22,6 +22,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useI18n } from "@/components/I18n";
 
 export interface WelcomeStep {
   href: string;
@@ -50,6 +51,7 @@ export function WelcomeBanner({
   // localStorage. This avoids hydration mismatch (server can't see
   // localStorage).
   const [visible, setVisible] = useState(false);
+  const { t } = useI18n();
 
   useEffect(() => {
     try {
@@ -98,7 +100,7 @@ export function WelcomeBanner({
                   className="text-[10px] uppercase tracking-wide"
                   style={{ color: "var(--accent)" }}
                 >
-                  Step {i + 1}
+                  {t("home.welcome.stepN", { n: i + 1 })}
                 </span>
                 <Link
                   href={s.href}
@@ -115,7 +117,7 @@ export function WelcomeBanner({
           type="button"
           onClick={dismiss}
           className="text-xs text-[var(--text-muted)] hover:text-[var(--text)] shrink-0"
-          aria-label="Dismiss welcome banner"
+          aria-label={t("home.welcome.dismiss")}
         >
           ✕
         </button>

@@ -604,33 +604,53 @@ export async function startServer(
       goal?: unknown;
       title?: unknown;
       context?: unknown;
+      strategy?: unknown;
+      tasks?: unknown;
     };
   }>("/plans", async (req) => {
     const body = req.body ?? {};
-    const { goal, title, context } = body as {
+    const { goal, title, context, strategy, tasks } = body as {
       goal?: unknown;
       title?: unknown;
       context?: unknown;
+      strategy?: unknown;
+      tasks?: unknown;
     };
     if (typeof goal !== "string" || goal.trim().length === 0) {
       throw Object.assign(new Error("goal is required (non-empty string)"), {
         statusCode: 400,
       });
     }
-    // Build the input as `Partial<Plan>` but make sure `goal` is
-    // always present so it matches the service's `goal: string`
-    // required field. Without this, exactOptionalPropertyTypes
-    // rejects the call (Plan has optional `goal` under Partial, but
-    // service.createPlan requires it).
+    // v0.6.1: accept tasks[] so the web /plans/new editor can
+    // create a fully-populated plan in one POST (instead of
+    // creating an empty plan + N PUT updates). Each task
+    // shape is validated against the zod Task schema in
+    // service.createPlan; bad input → 400 from there.
     const input: {
       goal: string;
       title?: string;
+      strategy?: import("../core/plan.js").PlanStrategy;
+      tasks?: import("../core/plan.js").Task[];
       context?: Record<string, string>;
     } = {
       goal: goal.trim(),
     };
     if (typeof title === "string" && title.length > 0) {
       input.title = title;
+    }
+    if (
+      strategy === "sequential" ||
+      strategy === "parallel" ||
+      strategy === "adaptive"
+    ) {
+      input.strategy = strategy;
+    }
+    if (Array.isArray(tasks)) {
+      // The zod Task schema in service.createPlan validates each
+      // element; we just forward the JSON payload. The cast is
+      // safe because writePlan uses PlanInputSchema.parse which
+      // throws 400 on any shape mismatch.
+      input.tasks = tasks as unknown as import("../core/plan.js").Task[];
     }
     if (context && typeof context === "object") {
       // The server fills `cwd`; only forward a narrow allow-list.

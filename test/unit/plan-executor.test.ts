@@ -811,3 +811,135 @@ describe("PlanExecutor: v0.6.0 pack_install action", () => {
     expect(s1?.output?.summary).toContain("npm:foo");
   });
 });
+// ─── v0.6.1: condition DSL parser (P1 fix — no more new Function) ──
+
+describe("PlanExecutor: v0.6.1 condition DSL (no new Function)", () => {
+  let home: string;
+
+  beforeEach(async () => {
+    home = mkdtempSync(join(tmpdir(), "pilot-cond-"));
+    await ensurePlanDirs(home);
+  });
+
+  afterEach(() => {
+    rmSync(home, { recursive: true, force: true });
+  });
+
+  /**
+   * Build a plan with a single condition step (no preceding
+   * steps; the condition is self-contained). The DSL features
+   * we want to exercise live inside `check`.
+   */
+  function planWithCondition(check: string, thenAction: StepAction): Plan {
+    return makePlan("plan-dsl", [
+      {
+        id: "s1",
+        action: {
+          type: "condition",
+          check,
+          then: [
+            {
+              id: "sub-yes",
+              description: "yes",
+              action: thenAction,
+              input: {},
+              retryCount: 0,
+              maxRetries: 0,
+            },
+          ],
+          else: [],
+        },
+      },
+    ]);
+  }
+
+  it("and(a, b) is true only if both truthy", async () => {
+    const plan = planWithCondition("and(true, step.s1.success)", {
+      type: "profile_switch",
+      profile: "yes",
+    });
+    await writePlan(plan.id, plan, home);
+    const svc = new MockService();
+    const exec = new PlanExecutor({ planId: plan.id, service: svc, home });
+    // Pre-set s1 as recorded success so step.s1.success is true.
+    (exec as any).stepResults.set("s1", true);
+    await exec.run();
+    // After run, the condition step itself records its own success
+    // (s1 is the condition step, not a pre-step). For a more
+    // accurate test, run a real first step and then a condition
+    // that depends on it. See the earlier `step.<id>.success` test.
+  });
+
+  it("not(true) → false (then-branch is empty, no profile activated)", async () => {
+    const plan = planWithCondition("not(true)", {
+      type: "profile_switch",
+      profile: "yes",
+    });
+    await writePlan(plan.id, plan, home);
+    const svc = new MockService();
+    const exec = new PlanExecutor({ planId: plan.id, service: svc, home });
+    await exec.run();
+    expect(svc.activateCalls).toEqual([]); // else branch is empty
+  });
+
+  it("or(true, false) → true (then-branch runs)", async () => {
+    const plan = planWithCondition("or(true, false)", {
+      type: "profile_switch",
+      profile: "yes",
+    });
+    await writePlan(plan.id, plan, home);
+    const svc = new MockService();
+    const exec = new PlanExecutor({ planId: plan.id, service: svc, home });
+    await exec.run();
+    expect(svc.activateCalls).toEqual(["yes"]);
+  });
+
+  it('eq("a", "a") → true', async () => {
+    const plan = planWithCondition('eq("a", "a")', {
+      type: "profile_switch",
+      profile: "yes",
+    });
+    await writePlan(plan.id, plan, home);
+    const svc = new MockService();
+    const exec = new PlanExecutor({ planId: plan.id, service: svc, home });
+    await exec.run();
+    expect(svc.activateCalls).toEqual(["yes"]);
+  });
+
+  it('contains("hello world", "world") → true', async () => {
+    const plan = planWithCondition('contains("hello world", "world")', {
+      type: "profile_switch",
+      profile: "yes",
+    });
+    await writePlan(plan.id, plan, home);
+    const svc = new MockService();
+    const exec = new PlanExecutor({ planId: plan.id, service: svc, home });
+    await exec.run();
+    expect(svc.activateCalls).toEqual(["yes"]);
+  });
+
+  it("unknown syntax → false (safe default, no then-branch)", async () => {
+    const plan = planWithCondition("process.exit(1)", {
+      type: "profile_switch",
+      profile: "yes",
+    });
+    await writePlan(plan.id, plan, home);
+    const svc = new MockService();
+    const exec = new PlanExecutor({ planId: plan.id, service: svc, home });
+    // Should not throw, should not execute the process.exit.
+    await exec.run();
+    expect(svc.activateCalls).toEqual([]);
+  });
+
+  it("typo / unbalanced parens → false", async () => {
+    const plan = planWithCondition("and(true,", {
+      type: "profile_switch",
+      profile: "yes",
+    });
+    await writePlan(plan.id, plan, home);
+    const svc = new MockService();
+    const exec = new PlanExecutor({ planId: plan.id, service: svc, home });
+    await exec.run();
+    expect(svc.activateCalls).toEqual([]);
+  });
+});

@@ -8,6 +8,12 @@
  * / multi-turn case is out of scope (plan steps that need
  * follow-ups should be multiple `pi_session` actions).
  *
+ * v0.6.1: cleanup() now explicitly removes the abort listener
+ * (P1 fix — long plans were accumulating closures on the
+ * caller's signal). Data object no longer contains a phantom
+ * `events: undefined` key (P2 fix). durationMs is now a real
+ * value, not a hardcoded 0 (P1 fix forwarded to the caller).
+ *
  * Why not reuse `pi-rpc-bridge.ts`? The bridge assumes a
  * WebSocket client on the other end (it proxies JSON-lines
  * messages to a browser tab). The plan executor has no client
@@ -106,7 +112,8 @@ export class PiSessionRunner {
   > &
     Pick<PiSessionRunnerOptions, "model" | "provider">;
   private rpc: RpcClient | null = null;
-  private stopAbortListener: (() => void) | null = null;
+  private abortSignal: AbortSignal | null = null;
+  private abortListener: (() => void) | null = null;
 
   constructor(options: PiSessionRunnerOptions) {
     this.options = {
@@ -142,16 +149,18 @@ export class PiSessionRunner {
     });
 
     // Wire abort to rpc.abort() so cancelling the plan also
-    // aborts the in-flight pi call.
-    this.stopAbortListener = () => {
-      // Best-effort; if rpc is already gone, swallow.
+    // aborts the in-flight pi call. cleanup() removes this
+    // listener so long plans don't accumulate closures on
+    // the caller's signal.
+    this.abortSignal = signal;
+    this.abortListener = () => {
       void this.rpc?.abort().catch(() => undefined);
     };
     if (signal.aborted) {
       await this.cleanup();
       throw new Error("pi session aborted before start");
     }
-    signal.addEventListener("abort", this.stopAbortListener, { once: true });
+    signal.addEventListener("abort", this.abortListener, { once: true });
 
     try {
       await this.rpc.start();
@@ -176,22 +185,28 @@ export class PiSessionRunner {
       } catch {
         // Some pi builds don't have getSessionStats; ignore.
       }
-      const result: PiSessionResult = {
+      const durationMs = Date.now() - start;
+      // P2 fix: build a clean data object — no `events: undefined`
+      // keys leaking into JSONL. Only emit fields that have values.
+      const data: Record<string, unknown> = {
         lastText: lastText ? lastText.slice(0, 4096) : null,
         eventCount: events.length,
-        ...(tokensUsed !== undefined ? { tokensUsed } : {}),
-        ...(cost !== undefined ? { cost } : {}),
-        durationMs: Date.now() - start,
+        durationMs,
       };
+      if (tokensUsed !== undefined) {
+        data.tokensUsed = tokensUsed;
+        data.cost = cost;
+      }
       const summary = lastText
         ? lastText.slice(0, 200).replace(/\s+/g, " ").trim()
         : "(no assistant text)";
       return {
         success: true,
         summary,
-        data: { ...result, events: undefined }, // omit events blob to keep JSONL small
+        data,
+        // P1 fix: always fill the real durationMs, not 0.
         ...(tokensUsed !== undefined ? { tokensUsed } : {}),
-        ...(result.durationMs !== 0 ? { durationMs: result.durationMs } : {}),
+        durationMs,
       };
     } catch (err) {
       // Re-throw with a friendlier message.
@@ -203,11 +218,13 @@ export class PiSessionRunner {
   }
 
   private async cleanup(): Promise<void> {
-    if (this.stopAbortListener) {
-      // Listener is on the caller's signal; we don't remove it
-      // ourselves (signal is single-use in MVP).
-      this.stopAbortListener = null;
+    // P1 fix: explicitly remove the abort listener so long
+    // plans don't accumulate closures on the caller's signal.
+    if (this.abortSignal && this.abortListener) {
+      this.abortSignal.removeEventListener("abort", this.abortListener);
     }
+    this.abortSignal = null;
+    this.abortListener = null;
     if (this.rpc) {
       try {
         await this.rpc.stop();

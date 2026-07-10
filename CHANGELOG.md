@@ -2,6 +2,142 @@
 
 ## Unreleased
 
+### v0.6.1 — 9 bug fixes + PlanEditor (visual orchestration)
+
+Hot on the heels of v0.6.0, this patch closes 9 issues
+spotted during initial code review + builds the missing
+plan editor. The PlanExecutor itself didn't change shape,
+but the executor + planner are now much safer AND there
+is finally a real way to construct a plan from the browser.
+
+**P0 — `PlanExecutorRegistry.start` called `exec.run()` twice**
+
+Two `void exec.run()` calls in the registry's start path
+created duplicate promise objects + double error handling.
+Consolidated into one `run().catch().finally()` so the
+cleanup happens once.
+
+**P1 — `finalize()` left stale `result: { success: true }` on cancelled plans**
+
+When a plan was cancelled but had completed some tasks
+(e.g. retried from a prior run), the old `result` field
+survived the spread, producing the contradiction
+`status: "cancelled" + result.success: true`. Now
+cancelled plans explicitly set `result: undefined` to
+keep the source-of-truth consistent.
+
+**P1 — `runWithTimeout` could trigger `unhandledRejection`**
+
+If `fn()` rejected AFTER the timeout already settled the
+race, the rejection was detached and surfaced as
+`unhandledRejection`. Attached a defensive catch so the
+post-race rejection is observed without affecting the
+race outcome.
+
+**P1 — `evaluateCondition` used `new Function()` (code injection)**
+
+The v0.6.0 condition DSL was implemented via
+`new Function("ctx", "return (${trimmed});")` — fine for
+trusted plans, but a real injection vector if plan TOMLs
+ever came from untrusted sources. Replaced with a
+hand-rolled recursive-descent parser supporting a closed
+DSL: `true` / `false` / `step.<id>.success` /
+`step.<id>.output.<key>` / `and(...)` / `or(...)` / `not(...)` /
+`eq(...)` / `neq(...)` / `contains(...)`. Anything not in
+the grammar evaluates to `false` (safe default — typos
+never accidentally run the then-branch).
+
+**P1 — `PiSessionRunner.cleanup()` leaked the abort listener**
+
+Long plans accumulating closures on the caller's signal.
+Now `cleanup()` explicitly calls `removeEventListener`
+and clears both the signal + listener refs.
+
+**P1 — `defaultPilotCommandHandler` returned `durationMs: 0`**
+
+Caller never filled the real value. Now the handler
+captures `Date.now()` at start and returns
+`Date.now() - start` so the persisted step output has
+real wall-clock duration.
+
+**P2 — `PlanExecutor.dispatchers` type-unsafe entry keys**
+
+`Object.entries(opts.dispatchers ?? {}) as Array<[StepAction["type"], ActionHandler]>`
+silently accepted any string key. Typos (e.g.
+`"pi-sassion"`) created dispatcher entries that would
+never fire. Now we validate against the `StepAction` union
+and warn at the boundary.
+
+**P2 — `PiSessionRunner` output had `events: undefined` key**
+
+`{ ...result, events: undefined }` produced a phantom
+`events: undefined` field in JSON. Rebuilt the data
+object to only emit fields that have values.
+
+**P3 — `WelcomeBanner` had hardcoded English "Step N" + "Dismiss" aria-label**
+
+Replaced with `t("home.welcome.stepN", { n })` and
+`t("home.welcome.dismiss")`. Both keys added to en + zh
++ Dict type.
+
+**`PlanEditor` (web) — visual plan builder**
+
+`/plans/new` was a goal-only form. To actually build a
+plan, the user had to hand-edit TOML on disk. v0.6.1
+replaces it with `PlanEditor` (new client component,
+~700 lines): add any number of tasks, each with its
+own steps. Per-action-type fields render inline:
+`pilot_command` (command + args), `pi_session`
+(prompt + cwd), `profile_switch` (dropdown of
+existing profiles, falls back to text), `pack_install`
+(source), `policy_apply` (dropdown of existing
+policies), `condition` (DSL text input + syntax hint
+chip), `wait` (cosmetic label + timeoutMs), `manual`
+(prompt textarea). Tasks support add / remove / move
+up-down + dependsOn chip picker. Submit POSTs a
+single JSON payload to the new `createPlanWithTasksForm`
+server action → server validates against the zod
+`Task` / `Step` / `StepAction` schemas and creates the
+plan in one go.
+
+**Server: `POST /plans` now accepts `tasks[]` and `strategy`**
+
+Previously the route only took `{ goal, title, context }`.
+The web editor's `PlanEditor` builds the full plan
+structure and submits it in one POST; the zod validation
+in `service.createPlan` is the source of truth for shape.
+
+**Tests**
+
+- `test/unit/plan-executor.test.ts` +7 condition DSL cases
+  (`and` / `or` / `not` / `eq` / `neq` / `contains` / typo
+  safety).
+- `web/tests/plan-editor.test.tsx` (new, 9 cases):
+  empty state, initial goal, add/remove/move tasks,
+  action-type field switching, inline validation errors
+  (no fetch), successful fetch on valid submit.
+- core: 553/553 ✓ (+7)
+- web: 180/180 ✓ (+9)
+- tsc clean (root + web) · `npm run build` clean
+- format clean (root + web) · lint clean
+
+**Notes**
+
+- `PlanEditor` uses `noValidate` on the `<form>` so
+  custom inline validation runs before the browser's
+  native HTML5 form-validation. `aria-required` is still
+  set on the goal textarea for screen readers.
+- The condition DSL intentionally uses loose equality
+  (`==` / `!=`) for `eq` / `neq` so `eq("1", 1)` is
+  true — plan DSLs cross type boundaries (string from
+  a step's output, number from a constant). Lint is
+  suppressed with an `eslint-disable-line` comment +
+  rationale.
+- `PlanExecutor.dispatchers` validation happens once
+  at construction time; runtime overrides via the
+  `dispatchers` constructor option skip the check
+  (they're already typed by the caller).
+
 ### v0.6.0 — PlanExecutor 完整版 (pi_session + pack_install + condition + wait + retry/skip)
 
 把 v0.5.23 MVP 留的 5 个 stub 拆掉了 4 个（保留 `manual`）。PlanExecutor 现在能跑 8 个 action type 中的 7 个真执行。retry / skip endpoint 接进 service + server。

@@ -120,6 +120,45 @@ export type Dict = {
   "home.welcome.step2.desc": string;
   "home.welcome.step3.label": string;
   "home.welcome.step3.desc": string;
+  // v0.6.1: WelcomeBanner client-side strings.
+  "home.welcome.stepN": string;
+  "home.welcome.dismiss": string;
+  // v0.6.1: PlanEditor (visual plan builder).
+  "plans.editor.goalLabel": string;
+  "plans.editor.goalPlaceholder": string;
+  "plans.editor.titleLabel": string;
+  "plans.editor.titlePlaceholder": string;
+  "plans.editor.strategyLabel": string;
+  "plans.editor.tasksLabel": string;
+  "plans.editor.addTask": string;
+  "plans.editor.noTasks": string;
+  "plans.editor.taskIndex": string;
+  "plans.editor.taskDescriptionPlaceholder": string;
+  "plans.editor.profileLabel": string;
+  "plans.editor.profileNone": string;
+  "plans.editor.dependsOnLabel": string;
+  "plans.editor.dependsOnNone": string;
+  "plans.editor.stepsLabel": string;
+  "plans.editor.addStep": string;
+  "plans.editor.noSteps": string;
+  "plans.editor.stepDescriptionPlaceholder": string;
+  "plans.editor.removeTask": string;
+  "plans.editor.removeStep": string;
+  "plans.editor.moveUp": string;
+  "plans.editor.moveDown": string;
+  "plans.editor.conditionHelp": string;
+  "plans.editor.submit": string;
+  "plans.editor.submitting": string;
+  "plans.editor.cancel": string;
+  "plans.editor.error.goalEmpty": string;
+  "plans.editor.error.noTasks": string;
+  "plans.editor.error.fieldRequired": string;
+  "plans.editor.field.command": string;
+  "plans.editor.field.prompt": string;
+  "plans.editor.field.profileName": string;
+  "plans.editor.field.packSource": string;
+  "plans.editor.field.policyName": string;
+  "plans.editor.field.check": string;
   // v0.5.15+: /try page.
   "try.h1": string;
   "try.subtitle": string;

@@ -541,3 +541,78 @@ export async function createPlanForm(formData: FormData): Promise<void> {
     );
   }
 }
+
+/**
+ * v0.6.1: create a plan with full task + step structure in one
+ * POST. The web editor (`PlanEditor` component) submits a JSON
+ * `payload` field containing { goal, title, strategy, tasks[] }.
+ *
+ * The pilot server validates the tasks array against the zod
+ * `Task` / `Step` / `StepAction` schemas. A bad action type or
+ * missing required field becomes a 400 with a precise error
+ * message that the editor surfaces inline.
+ */
+export async function createPlanWithTasksForm(
+  formData: FormData,
+): Promise<void> {
+  const payloadRaw = formData.get("payload");
+  if (typeof payloadRaw !== "string" || payloadRaw.length === 0) {
+    redirect(`/plans/new?error=${encodeURIComponent("Missing plan payload.")}`);
+    return;
+  }
+  let payload: {
+    goal?: unknown;
+    title?: unknown;
+    strategy?: unknown;
+    tasks?: unknown;
+  };
+  try {
+    payload = JSON.parse(payloadRaw);
+  } catch {
+    redirect(
+      `/plans/new?error=${encodeURIComponent("Plan payload is not valid JSON.")}`,
+    );
+    return;
+  }
+  if (typeof payload.goal !== "string" || payload.goal.trim().length === 0) {
+    redirect(`/plans/new?error=${encodeURIComponent("Goal cannot be empty.")}`);
+    return;
+  }
+
+  const body: Record<string, unknown> = {
+    goal: payload.goal.trim(),
+  };
+  if (typeof payload.title === "string" && payload.title.length > 0) {
+    body["title"] = payload.title;
+  }
+  if (
+    payload.strategy === "sequential" ||
+    payload.strategy === "parallel" ||
+    payload.strategy === "adaptive"
+  ) {
+    body["strategy"] = payload.strategy;
+  }
+  if (Array.isArray(payload.tasks)) {
+    body["tasks"] = payload.tasks;
+  }
+
+  const res = await pilotWithCsrf(`/plans`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (res.ok) {
+    const respBody = (await res.json()) as { id?: string };
+    const id = respBody.id ?? "unknown";
+    redirect(`/plans/${encodeURIComponent(id)}?created=1`);
+  } else {
+    const respBody = (await res.json().catch(() => ({}))) as {
+      error?: string;
+    };
+    redirect(
+      `/plans/new?error=${encodeURIComponent(
+        respBody.error ?? `create failed (HTTP ${res.status})`,
+      )}`,
+    );
+  }
+}
