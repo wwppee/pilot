@@ -427,6 +427,38 @@ export type Dict = {
   "compose.announce.removedBlock": string;
   "compose.announce.addedBlock": string;
   "compose.aria.addEntity": string;
+  // v0.6.2: undo/redo (Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z) toolbar.
+  "compose.toolbar.undo": string;
+  "compose.toolbar.redo": string;
+  "compose.toolbar.undoTitle": string;
+  "compose.toolbar.redoTitle": string;
+  "compose.toolbar.clearTitle": string;
+  "compose.toolbar.exportTitle": string;
+  "compose.toolbar.importTitle": string;
+  "compose.toolbar.viewModeLabel": string;
+  "compose.toolbar.viewModeModern": string;
+  "compose.toolbar.viewModeCozy": string;
+  "compose.toolbar.viewModeTooltip": string;
+  // v0.6.2: empty-state onboarding copy (3 numbered steps + keyboard tip).
+  "compose.empty.title": string;
+  "compose.empty.step1": string;
+  "compose.empty.step2": string;
+  "compose.empty.step3": string;
+  "compose.empty.keyboardHint": string;
+  // v0.6.2: sidebar item affordances — the explicit "+" button beside
+  // each catalog item, plus a one-liner reminding users they can drag
+  // *or* click.
+  "compose.sidebar.addAria": string;
+  "compose.sidebar.dragAffordance": string;
+  // v0.6.2: mobile inspector becomes a bottom-sheet drawer; these
+  // labels wire the open/close button + drawer header.
+  "compose.inspector.openDrawer": string;
+  "compose.inspector.closeDrawer": string;
+  "compose.inspector.mobileTitle": string;
+  // v0.6.2: live-region announcements for undo / redo.
+  "compose.announce.undone": string;
+  "compose.announce.redone": string;
+  "compose.announce.historyEmpty": string;
   // v0.5.11+ currency formatting.
   "currency.usd": string;
 

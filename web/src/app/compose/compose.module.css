@@ -1,32 +1,134 @@
 /**
- * Compose page styles — sidebar + canvas + inspector layout.
+ * Compose page styles — toolbar + sidebar + canvas + inspector layout.
  *
- * Uses CSS variables from globals.css for theme integration.
+ * v0.6.2 layout (this rewrite):
  *
- * Layout breakpoints (v0.5.11):
- *   <640px  → single column, vertical stack (sidebar above canvas)
- *   ≥640px  → 2-col: sidebar | canvas (inspector becomes a drawer
- *              button + modal; CanvasBlock toolbar moves into a
- *              bottom action bar)
- *   ≥1024px → 3-col: sidebar | canvas | inspector (default desktop)
+ *   ┌─────────────────────────────────────────────────┐
+ *   │ Toolbar: undo/redo  ⌬  N blocks  skin  export  │  sticky top
+ *   ├──────────┬───────────────────────┬──────────────┤
+ *   │ Sidebar  │  Canvas (dotted grid) │  Inspector   │
+ *   │ 280px    │  flex-1               │  320px       │
+ *   │ search   │  blocks (ellipsis)    │  block info  │
+ *   │ filter   │  hover/selected state │  + actions   │
+ *   │ sections │                       │              │
+ *   │  + drag  │                       │              │
+ *   └──────────┴───────────────────────┴──────────────┘
+ *
+ * Breakpoints:
+ *   < 1024px → sidebar becomes a top horizontal bar, inspector
+ *              collapses into a bottom-sheet drawer with an
+ *              "Open details" button.
+ *   ≥ 1024px → 3-column grid as above (default desktop).
+ *
+ * v0.6.2 visual changes vs v0.4.4 baseline:
+ *   - sidebar item minimum 44px tall (was ~30px) for touch
+ *   - block label uses ellipsis (was `word-break: break-all` which
+ *     splits both CJK and Latin characters mid-glyph)
+ *   - block delete button default opacity 0.5 (was 0) so it
+ *     reads as a control rather than appearing on hover only
+ *   - cozy 2.5D skin: simplified the 4-layer box-shadow stacks
+ *     into a single soft shadow + the existing pseudo-element
+ *     faces (kept for the sandbox aesthetic)
+ *   - mobile inspector bottom-sheet with `transform: translateY`
+ *     transition (no portal, no animation library)
  */
+
+.compose-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 500px;
+}
+
+/* ─── Toolbar ───────────────────────────────────────────── */
+
+.compose-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.compose-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.compose-toolbar-spacer {
+  flex: 1;
+  min-width: 0;
+}
+
+.compose-toolbar-status {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.compose-toolbar-skin {
+  display: inline-flex;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+.compose-toolbar-skin button {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  min-height: 28px;
+  white-space: nowrap;
+}
+.compose-toolbar-skin button[data-active="true"] {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+.compose-toolbar-skin button:hover:not([data-active="true"]) {
+  color: var(--text);
+}
+
+.compose-toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+}
+
+/* Mobile-only "open inspector" trigger. Hidden on desktop where
+   the inspector column is always visible. */
+.compose-toolbar-inspector-trigger {
+  display: none;
+}
+@media (max-width: 1023px) {
+  .compose-toolbar-inspector-trigger {
+    display: inline-flex;
+  }
+}
+
+/* ─── Grid ──────────────────────────────────────────────── */
 
 .compose-grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 12px;
-  min-height: 500px;
-}
-@media (min-width: 640px) {
-  .compose-grid {
-    grid-template-columns: 240px 1fr;
-    height: calc(100vh - 200px);
-    min-height: 0;
-  }
+  min-height: 0;
 }
 @media (min-width: 1024px) {
   .compose-grid {
     grid-template-columns: 280px 1fr 320px;
+    height: calc(100vh - 260px);
   }
 }
 
@@ -42,10 +144,18 @@
 }
 
 .compose-sidebar-header {
-  padding: 8px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--border);
   display: flex;
   flex-direction: column;
+  gap: 8px;
+}
+
+.compose-sidebar-affordance {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
   gap: 6px;
 }
 
@@ -53,10 +163,12 @@
   background: var(--surface-2);
   border: 1px solid var(--border);
   color: var(--text);
-  padding: 6px 8px;
+  padding: 8px 10px;
   border-radius: 4px;
   font-size: 13px;
   outline: none;
+  width: 100%;
+  min-height: 36px;
 }
 .compose-search:focus {
   border-color: var(--accent);
@@ -64,16 +176,18 @@
 
 .compose-kind-filter {
   display: flex;
-  gap: 2px;
+  gap: 4px;
+  flex-wrap: wrap;
 }
 .compose-kind-filter button {
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text-muted);
-  padding: 4px 8px;
+  padding: 6px 10px;
   font-size: 12px;
   border-radius: 4px;
   cursor: pointer;
+  min-height: 30px;
 }
 .compose-kind-filter button[data-active="true"] {
   background: var(--accent);
@@ -87,50 +201,104 @@
 .compose-sidebar-body {
   flex: 1;
   overflow-y: auto;
-  padding: 4px 0;
+  padding: 4px 0 12px;
+  max-height: 360px;
+}
+@media (min-width: 1024px) {
+  .compose-sidebar-body {
+    max-height: none;
+  }
 }
 
 .compose-section h4 {
-  margin: 12px 8px 4px;
+  margin: 12px 12px 6px;
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-muted);
   font-weight: 600;
-}
-.compose-section h4 span {
-  margin-right: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
+/* Sidebar item — v0.6.2: minimum 44px tall, explicit "+" button,
+   ellipsis (not break-all) on label/sublabel. */
 .compose-sidebar-item {
-  margin: 2px 6px;
-  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: calc(100% - 16px);
+  margin: 2px 8px;
+  padding: 8px 10px;
+  min-height: 44px;
   background: var(--surface-2);
+  border: 1px solid transparent;
   border-left: 3px solid var(--accent);
   border-radius: 4px;
   cursor: grab;
   user-select: none;
   touch-action: none;
+  text-align: left;
+  color: var(--text);
 }
 .compose-sidebar-item:active {
   cursor: grabbing;
 }
 .compose-sidebar-item:hover {
   background: var(--surface);
-  border-color: var(--text);
+  border-color: var(--text-muted);
+}
+
+.compose-sidebar-body-cell {
+  flex: 1;
+  min-width: 0;
 }
 
 .compose-sidebar-label {
   font-size: 13px;
   font-weight: 500;
   color: var(--text);
-  word-break: break-all;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
 }
 
 .compose-sidebar-sublabel {
   font-size: 11px;
   color: var(--text-muted);
   margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.compose-sidebar-add {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+.compose-sidebar-add:hover {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+.compose-sidebar-add:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 /* ─── Canvas ────────────────────────────────────────────── */
@@ -144,6 +312,12 @@
   border-radius: 8px;
   overflow: auto;
   touch-action: none;
+  min-height: 320px;
+}
+@media (min-width: 1024px) {
+  .compose-canvas {
+    min-height: 0;
+  }
 }
 .compose-canvas[data-pending="true"] {
   background-color: var(--surface-2);
@@ -154,34 +328,73 @@
   position: absolute;
   inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   pointer-events: none;
   color: var(--text-muted);
+  padding: 24px;
+  text-align: center;
+  gap: 12px;
+}
+.compose-empty-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+.compose-empty-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+  align-items: flex-start;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.compose-empty-steps li {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.compose-empty-steps li::before {
+  content: attr(data-step);
+  font-weight: 600;
+  color: var(--accent);
+  flex: 0 0 auto;
+}
+.compose-empty-tip {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  max-width: 420px;
 }
 
+/* Block — v0.6.2: 220px wide, ellipsis (not break-all) on label,
+   delete button visible at low opacity by default. */
 .compose-block {
   position: absolute;
-  width: 180px;
-  min-height: 70px;
+  width: 220px;
+  min-height: 80px;
   background: var(--surface);
   border: 2px solid var(--accent);
-  border-radius: 6px;
-  padding: 8px 10px;
+  border-radius: 8px;
+  padding: 10px 12px;
   cursor: grab;
   user-select: none;
   touch-action: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  transition: box-shadow 0.1s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  transition: box-shadow 0.12s ease;
 }
 .compose-block[data-selected="true"] {
   box-shadow:
     0 0 0 3px rgba(121, 192, 255, 0.4),
-    0 2px 12px rgba(0, 0, 0, 0.5);
+    0 2px 12px rgba(0, 0, 0, 0.45);
 }
 .compose-block[data-dragging="true"] {
   cursor: grabbing;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
 }
 
 .compose-block-header {
@@ -196,7 +409,7 @@
 }
 
 .compose-block-emoji {
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .compose-block-kind {
@@ -204,37 +417,44 @@
 }
 
 .compose-block-label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--text);
-  word-break: break-all;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
   margin-bottom: 2px;
 }
 
 .compose-block-sublabel {
   font-size: 11px;
   color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
 }
 
 .compose-block-delete {
   position: absolute;
-  top: -8px;
-  right: -8px;
-  width: 18px;
-  height: 18px;
+  top: -10px;
+  right: -10px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background: var(--surface-2);
   border: 1px solid var(--border);
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1;
   cursor: pointer;
   padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
-  transition: opacity 0.1s ease;
+  opacity: 0.5;
+  transition: opacity 0.12s ease;
 }
 .compose-block:hover .compose-block-delete,
 .compose-block[data-selected="true"] .compose-block-delete {
@@ -244,6 +464,13 @@
   background: var(--error);
   color: white;
   border-color: var(--error);
+}
+
+/* Keyboard focus indicator on blocks. */
+.compose-block:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px rgba(121, 192, 255, 0.3);
 }
 
 /* ─── Inspector ─────────────────────────────────────────── */
@@ -257,17 +484,56 @@
   overflow: hidden;
 }
 
+/* Mobile (<1024px): inspector is a fixed bottom-sheet drawer that
+   slides up from the bottom of the screen. */
+@media (max-width: 1023px) {
+  .compose-inspector {
+    position: fixed;
+    inset: auto 0 0 0;
+    transform: translateY(calc(100% - 48px));
+    transition: transform 0.18s ease;
+    z-index: 20;
+    max-height: 75vh;
+    border-radius: 12px 12px 0 0;
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
+  }
+  .compose-inspector[data-mobile-open="true"] {
+    transform: translateY(0);
+  }
+}
+
 .compose-inspector-header {
-  padding: 8px 12px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--border);
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
+  gap: 8px;
 }
 .compose-inspector-header h3 {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.compose-inspector-mobile-close {
+  display: none;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  min-height: 30px;
+}
+@media (max-width: 1023px) {
+  .compose-inspector-mobile-close {
+    display: inline-flex;
+  }
 }
 
 .compose-inspector-empty {
@@ -297,12 +563,16 @@
 }
 .compose-inspector-card .emoji {
   font-size: 24px;
+  flex: 0 0 auto;
 }
 .compose-inspector-card .title {
   font-size: 14px;
   font-weight: 600;
   color: var(--text);
-  word-break: break-all;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .compose-inspector-fields {
@@ -319,6 +589,9 @@
 .compose-inspector-fields dd {
   margin: 0;
   color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .compose-inspector-actions {
@@ -327,21 +600,12 @@
   flex-wrap: wrap;
 }
 
-.compose-inspector-footer {
-  padding: 8px 12px;
-  border-top: 1px solid var(--border);
-  display: flex;
-  gap: 6px;
-}
-
 /* ─── Cozy 2.5D sandbox skin (v0.4.5) ─────────────────────── */
 
 .compose-canvas[data-mode="cozy"],
 .compose-canvas.cozy {
   background-color: var(--cozy-bg);
   background-image:
-    /* Isometric grid — 60° and -60° lines on a 40px grid.
-       Simulated with two linear-gradients. */
     linear-gradient(
       60deg,
       transparent 0,
@@ -368,7 +632,6 @@
   color: var(--cozy-text);
 }
 
-/* Hint at sandbox when cozy is on */
 .compose-canvas[data-mode="cozy"]::before {
   content: "🌿 cozy sandbox";
   position: absolute;
@@ -382,57 +645,35 @@
   z-index: 1;
 }
 
-/* Cozy block — pseudo-element cubes. We DON'T use true 3D transform
-   because that would skew the inner text. Instead: a square "front
-   face" with a hard right edge and a bottom edge drawn via
-   :before/:after, giving the illusion of a cube lit from the
-   top-left. */
+/* v0.6.2: simplified the 4-layer box-shadow stack into a single
+   soft shadow; the cube illusion comes from the :before/:after
+   pseudo-element faces below. */
 .compose-block.cozy {
   background: var(--cozy-surface);
   border: 1.5px solid var(--cozy-accent);
   color: var(--cozy-text);
   border-radius: 6px;
-  /* Sit ON the sand: small downward offset for the depth */
   position: absolute;
-  box-shadow:
-    0 2px 0 0 var(--cozy-edge-bottom),
-    2px 2px 0 0 var(--cozy-edge-bottom),
-    0 6px 14px rgba(120, 80, 30, 0.18);
+  box-shadow: 0 6px 14px rgba(120, 80, 30, 0.18);
   transition:
     transform 0.18s ease,
     box-shadow 0.18s ease;
 }
 .compose-block.cozy:hover {
   transform: translate(-1px, -1px);
-  box-shadow:
-    0 3px 0 0 var(--cozy-edge-bottom),
-    3px 3px 0 0 var(--cozy-edge-bottom),
-    0 8px 18px rgba(120, 80, 30, 0.22);
+  box-shadow: 0 8px 18px rgba(120, 80, 30, 0.22);
 }
 .compose-block.cozy[data-selected="true"] {
   border-color: var(--cozy-accent-2);
   box-shadow:
-    0 2px 0 0 var(--cozy-edge-bottom),
-    2px 2px 0 0 var(--cozy-edge-bottom),
     0 0 0 3px rgba(212, 144, 80, 0.35),
     0 8px 18px rgba(120, 80, 30, 0.22);
 }
 .compose-block.cozy[data-dragging="true"] {
   transform: translate(-2px, -2px);
-  box-shadow:
-    0 4px 0 0 var(--cozy-edge-bottom),
-    4px 4px 0 0 var(--cozy-edge-bottom),
-    0 12px 24px rgba(120, 80, 30, 0.3);
+  box-shadow: 0 12px 24px rgba(120, 80, 30, 0.3);
 }
 
-/* Keyboard focus indicator on blocks (modern mode).
-   We use outline + box-shadow so it's visible regardless of
-   block background color. */
-.compose-block:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 2px;
-  box-shadow: 0 0 0 5px rgba(121, 192, 255, 0.3);
-}
 .compose-block.cozy:focus-visible {
   outline: 3px solid var(--cozy-accent-2);
   outline-offset: 2px;
@@ -474,7 +715,7 @@
   pointer-events: none;
 }
 
-/* Cozy block text — use Outfit font, slightly warmer colors */
+/* Cozy block text — use Outfit font, slightly warmer colors. */
 .compose-block.cozy .compose-block-header {
   color: var(--cozy-text-muted);
   font-family: var(--cozy-font);
@@ -488,23 +729,4 @@
   color: var(--cozy-text-muted);
   font-family: var(--cozy-mono);
   font-size: 10px;
-}
-
-/* Toggle button highlight when in cozy */
-.compose-inspector-footer .btn[data-active="true"] {
-  background: var(--cozy-accent);
-  color: var(--cozy-bg);
-  border-color: var(--cozy-accent);
-}
-.compose-inspector-footer .btn[data-active="true"]:hover {
-  background: var(--cozy-accent-2);
-  border-color: var(--cozy-accent-2);
-  color: white;
-}
-
-.compose-inspector-divider {
-  width: 1px;
-  align-self: stretch;
-  background: var(--border);
-  margin: 0 2px;
 }

@@ -220,6 +220,25 @@
 >
 > 测试：core **553/553**（+7）、web **180/180**（+9）、format 双清、lint clean、`npm run build` 成功、tsc clean（root + web）。
 >
+> **2026-07-11 校准 (18)**：**v0.6.2 已发** —— `/compose` 页面体验全面修复（v0.4.4 引入后一直未动）。这一版是**纯体验修复**，不动 schema / URL / i18n key 前缀 / server API。
+>
+> | 类别 | 位置 | 改动 |
+> |---|---|---|
+> | **新工具栏** | `web/app/compose/ComposeBoard.tsx` | 顶部 sticky toolbar：undo / redo（带 disabled 状态）、block count live region、modern ↔ cozy 切换、export / import / clear。从 inspector footer 提到顶部。 |
+> | **Undo / Redo** | `web/app/compose/ComposeBoard.tsx` + `web/lib/compose-history.ts` (新) | Cmd/Ctrl+Z / Cmd/Ctrl+Shift+Z。3 类 entry（add / remove / move），最多 50 步。drag 在 pointerup 时入栈一条（不是每帧入栈）。arrow-key 移动合并连续 entries。import JSON 清空 history。 |
+> | **侧栏 affordance** | `web/app/compose/compose.module.css:174-260` | sidebar item 最小 44px 高（v0.5.11 是 30px，触控不达标）。加显式 `+` 按钮（点 = 加到中央）+ "拖动，或点 +" 一行提示。 |
+> | **文字溢出** | `web/app/compose/compose.module.css:248-264, 364-378, 449-457` | `word-break: break-all`（拆字符：governance → gover nanc e）→ `text-overflow: ellipsis` + `white-space: nowrap`。block / sidebar / inspector 标题 / 字段全部统一。 |
+> | **Block 视觉** | `web/app/compose/compose.module.css:339-411` | 块宽 180px → 220px，padding 8/10 → 10/12，label 字号 13 → 14。删除按钮 18×18 → 24×24，默认 opacity 0.5（之前 0 看不见）。 |
+> | **Cozy mode 简化** | `web/app/compose/compose.module.css:474-516` | 4 层 box-shadow 堆叠（hover 6 个、dragging 6 个）→ 1 层。保留伪元素 :before/:after 立方体面。 |
+> | **移动端 inspector** | `web/app/compose/compose.module.css:418-444, 480-485` | `<1024px` 时 inspector 变底部抽屉：`position: fixed; bottom: 0; transform: translateY(...)`，toolbar 多一个 "Open details" 触发按钮 + inspector header 多 "Close" 按钮。 |
+> | **空状态** | `web/app/compose/ComposeBoard.tsx:776-800` | 从 "👆 Enter" 一行 → 标题 + 3 步编号引导 + 键盘提示。 |
+> | **i18n** | `web/lib/i18n/{types,dict.en,dict.zh}.ts` | 22 个新 `compose.toolbar.*` / `compose.empty.*` / `compose.sidebar.*` / `compose.inspector.*` / `compose.announce.{undone,redone,historyEmpty}` 键。`compose.subtitle` 重写（之前"另存为配置、应用或运行"会误导——compose 不能 apply/run，是 sandbox）。 |
+> | **新测试** | `web/tests/compose-history.test.ts` (新, 9 cases) | `applyEntry` / `invertEntry` 纯函数：add/remove/move 应用 + 反演 + undo/redo round-trip + 不变性。 |
+>
+> 关键设计：history helper 拆到 `web/lib/compose-history.ts` 单独文件，让测试可以在不渲染 React 树的情况下 import。`compose.*` 命名前缀 / URL `/compose` / API `/compose/catalog` / types `ComposeBlock` 全部不变（精准修改）。
+>
+> 测试：core **553/553**（没动）、web **189/189**（+9 history）、format 双清、lint clean、`npm run build` 成功、tsc clean（root + web）。
+>
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
 ## 阶段一：看见 Pi（v0.1 - v0.3.x，已发）

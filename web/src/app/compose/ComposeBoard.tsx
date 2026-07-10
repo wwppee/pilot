@@ -3,30 +3,32 @@
 /**
  * ComposeBoard — the interactive canvas for the /compose page.
  *
- * Layout (CSS grid):
+ * v0.6.2 layout:
  *
- *   ┌──────────┬─────────────────┬──────────────┐
- *   │ Sidebar  │   Canvas (SVG)  │  Inspector   │
- *   │ 280px    │   flex-1        │  320px       │
- *   │          │                 │              │
- *   └──────────┴─────────────────┴──────────────┘
+ *   ┌─────────────────────────────────────────────────┐
+ *   │ Toolbar: undo/redo  ⌬  N blocks  skin  export  │  sticky top
+ *   ├──────────┬───────────────────────┬──────────────┤
+ *   │ Sidebar  │  Canvas (dotted grid) │  Inspector   │
+ *   │ 280px    │  flex-1               │  320px       │
+ *   │ search   │  blocks (ellipsis)    │  block info  │
+ *   │ filter   │  hover/selected state │  + actions   │
+ *   │ sections │                       │              │
+ *   │  + drag  │                       │              │
+ *   └──────────┴───────────────────────┴──────────────┘
  *
- * Interaction:
- *   - Sidebar item: drag-and-drop onto canvas (HTML5 DnD via Pointer Events)
- *   - Canvas block: pointer-drag to move; click to select
- *   - Selected block: shown in Inspector with metadata + actions
- *   - Delete: click ✕ on block, or Delete/Backspace when selected
- *   - Save/load: localStorage on every change, plus Export/Import JSON
+ * v0.6.2 behaviour:
+ *   - Undo / Redo: Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z. History stack
+ *     holds up to 50 entries (add / remove / move). Drag operations
+ *     commit ONE history entry on dragend, not per-frame.
+ *   - Sidebar items: minimum 44px tall, explicit "+" button to
+ *     add-to-center, and a one-liner reminding users they can drag
+ *     *or* click.
+ *   - Block labels: ellipsis (was `word-break: break-all` which
+ *     splits CJK and Latin mid-glyph).
+ *   - Mobile (<1024px): inspector becomes a fixed bottom-sheet
+ *     drawer; toolbar exposes an "Open details" button.
  *
- * Why client-only:
- *   - Pointer Events for drag
- *   - localStorage for persistence
- *   - File API for import/export
- *
- * Persistence strategy:
- *   - Auto-save to `localStorage["pilot-compose-state"]` on every change
- *   - Export = download current state as JSON
- *   - Import = upload JSON, validate against ComposeState shape, merge
+ * Persistence: localStorage on every state change; Export/Import JSON.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -37,6 +39,12 @@ import type {
   ComposeEntityKind,
   ComposeState,
 } from "../../lib/types";
+import {
+  applyEntry,
+  invertEntry,
+  MAX_HISTORY,
+  type HistoryEntry,
+} from "../../lib/compose-history";
 import { useT } from "@/components/I18n";
 
 /**
@@ -94,6 +102,8 @@ interface DragState {
   blockId: string;
   offsetX: number;
   offsetY: number;
+  startX: number;
+  startY: number;
   // Pointer id so we don't lose track of multi-touch
   pointerId: number;
 }
@@ -163,6 +173,19 @@ function genId(): string {
   return `b-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/**
+ * v0.6.2: Apply a history entry to a ComposeState. Returns the new
+ * state. Pure helper so undo + redo + the live-update after a
+ * manual operation all share one code path.
+ *
+ * `selectId` is also returned so the caller can keep the selection
+ * consistent: undoing a remove clears selection; redoing an add
+ * selects the new block.
+ *
+ * (The implementation lives in `lib/compose-history.ts` so tests
+ * can import it without rendering the React tree.)
+ */
+
 export default function ComposeBoard({
   initialCatalog,
 }: {
@@ -176,6 +199,11 @@ export default function ComposeBoard({
   const [pendingDrop, setPendingDrop] = useState<PendingDrop | null>(null);
   const [filter, setFilter] = useState<"all" | ComposeEntityKind>("all");
   const [search, setSearch] = useState("");
+  const [history, setHistory] = useState<{
+    past: HistoryEntry[];
+    future: HistoryEntry[];
+  }>({ past: [], future: [] });
+  const [inspectorOpen, setInspectorOpen] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
 
   // Persist on every state change.
@@ -215,6 +243,69 @@ export default function ComposeBoard({
     return map;
   }, [initialCatalog]);
 
+  /**
+   * Push a history entry and clear the redo stack. Wraps the state
+   * update so the user always sees an undoable operation paired with
+   * the state change. `entry` must describe a state transition that
+   * the caller has *just* applied (or is about to apply).
+   */
+  const commit = useCallback(
+    (entry: HistoryEntry, apply: () => void, label?: string) => {
+      apply();
+      setHistory((h) => ({
+        past: [...h.past, entry].slice(-MAX_HISTORY),
+        future: [],
+      }));
+      if (label) announce(label);
+    },
+    [announce],
+  );
+
+  const undo = useCallback(() => {
+    setHistory((h) => {
+      if (h.past.length === 0) {
+        announce(t("compose.announce.historyEmpty"));
+        return h;
+      }
+      const last = h.past[h.past.length - 1];
+      if (!last) return h;
+      const inverted = invertEntry(last);
+      const { state: nextState, selectedId: nextSelected } = applyEntry(
+        state,
+        inverted,
+      );
+      setState(nextState);
+      setSelectedId(nextSelected);
+      announce(t("compose.announce.undone"));
+      return {
+        past: h.past.slice(0, -1),
+        future: [last, ...h.future],
+      };
+    });
+  }, [state, announce, t]);
+
+  const redo = useCallback(() => {
+    setHistory((h) => {
+      if (h.future.length === 0) {
+        announce(t("compose.announce.historyEmpty"));
+        return h;
+      }
+      const [next, ...rest] = h.future;
+      if (!next) return h;
+      const { state: nextState, selectedId: nextSelected } = applyEntry(
+        state,
+        next,
+      );
+      setState(nextState);
+      setSelectedId(nextSelected);
+      announce(t("compose.announce.redone"));
+      return {
+        past: [...h.past, next].slice(-MAX_HISTORY),
+        future: rest,
+      };
+    });
+  }, [state, announce, t]);
+
   // ─── Drop from sidebar ───────────────────────────────────
   const onCanvasPointerUp = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
@@ -237,9 +328,19 @@ export default function ComposeBoard({
             ? { href: pendingDrop.entity.href }
             : {}),
         };
-        setState((s) => ({ ...s, blocks: [...s.blocks, block] }));
-        setSelectedId(block.id);
+        commit(
+          { type: "add", block },
+          () => {
+            setState((s) => ({ ...s, blocks: [...s.blocks, block] }));
+            setSelectedId(block.id);
+          },
+          t("compose.announce.addedBlock", { label: pendingDrop.entity.label }),
+        );
         setPendingDrop(null);
+        // On mobile, surface the new block in the inspector drawer.
+        if (window.matchMedia("(max-width: 1023px)").matches) {
+          setInspectorOpen(true);
+        }
         return;
       }
       // Otherwise it was a canvas drag end — handled by the block.
@@ -251,7 +352,7 @@ export default function ComposeBoard({
         setSelectedId(null);
       }
     },
-    [pendingDrop, drag],
+    [pendingDrop, drag, commit, t],
   );
 
   const onCanvasPointerMove = useCallback(
@@ -292,6 +393,8 @@ export default function ComposeBoard({
         blockId: block.id,
         offsetX: e.clientX - rect.left - block.x,
         offsetY: e.clientY - rect.top - block.y,
+        startX: block.x,
+        startY: block.y,
         pointerId: e.pointerId,
       });
       setSelectedId(block.id);
@@ -299,13 +402,66 @@ export default function ComposeBoard({
     [],
   );
 
+  /**
+   * Commit a drag as a single move history entry. Called from the
+   * block's pointerup. Skips committing if the block never moved
+   * (e.g. accidental click) so undo doesn't fill with no-ops.
+   */
+  const endBlockDrag = useCallback(
+    (blockId: string) => {
+      if (!drag) return;
+      const final = state.blocks.find((b) => b.id === blockId);
+      if (!final) {
+        setDrag(null);
+        return;
+      }
+      if (final.x !== drag.startX || final.y !== drag.startY) {
+        const entry: HistoryEntry = {
+          type: "move",
+          blockId,
+          fromX: drag.startX,
+          fromY: drag.startY,
+          toX: final.x,
+          toY: final.y,
+        };
+        setHistory((h) => ({
+          past: [...h.past, entry].slice(-MAX_HISTORY),
+          future: [],
+        }));
+      }
+      setDrag(null);
+    },
+    [drag, state.blocks],
+  );
+
   // ─── Keyboard ────────────────────────────────────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Undo / Redo handled here too so users don't have to focus
+      // the canvas first. We let the browser's default work for
+      // INPUT/TEXTAREA/SELECT (so users can undo inside text fields).
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      const inField = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && !e.shiftKey && (e.key === "z" || e.key === "Z")) {
+        if (inField) return;
+        e.preventDefault();
+        undo();
+        return;
+      }
+      if (
+        mod &&
+        ((e.shiftKey && (e.key === "z" || e.key === "Z")) || e.key === "y")
+      ) {
+        if (inField) return;
+        e.preventDefault();
+        redo();
+        return;
+      }
+
       if (e.key !== "Delete" && e.key !== "Backspace") return;
       // Don't capture when typing in inputs
-      const tag = (e.target as HTMLElement | null)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (inField) return;
       if (selectedId) {
         e.preventDefault();
         deleteBlock(selectedId);
@@ -314,23 +470,31 @@ export default function ComposeBoard({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId]);
+  }, [selectedId, undo, redo]);
 
   const deleteBlock = useCallback(
     (id: string) => {
-      setState((s) => ({ ...s, blocks: s.blocks.filter((b) => b.id !== id) }));
-      setSelectedId(null);
       const removed = state.blocks.find((b) => b.id === id);
-      if (removed)
-        announce(t("compose.announce.removedBlock", { label: removed.label }));
+      if (!removed) return;
+      commit(
+        { type: "remove", block: removed },
+        () => {
+          setState((s) => ({
+            ...s,
+            blocks: s.blocks.filter((b) => b.id !== id),
+          }));
+          setSelectedId(null);
+        },
+        t("compose.announce.removedBlock", { label: removed.label }),
+      );
     },
-    [announce, state.blocks],
+    [state.blocks, commit, t],
   );
 
   /**
-   * Add a sidebar entity as a block in the canvas center.
-   * Used by keyboard users (Enter on a sidebar item) and as a
-   * fallback for mouse users who don't want to drag.
+   * Add a sidebar entity as a block in the canvas center. Used by
+   * the explicit "+" button on each sidebar item (and the click
+   * fallback). The drag-from-sidebar path lives in onCanvasPointerUp.
    */
   const addBlockAtCenter = useCallback(
     (entity: ComposeEntity) => {
@@ -349,12 +513,23 @@ export default function ComposeBoard({
             : {}),
           ...(entity.href !== undefined ? { href: entity.href } : {}),
         };
+        // Schedule the history push + selection update after we
+        // commit the state. Done in a microtask so React can batch
+        // and we don't double-render.
+        queueMicrotask(() => {
+          setHistory((h) => ({
+            past: [...h.past, { type: "add" as const, block }].slice(
+              -MAX_HISTORY,
+            ),
+            future: [],
+          }));
+          setSelectedId(block.id);
+          announce(t("compose.announce.addedBlock", { label: entity.label }));
+        });
         return { ...s, blocks: [...s.blocks, block] };
       });
-      setSelectedId(/* will be set after state update */ null);
-      announce(t("compose.announce.addedBlock", { label: entity.label }));
     },
-    [announce],
+    [announce, t],
   );
 
   /**
@@ -362,14 +537,51 @@ export default function ComposeBoard({
    * navigation in the inspector and on focused blocks.
    */
   const moveBlock = useCallback((id: string, dx: number, dy: number) => {
-    setState((s) => ({
-      ...s,
-      blocks: s.blocks.map((b) =>
-        b.id === id
-          ? { ...b, x: Math.max(0, b.x + dx), y: Math.max(0, b.y + dy) }
-          : b,
-      ),
-    }));
+    setState((s) => {
+      const target = s.blocks.find((b) => b.id === id);
+      if (!target) return s;
+      const next = {
+        ...target,
+        x: Math.max(0, target.x + dx),
+        y: Math.max(0, target.y + dy),
+      };
+      if (next.x === target.x && next.y === target.y) return s;
+      // Arrow-key move is also a history entry, but coalesce
+      // rapid presses: if the last entry is a move for the same
+      // block, merge by extending its `to` instead of pushing
+      // another. The `from` stays pinned to the pre-arrow-key
+      // position so undo lands correctly.
+      setHistory((h) => {
+        const last = h.past[h.past.length - 1];
+        if (last && last.type === "move" && last.blockId === id) {
+          const merged: HistoryEntry = {
+            ...last,
+            toX: next.x,
+            toY: next.y,
+          };
+          return {
+            past: [...h.past.slice(0, -1), merged],
+            future: [],
+          };
+        }
+        const entry: HistoryEntry = {
+          type: "move",
+          blockId: id,
+          fromX: target.x,
+          fromY: target.y,
+          toX: next.x,
+          toY: next.y,
+        };
+        return {
+          past: [...h.past, entry].slice(-MAX_HISTORY),
+          future: [],
+        };
+      });
+      return {
+        ...s,
+        blocks: s.blocks.map((b) => (b.id === id ? next : b)),
+      };
+    });
   }, []);
 
   /**
@@ -434,6 +646,11 @@ export default function ComposeBoard({
             return;
           }
           setState(parsed);
+          // Imported state replaces history; the user can still
+          // undo the import itself, but subsequent operations
+          // start fresh.
+          setHistory({ past: [], future: [] });
+          setSelectedId(null);
         } catch (e) {
           alert(
             t("compose.alert.invalidJson", {
@@ -452,6 +669,7 @@ export default function ComposeBoard({
     if (!confirm(t("compose.confirm.removeAll"))) return;
     setState(emptyState());
     setSelectedId(null);
+    setHistory({ past: [], future: [] });
   }, [state.blocks.length, t]);
 
   const selectedBlock = selectedId
@@ -497,175 +715,91 @@ export default function ComposeBoard({
     // search/filter/catalog changes is enough.
   }, [initialCatalog, filter, search, t]);
 
-  return (
-    <div className="compose-grid">
-      {/* ─── Sidebar ─────────────────────────────────────── */}
-      <aside className="compose-sidebar">
-        <div className="compose-sidebar-header">
-          <input
-            type="text"
-            placeholder={t("compose.searchPlaceholder")}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="compose-search"
-            aria-label={t("btn.ariaSearchCatalog")}
-          />
-          <div className="compose-kind-filter">
-            <button
-              type="button"
-              onClick={() => setFilter("all")}
-              data-active={filter === "all"}
-            >
-              {t("compose.filterAll")}
-            </button>
-            {(Object.keys(KIND_META) as ComposeEntityKind[]).map((k) => {
-              const meta = KIND_META[k](t);
-              return (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => setFilter(k)}
-                  data-active={filter === k}
-                  title={meta.label}
-                >
-                  {meta.emoji}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-        <div className="compose-sidebar-body">
-          {filteredCatalog.length === 0 ? (
-            <p className="muted small">{t("compose.emptySearch")}</p>
-          ) : (
-            filteredCatalog.map((sec) => (
-              <div key={sec.kind} className="compose-section">
-                <h4>
-                  <span>{sec.emoji}</span> {sec.label}
-                </h4>
-                {sec.items.map((e) => (
-                  <button
-                    type="button"
-                    key={`${sec.kind}:${e.id}`}
-                    className="compose-sidebar-item"
-                    style={{ borderLeftColor: KIND_META[sec.kind](t).tint }}
-                    onPointerDown={(ev) => startSidebarDrag(e, ev)}
-                    onClick={() => addBlockAtCenter(e)}
-                    aria-label={t("compose.aria.addEntity", {
-                      kind: sec.label.toLowerCase(),
-                      label: e.label,
-                    })}
-                    title={t("compose.dragHint")}
-                  >
-                    <div className="compose-sidebar-label">{e.label}</div>
-                    {e.sublabel ? (
-                      <div className="compose-sidebar-sublabel">
-                        {e.sublabel}
-                      </div>
-                    ) : null}
-                  </button>
-                ))}
-              </div>
-            ))
-          )}
-        </div>
-      </aside>
+  const canUndo = history.past.length > 0;
+  const canRedo = history.future.length > 0;
 
-      {/* ─── Canvas ──────────────────────────────────────── */}
+  return (
+    <div className="compose-page">
+      {/* ─── Toolbar (v0.6.2) ─────────────────────────────── */}
       <div
-        ref={canvasRef}
-        className={`compose-canvas ${viewMode === "cozy" ? "cozy" : "modern"}`}
-        onPointerMove={onCanvasPointerMove}
-        onPointerUp={onCanvasPointerUp}
-        onKeyDown={onCanvasKeyDown}
-        data-pending={pendingDrop !== null}
-        data-mode={viewMode}
-        role="region"
-        aria-label={t("btn.ariaComposeCanvas")}
-        tabIndex={0}
+        className="compose-toolbar"
+        role="toolbar"
+        aria-label="Compose toolbar"
       >
-        {state.blocks.length === 0 && !pendingDrop ? (
-          <div className="compose-empty">
-            <p>👆 {t("compose.canvasEmpty", { key: "Enter" })}</p>
-          </div>
-        ) : null}
-        {state.blocks.map((b) => (
-          <ComposeBlockView
-            key={b.id}
-            block={b}
-            selected={b.id === selectedId}
-            dragging={drag?.blockId === b.id}
-            viewMode={viewMode}
-            onPointerDown={(e) => startBlockDrag(b, e)}
-            onDelete={() => deleteBlock(b.id)}
-          />
-        ))}
-        {/* Live region for screen readers */}
+        <div className="compose-toolbar-group">
+          <button
+            type="button"
+            className="btn small"
+            onClick={undo}
+            disabled={!canUndo}
+            title={t("compose.toolbar.undoTitle")}
+            aria-label={t("compose.toolbar.undoTitle")}
+          >
+            ↶ {t("compose.toolbar.undo")}
+          </button>
+          <button
+            type="button"
+            className="btn small"
+            onClick={redo}
+            disabled={!canRedo}
+            title={t("compose.toolbar.redoTitle")}
+            aria-label={t("compose.toolbar.redoTitle")}
+          >
+            ↷ {t("compose.toolbar.redo")}
+          </button>
+        </div>
+        <span className="compose-toolbar-divider" aria-hidden="true" />
         <div
-          className="sr-only"
-          role="status"
+          className="compose-toolbar-status"
           aria-live="polite"
           aria-atomic="true"
         >
-          {liveMessage}
+          {t(
+            state.blocks.length === 1
+              ? "compose.inspector.blockCount.one"
+              : "compose.inspector.blockCount.other",
+            { n: state.blocks.length },
+          )}
         </div>
-      </div>
-
-      {/* ─── Inspector ───────────────────────────────────── */}
-      <aside className="compose-inspector">
-        <div className="compose-inspector-header">
-          <h3>{t("compose.inspector")}</h3>
-          <span className="muted small">
-            {t(
-              state.blocks.length === 1
-                ? "compose.inspector.blockCount.one"
-                : "compose.inspector.blockCount.other",
-              { n: state.blocks.length },
-            )}
-          </span>
-        </div>
-        {selectedBlock ? (
-          <BlockInspector
-            block={selectedBlock}
-            onDelete={() => deleteBlock(selectedBlock.id)}
-            catalogEntity={catalogIndex.get(
-              `${selectedBlock.kind}:${selectedBlock.refId}`,
-            )}
-          />
-        ) : (
-          <div className="compose-inspector-empty">
-            <p className="muted">
-              {t("compose.canvasSelectBlock", {
-                del: "Delete",
-                esc: "Escape",
-              })}
-            </p>
-          </div>
-        )}
-        <div className="compose-inspector-footer">
+        <span className="compose-toolbar-spacer" />
+        <div
+          className="compose-toolbar-skin"
+          role="group"
+          aria-label={t("compose.toolbar.viewModeLabel")}
+          title={t("compose.toolbar.viewModeTooltip")}
+        >
           <button
             type="button"
-            onClick={() =>
-              setViewMode(viewMode === "modern" ? "cozy" : "modern")
-            }
-            className="btn small"
-            data-active={viewMode === "cozy"}
-            title={
-              viewMode === "modern"
-                ? t("compose.viewMode.tooltip.cozy")
-                : t("compose.viewMode.tooltip.modern")
-            }
+            data-active={viewMode === "modern"}
+            onClick={() => setViewMode("modern")}
           >
-            {viewMode === "modern"
-              ? t("compose.viewMode.cozy")
-              : t("compose.viewMode.modern")}
+            {t("compose.toolbar.viewModeModern")}
           </button>
-          <span className="compose-inspector-divider" />
-          <button type="button" onClick={exportJson} className="btn small">
-            {t("btn.export")}
+          <button
+            type="button"
+            data-active={viewMode === "cozy"}
+            onClick={() => setViewMode("cozy")}
+          >
+            {t("compose.toolbar.viewModeCozy")}
           </button>
-          <label className="btn small secondary">
-            {t("btn.import")}
+        </div>
+        <span className="compose-toolbar-divider" aria-hidden="true" />
+        <div className="compose-toolbar-group">
+          <button
+            type="button"
+            onClick={exportJson}
+            className="btn small"
+            disabled={state.blocks.length === 0}
+            title={t("compose.toolbar.exportTitle")}
+            aria-label={t("compose.toolbar.exportTitle")}
+          >
+            ↓ {t("btn.export")}
+          </button>
+          <label
+            className="btn small secondary"
+            title={t("compose.toolbar.importTitle")}
+          >
+            ↑ {t("btn.import")}
             <input
               type="file"
               accept="application/json"
@@ -682,11 +816,235 @@ export default function ComposeBoard({
             onClick={resetCanvas}
             className="btn small danger"
             disabled={state.blocks.length === 0}
+            title={t("compose.toolbar.clearTitle")}
+            aria-label={t("compose.toolbar.clearTitle")}
           >
             {t("btn.clear")}
           </button>
         </div>
-      </aside>
+        {/* Mobile-only: opens the inspector drawer. */}
+        <button
+          type="button"
+          className="btn small compose-toolbar-inspector-trigger"
+          onClick={() => setInspectorOpen(true)}
+          aria-label={t("compose.inspector.openDrawer")}
+        >
+          {t("compose.inspector.openDrawer")}
+        </button>
+      </div>
+
+      <div className="compose-grid">
+        {/* ─── Sidebar ─────────────────────────────────────── */}
+        <aside className="compose-sidebar">
+          <div className="compose-sidebar-header">
+            <input
+              type="text"
+              placeholder={t("compose.searchPlaceholder")}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="compose-search"
+              aria-label={t("btn.ariaSearchCatalog")}
+            />
+            <div className="compose-kind-filter">
+              <button
+                type="button"
+                onClick={() => setFilter("all")}
+                data-active={filter === "all"}
+              >
+                {t("compose.filterAll")}
+              </button>
+              {(Object.keys(KIND_META) as ComposeEntityKind[]).map((k) => {
+                const meta = KIND_META[k](t);
+                return (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setFilter(k)}
+                    data-active={filter === k}
+                    title={meta.label}
+                    aria-label={meta.label}
+                  >
+                    {meta.emoji}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="compose-sidebar-affordance">
+              <span aria-hidden="true">✋</span>
+              {t("compose.sidebar.dragAffordance")}
+            </div>
+          </div>
+          <div className="compose-sidebar-body">
+            {filteredCatalog.length === 0 ? (
+              <p className="muted small" style={{ padding: "0 12px" }}>
+                {t("compose.emptySearch")}
+              </p>
+            ) : (
+              filteredCatalog.map((sec) => (
+                <div key={sec.kind} className="compose-section">
+                  <h4>
+                    <span aria-hidden="true">{sec.emoji}</span>
+                    <span>{sec.label}</span>
+                  </h4>
+                  {sec.items.map((e) => (
+                    <div
+                      key={`${sec.kind}:${e.id}`}
+                      className="compose-sidebar-item"
+                      style={{ borderLeftColor: KIND_META[sec.kind](t).tint }}
+                      onPointerDown={(ev) => startSidebarDrag(e, ev)}
+                      role="group"
+                      aria-label={t("compose.aria.addEntity", {
+                        kind: sec.label.toLowerCase(),
+                        label: e.label,
+                      })}
+                      title={t("compose.dragHint")}
+                    >
+                      <div className="compose-sidebar-body-cell">
+                        <div className="compose-sidebar-label" title={e.label}>
+                          {e.label}
+                        </div>
+                        {e.sublabel ? (
+                          <div
+                            className="compose-sidebar-sublabel"
+                            title={e.sublabel}
+                          >
+                            {e.sublabel}
+                          </div>
+                        ) : null}
+                      </div>
+                      <button
+                        type="button"
+                        className="compose-sidebar-add"
+                        onPointerDown={(ev) => ev.stopPropagation()}
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          addBlockAtCenter(e);
+                        }}
+                        aria-label={t("compose.sidebar.addAria", {
+                          label: e.label,
+                        })}
+                        title={t("compose.sidebar.addAria", {
+                          label: e.label,
+                        })}
+                      >
+                        +
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ))
+            )}
+          </div>
+        </aside>
+
+        {/* ─── Canvas ──────────────────────────────────────── */}
+        <div
+          ref={canvasRef}
+          className={`compose-canvas ${viewMode === "cozy" ? "cozy" : "modern"}`}
+          onPointerMove={onCanvasPointerMove}
+          onPointerUp={onCanvasPointerUp}
+          onKeyDown={onCanvasKeyDown}
+          data-pending={pendingDrop !== null}
+          data-mode={viewMode}
+          role="region"
+          aria-label={t("btn.ariaComposeCanvas")}
+          tabIndex={0}
+        >
+          {state.blocks.length === 0 && !pendingDrop ? (
+            <div className="compose-empty" aria-hidden="true">
+              <div className="compose-empty-title">
+                {t("compose.empty.title")}
+              </div>
+              <ol className="compose-empty-steps">
+                <li data-step="1">{t("compose.empty.step1")}</li>
+                <li data-step="2">{t("compose.empty.step2")}</li>
+                <li data-step="3">{t("compose.empty.step3")}</li>
+              </ol>
+              <p className="compose-empty-tip">
+                {t("compose.empty.keyboardHint")}
+              </p>
+            </div>
+          ) : null}
+          {state.blocks.map((b) => (
+            <ComposeBlockView
+              key={b.id}
+              block={b}
+              selected={b.id === selectedId}
+              dragging={drag?.blockId === b.id}
+              viewMode={viewMode}
+              onPointerDown={(e) => startBlockDrag(b, e)}
+              onPointerUp={() => endBlockDrag(b.id)}
+              onClick={() => {
+                setSelectedId(b.id);
+                if (
+                  typeof window !== "undefined" &&
+                  window.matchMedia("(max-width: 1023px)").matches
+                ) {
+                  setInspectorOpen(true);
+                }
+              }}
+              onDelete={() => deleteBlock(b.id)}
+            />
+          ))}
+          {/* Live region for screen readers */}
+          <div
+            className="sr-only"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            {liveMessage}
+          </div>
+        </div>
+
+        {/* ─── Inspector ───────────────────────────────────── */}
+        <aside
+          className="compose-inspector"
+          data-mobile-open={inspectorOpen ? "true" : "false"}
+          aria-label={t("compose.inspector")}
+        >
+          <div className="compose-inspector-header">
+            <h3>
+              <span aria-hidden="true">🔍</span>
+              <span>{t("compose.inspector")}</span>
+            </h3>
+            <button
+              type="button"
+              className="compose-inspector-mobile-close"
+              onClick={() => setInspectorOpen(false)}
+              aria-label={t("compose.inspector.closeDrawer")}
+            >
+              {t("compose.inspector.closeDrawer")}
+            </button>
+            <span className="muted small">
+              {t(
+                state.blocks.length === 1
+                  ? "compose.inspector.blockCount.one"
+                  : "compose.inspector.blockCount.other",
+                { n: state.blocks.length },
+              )}
+            </span>
+          </div>
+          {selectedBlock ? (
+            <BlockInspector
+              block={selectedBlock}
+              onDelete={() => deleteBlock(selectedBlock.id)}
+              catalogEntity={catalogIndex.get(
+                `${selectedBlock.kind}:${selectedBlock.refId}`,
+              )}
+            />
+          ) : (
+            <div className="compose-inspector-empty">
+              <p className="muted">
+                {t("compose.canvasSelectBlock", {
+                  del: "Delete",
+                  esc: "Escape",
+                })}
+              </p>
+            </div>
+          )}
+        </aside>
+      </div>
     </div>
   );
 }
@@ -699,6 +1057,8 @@ function ComposeBlockView({
   dragging,
   viewMode,
   onPointerDown,
+  onPointerUp,
+  onClick,
   onDelete,
 }: {
   block: ComposeBlock;
@@ -706,6 +1066,8 @@ function ComposeBlockView({
   dragging: boolean;
   viewMode: ViewMode;
   onPointerDown: (e: React.PointerEvent) => void;
+  onPointerUp: () => void;
+  onClick: () => void;
   onDelete: () => void;
 }) {
   const t = useT();
@@ -733,6 +1095,8 @@ function ComposeBlockView({
         borderColor: viewMode === "cozy" ? cozyTint : meta.tint,
       }}
       onPointerDown={onPointerDown}
+      onPointerUp={onPointerUp}
+      onClick={onClick}
       role="group"
       tabIndex={selected ? 0 : -1}
       aria-label={`${meta.label}: ${block.label}${block.sublabel ? `, ${block.sublabel}` : ""}${selected ? t("compose.aria.selected") : ""}`}
@@ -752,12 +1116,18 @@ function ComposeBlockView({
         ×
       </button>
       <div className="compose-block-header">
-        <span className="compose-block-emoji">{meta.emoji}</span>
+        <span className="compose-block-emoji" aria-hidden="true">
+          {meta.emoji}
+        </span>
         <span className="compose-block-kind">{meta.label}</span>
       </div>
-      <div className="compose-block-label">{block.label}</div>
+      <div className="compose-block-label" title={block.label}>
+        {block.label}
+      </div>
       {block.sublabel ? (
-        <div className="compose-block-sublabel">{block.sublabel}</div>
+        <div className="compose-block-sublabel" title={block.sublabel}>
+          {block.sublabel}
+        </div>
       ) : null}
     </div>
   );
@@ -784,9 +1154,13 @@ function BlockInspector({
         className="compose-inspector-card"
         style={{ borderLeftColor: meta.tint }}
       >
-        <span className="emoji">{meta.emoji}</span>
+        <span className="emoji" aria-hidden="true">
+          {meta.emoji}
+        </span>
         <div>
-          <div className="title">{block.label}</div>
+          <div className="title" title={block.label}>
+            {block.label}
+          </div>
           <div className="muted small">
             {meta.label}
             {block.sublabel ? ` · ${block.sublabel}` : ""}
@@ -800,11 +1174,15 @@ function BlockInspector({
 
       <dl className="compose-inspector-fields">
         <dt>id</dt>
-        <dd className="mono small">{block.id.slice(0, 8)}</dd>
+        <dd className="mono small" title={block.id}>
+          {block.id.slice(0, 8)}
+        </dd>
         <dt>kind</dt>
         <dd>{block.kind}</dd>
         <dt>refId</dt>
-        <dd className="mono small">{block.refId}</dd>
+        <dd className="mono small" title={block.refId}>
+          {block.refId}
+        </dd>
         <dt>position</dt>
         <dd>
           ({Math.round(block.x)}, {Math.round(block.y)})

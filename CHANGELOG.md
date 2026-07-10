@@ -2,6 +2,130 @@
 
 ## Unreleased
 
+### v0.6.2 — /compose UI experience overhaul (toolbar + undo/redo + ellipsis + mobile drawer)
+
+`/compose` was first shipped in v0.4.4 as a "box garden" canvas
+and hadn't been touched in 4 minor versions. The visual style
+held up, but the operator UX had drifted badly: 18–24px
+buttons (below touch-target), `word-break: break-all` mid-glyph
+breaks on labels, 4-layer cozy box-shadow stacks, a 4-layer
+inspector footer that buried the cozy toggle, and **no undo**
+after a misclick. This release is a pure experience overhaul —
+**no schema, URL, i18n-key-prefix, or API-path changes**.
+
+**Top sticky toolbar replaces the inspector footer**
+
+The cozy / modern toggle, export, import, and clear buttons
+moved from the inspector footer to a new top-of-grid toolbar
+with undo / redo on the left, block count in the middle, and
+view / export / import / clear on the right. The inspector
+footer is gone. On `<1024px` viewports the toolbar also shows
+an "Open details" button that opens the inspector as a
+bottom-sheet drawer.
+
+**Undo / Redo: Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z**
+
+New `web/lib/compose-history.ts` exposes `applyEntry` and
+`invertEntry` as pure functions of `ComposeState` (importable
+from tests). Three history-entry kinds — `add`, `remove`,
+`move` — capped at 50 entries. Drag commits ONE entry on
+`pointerup` (not per-frame); arrow-key moves coalesce
+consecutive presses for the same block into a single entry by
+extending its `to` while keeping `from` pinned. `importJson`
+clears history; the toolbar buttons are disabled when
+`canUndo` / `canRedo` is false.
+
+**Word-break: ellipsis everywhere labels overflow**
+
+`word-break: break-all` split both CJK and Latin mid-glyph
+(e.g. `governance` → `gover nanc e`). Replaced with
+`text-overflow: ellipsis` + `white-space: nowrap` on sidebar
+items, block labels, block sublabels, inspector card title,
+and inspector `dd` cells. Each gets a `title=` attribute
+carrying the full text so hover still shows the untruncated
+value.
+
+**Sidebar items: 44px min, explicit "+" button**
+
+Sidebar item height went from ~30px to a 44px minimum
+(meeting touch-target guidelines). Each item now also has a
+visible "+" button on the right that adds the entity to
+canvas center, with a one-line "Drag, or click +" affordance
+in the sidebar header. The drag-and-drop path is unchanged.
+
+**Block visuals: bigger, friendlier, delete always visible**
+
+- Width 180px → 220px, padding 8/10 → 10/12, label 13px → 14px
+- Delete button 18×18 → 24×24, default `opacity: 0.5`
+  (was 0 — invisible until hover) so users can see the control
+- Hover and selected states both raise opacity to 1.0
+
+**Cozy 2.5D skin: simplified the 4-layer box-shadow stack**
+
+Each block's hover/selected/dragging state had 4–6 stacked
+`box-shadow` declarations totaling 6 lines per state. The
+shadows were visually redundant (the cube illusion comes
+from the `:before`/`:after` pseudo-element faces). Now each
+state is one or two `box-shadow` declarations. The
+pseudo-element faces, skew transforms, and warm palette are
+preserved.
+
+**Mobile (<1024px) inspector: bottom-sheet drawer**
+
+Previously the inspector column simply disappeared at
+`<1024px` (no media-query handling at all). Now it's a
+fixed bottom-sheet with `transform: translateY(...)`
+transitions, opened by the toolbar's "Open details" button
+and closed by an explicit "Close" button in the inspector
+header. The header is auto-shown on mobile when a block is
+selected via tap.
+
+**Empty state: 3-step onboarding instead of "👆 Enter"**
+
+The empty canvas used to show a single line
+`Empty canvas — pick a sidebar item and press {key}.`. Now it
+shows a title ("Start by adding a block") + a 3-step numbered
+list (drag from sidebar / click + / select to inspect) + a
+keyboard-tip line. The text is `pointer-events: none` so it
+never blocks drops.
+
+**Subtitle rewritten to fix a positioning lie**
+
+The old `compose.subtitle` claimed
+"Drag blocks from the sidebar to plan a session — save as
+Profile, apply, run." — but `/compose` cannot actually
+save-as-Profile, apply, or run anything. It is a sandbox.
+New subtitle:
+"A free-form sandbox for arranging sessions, packs, profiles,
+policies, and capabilities. Visualize combinations — it
+doesn't actually configure pi."
+
+**Files touched (v0.6.2)**
+
+- `web/src/app/compose/page.tsx` — unchanged (server, still loads catalog + renders Hint)
+- `web/src/app/compose/ComposeBoard.tsx` — major rewrite (826 → 1274 lines, adds toolbar + history + mobile drawer)
+- `web/src/app/compose/compose.module.css` — full rewrite (510 → ~520 lines, same scope)
+- `web/src/lib/compose-history.ts` — **new** (~110 lines, pure helpers)
+- `web/src/lib/i18n/{types,dict.en,dict.zh}.ts` — 22 new `compose.*` keys + subtitle rewrite
+- `web/tests/compose-history.test.ts` — **new** (9 cases, unit-tests `applyEntry` / `invertEntry` round-trips)
+
+**What's intentionally not in v0.6.2 (deferred to v0.6.3+)**
+
+- Server-side persistence (`GET/PUT /compose/:name`) — localStorage only
+- Block-to-block edges / connections
+- Multi-board switching (currently one anonymous board per browser)
+- Full mobile redesign (drawer is a pragmatic interim)
+- Renaming `/compose` → `/sandbox` (would break URLs + i18n key prefixes + API paths — separate migration)
+
+**Tests**
+
+- core: 553/553 (no core changes this release)
+- web: **189/189** (+9 history unit tests)
+- `format:check` clean both repos
+- `lint` clean (root)
+- `tsc` clean (root + web)
+- `npm run build` succeeds, all 30 routes SSG/SSR cleanly
+
 ### v0.6.1 — 9 bug fixes + PlanEditor (visual orchestration)
 
 Hot on the heels of v0.6.0, this patch closes 9 issues

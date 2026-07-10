@@ -480,6 +480,38 @@ const en: Dict = {
   "compose.announce.removedBlock": "Removed block {label}",
   "compose.announce.addedBlock": "Added {label} block to canvas",
   "compose.aria.addEntity": "Add {kind} “{label}” to canvas",
+  // v0.6.2: undo/redo toolbar.
+  "compose.toolbar.undo": "Undo",
+  "compose.toolbar.redo": "Redo",
+  "compose.toolbar.undoTitle": "Undo last change (⌘/Ctrl+Z)",
+  "compose.toolbar.redoTitle": "Redo last change (⌘/Ctrl+Shift+Z)",
+  "compose.toolbar.clearTitle": "Remove all blocks from the canvas",
+  "compose.toolbar.exportTitle": "Export current canvas as JSON",
+  "compose.toolbar.importTitle": "Import canvas from JSON",
+  "compose.toolbar.viewModeLabel": "Skin",
+  "compose.toolbar.viewModeModern": "Modern",
+  "compose.toolbar.viewModeCozy": "Cozy",
+  "compose.toolbar.viewModeTooltip":
+    "Toggle between modern flat and cozy 2.5D sandbox skin",
+  // v0.6.2: empty-state onboarding.
+  "compose.empty.title": "Start by adding a block",
+  "compose.empty.step1": "Drag any item from the sidebar onto the canvas",
+  "compose.empty.step2": "Or click the + button to drop it at the center",
+  "compose.empty.step3":
+    "Click a block to inspect it on the right (or in the bottom sheet on mobile)",
+  "compose.empty.keyboardHint":
+    "Tip: arrow keys move the selected block, Delete removes it, ⌘/Ctrl+Z undoes.",
+  // v0.6.2: sidebar affordances.
+  "compose.sidebar.addAria": "Add “{label}” to canvas",
+  "compose.sidebar.dragAffordance": "Drag, or click +",
+  // v0.6.2: mobile inspector drawer.
+  "compose.inspector.openDrawer": "Open details",
+  "compose.inspector.closeDrawer": "Close",
+  "compose.inspector.mobileTitle": "Block details",
+  // v0.6.2: undo/redo announcements.
+  "compose.announce.undone": "Undid last change",
+  "compose.announce.redone": "Redid last change",
+  "compose.announce.historyEmpty": "Nothing to undo",
   // v0.5.11+ currency formatting.
   "currency.usd": "${amount}",
 
@@ -708,7 +740,7 @@ const en: Dict = {
   // Compose
   "compose.h1": "Compose",
   "compose.subtitle":
-    "Drag blocks from the sidebar to plan a session — save as Profile, apply, run.",
+    "A free-form sandbox for arranging sessions, packs, profiles, policies, and capabilities. Visualize combinations — it doesn't actually configure pi.",
   "compose.inspector": "Inspector",
   "compose.emptyCanvas": "Empty canvas — pick a sidebar item and press {key}.",
 

@@ -465,6 +465,36 @@ const zh: Dict = {
   "compose.announce.removedBlock": "已移除块 {label}",
   "compose.announce.addedBlock": "已将 {label} 块加入画布",
   "compose.aria.addEntity": "将 {kind} “{label}” 加入画布",
+  // v0.6.2: 撤销/重做工具栏。
+  "compose.toolbar.undo": "撤销",
+  "compose.toolbar.redo": "重做",
+  "compose.toolbar.undoTitle": "撤销上一步（⌘/Ctrl+Z）",
+  "compose.toolbar.redoTitle": "重做（⌘/Ctrl+Shift+Z）",
+  "compose.toolbar.clearTitle": "清空画布上的所有方块",
+  "compose.toolbar.exportTitle": "将当前画布导出为 JSON",
+  "compose.toolbar.importTitle": "从 JSON 导入画布",
+  "compose.toolbar.viewModeLabel": "皮肤",
+  "compose.toolbar.viewModeModern": "现代",
+  "compose.toolbar.viewModeCozy": "沙盒",
+  "compose.toolbar.viewModeTooltip": "在现代扁平与 2.5D 沙盒皮肤间切换",
+  // v0.6.2: 空状态引导。
+  "compose.empty.title": "先添加一个块开始",
+  "compose.empty.step1": "从侧栏把任意条目拖到画布",
+  "compose.empty.step2": "或者点击 + 按钮添加到画布中央",
+  "compose.empty.step3": "点选中的块在右侧查看详情（手机端是底部弹层）",
+  "compose.empty.keyboardHint":
+    "提示：方向键移动选中块，Delete 删除，⌘/Ctrl+Z 撤销。",
+  // v0.6.2: 侧栏操作提示。
+  "compose.sidebar.addAria": "将 “{label}” 添加到画布",
+  "compose.sidebar.dragAffordance": "拖动，或点 +",
+  // v0.6.2: 移动端检视器抽屉。
+  "compose.inspector.openDrawer": "打开详情",
+  "compose.inspector.closeDrawer": "关闭",
+  "compose.inspector.mobileTitle": "块详情",
+  // v0.6.2: 撤销/重做播报。
+  "compose.announce.undone": "已撤销上一步",
+  "compose.announce.redone": "已重做",
+  "compose.announce.historyEmpty": "没有可撤销的操作",
   // v0.5.11+ 货币格式。
   "currency.usd": "US${amount}",
 
@@ -678,7 +708,8 @@ const zh: Dict = {
 
   // Compose
   "compose.h1": "编排",
-  "compose.subtitle": "从侧栏拖拽方块规划会话，可另存为配置、应用或运行。",
+  "compose.subtitle":
+    "把会话、包、配置、策略、能力块在自由画布上摆一摆 — 可视化组合用的沙盒，不是真正配置 pi。",
   "compose.inspector": "检视器",
   "compose.emptyCanvas": "画布为空 — 选中侧栏项后按 {key} 添加。",
 
