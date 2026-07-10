@@ -117,6 +117,33 @@ export async function startServer(
     genReqId: () => randomUUID(),
   });
 
+  // v0.5.23: recover any plans that were left in `running` state
+  // by a crashed executor (process died mid-step, no graceful
+  // shutdown). The runtime snapshot is the single source of
+  // truth for resume; we scan `runtime/plans/*.json` and
+  // re-start an executor for each one. Failures are logged but
+  // don't block server boot.
+  if (home !== undefined) {
+    const { recoverRunningPlans: recover } =
+      await import("../core/plan-executor.js");
+    const { buildExecutorServiceForHome } =
+      await import("../core/service-impl.js");
+    try {
+      const recovered = await recover(buildExecutorServiceForHome(home), home);
+      if (recovered.length > 0) {
+        app.log.info(
+          { planIds: recovered },
+          "recovered running plans after restart",
+        );
+      }
+    } catch (e) {
+      app.log.error(
+        { err: (e as Error).message },
+        "failed to recover running plans (continuing boot)",
+      );
+    }
+  }
+
   await app.register(fastifyCookie);
   // v0.5.14+: WebSocket transport for pi RPC. We don't pass `options`
   // here because the global onRequest hook already gates by token;

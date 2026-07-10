@@ -165,6 +165,20 @@
 >
 > 测试：`onboarding.test.tsx` 重写以适配新 helper + 新 `locale` prop；加 zh 渲染 case + "每个 key 在两个 locale 都非空" 不变量。9/9 通过。core 522/522、web 171/171（+1）、format 双清、lint clean、`npm run build` 成功、tsc clean。
 >
+> **2026-07-11 校准 (15)**：**v0.5.23 已发**——PlanExecutor MVP 切片落地。原 `startPlan` / `pausePlan` / `resumePlan` / `cancelPlan` 只翻 status，这版接上真执行器。
+>
+> | 编号 | 位置 | 修复 |
+> |---|---|---|
+> | **新功能** | `src/core/plan-executor.ts` (新增) | `class PlanExecutor` —— 顺序策略（parallel/adaptive 留 enum 给 v0.6.0）。3 个真 action：`pilot_command`（spawn child + 捕获 stdout/stderr + 监听 cancel signal 杀子进程）/ `profile_switch`（调 `service.activateProfile`）/ `policy_apply`（调 `service.applyPolicy`）。5 个 stub：`pi_session` / `pack_install` / `condition` / `wait` / `manual`（返回 success + `{stubbed: true, reason: "v0.5.23 MVP"}`）。 |
+> | **持久化** | `src/core/plan.ts` | 新增 `PlanRuntimeSnapshot` interface + `writeRuntimeSnapshot` / `readRuntimeSnapshot` / `deleteRuntimeSnapshot`（原子 tmp+rename）。`~/.pilot/runtime/plans/<id>.json` 是恢复的唯一事实源。 |
+> | **接 service** | `src/core/service-impl.ts` | `startPlan` 翻 status 后调 `getDefaultRegistry().start(planId, service, home)`（fire-and-forget）。`pause` / `cancel` 立即翻 status 让 UI 响应，同时通知 executor 在下一个 step boundary 停下。`resume` 优先调活着的 executor，否则用 snapshot 启动新的。抽出 `activateProfileByName` 命名函数给 executor adapter 用。 |
+> | **崩溃恢复** | `src/server/server.ts` | `startServer` 构造 `app` 后调 `recoverRunningPlans` —— 扫 `runtime/plans/*.json`，plan 还在 running 的就 `registry.start` 重新跑；plan 没了 / 已非 running 的孤儿 snapshot 直接删。失败 log 但不阻塞启动。 |
+> | **新文件** | `test/unit/plan-executor.test.ts` (12 cases) | 线性 plan / 失败 step / stub / 暂停+恢复 / 取消 / 从 snapshot 恢复 / registry / 恢复扫描（real / orphan / stale 三类）/ `pilot_command` 真 spawn 集成。 |
+>
+> 故意**不**做：pi_session / pack_install 真执行、condition / wait / manual 真分支、parallel / adaptive、retry/skip endpoint、WebSocket 实时推送、FeedbackEngine、多 plan 并发。详见 [`docs/v0.6.0-plan-executor-mvp.md`](./v0.6.0-plan-executor-mvp.md)。
+>
+> 测试：core 534/534（+12）、web 171/171、format 双清、lint clean、`npm run build` 成功、tsc clean。
+>
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
 ## 阶段一：看见 Pi（v0.1 - v0.3.x，已发）

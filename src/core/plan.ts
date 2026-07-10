@@ -25,6 +25,7 @@ import {
   unlink,
   stat,
   appendFile,
+  rename,
 } from "node:fs/promises";
 import { join } from "node:path";
 import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
@@ -752,4 +753,101 @@ export async function ensurePlanDirs(home?: string): Promise<void> {
     mkdir(plansHistoryDir(home), { recursive: true }),
     mkdir(plansRuntimeDir(home), { recursive: true }),
   ]);
+}
+
+// ─── Runtime snapshot (v0.5.23 — PlanExecutor) ─────────────
+
+/**
+ * Path to a single plan's runtime snapshot.
+ *
+ * The runtime snapshot is the executor's "I was here" bookmark —
+ * written after every step so a crash can pick up where we left
+ * off. Deleted on plan completion / cancellation / failure.
+ */
+export function planRuntimePath(id: string, home?: string): string {
+  return join(plansRuntimeDir(home), `${id}.json`);
+}
+
+/**
+ * In-memory representation of where the executor is. Persisted to
+ * `runtime/plans/<id>.json` after every step + on every pause /
+ * cancel so we can resume cleanly after a crash.
+ *
+ * The executor considers anything in `completedStepIds` as already
+ * done and skips it on resume. Anything not in that set is
+ * eligible to run. Currently-running step is recorded as
+ * `currentStepId` so a resumed executor can decide whether to
+ * re-run the in-flight step (we currently re-run it for safety;
+ * pi_session steps are idempotent-ish and the other action types
+ * have stronger retry semantics).
+ */
+export interface PlanRuntimeSnapshot {
+  planId: string;
+  status: "running" | "paused";
+  /** Wall-clock when the executor first started. */
+  startedAt: string;
+  /** Wall-clock of the most recent snapshot write. */
+  lastCheckpointAt: string;
+  /** The task the executor is currently working on (if any). */
+  currentTaskId: string | null;
+  /** The step the executor is currently working on (if any). */
+  currentStepId: string | null;
+  /** All task ids that have fully completed (all steps done). */
+  completedTaskIds: string[];
+  /** All step ids that have completed (across all tasks). */
+  completedStepIds: string[];
+}
+
+/** Write the runtime snapshot. Atomic via tmp + rename. */
+export async function writeRuntimeSnapshot(
+  snapshot: PlanRuntimeSnapshot,
+  home?: string,
+): Promise<void> {
+  const dir = plansRuntimeDir(home);
+  await mkdir(dir, { recursive: true });
+  const file = planRuntimePath(snapshot.planId, home);
+  const tmp = `${file}.tmp`;
+  await writeFile(tmp, JSON.stringify(snapshot, null, 2), "utf-8");
+  await rename(tmp, file);
+}
+
+/**
+ * Read the runtime snapshot for a plan. Returns `null` if the
+ * file doesn't exist (i.e. the plan has never been started, or
+ * it completed and was cleaned up).
+ */
+export async function readRuntimeSnapshot(
+  id: string,
+  home?: string,
+): Promise<PlanRuntimeSnapshot | null> {
+  const file = planRuntimePath(id, home);
+  let raw: string;
+  try {
+    raw = await readFile(file, "utf-8");
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw e;
+  }
+  try {
+    return JSON.parse(raw) as PlanRuntimeSnapshot;
+  } catch {
+    // Corrupt snapshot — treat as missing so the executor can
+    // restart from scratch. The plan TOML is the source of truth.
+    return null;
+  }
+}
+
+/** Delete the runtime snapshot. Used on plan completion / cancellation. */
+export async function deleteRuntimeSnapshot(
+  id: string,
+  home?: string,
+): Promise<boolean> {
+  const file = planRuntimePath(id, home);
+  try {
+    await unlink(file);
+    return true;
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw e;
+  }
 }

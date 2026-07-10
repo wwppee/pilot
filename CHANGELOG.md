@@ -2,6 +2,112 @@
 
 ## Unreleased
 
+### v0.5.23 — PlanExecutor MVP (sequential + 3 real actions + crash recovery)
+
+The Plan data model + CRUD + UI shell have been in place since v0.5.7
++ v0.5.13, but `startPlan` / `pausePlan` / `resumePlan` / `cancelPlan`
+only flipped status — they didn't actually run any steps. This
+version lands a real `PlanExecutor` and wires the existing control
+endpoints to it. It's the **MVP slice** of the full v0.6.0
+「自适应执行引擎」(3-4 weeks of work); see
+[`docs/v0.6.0-plan-executor-mvp.md`](./docs/v0.6.0-plan-executor-mvp.md)
+for the scope decision.
+
+**Core — `src/core/plan-executor.ts` (new, ~700 lines)**
+
+- `class PlanExecutor` — single-plan runner. Async, single-process,
+  no multi-plan locking.
+- Sequential strategy only (parallel/adaptive are no-ops in MVP;
+  the enum is preserved for v0.6.0).
+- 3 real action types:
+  - `pilot_command` — `child_process.execFile('pilot', [command, ...args])`
+    with cwd/env from `step.input`. Honors the cancel signal by
+    killing the child.
+  - `profile_switch` — calls `service.activateProfile(name)`. Throws
+    → step fails (e.g. profile TOML missing).
+  - `policy_apply` — calls `service.applyPolicy(name)`. Writes the
+    extension file under `~/.pilot/extensions/`.
+- 5 stubbed action types (return success + `data: { stubbed: true,
+  reason: "v0.5.23 MVP — full implementation in v0.6.0" }`):
+  - `pi_session` (waiting for v0.5.14.3's bridge to be production-ready)
+  - `pack_install` (pilot-tools 改造 in flight)
+  - `condition` / `wait` / `manual` (real branching is v0.6.0)
+- Persistence-first design: every step re-writes the plan TOML
+  AND the runtime snapshot before moving to the next step.
+- **Crash recovery**: the runtime snapshot at
+  `~/.pilot/runtime/plans/<id>.json` records every completed step.
+  On resume, anything in `completedStepIds` is skipped. The
+  server's boot hook (`startServer`) calls `recoverRunningPlans`
+  which scans for orphan snapshots and re-starts executors.
+
+**Core — `src/core/plan.ts`**
+
+- `PlanRuntimeSnapshot` interface + `writeRuntimeSnapshot` /
+  `readRuntimeSnapshot` / `deleteRuntimeSnapshot` / `planRuntimePath`.
+  Atomic write via tmp + rename.
+
+**Service — `src/core/service-impl.ts`**
+
+- `startPlanInHome` is no longer a status flip. After flipping
+  status + writing `plan_started`, it hands off to
+  `getDefaultRegistry().start(planId, service, home)` (fire-and-forget).
+- `pausePlanInHome` / `cancelPlanInHome` tell the live executor to
+  pause/cancel and immediately flip the plan TOML to the new
+  status (so the UI reflects the user's intent without waiting
+  for the in-flight step to finish).
+- `resumePlanInHome` either resumes the live paused executor or
+  starts a new one (if the previous one died). The snapshot
+  guides it to the right checkpoint.
+- `activateProfile` was extracted to a named function
+  `activateProfileByName` so the executor's adapter can call it.
+- `buildExecutorServiceForHome(home)` is the executor service
+  adapter (exposes only `activateProfile` + `applyPolicy`).
+
+**Server — `src/server/server.ts`**
+
+- `startServer` calls `recoverRunningPlans` after `app` is
+  constructed. Failures are logged but don't block boot.
+
+**Tests — `test/unit/plan-executor.test.ts` (new, 12 cases)**
+
+- `STUBBED_ACTIONS` exposes the 5 stubbed types.
+- Linear profile_switch plan: 3 steps run in order, plan ends
+  `completed`, runtime snapshot deleted.
+- Failing step: 1st step succeeds, 2nd throws → task + plan end
+  `failed`, step output captures the error.
+- Stub action: `pi_session` + `wait` return success with the
+  `stubbed: true` marker.
+- Pause + resume: pause mid-plan (between s1 and s2), assert
+  the run promise hasn't resolved, resume, let finish.
+- Cancel mid-plan: assert status ends `cancelled`, in-flight
+  step's "next" call never runs.
+- Resume from snapshot: pre-write a snapshot saying s1 is done,
+  start a fresh executor, assert it skips s1 and runs s2+s3.
+- Registry: start/get/pause/cancel flow; pause + cancel return
+  false when no live executor.
+- `recoverRunningPlans`: real running plan is recovered, orphan
+  snapshot (no matching plan) is cleaned up, stale snapshot
+  (plan is no longer running) is cleaned up.
+- Integration: `pilot_command` with `doctor --version` actually
+  spawns the child and captures the result.
+
+**Validation**
+
+- core: 534/534 ✓ (+12)
+- web: 171/171 ✓ (unchanged)
+- tsc clean (root + web) · `npm run build` clean
+- format clean (root + web) · lint clean
+
+**Out of scope (deferred to v0.6.0)**
+
+- `pi_session` / `pack_install` real execution
+- `condition` / `wait` / `manual` real branching
+- `parallel` / `adaptive` strategies
+- `POST /plans/:id/tasks/:taskId/retry` / `skip` endpoints
+- WebSocket push for live step progress (currently poll-based)
+- `FeedbackEngine` + recovery strategies
+- Multi-plan concurrent execution (single-process per plan in MVP)
+
 ### v0.5.22 — Bilingual glossary + /help i18n + per-page `<Hint>` i18n
 
 Round three of the P2 hardcoded-English sweep. v0.5.18–v0.5.19 added the

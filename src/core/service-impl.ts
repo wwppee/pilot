@@ -74,6 +74,10 @@ import {
 } from "./plan.js";
 import { suggestTools as suggestToolsCore } from "./plan.js";
 import {
+  getDefaultRegistry,
+  type PlanExecutorService,
+} from "./plan-executor.js";
+import {
   traceToolCalls,
   type ToolCallEvent,
   type ToolTraceFilter,
@@ -183,34 +187,7 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
     getProfile: (name) => tryReadProfile(name, home),
     setProfile: (name, input) => writeProfile(name, input, home),
     deleteProfile: (name) => deleteProfile(name, home),
-    activateProfile: async (name) => {
-      // Refuse to activate a profile that has no TOML — silently
-      // activating "ghost" profiles is how drift bugs start.
-      const existing = await tryReadProfile(name, home);
-      if (!existing) {
-        throw new Error(
-          `Profile "${name}" not found in ~/.pilot/profiles/. Run \`pilot profile ls\` to see available profiles.`,
-        );
-      }
-      // v0.5.5: actually apply the profile to pi's settings.json so
-      // the next pi launch picks up the model / thinking / packages.
-      // Previously this only wrote `~/.pilot/active.json`, a file
-      // pi never read — the activation was theatrical.
-      //
-      // v0.5.6: pass the full profile so provider / packages / notes
-      // also flow through (previously only model + thinking made it).
-      // We do this BEFORE writeActiveProfile so a settings write
-      // failure surfaces clearly instead of leaving Pilot's diary
-      // pointing at a profile that pi's runtime can't see.
-      const { applyProfileToPi } = await import("./apply-profile-to-pi.js");
-      const applied = await applyProfileToPi(existing, home);
-      if (!applied.ok) {
-        throw new Error(
-          `failed to apply profile "${name}" to pi's settings: ${applied.message}${applied.error ? ` (${applied.error})` : ""}`,
-        );
-      }
-      return writeActiveProfile(name, "web", home);
-    },
+    activateProfile: (name) => activateProfileByName(name, home),
     getActiveProfile: () => readActiveProfile(home),
     clearActiveProfile: () => clearActiveProfile(home),
 
@@ -579,6 +556,54 @@ async function applyPolicyByName(
   return { path: file };
 }
 
+async function activateProfileByName(
+  name: string,
+  home?: string,
+): Promise<import("./profile-state.js").ActiveProfileState> {
+  // Refuse to activate a profile that has no TOML — silently
+  // activating "ghost" profiles is how drift bugs start.
+  const existing = await tryReadProfile(name, home);
+  if (!existing) {
+    throw new Error(
+      `Profile "${name}" not found in ~/.pilot/profiles/. Run \`pilot profile ls\` to see available profiles.`,
+    );
+  }
+  // v0.5.5: actually apply the profile to pi's settings.json so
+  // the next pi launch picks up the model / thinking / packages.
+  // Previously this only wrote `~/.pilot/active.json`, a file
+  // pi never read — the activation was theatrical.
+  //
+  // v0.5.6: pass the full profile so provider / packages / notes
+  // also flow through (previously only model + thinking made it).
+  // We do this BEFORE writeActiveProfile so a settings write
+  // failure surfaces clearly instead of leaving Pilot's diary
+  // pointing at a profile that pi's runtime can't see.
+  const { applyProfileToPi } = await import("./apply-profile-to-pi.js");
+  const applied = await applyProfileToPi(existing, home);
+  if (!applied.ok) {
+    throw new Error(
+      `failed to apply profile "${name}" to pi's settings: ${applied.message}${applied.error ? ` (${applied.error})` : ""}`,
+    );
+  }
+  return writeActiveProfile(name, "web", home);
+}
+
+/**
+ * v0.5.23: build a PlanExecutorService adapter scoped to a
+ * specific home directory. The PlanExecutor only needs
+ * `activateProfile` and `applyPolicy` — the same operations
+ * the public service exposes. We don't pass the full service
+ * because the executor shouldn't be able to call unrelated
+ * methods (capability / pack / etc.) and we want a stable
+ * interface for testing.
+ */
+export function buildExecutorServiceForHome(home: string): PlanExecutorService {
+  return {
+    activateProfile: (name) => activateProfileByName(name, home),
+    applyPolicy: (name) => applyPolicyByName(name, home),
+  };
+}
+
 async function unapplyPolicyByName(
   name: string,
   home?: string,
@@ -717,6 +742,13 @@ async function startPlanInHome(id: string, home?: string): Promise<Plan> {
     { timestamp: now, planId: id, type: "plan_started", data: {} },
     home,
   );
+  // v0.5.23: hand off to the executor. It's fire-and-forget —
+  // the run() promise resolves when the plan completes, pauses,
+  // fails, or is cancelled. The registry keeps the live instance
+  // so pause / resume / cancel can find it.
+  if (home !== undefined) {
+    getDefaultRegistry().start(id, buildExecutorServiceForHome(home), home);
+  }
   return updated;
 }
 
@@ -724,6 +756,12 @@ async function pausePlanInHome(id: string, home?: string): Promise<Plan> {
   const plan = await readPlanCore(id, home);
   if (!plan) throw PlanErrors.notFound(id);
   if (plan.status !== "running") throw PlanErrors.notRunning(id, plan.status);
+  // v0.5.23: ask the live executor to pause. The loop honors it
+  // at the next step boundary and writes status=paused on exit.
+  // We still flip the plan TOML to "paused" immediately so the
+  // UI reflects the user's intent without waiting for the
+  // in-flight step to finish.
+  getDefaultRegistry().pause(id);
   const updated = await writePlanCore(id, { status: "paused" }, home);
   await appendPlanEvent(
     {
@@ -751,6 +789,16 @@ async function resumePlanInHome(id: string, home?: string): Promise<Plan> {
     },
     home,
   );
+  // v0.5.23: tell the live executor to resume. If the executor
+  // finished and was cleaned up (shouldn't happen if status is
+  // still paused, but defensive), we start a new one — the
+  // runtime snapshot will guide it to the right checkpoint.
+  const live = getDefaultRegistry().get(id);
+  if (live && !live.isDone() && live.isPaused()) {
+    live.resume();
+  } else if (home !== undefined) {
+    getDefaultRegistry().start(id, buildExecutorServiceForHome(home), home);
+  }
   return updated;
 }
 
@@ -759,6 +807,9 @@ async function cancelPlanInHome(id: string, home?: string): Promise<Plan> {
   if (!plan) throw PlanErrors.notFound(id);
   if (plan.status !== "running" && plan.status !== "paused")
     throw PlanErrors.cannotCancel(id, plan.status);
+  // v0.5.23: ask the live executor to cancel. The loop notices
+  // at the next step boundary and writes status=cancelled.
+  getDefaultRegistry().cancel(id);
   const now = new Date().toISOString();
   const updated = await writePlanCore(
     id,
