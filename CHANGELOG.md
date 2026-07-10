@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+### v0.5.14.3 — Playground placeholder i18n + lint cleanup
+
+Two small follow-ups from v0.5.14 review.
+
+**Web (`web/src/app/playground/page.tsx`)**
+- **P1** The `<textarea>` placeholder was a literal `"playground.prompt.placeholder"` string, showing the raw i18n key to users. Now uses `useT()` to translate the key — matches the `<T k="..." />` pattern used everywhere else on the page. Both en (`e.g. "List the files in the current directory"`) and zh (`例如："列出当前目录的文件"`) values render correctly.
+
+**Tests (`test/unit/pi-rpc-bridge.test.ts`)**
+- **P2** Drop the three `// eslint-disable-next-line @typescript-eslint/no-explicit-any` directives. The `no-explicit-any` rule isn't actually enabled (we use `any` nowhere else), so the disable directives were unused and triggered `--max-warnings 0` lint failure. Replace `(bridge as any).rpc = ...` with the structural `(bridge as unknown as { rpc: RpcClient }).rpc = ...` cast — same effect, no rule needed.
+
+**Stats**
+- core unit: 522/522 ✓ (unchanged)
+- web: 133/133 ✓ (unchanged)
+- bridge unit: 5/5 ✓ (unchanged — all 5 still pass with the new cast)
+- format clean (root + web)
+- lint clean (`--max-warnings 0`)
+
 ### v0.5.14.2 — P0#1 id-matching fix + .once() portability
 
 Bug复查发现 v0.5.14.1 的 P0#1 修复不完整：客户端 `usePiSession.onmessage` 没有真正按 id 匹配，仍然走 FIFO fallback。修了。

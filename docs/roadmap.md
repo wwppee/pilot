@@ -60,6 +60,13 @@
 >
 > 新增 `web/tests/use-pi-session.test.tsx` 4 个用例：两个并发 prompt 按 id 分流、FIFO fallback（无 id）、错误响应 reject、30s timeout。
 >
+> **2026-07-10 校准 (6)**：**v0.5.14.3 已发**——v0.5.14 review 报告的两个小尾巴：
+>
+> | 编号 | 位置 | 修复 |
+> |---|---|---|
+> | **P1** | `playground/page.tsx` L194 | textarea 的 `placeholder="playground.prompt.placeholder"` 是字面量 key 字符串，渲染出来给用户看到 raw i18n key。改用 `useT()` hook 走翻译，与页面上其他文案一致。en 显示 `e.g. "List the files in the current directory"`，zh 显示 `例如："列出当前目录的文件"`。 |
+> | **P2** | `pi-rpc-bridge.test.ts` L73 / L115 / L146 | 三处 `// eslint-disable-next-line @typescript-eslint/no-explicit-any` 指令是多余的（规则其实没启用），触发 `--max-warnings 0` lint 失败。把 `(bridge as any).rpc = ...` 换成结构化 cast `(bridge as unknown as { rpc: RpcClient }).rpc = ...`——同样效果，不需要 disable 指令。 |
+>
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
 ## 阶段一：看见 Pi（v0.1 - v0.3.x，已发）

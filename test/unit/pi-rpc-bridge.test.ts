@@ -8,6 +8,7 @@
  */
 import { describe, it, expect, vi } from "vitest";
 import { PiRpcBridge } from "../../src/server/pi-rpc-bridge.js";
+import type { RpcClient } from "@earendil-works/pi-coding-agent";
 import type { WebSocket } from "ws";
 
 /**
@@ -70,8 +71,11 @@ async function bridgeWithStubbedRpc(opts?: {
       },
     },
   );
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (bridge as any).rpc = stub;
+  // Reach into the bridge's private `rpc` field via a structural cast
+  // so we can swap in a stub without disabling the `no-explicit-any`
+  // rule (which `--max-warnings 0` lint config treats as a problem
+  // when the disable directive is unused).
+  (bridge as unknown as { rpc: RpcClient }).rpc = stub;
   return { bridge, fake, stub };
 }
 
@@ -112,8 +116,7 @@ describe("PiRpcBridge (v0.5.14.1)", () => {
   it("returns success=false with 'not JSON' for malformed input (P1#5 Buffer-safe)", async () => {
     const fake = fakeSocket();
     const bridge = new PiRpcBridge(fake.socket);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (bridge as any).rpc = {};
+    (bridge as unknown as { rpc: RpcClient }).rpc = {} as RpcClient;
     // Bypass JSON.stringify — we want the raw malformed string.
     await fake.listeners.message[0]?.("{not json");
     const errors = fake.sent.filter(
@@ -143,8 +146,9 @@ describe("PiRpcBridge (v0.5.14.1)", () => {
   it("close() is idempotent", async () => {
     const fake = fakeSocket();
     const bridge = new PiRpcBridge(fake.socket);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (bridge as any).rpc = { stop: vi.fn(() => Promise.resolve()) };
+    (bridge as unknown as { rpc: RpcClient }).rpc = {
+      stop: vi.fn(() => Promise.resolve()),
+    } as unknown as RpcClient;
     await bridge.close();
     await bridge.close();
     expect((bridge as unknown as { closed: boolean }).closed).toBe(true);

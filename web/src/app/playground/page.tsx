@@ -23,7 +23,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePiSession } from "@/lib/usePiSession";
-import { T } from "@/components/I18n";
+import { T, useT } from "@/components/I18n";
 
 /**
  * Safely stringify a value for the log row. Pi event payloads can
@@ -41,6 +41,7 @@ function safeStringify(v: unknown, maxLen = 80): string {
 
 export default function PlaygroundPage() {
   const session = usePiSession();
+  const t = useT();
   const [prompt, setPrompt] = useState("");
   const logRef = useRef<HTMLDivElement>(null);
   const [sending, setSending] = useState(false);
@@ -191,7 +192,7 @@ export default function PlaygroundPage() {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             disabled={session.state !== "connected" || sending}
-            placeholder="playground.prompt.placeholder"
+            placeholder={t("playground.prompt.placeholder")}
             rows={3}
             className="mt-2 w-full surface-2 rounded px-3 py-2 text-sm font-mono outline-none focus:border-[var(--accent)]"
           />
