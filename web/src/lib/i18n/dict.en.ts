@@ -53,6 +53,24 @@ const en: Dict = {
   "try.developerDetails": "Developer details",
   "try.developerDetailsHint":
     "Raw events from the pi RPC bridge — useful for debugging.",
+  // v0.5.16: pi session tree (rename / clone / fork).
+  "try.session.title": "Session",
+  "try.session.unnamed": "Untitled session",
+  "try.session.rename": "Rename",
+  "try.session.renamePlaceholder": "Session name",
+  "try.session.renameSave": "Save",
+  "try.session.renameCancel": "Cancel",
+  "try.session.clone": "Clone",
+  "try.session.cloneHint": "Copy the current branch into a new session file.",
+  "try.session.messageCount.one": "{count} message",
+  "try.session.messageCount.other": "{count} messages",
+  "try.session.forkedFrom": "↳ Forked from “{name}”",
+  "try.session.forkHere": "Fork from here",
+  "try.session.forkConfirm":
+    "Start a new branch from this message? The current branch stays; future messages go to the new one.",
+  "try.session.forkButton": "Fork",
+  "try.session.forkCancel": "Cancel",
+  "try.session.cloneOk": "Cloned — now in “{name}”",
   "try.events.title": "Event stream",
   "try.events.clear": "clear",
   "try.events.emptyConnected":

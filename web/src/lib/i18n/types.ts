@@ -71,6 +71,23 @@ export type Dict = {
   "try.tool.args": string;
   "try.developerDetails": string;
   "try.developerDetailsHint": string;
+  // v0.5.16: pi session tree (rename / clone / fork).
+  "try.session.title": string;
+  "try.session.unnamed": string;
+  "try.session.rename": string;
+  "try.session.renamePlaceholder": string;
+  "try.session.renameSave": string;
+  "try.session.renameCancel": string;
+  "try.session.clone": string;
+  "try.session.cloneHint": string;
+  "try.session.messageCount.one": string;
+  "try.session.messageCount.other": string;
+  "try.session.forkedFrom": string;
+  "try.session.forkHere": string;
+  "try.session.forkConfirm": string;
+  "try.session.forkButton": string;
+  "try.session.forkCancel": string;
+  "try.session.cloneOk": string;
   "try.events.title": string;
   "try.events.clear": string;
   "try.events.emptyConnected": string;

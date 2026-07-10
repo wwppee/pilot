@@ -78,6 +78,17 @@
 >
 > 新增 `web/tests/chat-stream.test.ts` 6 个用例。core 522/522、web 139/139（+6）、lint clean、format 双清。
 >
+> **2026-07-10 校准 (8)**：**v0.5.16 已发**——把 pi 的 session tree 接进 `/try` chat UI。v0.5.15 只能聊，看不到 / 控制不到 tree。这版补上：
+>
+> | 改动 | 位置 |
+> |---|---|
+> | 新增组件 `SessionPanel` | `web/src/components/SessionPanel.tsx` —— header 横条：当前 session 名（点开 inline rename 走 `set_session_name`）、消息数（`.one`/`.other` plural）、Clone 按钮（`clone()`）。 |
+> | 新增组件 `BubbleActions` | `web/src/components/BubbleActions.tsx` —— 每个用户气泡 hover 出现"↳ Fork from here"，点击先弹确认再调 `fork(entryId)`，因为 fork 会建新 session 文件，不能误触。 |
+> | 接入 try 页面 | `web/src/app/try/page.tsx` —— `get_state` 在 connect + 每个变更（prompt/rename/clone/fork）后拉一次（pi 不发 public tree-change event，靠 mutation polling）。fork 流程：点击 → `get_fork_messages()` 匹配 entryId → `fork(entryId)` → 清本地气泡 → 重拉 state；header 显示 `↳ Forked from "<oldName>"` 直到用户在分支里发新消息。clone 流程对称。 |
+> | i18n | 新增 15 个 `try.session.*` key（en + zh）：title / unnamed / rename + placeholder + save/cancel / clone + hint / messageCount.one/other / forkedFrom / forkHere / forkConfirm / forkButton / forkCancel / cloneOk。 |
+>
+> 新增 `web/tests/try-session.test.tsx` 9 个用例（SessionPanel 6 + BubbleActions 3）。core 522/522、web 148/148（+9）、lint clean、format 双清。
+>
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
 ## 阶段一：看见 Pi（v0.1 - v0.3.x，已发）

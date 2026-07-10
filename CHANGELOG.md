@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+### v0.5.16 — Session tree actions (rename / clone / fork per bubble)
+
+Wire pi's session tree into the `/try` chat UI. The page already streamed messages, but until now you couldn't see or control the tree.
+
+**New components**
+- `web/src/components/SessionPanel.tsx` — header strip showing current session name (clickable to inline rename via `set_session_name`), message count (with `.one`/`.other` plural keys), and a Clone button (`clone()` — copies the current branch into a new session file).
+- `web/src/components/BubbleActions.tsx` — hover-revealed "Fork from here" trigger on every user bubble. Opens a confirm panel before invoking `fork(entryId)`, since forking creates a new session file.
+
+**Wiring (`web/src/app/try/page.tsx`)**
+- `get_state` is called on connect + after every mutation (`prompt`, `rename`, `clone`, `fork`). Pi doesn't emit public `session_forked` / `session_switched` events, so polling-on-mutation is the simplest reliable sync.
+- `fork` flow: click → `get_fork_messages()` → match the bubble's text against `entryId` → `fork(entryId)` → clear local user bubbles → re-fetch state. The header shows `↳ Forked from "<oldName>"` until the user sends a new message in the new branch.
+- `clone` flow: capture name, clear bubbles, `clone()`, re-fetch state.
+- `rename` flow: click name → inline edit (Enter saves, Esc cancels) → `set_session_name(name)` → re-fetch.
+
+**i18n**
+- 15 new keys (`try.session.*`): title, unnamed, rename + placeholder + save/cancel, clone + hint, messageCount.one/other, forkedFrom, forkHere, forkConfirm, forkButton, forkCancel, cloneOk. en + zh.
+
+**Tests**
+- New `web/tests/try-session.test.tsx` (9 cases): unnamed rendering, name + count, singular/plural, forkedFrom indicator, onClone callback, onRename trim, BubbleActions disabled / confirm / cancel.
+- core unit: 522/522 ✓ (unchanged)
+- web: 148/148 ✓ (+9)
+- format clean (root + web) · lint clean (`--max-warnings 0`)
+
 ### v0.5.15 — Try pi: chat UI in the browser
 
 Replace the v0.5.14 `/playground` page (raw JSON event log) with a real chat interface for talking to pi from the browser. Rename to `/try` ("试玩" / "Try pi") to match what the page actually does.

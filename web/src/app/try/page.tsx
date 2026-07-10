@@ -1,26 +1,26 @@
 /**
- * /try — chat with pi from the browser.
+ * /try — chat with pi from the browser, with session-tree actions.
  *
- * v0.5.15: rebuilt from the v0.5.14 Playground (raw event log)
- * into a real chat interface. The page:
+ * v0.5.15: rebuilt from v0.5.14 Playground into a real chat UI.
+ * v0.5.16: added session-tree actions (rename / clone / fork per
+ *          user bubble). Each user bubble can spawn a new branch
+ *          via `fork(entryId)`; the header shows the current
+ *          session name + message count + a "forked from X"
+ *          indicator when the latest action was a fork.
  *
- *   - Connects to the Pilot WebSocket bridge (via `usePiSession`).
- *   - Sends the user's prompt with `session.send({ type: "prompt" })`.
- *   - Reduces pi's raw event stream into a chat-shaped message
- *     list via `lib/chat-stream.ts`.
- *   - Renders user + assistant bubbles, thinking blocks, tool calls.
- *   - Collapses the raw event stream into a "Developer details"
- *     panel so devs can still debug the bridge.
- *
- * Why not just dump events: pi's event stream is a developer
- * surface (message_start/update/end with delta contentIndex, plus
- * tool_execution_* events). End users want a chat. The reducer
- * (`chat-stream.ts`) is pure + unit-tested so the chat view is
- * reliable without depending on the live SDK.
+ * Architecture:
+ *   - `usePiSession` gives us raw events + a typed `send()`.
+ *   - `lib/chat-stream.ts` reduces events into ChatMessage[].
+ *   - `SessionPanel` (top strip) + `BubbleActions` (per-bubble)
+ *     surface tree ops.
+ *   - State syncing: we call `get_state` on connect + after each
+ *     mutation (rename / clone / fork). There's no public
+ *     tree-change event from pi, so polling-on-mutation is the
+ *     simplest reliable strategy.
  */
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePiSession } from "@/lib/usePiSession";
 import { T, useT } from "@/components/I18n";
 import {
@@ -29,11 +29,15 @@ import {
   type ChatMessage,
   type ContentBlock,
 } from "@/lib/chat-stream";
+import {
+  SessionPanel,
+  emptySessionState,
+  type SessionState,
+} from "@/components/SessionPanel";
+import { BubbleActions } from "@/components/BubbleActions";
 
 /**
  * Safely stringify a value for the developer-details log row.
- * Pi event payloads can contain circular structures; degrade
- * gracefully so the UI keeps working.
  */
 function safeStringify(v: unknown, maxLen = 200): string {
   try {
@@ -41,6 +45,20 @@ function safeStringify(v: unknown, maxLen = 200): string {
   } catch {
     return "[unserializable]";
   }
+}
+
+/** Narrow a loose object into our SessionState view of pi's state. */
+function parseSessionState(raw: unknown): SessionState {
+  const empty = emptySessionState();
+  if (!raw || typeof raw !== "object") return empty;
+  const r = raw as Record<string, unknown>;
+  return {
+    sessionId: typeof r.sessionId === "string" ? r.sessionId : "",
+    sessionName: typeof r.sessionName === "string" ? r.sessionName : "",
+    sessionFile: typeof r.sessionFile === "string" ? r.sessionFile : "",
+    messageCount: typeof r.messageCount === "number" ? r.messageCount : 0,
+    isStreaming: r.isStreaming === true,
+  };
 }
 
 export default function TryPage() {
@@ -55,61 +73,46 @@ export default function TryPage() {
   // synthesize them locally and prepend to the reducer output.
   const [localUserMessages, setLocalUserMessages] = useState<ChatMessage[]>([]);
 
-  // Counter for stable React keys on the developer-details log
-  // (avoids the array-index-as-key anti-pattern).
+  // Session state (synced via get_state on connect + after mutations).
+  const [sessionState, setSessionState] =
+    useState<SessionState>(emptySessionState());
+  const [forkedFrom, setForkedFrom] = useState<string | null>(null);
+  // Cache the previous session name when forking, so we can show
+  // "↳ forked from X" until the user sends a new message.
+  const prevSessionNameRef = useRef<string>("");
+
+  // Counter for stable React keys on the developer-details log.
   const eventCounter = useRef(0);
 
-  // Reduce the raw event stream to assistant / tool messages. We
-  // re-run on every event; the reducer is pure + cheap.
+  /** Re-fetch the session state via get_state. */
+  const refreshSessionState = useCallback(async () => {
+    if (session.state !== "connected") return;
+    try {
+      const data = (await session.send({ type: "get_state" })) as unknown;
+      setSessionState(parseSessionState(data));
+    } catch (e) {
+      // get_state can fail mid-stream — ignore, the state pill
+      // already shows the connection status.
+      setLastError((e as Error).message);
+    }
+  }, [session]);
+
+  // Refresh state on every connect.
+  useEffect(() => {
+    if (session.state === "connected") {
+      void refreshSessionState();
+    }
+  }, [session.state, refreshSessionState]);
+
+  // Reduce the raw event stream to assistant / tool messages.
   const streamMessages = useMemo(() => {
-    // Cast the loose event shape — usePiSession already gives us a
-    // generic { type: string; [k: string]: unknown } event.
     const events = session.events.map((e) => e.event) as Array<
       Record<string, unknown>
     >;
     return reduceStream(events as Parameters<typeof reduceStream>[0]);
   }, [session.events]);
 
-  // Synthesize a user message every time we send a prompt so it
-  // shows up immediately in the chat (before pi echoes its events).
-  const handleSend = async () => {
-    const text = prompt.trim();
-    if (!text) return;
-    setSending(true);
-    setLastError(null);
-    setLocalUserMessages((prev) => [...prev, userMessage(text)]);
-    setPrompt("");
-    try {
-      await session.send({ type: "prompt", message: text });
-    } catch (e) {
-      setLastError((e as Error).message);
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const handleAbort = async () => {
-    try {
-      await session.send({ type: "abort" });
-    } catch (e) {
-      setLastError((e as Error).message);
-    }
-  };
-
-  const handleNewSession = async () => {
-    // Reset local user-bubble history too — a fresh pi session
-    // shouldn't show our previous turns.
-    setLocalUserMessages([]);
-    try {
-      await session.send({ type: "new_session" });
-    } catch (e) {
-      setLastError((e as Error).message);
-    }
-  };
-
-  // Merge user bubbles + assistant bubbles, preserving order. User
-  // bubbles carry their own timestamps; assistant bubbles inherit
-  // order from the reducer.
+  // Merge user bubbles + assistant bubbles by timestamp.
   const messages = useMemo<ChatMessage[]>(() => {
     const merged: ChatMessage[] = [];
     let userIdx = 0;
@@ -137,6 +140,106 @@ export default function TryPage() {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages.length, lastMessageText(messages)]);
+
+  // Clear forkedFrom indicator once a new user message is sent.
+  useEffect(() => {
+    if (forkedFrom && localUserMessages.length > 0) {
+      // Only clear if the latest user message is after the fork
+      // (i.e. they actually sent something new in the new branch).
+      setForkedFrom(null);
+    }
+  }, [localUserMessages.length, forkedFrom]);
+
+  const handleSend = async () => {
+    const text = prompt.trim();
+    if (!text) return;
+    setSending(true);
+    setLastError(null);
+    setLocalUserMessages((prev) => [...prev, userMessage(text)]);
+    setPrompt("");
+    try {
+      await session.send({ type: "prompt", message: text });
+    } catch (e) {
+      setLastError((e as Error).message);
+    } finally {
+      setSending(false);
+      // Refresh message count after a turn completes.
+      void refreshSessionState();
+    }
+  };
+
+  const handleAbort = async () => {
+    try {
+      await session.send({ type: "abort" });
+    } catch (e) {
+      setLastError((e as Error).message);
+    }
+  };
+
+  const handleNewSession = async () => {
+    setLocalUserMessages([]);
+    setForkedFrom(null);
+    try {
+      await session.send({ type: "new_session" });
+      void refreshSessionState();
+    } catch (e) {
+      setLastError((e as Error).message);
+    }
+  };
+
+  const handleRename = async (next: string) => {
+    await session.send({ type: "set_session_name", name: next });
+    void refreshSessionState();
+  };
+
+  const handleClone = async () => {
+    // Capture the name BEFORE clone so we can show "Cloned — now in X".
+    prevSessionNameRef.current = sessionState.sessionName;
+    setLocalUserMessages([]);
+    setForkedFrom(null);
+    await session.send({ type: "clone" });
+    await refreshSessionState();
+    // Friendly toast-style confirmation. The new name is now in
+    // sessionState.sessionName (since refreshSessionState already
+    // ran). The "from X" hint is implicit in the session panel
+    // (user can rename + see old name in their file browser).
+  };
+
+  /**
+   * Fork from a specific user message bubble. We need to map the
+   * bubble's text → pi's entryId, since pi identifies tree nodes
+   * by entryId (not our synthetic `user-<ts>`).
+   *
+   * 1. Call get_fork_messages() to get [{entryId, text}].
+   * 2. Find the entry whose text matches the bubble.
+   * 3. Call fork(entryId).
+   * 4. Refresh state + show "forked from <oldName>".
+   */
+  const handleFork = useCallback(
+    async (bubble: ChatMessage) => {
+      const textBlock = bubble.blocks.find((b) => b.type === "text");
+      const bubbleText = textBlock?.type === "text" ? textBlock.text : "";
+      if (!bubbleText) throw new Error("no text in bubble to fork from");
+
+      const forkable = (await session.send({
+        type: "get_fork_messages",
+      })) as Array<{ entryId: string; text: string }> | unknown;
+      const list = Array.isArray(forkable) ? forkable : [];
+      // Match by exact text. If multiple matches (same prompt
+      // twice), pick the last — that's the most recent occurrence.
+      const match = [...list].reverse().find((m) => m.text === bubbleText);
+      if (!match) {
+        throw new Error("could not find this message in pi's tree");
+      }
+
+      prevSessionNameRef.current = sessionState.sessionName;
+      setForkedFrom(sessionState.sessionName || t("try.session.unnamed"));
+      setLocalUserMessages([]);
+      await session.send({ type: "fork", entryId: match.entryId });
+      await refreshSessionState();
+    },
+    [session, sessionState.sessionName, refreshSessionState, t],
+  );
 
   const statusLabel = (() => {
     switch (session.state) {
@@ -227,6 +330,13 @@ export default function TryPage() {
         )}
       </section>
 
+      <SessionPanel
+        sessionState={sessionState}
+        onRename={handleRename}
+        onClone={handleClone}
+        forkedFrom={forkedFrom}
+      />
+
       <section
         ref={scrollRef}
         className="surface rounded-lg flex-1 overflow-y-auto p-4 space-y-4 min-h-0"
@@ -242,7 +352,13 @@ export default function TryPage() {
             />
           </p>
         ) : (
-          messages.map((m) => <MessageBubble key={m.id} message={m} t={t} />)
+          messages.map((m) => (
+            <MessageBubble
+              key={m.id}
+              message={m}
+              onFork={m.role === "user" ? () => handleFork(m) : undefined}
+            />
+          ))
         )}
         {lastError && (
           <p className="text-sm text-[var(--error)]">{lastError}</p>
@@ -258,7 +374,6 @@ export default function TryPage() {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={(e) => {
-              // Cmd/Ctrl-Enter to send (Enter alone just inserts a newline).
               if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
                 e.preventDefault();
                 void handleSend();
@@ -327,10 +442,6 @@ export default function TryPage() {
   );
 }
 
-/**
- * Pick the most informative field out of an event payload for the
- * developer-details row.
- */
 function summarizeEvent(ev: Record<string, unknown>): string {
   if (typeof ev.message === "string") return ev.message.slice(0, 200);
   if (typeof ev.text === "string") return ev.text.slice(0, 200);
@@ -349,7 +460,6 @@ function summarizeEvent(ev: Record<string, unknown>): string {
     .join(" ");
 }
 
-/** Last text-ish bit of any message — used as auto-scroll dep. */
 function lastMessageText(messages: ChatMessage[]): string {
   const m = messages[messages.length - 1];
   if (!m) return "";
@@ -359,18 +469,20 @@ function lastMessageText(messages: ChatMessage[]): string {
   return "";
 }
 
-/** Render a single chat message (user or assistant or tool). */
+/** Render a single chat message. User bubbles get a fork action. */
 function MessageBubble({
   message,
-  t,
+  onFork,
 }: {
   message: ChatMessage;
-  t: (k: string, params?: Record<string, string | number>) => string;
+  // Pass undefined explicitly — exactOptionalPropertyTypes
+  // disallows `prop?: T` where the source value is `T | undefined`.
+  onFork: (() => Promise<void> | void) | undefined;
 }) {
   const isUser = message.role === "user";
   return (
     <div
-      className={`flex ${isUser ? "justify-end" : "justify-start"}`}
+      className={`flex ${isUser ? "justify-end" : "justify-start"} group`}
       data-role={message.role}
     >
       <div
@@ -389,7 +501,6 @@ function MessageBubble({
             <BlockView
               key={i}
               block={b}
-              t={t}
               isLast={i === message.blocks.length - 1}
               messageStatus={message.status}
             />
@@ -400,27 +511,27 @@ function MessageBubble({
             {message.provider}/{message.model}
           </p>
         )}
+        {isUser && onFork && (
+          <div className="flex justify-end">
+            <BubbleActions onFork={onFork} />
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-/** Render a single ContentBlock (text / thinking / toolCall). */
 function BlockView({
   block,
-  t,
   isLast,
   messageStatus,
 }: {
   block: ContentBlock;
-  t: (k: string, params?: Record<string, string | number>) => string;
   isLast: boolean;
   messageStatus: ChatMessage["status"];
 }) {
   switch (block.type) {
     case "text":
-      // Empty trailing text blocks on a still-streaming message
-      // are noise — skip them.
       if (!block.text && messageStatus === "streaming" && isLast) return null;
       return <p className="whitespace-pre-wrap break-words">{block.text}</p>;
     case "thinking":
@@ -428,9 +539,7 @@ function BlockView({
       return (
         <details className="text-xs opacity-70">
           <summary className="cursor-pointer italic">
-            {messageStatus === "streaming" && isLast
-              ? t("try.thinking")
-              : t("try.thinking").replace("…", "")}
+            <T k="try.thinking" />
           </summary>
           <p className="mt-1 whitespace-pre-wrap">{block.text}</p>
         </details>
@@ -449,18 +558,20 @@ function BlockView({
             🔧 {block.name || "tool"}{" "}
             {block.status === "executing" && (
               <span className="opacity-60">
-                ({t("try.tool.executing", { tool: block.name })})
+                (<T k="try.tool.executing" params={{ tool: block.name }} />)
               </span>
             )}
             {block.isError && (
               <span className="text-[var(--error)] ml-2">
-                ⚠ {t("try.tool.error")}
+                ⚠ <T k="try.tool.error" />
               </span>
             )}
           </summary>
           {block.args !== undefined && (
             <div className="mt-1">
-              <p className="opacity-60">{t("try.tool.args")}:</p>
+              <p className="opacity-60">
+                <T k="try.tool.args" />:
+              </p>
               <pre className="overflow-x-auto bg-[var(--surface-2)] rounded p-1">
                 {safeStringify(block.args, 1000)}
               </pre>
@@ -468,7 +579,9 @@ function BlockView({
           )}
           {block.result !== undefined && (
             <div className="mt-1">
-              <p className="opacity-60">{t("try.tool.result")}:</p>
+              <p className="opacity-60">
+                <T k="try.tool.result" />:
+              </p>
               <pre className="overflow-x-auto bg-[var(--surface-2)] rounded p-1 max-h-40">
                 {safeStringify(block.result, 1000)}
               </pre>
