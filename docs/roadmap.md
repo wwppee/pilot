@@ -142,6 +142,16 @@
 >
 > 新增 `web/tests/session-tree.test.ts` 7 个用例（flatten 线性/分支/深树 + findCurrentPath 无事件/线性/分支发散）。core 522/522、web 170/170（+7）、format 双清、lint clean。
 >
+> **2026-07-10 校准 (13)**：**v0.5.21 已发**——修 v0.5.18 引入的 P0 SSR 崩溃 + 两个 P2 硬编码英文。
+>
+> | 编号 | 位置 | 修复 |
+> |---|---|---|
+> | **P0** | `web/src/components/NavLinks.tsx` | 没有 `"use client"` 但调用 `useT()`，tsc 不报错但 `next build` 在静态生成时报 "useT() from the server"。重写成 Server Component：拿 `locale: Locale` prop，用纯 `renderT(locale, key)`。`NavTooltip` 也清掉 `"use client"`（纯 JSX）。`layout.tsx` 传 locale 下来。 |
+> | **P2** | `web/src/app/page.tsx` | `<WelcomeBanner>` 标题/intro/3 步文案全英文硬编码。`page.tsx`（server component）现在用 `renderT(locale, "home.welcome.*")` 预翻译后传 props 进去。 |
+> | **P2** | `web/src/components/NavLinks.tsx` | 每个 `NavItem` 的 `hint: string` 硬编码英文。改成 `hintKey: HintKey`，渲染时用 `renderT(locale, hintKey)`。新增 15 个 `nav.hint.*` key（en + zh）。 |
+>
+> 测试：`nav-links.test.tsx` 完全重写以适配新签名 + 加了 `locale="zh"` 块（断言所有 tooltip 都有中文、不暴露 raw key）。11/11 通过。`npm run build` 现在能成功（之前每页都报 P0 错）。core 522/522、web 170/170、format 双清、lint clean。
+>
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
 ## 阶段一：看见 Pi（v0.1 - v0.3.x，已发）

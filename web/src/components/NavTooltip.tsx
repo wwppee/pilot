@@ -4,9 +4,13 @@
  * v0.5.18: every nav item gets a one-line description so beginners
  * can preview where a link goes without clicking. Pure CSS using
  * `:hover` + `:focus-within` so no JS state needed.
+ *
+ * v0.5.21: removed `"use client"` — the component is pure JSX
+ * (no hooks, no event handlers besides the implicit Link click)
+ * so it renders fine from a Server Component parent. The parent
+ * (`NavLinks`) now passes pre-translated `label` + `hint` strings
+ * so no client-side translation context is required.
  */
-
-"use client";
 
 import Link from "next/link";
 import type { ReactNode } from "react";

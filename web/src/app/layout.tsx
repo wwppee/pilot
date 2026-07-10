@@ -129,7 +129,7 @@ export default async function RootLayout({
                 >
                   🛰 <T k="brand.name" />
                 </Link>
-                <NavLinks currentPath={currentPath} />
+                <NavLinks currentPath={currentPath} locale={locale} />
                 <div className="ml-auto flex items-center gap-3">
                   <ActiveProfileBadge />
                   <LanguageSwitcher />

@@ -2,6 +2,37 @@
 
 ## Unreleased
 
+### v0.5.21 — P0 SSR fix (NavLinks useT) + P2 hardcoded-English i18n
+
+**P0 — NavLinks `useT()` from server (v0.5.18 regression)**
+
+`NavLinks` was added in v0.5.18 without `"use client"` but called `useT()` (a client hook). tsc didn't catch it but `next build` failed at static-generation time:
+
+> Error: Attempted to call useT() from the server but useT is on the client.
+
+Fix:
+- Removed the `useT()` call; `NavLinks` is now a Server Component that takes `locale: Locale` as a prop and uses the pure `renderT(locale, key)`.
+- `NavTooltip` no longer needs `"use client"` — it's pure JSX, just receives pre-translated strings.
+- `layout.tsx` passes the already-computed `locale` down.
+
+Trade-off: the nav no longer re-renders on client-side language toggle. Acceptable because:
+1. The `<LanguageSwitcher>` lives inside the same `<I18nProvider>` and updates its own labels instantly.
+2. The page-level translations (most of the app) still update reactively because they use `useT()` from their own client components.
+3. A future fix can add `router.refresh()` to `setLocale` to make the nav re-render too.
+
+**P2 — Hardcoded English in WelcomeBanner + NavTooltip hints**
+
+- `home.welcome.*` keys (en + zh) for the 3-step banner: title, intro, 3× (label, desc).
+- `nav.hint.*` keys (en + zh) for the 15 nav tooltips.
+- `page.tsx` now passes pre-translated strings to `<WelcomeBanner>` (the banner stays a client component, no internal i18n needed).
+
+**Tests**
+- `web/tests/nav-links.test.tsx` rewritten for the new server-component signature. Now covers both `locale="en"` and `locale="zh"` — the zh block asserts that every tooltip body contains Chinese characters and no raw `nav.hint.*` keys. 11/11 ✓.
+- core unit: 522/522 ✓
+- web: 170/170 ✓ (count unchanged — existing onboarding + new tree tests are unaffected)
+- format clean (root + web) · lint clean
+- **`npm run build` now succeeds** (was failing on every page with the P0 error).
+
 ### v0.5.20 — Session tree visualization on /try
 
 Surface pi's full conversation DAG inside the chat page. The existing bubble-level fork action (v0.5.16) only worked for the visible turn — this version adds a sidebar-style view of all branches so users can see + fork from anywhere in the history.

@@ -104,24 +104,24 @@ export default async function DashboardPage() {
       <AutoRefresh intervalMs={10_000} />
 
       <WelcomeBanner
-        title="Welcome to Pilot"
-        intro="Pilot is pi's management dashboard. Three steps to get going:"
+        title={renderT(locale, "home.welcome.title")}
+        intro={renderT(locale, "home.welcome.intro")}
         dismissKey="pilot-welcome-v1"
         steps={[
           {
             href: "/try",
-            label: "Chat with pi",
-            desc: "Open the Try page, connect, and send your first prompt.",
+            label: renderT(locale, "home.welcome.step1.label"),
+            desc: renderT(locale, "home.welcome.step1.desc"),
           },
           {
             href: "/packages",
-            label: "Install a tool",
-            desc: "Browse the registry and add one pi extension.",
+            label: renderT(locale, "home.welcome.step2.label"),
+            desc: renderT(locale, "home.welcome.step2.desc"),
           },
           {
             href: "/help",
-            label: "Read the glossary",
-            desc: "Hover any underlined term, or open the help page.",
+            label: renderT(locale, "home.welcome.step3.label"),
+            desc: renderT(locale, "home.welcome.step3.desc"),
           },
         ]}
       />

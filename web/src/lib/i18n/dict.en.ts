@@ -24,6 +24,33 @@ const en: Dict = {
   "nav.avatars": "Avatars",
   "nav.plans": "Plans",
   "nav.try": "Try pi",
+  "nav.hint.dashboard": "Today's stats + recent activity",
+  "nav.hint.try": "Chat with pi from the browser",
+  "nav.hint.sessions": "Browse past pi conversations",
+  "nav.hint.usage": "Tokens, cost, by-model breakdown",
+  "nav.hint.tools": "Tools pi can call + their usage",
+  "nav.hint.context": "Project rules pi reads on startup",
+  "nav.hint.capabilities": "What pi is currently allowed to do",
+  "nav.hint.avatars": "Project's expected config (diff vs current)",
+  "nav.hint.plans": "Multi-step tasks for pi (v0.5.13+ UI)",
+  "nav.hint.packages": "Browse + install pi extensions",
+  "nav.hint.forge": "Create / package your own extension",
+  "nav.hint.policy": "Tool safety rules + confirm/block lists",
+  "nav.hint.compose": "Try composable Box Garden prototypes",
+  "nav.hint.profiles": "Saved capability bundles (model + tools)",
+  "nav.hint.help": "Glossary + how-tos for beginners",
+  // v0.5.21: welcome banner content.
+  "home.welcome.title": "Welcome to Pilot",
+  "home.welcome.intro":
+    "Pilot is pi's management dashboard. Three steps to get going:",
+  "home.welcome.step1.label": "Chat with pi",
+  "home.welcome.step1.desc":
+    "Open the Try page, connect, and send your first prompt.",
+  "home.welcome.step2.label": "Install a tool",
+  "home.welcome.step2.desc": "Browse the registry and add one pi extension.",
+  "home.welcome.step3.label": "Read the glossary",
+  "home.welcome.step3.desc":
+    "Hover any underlined term, or open the help page.",
   "try.h1": "Try pi",
   "try.subtitle":
     "Chat with the real pi agent. Each browser tab spawns a fresh pi subprocess via the WebSocket bridge — type a prompt and watch the response stream in.",

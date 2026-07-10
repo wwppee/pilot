@@ -53,6 +53,29 @@ export type Dict = {
   "help.section.architectureBody": string;
   // v0.5.15+: try pi — chat UI in the browser.
   "nav.try": string;
+  "nav.hint.dashboard": string;
+  "nav.hint.try": string;
+  "nav.hint.sessions": string;
+  "nav.hint.usage": string;
+  "nav.hint.tools": string;
+  "nav.hint.context": string;
+  "nav.hint.capabilities": string;
+  "nav.hint.avatars": string;
+  "nav.hint.plans": string;
+  "nav.hint.packages": string;
+  "nav.hint.forge": string;
+  "nav.hint.policy": string;
+  "nav.hint.compose": string;
+  "nav.hint.profiles": string;
+  "nav.hint.help": string;
+  "home.welcome.title": string;
+  "home.welcome.intro": string;
+  "home.welcome.step1.label": string;
+  "home.welcome.step1.desc": string;
+  "home.welcome.step2.label": string;
+  "home.welcome.step2.desc": string;
+  "home.welcome.step3.label": string;
+  "home.welcome.step3.desc": string;
   // v0.5.15+: /try page.
   "try.h1": string;
   "try.subtitle": string;

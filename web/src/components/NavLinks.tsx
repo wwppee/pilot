@@ -1,23 +1,32 @@
 /**
- * <NavLinks> — client-side nav with icons + tooltips + 3 groups.
+ * <NavLinks> — server-rendered nav with icons + tooltips + 3 groups.
  *
- * v0.5.18: complete nav redesign for beginners. Every item now
- * shows an emoji icon (decorative, aria-hidden) and a one-line
- * hover/focus tooltip explaining where the link goes. Three
- * semantic groups instead of two:
+ * v0.5.21: rewrote as a Server Component. The v0.5.18 version called
+ * `useT()` (a client hook) without `"use client"` — that compiled
+ * fine but crashed `next build` at static-generation time with
+ * "useT() from the server but useT is on the client". The fix:
+ * take `locale` as a prop, use the pure server `renderT(locale, key)`.
  *
- *   - **Inspect** (read-only views): Dashboard / Sessions / Usage /
- *     Tools / Context / Capabilities / Avatars / Plans / Try pi
+ * Trade-off: the nav no longer re-renders on client-side language
+ * toggle. The LanguageSwitcher is unaffected (it reads from the
+ * I18nProvider context directly). To make the nav re-render on
+ * language change we'd need a full page refresh — out of scope
+ * for this fix.
+ *
+ * Three semantic groups:
+ *
+ *   - **Inspect** (read-only views): Dashboard / Try / Sessions /
+ *     Usage / Tools / Context / Capabilities / Avatars / Plans
  *   - **Manage** (write actions): Packages / Forge / Policy /
  *     Compose / Profiles
- *   - **Learn** (onboarding): Glossary / How-tos
+ *   - **Learn** (onboarding): Help
  *
  * Group labels visible only when there's room (sm:); the bullet
  * separator stays for visual chunking. Tooltips use pure CSS
  * `:hover` / `:focus-within` so the nav stays zero-JS-state.
  */
 
-import { useT } from "./I18n";
+import { renderT, type Locale } from "@/lib/i18n";
 import { NavTooltip } from "./NavTooltip";
 
 type LabelKey =
@@ -37,11 +46,29 @@ type LabelKey =
   | "nav.try"
   | "nav.help";
 
+type HintKey =
+  | "nav.hint.dashboard"
+  | "nav.hint.try"
+  | "nav.hint.sessions"
+  | "nav.hint.usage"
+  | "nav.hint.tools"
+  | "nav.hint.context"
+  | "nav.hint.capabilities"
+  | "nav.hint.avatars"
+  | "nav.hint.plans"
+  | "nav.hint.packages"
+  | "nav.hint.forge"
+  | "nav.hint.policy"
+  | "nav.hint.compose"
+  | "nav.hint.profiles"
+  | "nav.hint.help";
+
 interface NavItem {
   href: string;
   labelKey: LabelKey;
   icon: string;
-  hint: string;
+  /** i18n key for the hover tooltip body. */
+  hintKey: HintKey;
 }
 
 interface NavGroup {
@@ -62,55 +89,55 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         href: "/",
         labelKey: "nav.dashboard",
         icon: "🏠",
-        hint: "Today's stats + recent activity",
+        hintKey: "nav.hint.dashboard",
       },
       {
         href: "/try",
         labelKey: "nav.try",
         icon: "💬",
-        hint: "Chat with pi from the browser",
+        hintKey: "nav.hint.try",
       },
       {
         href: "/sessions",
         labelKey: "nav.sessions",
         icon: "📋",
-        hint: "Browse past pi conversations",
+        hintKey: "nav.hint.sessions",
       },
       {
         href: "/usage",
         labelKey: "nav.usage",
         icon: "📊",
-        hint: "Tokens, cost, by-model breakdown",
+        hintKey: "nav.hint.usage",
       },
       {
         href: "/tools",
         labelKey: "nav.tools",
         icon: "🔧",
-        hint: "Tools pi can call + their usage",
+        hintKey: "nav.hint.tools",
       },
       {
         href: "/context",
         labelKey: "nav.context",
         icon: "📄",
-        hint: "Project rules pi reads on startup",
+        hintKey: "nav.hint.context",
       },
       {
         href: "/capabilities",
         labelKey: "nav.capabilities",
         icon: "🧩",
-        hint: "What pi is currently allowed to do",
+        hintKey: "nav.hint.capabilities",
       },
       {
         href: "/avatars",
         labelKey: "nav.avatars",
         icon: "🎭",
-        hint: "Project's expected config (diff vs current)",
+        hintKey: "nav.hint.avatars",
       },
       {
         href: "/plans",
         labelKey: "nav.plans",
         icon: "📝",
-        hint: "Multi-step tasks for pi (v0.5.13+ UI)",
+        hintKey: "nav.hint.plans",
       },
     ],
   },
@@ -121,31 +148,31 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         href: "/packages",
         labelKey: "nav.packages",
         icon: "📦",
-        hint: "Browse + install pi extensions",
+        hintKey: "nav.hint.packages",
       },
       {
         href: "/forge",
         labelKey: "nav.forge",
         icon: "🛠",
-        hint: "Create / package your own extension",
+        hintKey: "nav.hint.forge",
       },
       {
         href: "/policy",
         labelKey: "nav.policy",
         icon: "🛡",
-        hint: "Tool safety rules + confirm/block lists",
+        hintKey: "nav.hint.policy",
       },
       {
         href: "/compose",
         labelKey: "nav.compose",
         icon: "🧪",
-        hint: "Try composable Box Garden prototypes",
+        hintKey: "nav.hint.compose",
       },
       {
         href: "/profiles",
         labelKey: "nav.profiles",
         icon: "👤",
-        hint: "Saved capability bundles (model + tools)",
+        hintKey: "nav.hint.profiles",
       },
     ],
   },
@@ -156,14 +183,20 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         href: "/help",
         labelKey: "nav.help",
         icon: "❓",
-        hint: "Glossary + how-tos for beginners",
+        hintKey: "nav.hint.help",
       },
     ],
   },
 ] as const;
 
-export function NavLinks({ currentPath }: { currentPath: string }) {
-  const t = useT();
+export function NavLinks({
+  currentPath,
+  locale,
+}: {
+  currentPath: string;
+  locale: Locale;
+}) {
+  const t = (k: string): string => renderT(locale, k);
 
   const isActive = (href: string): boolean =>
     href === "/"
@@ -196,7 +229,7 @@ export function NavLinks({ currentPath }: { currentPath: string }) {
               href={item.href}
               label={t(item.labelKey)}
               icon={item.icon}
-              hint={item.hint}
+              hint={t(item.hintKey)}
               active={isActive(item.href)}
             />
           ))}
