@@ -92,7 +92,7 @@ describe("NavLinks (v0.4.14 grouped nav)", () => {
     expect(visibleLabels.length).toBeGreaterThanOrEqual(3);
   });
 
-  it("Inspect group contains 9 items (Dashboard, Sessions, Usage, Tools, Context, Capabilities, Avatars, Plans, Playground)", () => {
+  it("Inspect group contains 9 items (Dashboard, Sessions, Usage, Tools, Context, Capabilities, Avatars, Plans, Try pi)", () => {
     const inspectGroup = NAV_GROUPS.find(
       (g) => g.labelKey === "nav.groupInspect",
     )!;
@@ -105,7 +105,7 @@ describe("NavLinks (v0.4.14 grouped nav)", () => {
       "nav.capabilities",
       "nav.avatars",
       "nav.plans",
-      "nav.playground",
+      "nav.try",
     ]);
   });
 

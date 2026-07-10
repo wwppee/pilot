@@ -2,6 +2,34 @@
 
 ## Unreleased
 
+### v0.5.15 — Try pi: chat UI in the browser
+
+Replace the v0.5.14 `/playground` page (raw JSON event log) with a real chat interface for talking to pi from the browser. Rename to `/try` ("试玩" / "Try pi") to match what the page actually does.
+
+**New module (`web/src/lib/chat-stream.ts`)**
+- `ChatMessage` / `ContentBlock` model — `{ role, blocks: text | thinking | toolCall[], status }` — independent of pi's SDK types so the web bundle stays light.
+- `reduceStream(events)` — pure reducer that turns pi's `AgentEvent` stream into a `ChatMessage[]`. Handles `text_delta` / `thinking_delta` accumulation, `toolcall_start/end` + `tool_execution_start/update/end` lifecycle, `message_end` status flip.
+- `userMessage(text)` — synthesize a local user bubble for display (pi doesn't emit a `message_start` for the prompt we sent).
+
+**Rewritten page (`web/src/app/try/page.tsx`)**
+- Real chat layout: user bubbles on the right (accent color), assistant bubbles on the left (surface-2), auto-scroll.
+- Per-block rendering: text, thinking (collapsible), tool calls (collapsible, with args + result + error indicator).
+- Status pill + Connect/Disconnect/New session/Abort buttons in a single header row.
+- Cmd/Ctrl-Enter to send.
+- Raw event stream collapsed into a "Developer details" `<details>` panel — devs can still see the bridge events without cluttering the chat.
+
+**Renames**
+- Route `/playground` → `/try` (URL).
+- Nav label "Playground" / "试玩" → "Try pi" / "试玩 pi".
+- All i18n keys `playground.*` → `try.*` (en + zh). 7 new chat-specific keys (`try.chat.emptyConnected`, `try.thinking`, `try.streaming`, `try.tool.executing`, `try.tool.result`, `try.tool.error`, `try.tool.args`, `try.developerDetails`, `try.developerDetailsHint`).
+
+**Tests**
+- New `web/tests/chat-stream.test.ts` (6 cases): text delta accumulation; thinking + text in separate blocks; tool call lifecycle (`start`/`update`/`end`); streaming status flip; unknown / lifecycle events ignored; `userMessage()` shape.
+- core unit: 522/522 ✓ (unchanged)
+- web: 139/139 ✓ (+6)
+- format clean (root + web)
+- lint clean (`--max-warnings 0`)
+
 ### v0.5.14.3 — Playground placeholder i18n + lint cleanup
 
 Two small follow-ups from v0.5.14 review.

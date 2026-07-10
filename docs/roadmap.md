@@ -67,6 +67,17 @@
 > | **P1** | `playground/page.tsx` L194 | textarea 的 `placeholder="playground.prompt.placeholder"` 是字面量 key 字符串，渲染出来给用户看到 raw i18n key。改用 `useT()` hook 走翻译，与页面上其他文案一致。en 显示 `e.g. "List the files in the current directory"`，zh 显示 `例如："列出当前目录的文件"`。 |
 > | **P2** | `pi-rpc-bridge.test.ts` L73 / L115 / L146 | 三处 `// eslint-disable-next-line @typescript-eslint/no-explicit-any` 指令是多余的（规则其实没启用），触发 `--max-warnings 0` lint 失败。把 `(bridge as any).rpc = ...` 换成结构化 cast `(bridge as unknown as { rpc: RpcClient }).rpc = ...`——同样效果，不需要 disable 指令。 |
 >
+> **2026-07-10 校准 (7)**：**v0.5.15 已发**——v0.5.14 的 `/playground` 名字 + 形态都不对（raw event log 不像 chat，名字像开发页不像用户页）。重命名为 `/try`（"试玩" / "Try pi"），并重做 UI 成真正的 chat 体验：
+>
+> | 改动 | 位置 |
+> |---|---|
+> | 新增 reducer `chat-stream.ts` | `web/src/lib/chat-stream.ts` —— `ChatMessage` 模型（`role + blocks: text/thinking/toolCall[] + status`），`reduceStream()` 纯函数把 pi 的 `AgentEvent` 流变成 chat 列表。处理 `text_delta` / `thinking_delta` 累积 + tool call 生命周期 + `message_end` 状态翻转。 |
+> | 重写页面 | `web/src/app/try/page.tsx` —— 真正的 chat layout：用户气泡在右（accent 色）、助手气泡在左（surface-2）、自动滚动；thinking + tool calls 可折叠；status pill + Connect/Disconnect/New session/Abort 一行；Cmd/Ctrl-Enter 发送。 |
+> | 原始事件流降级 | `<details>` 折叠的"Developer details"面板，开发调试用，主界面不再被 raw JSON 淹没。 |
+> | 重命名 | URL `/playground` → `/try`；nav "Playground"/"试玩" → "Try pi"/"试玩 pi"；所有 i18n key `playground.*` → `try.*`（en + zh）；新增 7 个 chat 专用 key。 |
+>
+> 新增 `web/tests/chat-stream.test.ts` 6 个用例。core 522/522、web 139/139（+6）、lint clean、format 双清。
+>
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
 ## 阶段一：看见 Pi（v0.1 - v0.3.x，已发）

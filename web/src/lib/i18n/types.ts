@@ -43,30 +43,38 @@ export type Dict = {
   "nav.capabilities": string;
   "nav.avatars": string;
   "nav.plans": string;
-  // v0.5.14+: pi RPC playground.
-  "nav.playground": string;
-  // v0.5.14+: /playground demo page.
-  "playground.h1": string;
-  "playground.body": string;
-  "playground.bodyWs": string;
-  "playground.bodySpawn": string;
-  "playground.status.idle": string;
-  "playground.status.fetchingToken": string;
-  "playground.status.connecting": string;
-  "playground.status.connected": string;
-  "playground.status.disconnected": string;
-  "playground.status.errorUnknown": string;
-  "playground.action.connect": string;
-  "playground.action.disconnect": string;
-  "playground.action.send": string;
-  "playground.action.newSession": string;
-  "playground.action.abort": string;
-  "playground.prompt.label": string;
-  "playground.prompt.placeholder": string;
-  "playground.events.title": string;
-  "playground.events.clear": string;
-  "playground.events.emptyConnected": string;
-  "playground.events.emptyDisconnected": string;
+  // v0.5.15+: try pi — chat UI in the browser.
+  "nav.try": string;
+  // v0.5.15+: /try page.
+  "try.h1": string;
+  "try.subtitle": string;
+  "try.status.idle": string;
+  "try.status.fetchingToken": string;
+  "try.status.connecting": string;
+  "try.status.connected": string;
+  "try.status.disconnected": string;
+  "try.status.errorUnknown": string;
+  "try.action.connect": string;
+  "try.action.disconnect": string;
+  "try.action.send": string;
+  "try.action.newSession": string;
+  "try.action.abort": string;
+  "try.prompt.label": string;
+  "try.prompt.placeholder": string;
+  "try.chat.emptyConnected": string;
+  "try.chat.emptyDisconnected": string;
+  "try.thinking": string;
+  "try.streaming": string;
+  "try.tool.executing": string;
+  "try.tool.result": string;
+  "try.tool.error": string;
+  "try.tool.args": string;
+  "try.developerDetails": string;
+  "try.developerDetailsHint": string;
+  "try.events.title": string;
+  "try.events.clear": string;
+  "try.events.emptyConnected": string;
+  "try.events.emptyDisconnected": string;
   "nav.groupInspect": string;
   "nav.groupManage": string;
 
