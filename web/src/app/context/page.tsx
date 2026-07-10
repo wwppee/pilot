@@ -65,15 +65,21 @@ export default async function ContextPage({
       </header>
 
       <div className="mb-2">
-        <Hint summary="What is project context?">
-          When you start a pi session, pi auto-loads a few files (the{" "}
-          <strong>loaded</strong> ones below) and stuffs them into its system
-          prompt. These are how you tell pi the rules of your project — coding
-          conventions, what to never touch, where the tests live. Files marked{" "}
-          <strong>info</strong> are just for your reference here in Pilot; pi
-          does <em>not</em> see them. Use the Discovery rules panel below to
-          debug why a file is or isn't loading. See the full glossary entry for{" "}
-          <GlossaryTerm term="context">context</GlossaryTerm>.
+        <Hint summary={<T k="context.hint.summary" />}>
+          <RichT
+            locale={locale}
+            k="context.hint.body"
+            values={{
+              s1: <strong>loaded</strong>,
+              s2: <strong>info</strong>,
+              em1: <em>not</em>,
+              context: (
+                <GlossaryTerm term="context" locale={locale}>
+                  context
+                </GlossaryTerm>
+              ),
+            }}
+          />
         </Hint>
       </div>
 

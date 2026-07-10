@@ -155,28 +155,33 @@ export default async function DashboardPage() {
             value={stats?.totalSessions ?? 0}
             accent="accent"
             hintKey="session"
+            locale={locale}
           />
           <StatCard
             label={renderT(locale, "home.card.messages")}
             value={stats?.totalMessages ?? 0}
             accent="accent"
+            locale={locale}
           />
           <StatCard
             label={renderT(locale, "home.card.toolCalls")}
             value={stats?.totalToolCalls ?? 0}
             accent="accent-2"
+            locale={locale}
           />
           <StatCard
             label={renderT(locale, "home.card.tokens")}
             value={usage?.totalTokens ?? 0}
             accent="accent-2"
             hintKey="token"
+            locale={locale}
           />
           <StatCard
             label={renderT(locale, "home.card.cost")}
             value={usage ? Math.round(usage.totalCost * 10000) / 10000 : 0}
             accent="warn"
             isFloat
+            locale={locale}
           />
         </div>
       </section>
@@ -347,6 +352,7 @@ function StatCard({
   accent,
   isFloat,
   hintKey,
+  locale,
 }: {
   label: string;
   value: number;
@@ -354,6 +360,7 @@ function StatCard({
   isFloat?: boolean;
   /** Optional GlossaryTerm key to show inline next to the label. */
   hintKey?: "session" | "token";
+  locale: Locale;
 }) {
   let display: string;
   if (isFloat) {
@@ -366,7 +373,7 @@ function StatCard({
       <div className="text-xs uppercase tracking-wide text-[var(--text-muted)] flex items-center gap-2">
         <span>{label}</span>
         {hintKey && (
-          <GlossaryTerm term={hintKey} variant="plain">
+          <GlossaryTerm term={hintKey} locale={locale} variant="plain">
             <span className="opacity-60 normal-case tracking-normal text-[10px]">
               ?
             </span>

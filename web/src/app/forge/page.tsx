@@ -12,6 +12,8 @@ import { headers } from "next/headers";
 import { api } from "@/lib/pilot";
 import { EmptyState } from "@/components/EmptyState";
 import { Hint } from "@/components/Hint";
+import { RichT } from "@/components/RichT";
+import { T } from "@/components/I18n";
 import { GlossaryTerm } from "@/components/GlossaryTerm";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/types";
@@ -63,16 +65,24 @@ export default async function ForgePage({ searchParams }: PageProps) {
       </header>
 
       <div className="mb-2">
-        <Hint summary="What is forge?">
-          Forge is the workshop for creating your own{" "}
-          <GlossaryTerm term="capability">capabilities</GlossaryTerm>. Search an
-          npm package above, click into it, and Pilot inspects its metadata,
-          lets you declare a name + description, and then <em>absorbs</em> it
-          into Pilot's local registry. Once absorbed, the new tools show up in
-          /tools and you can enable them in a{" "}
-          <GlossaryTerm term="profile">profile</GlossaryTerm>. This is for users
-          who want to package a private extension without publishing to npm
-          first.
+        <Hint summary={<T k="forge.hint.summary" />}>
+          <RichT
+            locale={locale}
+            k="forge.hint.body"
+            values={{
+              capability: (
+                <GlossaryTerm term="capability" locale={locale}>
+                  capabilities
+                </GlossaryTerm>
+              ),
+              em1: <em>absorbs</em>,
+              profile: (
+                <GlossaryTerm term="profile" locale={locale}>
+                  profile
+                </GlossaryTerm>
+              ),
+            }}
+          />
         </Hint>
       </div>
 

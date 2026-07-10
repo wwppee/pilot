@@ -13,11 +13,14 @@
  */
 
 import { Suspense } from "react";
+import { headers } from "next/headers";
 import { api, PilotApiError } from "../../lib/pilot";
 import type { ComposeCatalog } from "../../lib/types";
 import { T } from "@/components/I18n";
 import { Hint } from "@/components/Hint";
+import { RichT } from "@/components/RichT";
 import { GlossaryTerm } from "@/components/GlossaryTerm";
+import { negotiateLocale, type Locale } from "@/lib/i18n";
 import ComposeBoard from "./ComposeBoard";
 import "./compose.module.css";
 
@@ -44,6 +47,12 @@ async function loadCatalog(): Promise<{
 export default async function ComposePage() {
   const { catalog, error } = await loadCatalog();
 
+  let locale: Locale = "en";
+  const acceptLanguage = (await headers()).get("accept-language");
+  if (acceptLanguage) {
+    locale = negotiateLocale(acceptLanguage);
+  }
+
   return (
     <main>
       <h1>
@@ -54,15 +63,24 @@ export default async function ComposePage() {
       </p>
 
       <div className="mb-2">
-        <Hint summary="What is compose?">
-          Compose is a visual canvas for arranging Pilot{" "}
-          <GlossaryTerm term="capability">capabilities</GlossaryTerm> on a board
-          — drag from the sidebar onto the canvas, snap them together, and
-          explore how they connect. It's a sandbox / prototype tool, not a way
-          to actually configure pi (use{" "}
-          <GlossaryTerm term="profile">profiles</GlossaryTerm> for that). Useful
-          for visualizing a stack before writing a long{" "}
-          <code className="kbd">pilot forge</code> command.
+        <Hint summary={<T k="compose.hint.summary" />}>
+          <RichT
+            locale={locale}
+            k="compose.hint.body"
+            values={{
+              capability: (
+                <GlossaryTerm term="capability" locale={locale}>
+                  capabilities
+                </GlossaryTerm>
+              ),
+              profile: (
+                <GlossaryTerm term="profile" locale={locale}>
+                  profiles
+                </GlossaryTerm>
+              ),
+              c1: <code className="kbd">pilot forge</code>,
+            }}
+          />
         </Hint>
       </div>
       {error ? (

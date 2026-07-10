@@ -2,6 +2,79 @@
 
 ## Unreleased
 
+### v0.5.22 — Bilingual glossary + /help i18n + per-page `<Hint>` i18n
+
+Round three of the P2 hardcoded-English sweep. v0.5.18–v0.5.19 added the
+components and the per-page Hints, v0.5.21 caught the NavLinks SSR
+regression + WelcomeBanner strings, but the glossary data itself and
+the inline `<Hint>` prose were still hardcoded English. This version
+finishes the job: glossary is now bilingual, the `/help` page renders
+in the active locale, and every per-page `<Hint>` is wired to a
+`<RichT>` template so the prose + inline `<GlossaryTerm>` /
+`<code>` / `<strong>` / `<em>` all switch together.
+
+**Glossary data (v0.5.18's `lib/glossary.ts`)**
+
+Old shape was `{short: string, definition: string}` — both English.
+New shape is per-locale:
+
+```ts
+{ short: { en, zh }, definition: { en, zh } }
+```
+
+Two new helpers: `shortFor(term, locale)` and
+`definitionFor(term, locale)`, both falling back to English if a
+locale is missing. Default export of the `glossary` object is kept
+for back-compat, plus the new `record` helper for callers that want
+the raw per-locale shape.
+
+`<GlossaryTerm>` now takes a `locale: Locale` prop. The 14 caller
+sites (Dashboard `StatCard` + 11 server pages + 2 client
+components) all updated. The `<T>`-style resolution still works at
+SSR time — the locale comes from the existing
+`negotiateLocale(Accept-Language)` in each page.
+
+**`/help` page (server component)**
+
+Was a plain sync component reading raw `entry.short` /
+`entry.definition` — that no longer typechecks. Rewrote as an async
+server component that:
+- Negotiates `locale` from `Accept-Language` (same pattern as the
+  other server pages).
+- Renders glossary entries via `shortFor` / `definitionFor(key, locale)`.
+- I18n'd the 6 "How do I…" cards (12 new keys: `help.howDo.*.title`
+  + `help.howDo.*.body` for first session / find session / install
+  tool / switch model / block dangerous / check spending).
+
+**Per-page inline `<Hint>` (13 pages)**
+
+`tools`, `context`, `capabilities`, `plans`, `compose`, `usage`,
+`sessions`, `forge`, `packages`, `profiles`, `avatars`, `policy`,
+`try` (client) — each had a 3-7 line English JSX paragraph with
+inline `<GlossaryTerm>` / `<code>` / `<strong>` / `<em>`. Replaced
+with `<RichT locale={locale} k="*.hint.body" values={...} />`. The
+`summary` prop also became `<T k="*.hint.summary" />`. Placeholders
+use `{s1}`, `{c1}`, `{em1}`, `{term}` style naming — generic
+because each template's embeds are different.
+
+**i18n keys added (39 total)**
+
+- `hint.defaultSummary` (en + zh)
+- 13 × `*.hint.summary` (en + zh)
+- 13 × `*.hint.body` (en + zh)
+- 12 × `help.howDo.*.title` / `help.howDo.*.body` (en + zh)
+
+**Tests**
+
+- `web/tests/onboarding.test.tsx` rewritten to use the new
+  `shortFor` / `definitionFor` helpers and the `locale` prop.
+  Added a zh-render case and a "every key has both locales populated"
+  invariant. 9/9 ✓.
+- core unit: 522/522 ✓ (unchanged)
+- web: 171/171 ✓ (+1)
+- format clean (root + web) · lint clean
+- `npm run build` clean · tsc clean
+
 ### v0.5.21 — P0 SSR fix (NavLinks useT) + P2 hardcoded-English i18n
 
 **P0 — NavLinks `useT()` from server (v0.5.18 regression)**

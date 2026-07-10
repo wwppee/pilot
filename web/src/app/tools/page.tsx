@@ -55,20 +55,27 @@ export default async function ToolsPage() {
       </header>
 
       <div className="mb-2">
-        <Hint summary="What are these tools?">
-          Tools are what pi can call on your behalf — read a file, run a shell
-          command, search code, etc. There are three sources:{" "}
-          <strong>built-in</strong> (ship with pi), <strong>local</strong> (your
-          custom extensions under <code className="kbd">~/.pi/agent/</code>),
-          and <strong>npm</strong> (installed via /packages). The colored safety
-          badge tells you what kind of side effects a tool has:{" "}
-          <code className="kbd">read</code> is safe,{" "}
-          <code className="kbd">write</code> modifies files,{" "}
-          <code className="kbd">exec</code> runs shell,{" "}
-          <code className="kbd">network</code> hits the web,{" "}
-          <code className="kbd">secret</code> handles credentials. Edit which
-          tools are allowed in <GlossaryTerm term="policy">policy</GlossaryTerm>
-          .
+        <Hint summary={<T k="tools.hint.summary" />}>
+          <RichT
+            locale={locale}
+            k="tools.hint.body"
+            values={{
+              s1: <strong>built-in</strong>,
+              s2: <strong>local</strong>,
+              s3: <strong>npm</strong>,
+              c1: <code className="kbd">~/.pi/agent/</code>,
+              c2: <code className="kbd">read</code>,
+              c3: <code className="kbd">write</code>,
+              c4: <code className="kbd">exec</code>,
+              c5: <code className="kbd">network</code>,
+              c6: <code className="kbd">secret</code>,
+              policy: (
+                <GlossaryTerm term="policy" locale={locale}>
+                  policy
+                </GlossaryTerm>
+              ),
+            }}
+          />
         </Hint>
       </div>
 

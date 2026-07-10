@@ -1,6 +1,6 @@
 {
   "name": "pilot-web",
-  "version": "0.5.21",
+  "version": "0.5.22",
   "private": true,
   "description": "Web UI for Pilot — dashboard and management console over the local pilot server.",
   "scripts": {

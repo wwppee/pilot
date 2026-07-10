@@ -51,6 +51,50 @@ export type Dict = {
   "help.section.glossaryHint": string;
   "help.section.architecture": string;
   "help.section.architectureBody": string;
+  // v0.5.22: /help "How do I…" cards (one title + one body per card).
+  "help.howDo.firstSession.title": string;
+  "help.howDo.firstSession.body": string;
+  "help.howDo.findSession.title": string;
+  "help.howDo.findSession.body": string;
+  "help.howDo.installTool.title": string;
+  "help.howDo.installTool.body": string;
+  "help.howDo.switchModel.title": string;
+  "help.howDo.switchModel.body": string;
+  "help.howDo.blockDangerous.title": string;
+  "help.howDo.blockDangerous.body": string;
+  "help.howDo.checkSpending.title": string;
+  "help.howDo.checkSpending.body": string;
+  // v0.5.22: per-page inline <Hint> blocks. `summary` is the
+  // collapsed line; `body` is the expanded paragraph. Bodies
+  // use {placeholder} tokens for inline <code>, <strong>, <em>,
+  // and <GlossaryTerm> nodes.
+  "hint.defaultSummary": string;
+  "tools.hint.summary": string;
+  "tools.hint.body": string;
+  "context.hint.summary": string;
+  "context.hint.body": string;
+  "capabilities.hint.summary": string;
+  "capabilities.hint.body": string;
+  "plans.hint.summary": string;
+  "plans.hint.body": string;
+  "compose.hint.summary": string;
+  "compose.hint.body": string;
+  "usage.hint.summary": string;
+  "usage.hint.body": string;
+  "sessions.hint.summary": string;
+  "sessions.hint.body": string;
+  "forge.hint.summary": string;
+  "forge.hint.body": string;
+  "packages.hint.summary": string;
+  "packages.hint.body": string;
+  "try.hint.summary": string;
+  "try.hint.body": string;
+  "profiles.hint.summary": string;
+  "profiles.hint.body": string;
+  "avatars.hint.summary": string;
+  "avatars.hint.body": string;
+  "policy.hint.summary": string;
+  "policy.hint.body": string;
   // v0.5.15+: try pi — chat UI in the browser.
   "nav.try": string;
   "nav.hint.dashboard": string;

@@ -19,6 +19,7 @@ import { T } from "@/components/I18n";
 import { EmptyState } from "@/components/EmptyState";
 import { SkeletonCard } from "@/components/Skeleton";
 import { Hint } from "@/components/Hint";
+import { RichT } from "@/components/RichT";
 import { GlossaryTerm } from "@/components/GlossaryTerm";
 import { createPolicyForm } from "@/lib/actions";
 import { existsSync, statSync } from "node:fs";
@@ -98,14 +99,21 @@ export default async function PolicyPage() {
       </header>
 
       <div className="mb-2">
-        <Hint summary="What is a policy?">
-          A <GlossaryTerm term="policy">policy</GlossaryTerm> is a safety rule:
-          which tools pi can call freely, which need your confirmation, and
-          which are blocked outright. Policies compile to a small extension
-          installed under <code className="kbd">~/.pilot/extensions/</code>; the{" "}
-          <em>apply</em> button generates + installs it, the <em>unapply</em>{" "}
-          button removes it. Use the dry-run panel to test a policy against a
-          sample tool call before applying.
+        <Hint summary={<T k="policy.hint.summary" />}>
+          <RichT
+            locale={locale}
+            k="policy.hint.body"
+            values={{
+              policy: (
+                <GlossaryTerm term="policy" locale={locale}>
+                  policy
+                </GlossaryTerm>
+              ),
+              c1: <code className="kbd">~/.pilot/extensions/</code>,
+              em1: <em>apply</em>,
+              em2: <em>unapply</em>,
+            }}
+          />
         </Hint>
       </div>
 

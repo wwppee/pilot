@@ -45,12 +45,15 @@ export default async function SessionsPage() {
           <T k="sessions.h1" />
         </h1>
         <p className="text-[var(--text-muted)] text-sm mb-3">{subtitle}</p>
-        <Hint summary="What's a session?">
-          A <strong>session</strong> is one continuous conversation with pi —
-          saved as a JSONL file in{" "}
-          <code className="kbd">~/.pi/agent/sessions/</code>. Each prompt you
-          send is a new entry. Click any row to see the full transcript and any
-          tool calls pi made.
+        <Hint summary={<T k="sessions.hint.summary" />}>
+          <RichT
+            locale={locale}
+            k="sessions.hint.body"
+            values={{
+              s1: <strong>session</strong>,
+              c1: <code className="kbd">~/.pi/agent/sessions/</code>,
+            }}
+          />
         </Hint>
       </header>
 

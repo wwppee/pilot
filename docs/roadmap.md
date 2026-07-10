@@ -152,6 +152,19 @@
 >
 > 测试：`nav-links.test.tsx` 完全重写以适配新签名 + 加了 `locale="zh"` 块（断言所有 tooltip 都有中文、不暴露 raw key）。11/11 通过。`npm run build` 现在能成功（之前每页都报 P0 错）。core 522/522、web 170/170、format 双清、lint clean。
 >
+> **2026-07-10 校准 (14)**：**v0.5.22 已发**——P2 硬编码英文第三轮：把 v0.5.18 漏的两块补完。
+>
+> | 编号 | 位置 | 修复 |
+> |---|---|---|
+> | **P2** | `web/src/lib/glossary.ts` | 旧 shape `{short: string, definition: string}` 全英文。改成 per-locale `{short: {en, zh}, definition: {en, zh}}`，加 `shortFor` / `definitionFor` helper（缺 zh 时 fallback 到 en）。`record` helper 给想读原始 locale map 的调用方。15 个条目全员双语。 |
+> | **P2** | `web/src/components/GlossaryTerm.tsx` | 新增 `locale: Locale` prop。14 个 caller 全部更新：11 个 server pages（直接从 `negotiateLocale` 拿 locale）+ 2 个 client components（`useI18n()` 拿 locale）+ Dashboard `StatCard`（接 `locale` prop 透传）。 |
+> | **P2** | `web/src/app/help/page.tsx` | 原 sync 组件读 raw `entry.short` / `entry.definition`（新 shape 之后不再 typecheck）。重写为 async server component：自己协商 locale（Accept-Language），glossary 走 `shortFor` / `definitionFor`；6 张 "How do I…" 卡片 12 个新 key（`help.howDo.*.title` / `*.body`）。 |
+> | **P2** | 13 个页面的 inline `<Hint>` | 全部把英文 JSX 段落 + inline `<GlossaryTerm>` / `<code>` / `<strong>` / `<em>` 重构成 `<RichT locale={locale} k="*.hint.body" values={...} />`。`summary` prop 也改成 `<T k="*.hint.summary" />`。`hint.defaultSummary` 给 Hint 组件的默认 "What is this?" 兜底。共 27 个新 key（13 × summary + 13 × body + 1 default）。 |
+>
+> 涉及 13 个页面：`tools` `context` `capabilities` `plans` `compose` `usage` `sessions` `forge` `packages` `profiles` `avatars` `policy` `try`（其中 `try` 是 client component，用 `useI18n()` 拿 locale）。`compose` / `forge` 原本没接 `negotiateLocale`，这次顺带补上。
+>
+> 测试：`onboarding.test.tsx` 重写以适配新 helper + 新 `locale` prop；加 zh 渲染 case + "每个 key 在两个 locale 都非空" 不变量。9/9 通过。core 522/522、web 171/171（+1）、format 双清、lint clean、`npm run build` 成功、tsc clean。
+>
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
 ## 阶段一：看见 Pi（v0.1 - v0.3.x，已发）

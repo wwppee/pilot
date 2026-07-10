@@ -97,16 +97,25 @@ export default async function UsagePage({
       </header>
 
       <div className="mb-2">
-        <Hint summary="What do these numbers mean?">
-          <GlossaryTerm term="token">Tokens</GlossaryTerm> are the units LLMs
-          charge by — roughly ¾ of an English word. Every prompt you send to pi
-          and every reply you get back costs tokens (input / output).{" "}
-          <code className="kbd">cacheRead</code> /
-          <code className="kbd">cacheWrite</code> are Anthropic's prompt caching
-          — repeats are much cheaper. The total cost is computed from the
-          per-model rate (set in your{" "}
-          <GlossaryTerm term="profile">profile</GlossaryTerm>). Use the range
-          tabs (Today / Week / Month / All) to spot trends.
+        <Hint summary={<T k="usage.hint.summary" />}>
+          <RichT
+            locale={locale}
+            k="usage.hint.body"
+            values={{
+              token: (
+                <GlossaryTerm term="token" locale={locale}>
+                  Tokens
+                </GlossaryTerm>
+              ),
+              c1: <code className="kbd">cacheRead</code>,
+              c2: <code className="kbd">cacheWrite</code>,
+              profile: (
+                <GlossaryTerm term="profile" locale={locale}>
+                  profile
+                </GlossaryTerm>
+              ),
+            }}
+          />
         </Hint>
       </div>
 

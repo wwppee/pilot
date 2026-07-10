@@ -15,6 +15,7 @@ import { T } from "@/components/I18n";
 import { EmptyState } from "@/components/EmptyState";
 import { ActivateProfileButton } from "@/components/ActivateProfileButton";
 import { Hint } from "@/components/Hint";
+import { RichT } from "@/components/RichT";
 import { GlossaryTerm } from "@/components/GlossaryTerm";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { Profile, ActiveProfile, SessionTemplate } from "@/lib/types";
@@ -68,16 +69,28 @@ export default async function ProfilesPage({ searchParams }: PageProps) {
       </header>
 
       <div className="mb-2">
-        <Hint summary="What is a profile?">
-          A <GlossaryTerm term="profile">profile</GlossaryTerm> is a saved
-          bundle of <GlossaryTerm term="capability">capabilities</GlossaryTerm>{" "}
-          — a model, a set of enabled packages, a thinking level. Use profiles
-          to switch between "fast iteration" (cheap model, small tool set) and
-          "careful work" (expensive model, full tools) without re-configuring pi
-          every time. Activate one here and it sticks until you activate
-          another. Different from{" "}
-          <GlossaryTerm term="avatar">avatars</GlossaryTerm> (which are
-          snapshots you compare against, not switch between).
+        <Hint summary={<T k="profiles.hint.summary" />}>
+          <RichT
+            locale={locale}
+            k="profiles.hint.body"
+            values={{
+              profile: (
+                <GlossaryTerm term="profile" locale={locale}>
+                  profile
+                </GlossaryTerm>
+              ),
+              capability: (
+                <GlossaryTerm term="capability" locale={locale}>
+                  capabilities
+                </GlossaryTerm>
+              ),
+              avatar: (
+                <GlossaryTerm term="avatar" locale={locale}>
+                  avatars
+                </GlossaryTerm>
+              ),
+            }}
+          />
         </Hint>
       </div>
 

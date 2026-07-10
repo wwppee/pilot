@@ -6,18 +6,81 @@
  * beginners. The page also links out to the most common tasks
  * (first session, first install, etc).
  *
- * Glossary data lives in `web/src/lib/glossary.ts` so the same
- * definition is used by `<GlossaryTerm>` elsewhere — keeping the
+ * v0.5.22: became a Server Component with Accept-Language
+ * negotiation, so the "How do I…" cards and the glossary
+ * entries both render in the active locale. Glossary data
+ * lives in `web/src/lib/glossary.ts` so the same definition
+ * is used by `<GlossaryTerm>` elsewhere — keeping the
  * explanation consistent across the UI.
  */
+import { headers } from "next/headers";
 import Link from "next/link";
 import { T } from "@/components/I18n";
-import glossary, { type GlossaryKey } from "@/lib/glossary";
+import { definitionFor, shortFor, type GlossaryKey } from "@/lib/glossary";
+import { negotiateLocale, type Locale } from "@/lib/i18n";
 
-export default function HelpPage() {
-  const entries = Object.entries(glossary) as Array<
-    [GlossaryKey, (typeof glossary)[GlossaryKey]]
-  >;
+interface HowDoEntry {
+  titleKey: string;
+  bodyKey: string;
+  href: string;
+}
+
+const HOW_DO_ENTRIES: HowDoEntry[] = [
+  {
+    titleKey: "help.howDo.firstSession.title",
+    bodyKey: "help.howDo.firstSession.body",
+    href: "/try",
+  },
+  {
+    titleKey: "help.howDo.findSession.title",
+    bodyKey: "help.howDo.findSession.body",
+    href: "/sessions",
+  },
+  {
+    titleKey: "help.howDo.installTool.title",
+    bodyKey: "help.howDo.installTool.body",
+    href: "/packages",
+  },
+  {
+    titleKey: "help.howDo.switchModel.title",
+    bodyKey: "help.howDo.switchModel.body",
+    href: "/profiles",
+  },
+  {
+    titleKey: "help.howDo.blockDangerous.title",
+    bodyKey: "help.howDo.blockDangerous.body",
+    href: "/policy",
+  },
+  {
+    titleKey: "help.howDo.checkSpending.title",
+    bodyKey: "help.howDo.checkSpending.body",
+    href: "/usage",
+  },
+];
+
+export default async function HelpPage() {
+  const acceptLanguage = (await headers()).get("accept-language");
+  const locale: Locale = acceptLanguage
+    ? negotiateLocale(acceptLanguage)
+    : "en";
+
+  const glossaryKeys: GlossaryKey[] = [
+    "pilot",
+    "pi",
+    "session",
+    "capability",
+    "profile",
+    "avatar",
+    "pack",
+    "tool",
+    "policy",
+    "context",
+    "contextWindow",
+    "token",
+    "rpc",
+    "plan",
+    "fork",
+  ];
 
   return (
     <div className="space-y-8">
@@ -35,36 +98,14 @@ export default function HelpPage() {
           <T k="help.section.howDoI" />
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <HowToCard
-            href="/try"
-            title="Start my first pi session"
-            body="Click Try pi, then Connect. Type a prompt, watch pi stream a reply."
-          />
-          <HowToCard
-            href="/sessions"
-            title="Find a past session"
-            body="Sessions lists every conversation pi has had. Click any row to see the full transcript."
-          />
-          <HowToCard
-            href="/packages"
-            title="Install a new tool"
-            body="Packages → search → Install. Restart pi to pick up the new tool."
-          />
-          <HowToCard
-            href="/profiles"
-            title="Switch pi's model / behavior"
-            body="Profiles bundle model + tools + thinking level. Pick one in the dropdown on /try."
-          />
-          <HowToCard
-            href="/policy"
-            title="Stop pi from running a dangerous command"
-            body="Policy → add the tool name to the block list, or require confirmation."
-          />
-          <HowToCard
-            href="/usage"
-            title="Check how much I've spent"
-            body="Usage → set the date range, see token + cost by model and by day."
-          />
+          {HOW_DO_ENTRIES.map((entry) => (
+            <HowToCard
+              key={entry.href}
+              href={entry.href}
+              titleKey={entry.titleKey}
+              bodyKey={entry.bodyKey}
+            />
+          ))}
         </div>
       </section>
 
@@ -76,11 +117,13 @@ export default function HelpPage() {
           <T k="help.section.glossaryHint" />
         </p>
         <div className="surface rounded-lg divide-y divide-[var(--border)]">
-          {entries.map(([key, entry]) => (
+          {glossaryKeys.map((key) => (
             <article key={key} className="p-4" id={`term-${key}`}>
-              <h3 className="text-sm font-semibold mb-1">{entry.short}</h3>
+              <h3 className="text-sm font-semibold mb-1">
+                {shortFor(key, locale)}
+              </h3>
               <p className="text-sm text-[var(--text-muted)]">
-                {entry.definition}
+                {definitionFor(key, locale)}
               </p>
             </article>
           ))}
@@ -101,20 +144,24 @@ export default function HelpPage() {
 
 function HowToCard({
   href,
-  title,
-  body,
+  titleKey,
+  bodyKey,
 }: {
   href: string;
-  title: string;
-  body: string;
+  titleKey: string;
+  bodyKey: string;
 }) {
   return (
     <Link
       href={href}
       className="surface rounded-lg p-4 hover:bg-[var(--surface-2)] block"
     >
-      <h3 className="text-sm font-semibold mb-1">{title}</h3>
-      <p className="text-xs text-[var(--text-muted)]">{body}</p>
+      <h3 className="text-sm font-semibold mb-1">
+        <T k={titleKey} />
+      </h3>
+      <p className="text-xs text-[var(--text-muted)]">
+        <T k={bodyKey} />
+      </p>
       <span
         className="text-xs mt-2 inline-block"
         style={{ color: "var(--accent)" }}

@@ -58,15 +58,29 @@ export default async function PackagesPage({ searchParams }: SearchPageProps) {
       </header>
 
       <div className="mb-2">
-        <Hint summary="What is a package?">
-          A <GlossaryTerm term="pack">package</GlossaryTerm> is a pi extension
-          installed from npm — it can add new tools, prompt templates, or
-          skills. Search the registry above to discover; install from the CLI
-          with <code className="kbd">pilot pack install &lt;name&gt;</code>.
-          Once installed, the new tools show up in{" "}
-          <GlossaryTerm term="tool">tools</GlossaryTerm> and the capabilities
-          show up in <GlossaryTerm term="capability">capabilities</GlossaryTerm>
-          .
+        <Hint summary={<T k="packages.hint.summary" />}>
+          <RichT
+            locale={locale}
+            k="packages.hint.body"
+            values={{
+              pack: (
+                <GlossaryTerm term="pack" locale={locale}>
+                  package
+                </GlossaryTerm>
+              ),
+              c1: <code className="kbd">pilot pack install &lt;name&gt;</code>,
+              tool: (
+                <GlossaryTerm term="tool" locale={locale}>
+                  tools
+                </GlossaryTerm>
+              ),
+              capability: (
+                <GlossaryTerm term="capability" locale={locale}>
+                  capabilities
+                </GlossaryTerm>
+              ),
+            }}
+          />
         </Hint>
       </div>
 

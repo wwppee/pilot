@@ -14,6 +14,7 @@ import type { Plan, PlanStatus, PlanStrategy } from "@/lib/types";
 import { T } from "@/components/I18n";
 import { EmptyState } from "@/components/EmptyState";
 import { Hint } from "@/components/Hint";
+import { RichT } from "@/components/RichT";
 import { GlossaryTerm } from "@/components/GlossaryTerm";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 
@@ -78,14 +79,22 @@ export default async function PlansPage({ searchParams }: PageProps) {
       </header>
 
       <div className="mb-2">
-        <Hint summary="What is a plan?">
-          A <GlossaryTerm term="plan">plan</GlossaryTerm> is a multi-step task
-          you want pi to execute. Each plan has a <strong>goal</strong> (the
-          high-level outcome), a list of <strong>tasks</strong> (milestones),
-          and each task has <strong>steps</strong> (the actual pi actions).
-          Click any plan to see its DAG and event history. <em>v0.6.0</em> adds
-          the executor that runs plans automatically — for now this page is the
-          data + UI shell.
+        <Hint summary={<T k="plans.hint.summary" />}>
+          <RichT
+            locale={locale}
+            k="plans.hint.body"
+            values={{
+              plan: (
+                <GlossaryTerm term="plan" locale={locale}>
+                  plan
+                </GlossaryTerm>
+              ),
+              s1: <strong>goal</strong>,
+              s2: <strong>tasks</strong>,
+              s3: <strong>steps</strong>,
+              em1: <em>v0.6.0</em>,
+            }}
+          />
         </Hint>
       </div>
 

@@ -20,7 +20,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { T, useT } from "@/components/I18n";
+import { T, useI18n, useT } from "@/components/I18n";
 import { GlossaryTerm } from "@/components/GlossaryTerm";
 import type { SessionTree, SessionTreeNode } from "@/lib/types";
 
@@ -130,6 +130,7 @@ export function SessionTreeView({
   onFork,
 }: SessionTreeViewProps) {
   const t = useT();
+  const { locale } = useI18n();
   const [tree, setTree] = useState<SessionTree | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -242,7 +243,10 @@ export function SessionTreeView({
       ) : null}
 
       <p className="text-[10px] text-[var(--text-muted)] italic">
-        <GlossaryTerm term="fork">fork</GlossaryTerm> · <T k="try.tree.hint" />
+        <GlossaryTerm term="fork" locale={locale}>
+          fork
+        </GlossaryTerm>{" "}
+        · <T k="try.tree.hint" />
       </p>
     </div>
   );

@@ -100,6 +100,79 @@ const en: Dict = {
   "help.section.architecture": "Architecture",
   "help.section.architectureBody":
     "Pilot is a management plane for pi. pi (the coding agent) runs as a Node subprocess. Pilot spawns one subprocess per browser tab via WebSocket → RPC bridge, reads its session JSONL files for stats, and exposes the result as a Next.js web UI. You can use pi directly from your terminal without Pilot — Pilot just makes the state visible and manageable from a browser.",
+  // v0.5.22: "How do I…" cards.
+  "help.howDo.firstSession.title": "Start my first pi session",
+  "help.howDo.firstSession.body":
+    "Click Try pi, then Connect. Type a prompt, watch pi stream a reply.",
+  "help.howDo.findSession.title": "Find a past session",
+  "help.howDo.findSession.body":
+    "Sessions lists every conversation pi has had. Click any row to see the full transcript.",
+  "help.howDo.installTool.title": "Install a new tool",
+  "help.howDo.installTool.body":
+    "Packages → search → Install. Restart pi to pick up the new tool.",
+  "help.howDo.switchModel.title": "Switch pi's model / behavior",
+  "help.howDo.switchModel.body":
+    "Profiles bundle model + tools + thinking level. Pick one in the dropdown on /try.",
+  "help.howDo.blockDangerous.title": "Stop pi from running a dangerous command",
+  "help.howDo.blockDangerous.body":
+    "Policy → add the tool name to the block list, or require confirmation.",
+  "help.howDo.checkSpending.title": "Check how much I've spent",
+  "help.howDo.checkSpending.body":
+    "Usage → set the date range, see token + cost by model and by day.",
+  // v0.5.22: per-page inline <Hint> blocks.
+  "hint.defaultSummary": "What is this?",
+  // tools
+  "tools.hint.summary": "What are these tools?",
+  "tools.hint.body":
+    "Tools are what pi can call on your behalf — read a file, run a shell command, search code, etc. There are three sources: {s1} (ship with pi), {s2} (your custom extensions under {c1}), and {s3} (installed via /packages). The colored safety badge tells you what kind of side effects a tool has: {c2} is safe, {c3} modifies files, {c4} runs shell, {c5} hits the web, {c6} handles credentials. Edit which tools are allowed in {policy}.",
+  // context
+  "context.hint.summary": "What is project context?",
+  "context.hint.body":
+    "When you start a pi session, pi auto-loads a few files (the {s1} ones below) and stuffs them into its system prompt. These are how you tell pi the rules of your project — coding conventions, what to never touch, where the tests live. Files marked {s2} are just for your reference here in Pilot; pi does {em1} see them. Use the Discovery rules panel below to debug why a file is or isn't loading. See the full glossary entry for {context}.",
+  // capabilities
+  "capabilities.hint.summary": "What is a capability?",
+  "capabilities.hint.body":
+    "A {capability} is a named permission / setting that pi can use: a model, a set of tools, a thinking level, system-prompt text. They're the atomic units — packages contribute them, profiles bundle them, avatars diff them. Click any card to see its sources (which packages provide it) and conflicts (which other capabilities it can't coexist with).",
+  // plans
+  "plans.hint.summary": "What is a plan?",
+  "plans.hint.body":
+    "A {plan} is a multi-step task you want pi to execute. Each plan has a {s1} (the high-level outcome), a list of {s2} (milestones), and each task has {s3} (the actual pi actions). Click any plan to see its DAG and event history. {em1} adds the executor that runs plans automatically — for now this page is the data + UI shell.",
+  // compose
+  "compose.hint.summary": "What is compose?",
+  "compose.hint.body":
+    "Compose is a visual canvas for arranging Pilot {capability} on a board — drag from the sidebar onto the canvas, snap them together, and explore how they connect. It's a sandbox / prototype tool, not a way to actually configure pi (use {profile} for that). Useful for visualizing a stack before writing a long {c1} command.",
+  // usage
+  "usage.hint.summary": "What do these numbers mean?",
+  "usage.hint.body":
+    "{token} are the units LLMs charge by — roughly ¾ of an English word. Every prompt you send to pi and every reply you get back costs tokens (input / output). {c1} / {c2} are Anthropic's prompt caching — repeats are much cheaper. The total cost is computed from the per-model rate (set in your {profile}). Use the range tabs (Today / Week / Month / All) to spot trends.",
+  // sessions
+  "sessions.hint.summary": "What's a session?",
+  "sessions.hint.body":
+    "A {s1} is one continuous conversation with pi — saved as a JSONL file in {c1}. Each prompt you send is a new entry. Click any row to see the full transcript and any tool calls pi made.",
+  // forge
+  "forge.hint.summary": "What is forge?",
+  "forge.hint.body":
+    "Forge is the workshop for creating your own {capability}. Search an npm package above, click into it, and Pilot inspects its metadata, lets you declare a name + description, and then {em1} it into Pilot's local registry. Once absorbed, the new tools show up in /tools and you can enable them in a {profile}. This is for users who want to package a private extension without publishing to npm first.",
+  // packages
+  "packages.hint.summary": "What is a package?",
+  "packages.hint.body":
+    "A {pack} is a pi extension installed from npm — it can add new tools, prompt templates, or skills. Search the registry above to discover; install from the CLI with {c1}. Once installed, the new {tool} show up in /tools and the {capability} show up in /capabilities.",
+  // try
+  "try.hint.summary": "What is this page?",
+  "try.hint.body":
+    "This page opens a real pi session in your browser. Click {s1}, type a message, and watch pi stream a reply. Every user bubble has a hidden {s2} button (hover over it) — forking creates a new branch of the conversation from that exact prompt. Rename / Clone at the top save or duplicate the session. {rpc} is the protocol pi speaks over WebSocket; the dev-details panel at the bottom shows the raw events if you're curious.",
+  // profiles
+  "profiles.hint.summary": "What is a profile?",
+  "profiles.hint.body":
+    "A {profile} is a saved bundle of {capability} — a model, a set of enabled packages, a thinking level. Use profiles to switch between “fast iteration” (cheap model, small tool set) and “careful work” (expensive model, full tools) without re-configuring pi every time. Activate one here and it sticks until you activate another. Different from {avatar} (which are snapshots you compare against, not switch between).",
+  // avatars
+  "avatars.hint.summary": "What is an avatar?",
+  "avatars.hint.body":
+    "An {avatar} is a snapshot of “what this project is supposed to look like” — which profile, model, packages, and extensions should be active. Capture one for each project so you can see at a glance when something has drifted. The diff page highlights the difference between the avatar and the current state. Don't confuse avatars with {profile}: a profile is something you actively switch between; an avatar is a baseline you compare against.",
+  // policy
+  "policy.hint.summary": "What is a policy?",
+  "policy.hint.body":
+    "A {policy} is a safety rule: which tools pi can call freely, which need your confirmation, and which are blocked outright. Policies compile to a small extension installed under {c1}; the {em1} button generates + installs it, the {em2} button removes it. Use the dry-run panel to test a policy against a sample tool call before applying.",
   // v0.5.16: pi session tree (rename / clone / fork).
   "try.session.title": "Session",
   "try.session.unnamed": "Untitled session",

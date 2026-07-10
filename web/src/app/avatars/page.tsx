@@ -15,6 +15,8 @@ import { captureAvatarForm, deleteAvatarForm } from "@/lib/actions";
 import { DeleteButton } from "@/components/Buttons";
 import { EmptyState } from "@/components/EmptyState";
 import { Hint } from "@/components/Hint";
+import { RichT } from "@/components/RichT";
+import { T } from "@/components/I18n";
 import { GlossaryTerm } from "@/components/GlossaryTerm";
 
 interface PageProps {
@@ -60,16 +62,23 @@ export default async function AvatarsPage({ searchParams }: PageProps) {
       </header>
 
       <div className="mb-2">
-        <Hint summary="What is an avatar?">
-          An <GlossaryTerm term="avatar">avatar</GlossaryTerm> is a snapshot of
-          "what this project is supposed to look like" — which profile, model,
-          packages, and extensions should be active. Capture one for each
-          project so you can see at a glance when something has drifted. The
-          diff page highlights the difference between the avatar and the current
-          state. Don't confuse avatars with{" "}
-          <GlossaryTerm term="profile">profiles</GlossaryTerm>: a profile is
-          something you actively switch between; an avatar is a baseline you
-          compare against.
+        <Hint summary={<T k="avatars.hint.summary" />}>
+          <RichT
+            locale={locale}
+            k="avatars.hint.body"
+            values={{
+              avatar: (
+                <GlossaryTerm term="avatar" locale={locale}>
+                  avatar
+                </GlossaryTerm>
+              ),
+              profile: (
+                <GlossaryTerm term="profile" locale={locale}>
+                  profiles
+                </GlossaryTerm>
+              ),
+            }}
+          />
         </Hint>
       </div>
 

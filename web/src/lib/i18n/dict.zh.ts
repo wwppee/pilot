@@ -94,6 +94,78 @@ const zh: Dict = {
   "help.section.architecture": "架构",
   "help.section.architectureBody":
     "Pilot 是 pi 的管理面板。pi（编程 agent）作为 Node 子进程运行；Pilot 通过 WebSocket → RPC 桥接为每个浏览器标签页 spawn 一个子进程，读取其会话 JSONL 文件做统计，并用 Next.js web UI 展示。你也可以直接在终端用 pi — Pilot 只是让你在浏览器里看清和管理它的状态。",
+  // v0.5.22: "我想…" cards.
+  "help.howDo.firstSession.title": "开始我的第一个 pi 会话",
+  "help.howDo.firstSession.body":
+    "点「试玩 pi」，再点「连接」。输入提示词，看 pi 流式回你。",
+  "help.howDo.findSession.title": "翻找过去的会话",
+  "help.howDo.findSession.body":
+    "「会话」列出 pi 经历过的每次对话。点任一行可以看完整记录。",
+  "help.howDo.installTool.title": "装一个新工具",
+  "help.howDo.installTool.body": "「包」→ 搜 → 装。重启 pi 让新工具生效。",
+  "help.howDo.switchModel.title": "切换 pi 的模型 / 行为",
+  "help.howDo.switchModel.body":
+    "Profile 打包了模型、工具、思考级别。在 /try 的下拉里选一个就行。",
+  "help.howDo.blockDangerous.title": "禁止 pi 跑危险命令",
+  "help.howDo.blockDangerous.body":
+    "「策略」→ 把工具名加进黑名单，或者要求人工确认。",
+  "help.howDo.checkSpending.title": "看我花了多少",
+  "help.howDo.checkSpending.body":
+    "「用量」→ 选日期范围，看按模型 / 按日的 token 和费用。",
+  // v0.5.22: per-page inline <Hint> blocks.
+  "hint.defaultSummary": "这是什么？",
+  // tools
+  "tools.hint.summary": "这些工具是什么？",
+  "tools.hint.body":
+    "Tool 是 pi 可以替你调用的东西 — 读文件、跑 shell、搜代码等等。来源有三种：{s1}（pi 自带）、{s2}（你在 {c1} 下的自定义扩展）、{s3}（通过 /packages 装的）。彩色安全标签告诉工具的副作用类型：{c2} 安全、{c3} 改文件、{c4} 跑 shell、{c5} 走网络、{c6} 操作凭证。改哪些工具可用在 {policy}。",
+  // context
+  "context.hint.summary": "项目上下文是什么？",
+  "context.hint.body":
+    "启动 pi 会话时，pi 自动加载几个文件（下面的 {s1} 项）并塞进系统提示。这是告诉 pi 项目规则的方式 — 编码规范、什么绝对不能动、测试在哪。标 {s2} 的文件只是给你在 Pilot 里参考；pi {em1}看得到。用下面的 Discovery 规则面板排查文件为什么加载 / 没加载。详见 {context} 词条。",
+  // capabilities
+  "capabilities.hint.summary": "capability 是什么？",
+  "capabilities.hint.body":
+    "{capability} 是 pi 可以使用的命名权限 / 设置：模型、一组工具、思考级别、系统提示文本。它们是原子单位 — 包提供它们，profile 打包它们，avatar 比对它们。点任一卡片看来源（哪个包提供）以及冲突（和哪些 capability 不兼容）。",
+  // plans
+  "plans.hint.summary": "plan 是什么？",
+  "plans.hint.body":
+    "{plan} 是想让 pi 执行的多步骤任务。每个 plan 有 {s1}（高层目标）、一组 {s2}（里程碑），每个 task 有 {s3}（具体的 pi 动作）。点任一 plan 看 DAG 和事件历史。{em1} 会加入自动跑 plan 的 executor — 现在这个页面只是数据 + UI 框架。",
+  // compose
+  "compose.hint.summary": "compose 是什么？",
+  "compose.hint.body":
+    "Compose 是把 Pilot {capability} 摆在画板上的可视化画布 — 从侧栏拖到画布，拼一起看怎么连。它是沙盒 / 原型工具，不是真正配置 pi 的方式（用 {profile} 配）。在写一长串 {c1} 命令前先可视化一下很方便。",
+  // usage
+  "usage.hint.summary": "这些数字是什么意思？",
+  "usage.hint.body":
+    "{token} 是 LLM 计费单位 — 大约等于 ¾ 个英文单词。你给 pi 的每条提示和每条回复都消耗 token（输入 / 输出）。{c1} / {c2} 是 Anthropic 的 prompt cache — 重复的便宜很多。费用按每个模型的费率（在你的 {profile} 里设）算。用范围 Tab（今天 / 这周 / 这个月 / 全部）看趋势。",
+  // sessions
+  "sessions.hint.summary": "session 是什么？",
+  "sessions.hint.body":
+    "{s1} 是和 pi 的一次连续对话 — 存在 {c1} 下的一个 JSONL 文件里。你发的每条提示都是一条新记录。点任一行看完整记录和 pi 调过的工具。",
+  // forge
+  "forge.hint.summary": "forge 是什么？",
+  "forge.hint.body":
+    "Forge 是创建你自己的 {capability} 的工作台。上面搜 npm 包，点进去 Pilot 会读元数据，让你说名字 + 描述，然后 {em1} 进 Pilot 的本地注册表。吸完后新工具出现在 /tools，可以在 {profile} 里启用。适合想装私有扩展、又不想先发到 npm 的用户。",
+  // packages
+  "packages.hint.summary": "package 是什么？",
+  "packages.hint.body":
+    "{pack} 是从 npm 装的 pi 扩展 — 可以加新工具、提示模板、技能。在上面搜发现；用 {c1} 命令行装。装完新 {tool} 出现在 /tools，{capability} 出现在 /capabilities。",
+  // try
+  "try.hint.summary": "这个页是干什么的？",
+  "try.hint.body":
+    "这个页在浏览器里打开一个真实的 pi 会话。点 {s1}，输入消息，看 pi 流式回你。每条用户消息上都有个隐藏的 {s2} 按钮（鼠标移上去）— 派生会从那条提示开始新分支。顶部的重命名 / 克隆保存或复制会话。{rpc} 是 pi 通过 WebSocket 说的协议；底部的开发者面板会显示原始事件，好奇可以看看。",
+  // profiles
+  "profiles.hint.summary": "profile 是什么？",
+  "profiles.hint.body":
+    "{profile} 是保存好的一组 {capability} — 模型、一组启用的包、思考级别。用 profile 在「快速迭代」（便宜模型、小工具集）和「仔细活儿」（贵模型、满工具）之间切换，不用每次重配 pi。点启用会一直生效直到换另一个。跟 {avatar} 不一样（avatar 是你对照的快照，不是切换的）。",
+  // avatars
+  "avatars.hint.summary": "avatar 是什么？",
+  "avatars.hint.body":
+    "{avatar} 是「这个项目应该长这样」的快照 — 哪个 profile、模型、包、扩展应该生效。每个项目捕一个，这样一眼能看出有没有漂移。diff 页会高亮 avatar 和当前状态的差异。别把 avatar 跟 {profile} 搞混：profile 是你主动切换的，avatar 是你对照的基线。",
+  // policy
+  "policy.hint.summary": "policy 是什么？",
+  "policy.hint.body":
+    "{policy} 是安全规则：哪些工具 pi 可以直接调、哪些需要你确认、哪些直接禁。Policy 编译成一个小扩展装到 {c1} 下；{em1} 按钮会生成 + 安装，{em2} 按钮会移除。实际应用前用 dry-run 面板对样例工具调用测一下。",
   // v0.5.16: pi session tree (rename / clone / fork).
   "try.session.title": "会话",
   "try.session.unnamed": "未命名会话",

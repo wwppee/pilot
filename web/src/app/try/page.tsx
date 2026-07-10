@@ -22,7 +22,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePiSession } from "@/lib/usePiSession";
-import { T, useT } from "@/components/I18n";
+import { T, useI18n, useT } from "@/components/I18n";
 import {
   reduceStream,
   userMessage,
@@ -39,6 +39,7 @@ import { OverflowMenu, OverflowMenuItem } from "@/components/OverflowMenu";
 import { SessionTreeView } from "@/components/SessionTreeView";
 import { Hint } from "@/components/Hint";
 import { GlossaryTerm } from "@/components/GlossaryTerm";
+import { RichT } from "@/components/RichT";
 
 function safeStringify(v: unknown, maxLen = 200): string {
   try {
@@ -64,6 +65,7 @@ function parseSessionState(raw: unknown): SessionState {
 export default function TryPage() {
   const session = usePiSession();
   const t = useT();
+  const { locale } = useI18n();
   const [prompt, setPrompt] = useState("");
   const [sending, setSending] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
@@ -339,16 +341,20 @@ export default function TryPage() {
           <T k="try.subtitle" />
         </p>
         <div className="mt-3 hidden sm:block">
-          <Hint summary="What is this page?">
-            This page opens a real pi session in your browser. Click{" "}
-            <strong>Connect</strong>, type a message, and watch pi stream a
-            reply. Every user bubble has a hidden{" "}
-            <strong>Fork from here</strong> button (hover over it) — forking
-            creates a new branch of the conversation from that exact prompt.
-            Rename / Clone at the top save or duplicate the session.{" "}
-            <GlossaryTerm term="rpc">RPC</GlossaryTerm> is the protocol pi
-            speaks over WebSocket; the dev-details panel at the bottom shows the
-            raw events if you're curious.
+          <Hint summary={<T k="try.hint.summary" />}>
+            <RichT
+              locale={locale}
+              k="try.hint.body"
+              values={{
+                s1: <strong>Connect</strong>,
+                s2: <strong>Fork from here</strong>,
+                rpc: (
+                  <GlossaryTerm term="rpc" locale={locale}>
+                    RPC
+                  </GlossaryTerm>
+                ),
+              }}
+            />
           </Hint>
         </div>
       </header>
