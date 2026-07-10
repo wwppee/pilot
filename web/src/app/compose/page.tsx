@@ -22,7 +22,7 @@ import { RichT } from "@/components/RichT";
 import { GlossaryTerm } from "@/components/GlossaryTerm";
 import { negotiateLocale, type Locale } from "@/lib/i18n";
 import ComposeBoard from "./ComposeBoard";
-import "./compose.module.css";
+import "./compose.css";
 
 export const dynamic = "force-dynamic";
 
