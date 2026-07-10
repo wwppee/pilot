@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+### v0.5.19 — Per-page beginner guidance for the remaining 11 pages
+
+v0.5.18 added the shared components (Hint, GlossaryTerm, WelcomeBanner, NavTooltip) and the `/help` page, and applied them to Dashboard / Sessions / Try. This version finishes the pass: every remaining page now opens with a collapsible "What is this?" Hint, and inline jargon is wrapped in `<GlossaryTerm>` so the same definition is used everywhere.
+
+**Pages updated**
+- **Usage** — what tokens / cache read / cost mean; per-model rate is set in profile.
+- **Tools** — built-in vs local vs npm sources; what each safety badge (`read` / `write` / `exec` / `network` / `secret`) means.
+- **Context** — what "loaded" vs "info" files are; where to find the Discovery rules.
+- **Capabilities** — what a capability is, where they come from (packages), and why conflicts matter.
+- **Avatars** — what an avatar is, and the avatar vs profile distinction.
+- **Plans** — what a plan is (goal / tasks / steps) and that v0.6.0 adds the executor.
+- **Packages** — what a package is and the install workflow.
+- **Profiles** — what a profile is and the profile vs avatar distinction.
+- **Forge** — what forge is for (absorbing local extensions without publishing).
+- **Policy** — what a policy is and the apply / unapply / dry-run flow.
+- **Compose** — what compose is for (visual sandbox, not a real config tool).
+
+**Glossary**
+- New entry: `tool` (function pi can call; listed in /tools).
+- 14 entries total now.
+
+**Tests**
+- `web/tests/onboarding.test.tsx` +1 (GlossaryTerm accepts the new `tool` key).
+- core unit: 522/522 ✓ (unchanged)
+- web: 163/163 ✓ (unchanged — only +1, and that one already passed since the v0.5.18 file)
+- format clean (root + web) · lint clean
+
 ### v0.5.18 — Beginner-friendly guidance (welcome banner, glossary, /help, redesigned nav)
 
 Massive onboarding pass. Every page should now make sense to a first-time user without external docs.

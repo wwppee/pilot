@@ -13,6 +13,8 @@ export const dynamic = "force-dynamic";
 import { T } from "@/components/I18n";
 import { EmptyState } from "@/components/EmptyState";
 import { RichT } from "@/components/RichT";
+import { Hint } from "@/components/Hint";
+import { GlossaryTerm } from "@/components/GlossaryTerm";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { UsageReport } from "@/lib/types";
 
@@ -93,6 +95,20 @@ export default async function UsagePage({
           ))}
         </nav>
       </header>
+
+      <div className="mb-2">
+        <Hint summary="What do these numbers mean?">
+          <GlossaryTerm term="token">Tokens</GlossaryTerm> are the units LLMs
+          charge by — roughly ¾ of an English word. Every prompt you send to pi
+          and every reply you get back costs tokens (input / output).{" "}
+          <code className="kbd">cacheRead</code> /
+          <code className="kbd">cacheWrite</code> are Anthropic's prompt caching
+          — repeats are much cheaper. The total cost is computed from the
+          per-model rate (set in your{" "}
+          <GlossaryTerm term="profile">profile</GlossaryTerm>). Use the range
+          tabs (Today / Week / Month / All) to spot trends.
+        </Hint>
+      </div>
 
       {error ? (
         <div className="surface rounded-lg p-4 text-sm text-[var(--text-muted)]">

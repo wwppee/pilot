@@ -98,6 +98,22 @@
 >
 > 新增 `web/tests/overflow-menu.test.tsx` 3 个用例 + `chat-stream.test.ts` +2。core 522/522、web 153/153（+5）、lint clean、format 双清。
 >
+> **2026-07-10 校准 (10)**：**v0.5.18 已发**——给初学者做的全面引导。每一页都用 inline hint + glossary 解释 jargon；nav 重做成三组（Inspect / Manage / Learn）+ 每个链接加 emoji 图标 + hover tooltip；新增 `/help` 页面（glossary + how-tos + 架构说明）。
+>
+> | 改动 | 位置 |
+> |---|---|
+> | 新组件 `<Hint>` | `web/src/components/Hint.tsx` —— inline collapsible"What is this?"展开。 |
+> | 新组件 `<GlossaryTerm>` | `web/src/components/GlossaryTerm.tsx` —— dotted-underline jargon，hover 出定义；数据源 `web/src/lib/glossary.ts`（13 项：pilot / pi / session / capability / avatar / profile / pack / fork / context / policy / plan / rpc / token / contextWindow），所有页面引用同一份定义。 |
+> | 新组件 `<WelcomeBanner>` | `web/src/components/WelcomeBanner.tsx` —— dismissible 3-step first-visit card，SSR-safe。 |
+> | 新组件 `<NavTooltip>` | `web/src/components/NavTooltip.tsx` —— popover-on-hover 包装，纯 CSS。 |
+> | Nav 重设计 | `web/src/components/NavLinks.tsx` —— 三组（Inspect / Manage / Learn）+ 每个链接 emoji 图标 + hover tooltip。Try pi 移到位置 2（最适合新用户）。新增 `/help`（Learn 组的唯一个）。 |
+> | 新页面 `/help` | `web/src/app/help/page.tsx` —— How-do-I（6 个 starter cards）+ Glossary（13 项带锚点）+ Architecture（一段话）。 |
+> | Dashboard | 加 WelcomeBanner + StatCards 加 `?` GlossaryTerm（Sessions + Tokens）。 |
+> | Sessions | 顶部 `<Hint summary="What's a session?">` 段。 |
+> | Try | 顶部 `<Hint summary="What is this page?">` 段，解释 Connect / Fork / Rename / Clone + `<GlossaryTerm term="rpc">`。 |
+>
+> 新增 `web/tests/onboarding.test.tsx` 8 个用例 + `nav-links.test.tsx` 更新。core 522/522、web 163/163（+10）、lint clean、format 双清。剩余 11 个页面（Usage / Tools / Context / Capabilities / Avatars / Plans / Packages / Profiles / Forge / Policy / Compose）的引导下个版本 v0.5.19 走。
+>
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
 ## 阶段一：看见 Pi（v0.1 - v0.3.x，已发）

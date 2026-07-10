@@ -11,6 +11,8 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { api } from "@/lib/pilot";
 import { EmptyState } from "@/components/EmptyState";
+import { Hint } from "@/components/Hint";
+import { GlossaryTerm } from "@/components/GlossaryTerm";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/types";
 import type { Pack } from "@/lib/types";
@@ -59,6 +61,20 @@ export default async function ForgePage({ searchParams }: PageProps) {
         </h1>
         <p className="text-[var(--text-muted)] text-sm">{subtitle}</p>
       </header>
+
+      <div className="mb-2">
+        <Hint summary="What is forge?">
+          Forge is the workshop for creating your own{" "}
+          <GlossaryTerm term="capability">capabilities</GlossaryTerm>. Search an
+          npm package above, click into it, and Pilot inspects its metadata,
+          lets you declare a name + description, and then <em>absorbs</em> it
+          into Pilot's local registry. Once absorbed, the new tools show up in
+          /tools and you can enable them in a{" "}
+          <GlossaryTerm term="profile">profile</GlossaryTerm>. This is for users
+          who want to package a private extension without publishing to npm
+          first.
+        </Hint>
+      </div>
 
       <form
         method="get"

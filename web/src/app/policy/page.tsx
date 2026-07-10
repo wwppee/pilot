@@ -18,6 +18,8 @@ import type { ToolPolicy } from "../../lib/types";
 import { T } from "@/components/I18n";
 import { EmptyState } from "@/components/EmptyState";
 import { SkeletonCard } from "@/components/Skeleton";
+import { Hint } from "@/components/Hint";
+import { GlossaryTerm } from "@/components/GlossaryTerm";
 import { createPolicyForm } from "@/lib/actions";
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -94,6 +96,18 @@ export default async function PolicyPage() {
           <T k="policy.subtitle" />
         </p>
       </header>
+
+      <div className="mb-2">
+        <Hint summary="What is a policy?">
+          A <GlossaryTerm term="policy">policy</GlossaryTerm> is a safety rule:
+          which tools pi can call freely, which need your confirmation, and
+          which are blocked outright. Policies compile to a small extension
+          installed under <code className="kbd">~/.pilot/extensions/</code>; the{" "}
+          <em>apply</em> button generates + installs it, the <em>unapply</em>{" "}
+          button removes it. Use the dry-run panel to test a policy against a
+          sample tool call before applying.
+        </Hint>
+      </div>
 
       <Suspense
         fallback={

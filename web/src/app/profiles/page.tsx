@@ -14,6 +14,8 @@ import { DeleteButton } from "@/components/Buttons";
 import { T } from "@/components/I18n";
 import { EmptyState } from "@/components/EmptyState";
 import { ActivateProfileButton } from "@/components/ActivateProfileButton";
+import { Hint } from "@/components/Hint";
+import { GlossaryTerm } from "@/components/GlossaryTerm";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { Profile, ActiveProfile, SessionTemplate } from "@/lib/types";
 
@@ -64,6 +66,20 @@ export default async function ProfilesPage({ searchParams }: PageProps) {
         </h1>
         <p className="text-[var(--text-muted)] text-sm">{subtitle}</p>
       </header>
+
+      <div className="mb-2">
+        <Hint summary="What is a profile?">
+          A <GlossaryTerm term="profile">profile</GlossaryTerm> is a saved
+          bundle of <GlossaryTerm term="capability">capabilities</GlossaryTerm>{" "}
+          — a model, a set of enabled packages, a thinking level. Use profiles
+          to switch between "fast iteration" (cheap model, small tool set) and
+          "careful work" (expensive model, full tools) without re-configuring pi
+          every time. Activate one here and it sticks until you activate
+          another. Different from{" "}
+          <GlossaryTerm term="avatar">avatars</GlossaryTerm> (which are
+          snapshots you compare against, not switch between).
+        </Hint>
+      </div>
 
       {/* Active profile banner — visible only when one is active.
           Shows at the top so users always know which profile is in effect. */}

@@ -14,6 +14,8 @@ import type { Avatar } from "@/lib/types";
 import { captureAvatarForm, deleteAvatarForm } from "@/lib/actions";
 import { DeleteButton } from "@/components/Buttons";
 import { EmptyState } from "@/components/EmptyState";
+import { Hint } from "@/components/Hint";
+import { GlossaryTerm } from "@/components/GlossaryTerm";
 
 interface PageProps {
   searchParams: Promise<{
@@ -56,6 +58,20 @@ export default async function AvatarsPage({ searchParams }: PageProps) {
         </h1>
         <p className="text-[var(--text-muted)] text-sm">{subtitle}</p>
       </header>
+
+      <div className="mb-2">
+        <Hint summary="What is an avatar?">
+          An <GlossaryTerm term="avatar">avatar</GlossaryTerm> is a snapshot of
+          "what this project is supposed to look like" — which profile, model,
+          packages, and extensions should be active. Capture one for each
+          project so you can see at a glance when something has drifted. The
+          diff page highlights the difference between the avatar and the current
+          state. Don't confuse avatars with{" "}
+          <GlossaryTerm term="profile">profiles</GlossaryTerm>: a profile is
+          something you actively switch between; an avatar is a baseline you
+          compare against.
+        </Hint>
+      </div>
 
       {sp.captured && sp.cwd && (
         <div

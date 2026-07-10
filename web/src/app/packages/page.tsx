@@ -12,6 +12,8 @@ import type { Pack } from "@/lib/types";
 import { T } from "@/components/I18n";
 import { EmptyState } from "@/components/EmptyState";
 import { RichT } from "@/components/RichT";
+import { Hint } from "@/components/Hint";
+import { GlossaryTerm } from "@/components/GlossaryTerm";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 
 interface SearchPageProps {
@@ -54,6 +56,19 @@ export default async function PackagesPage({ searchParams }: SearchPageProps) {
           <T k="packages.subtitle" params={{ n: installedList.length }} />
         </p>
       </header>
+
+      <div className="mb-2">
+        <Hint summary="What is a package?">
+          A <GlossaryTerm term="pack">package</GlossaryTerm> is a pi extension
+          installed from npm — it can add new tools, prompt templates, or
+          skills. Search the registry above to discover; install from the CLI
+          with <code className="kbd">pilot pack install &lt;name&gt;</code>.
+          Once installed, the new tools show up in{" "}
+          <GlossaryTerm term="tool">tools</GlossaryTerm> and the capabilities
+          show up in <GlossaryTerm term="capability">capabilities</GlossaryTerm>
+          .
+        </Hint>
+      </div>
 
       <form className="flex gap-2" action="/packages" method="get">
         <input

@@ -47,6 +47,11 @@ const glossary = {
     definition:
       "A pi extension installed from npm — adds tools, prompts, or skills. Browse in /packages.",
   },
+  tool: {
+    short: "tool",
+    definition:
+      "A function pi can call on your behalf — read a file, run shell, search code, etc. Listed in /tools.",
+  },
   fork: {
     short: "fork",
     definition:

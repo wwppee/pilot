@@ -9,6 +9,8 @@ import { AutoRefresh, LivePulse } from "@/components/AutoRefresh";
 import { T } from "@/components/I18n";
 import { EmptyState } from "@/components/EmptyState";
 import { RichT } from "@/components/RichT";
+import { Hint } from "@/components/Hint";
+import { GlossaryTerm } from "@/components/GlossaryTerm";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { Capability } from "@/lib/types";
 
@@ -43,6 +45,17 @@ export default async function CapabilitiesPage() {
           </span>
         </div>
       </header>
+
+      <div className="mb-2">
+        <Hint summary="What is a capability?">
+          A <GlossaryTerm term="capability">capability</GlossaryTerm> is a named
+          permission / setting that pi can use: a model, a set of tools, a
+          thinking level, system-prompt text. They're the atomic units —
+          packages contribute them, profiles bundle them, avatars diff them.
+          Click any card to see its sources (which packages provide it) and
+          conflicts (which other capabilities it can't coexist with).
+        </Hint>
+      </div>
 
       {list.length === 0 ? (
         <EmptyState

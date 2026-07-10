@@ -16,6 +16,8 @@ import { Suspense } from "react";
 import { api, PilotApiError } from "../../lib/pilot";
 import type { ComposeCatalog } from "../../lib/types";
 import { T } from "@/components/I18n";
+import { Hint } from "@/components/Hint";
+import { GlossaryTerm } from "@/components/GlossaryTerm";
 import ComposeBoard from "./ComposeBoard";
 import "./compose.module.css";
 
@@ -50,6 +52,19 @@ export default async function ComposePage() {
       <p className="subtitle">
         <T k="compose.subtitle" />
       </p>
+
+      <div className="mb-2">
+        <Hint summary="What is compose?">
+          Compose is a visual canvas for arranging Pilot{" "}
+          <GlossaryTerm term="capability">capabilities</GlossaryTerm> on a board
+          — drag from the sidebar onto the canvas, snap them together, and
+          explore how they connect. It's a sandbox / prototype tool, not a way
+          to actually configure pi (use{" "}
+          <GlossaryTerm term="profile">profiles</GlossaryTerm> for that). Useful
+          for visualizing a stack before writing a long{" "}
+          <code className="kbd">pilot forge</code> command.
+        </Hint>
+      </div>
       {error ? (
         <section className="card error">
           <h2>
