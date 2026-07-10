@@ -417,6 +417,29 @@ export interface PilotService {
   ): Promise<Plan>;
 
   /**
+   * v0.6.0: retry a failed task. Resets the task + all its
+   * steps to `pending`, removes completedStepIds from the
+   * runtime snapshot, and re-starts the executor (which will
+   * pick up from the next pending task).
+   *
+   * Idempotent: retries a task that's already pending are a no-op
+   * (just returns the current plan). The plan must be in
+   * `running`, `paused`, or `failed` state.
+   */
+  retryTask(planId: string, taskId: string): Promise<Plan>;
+
+  /**
+   * v0.6.0: skip a task. Marks the task as `skipped` and emits
+   * a `task_skipped` event. If all sibling tasks are now
+   * completed/skipped, the plan transitions to `completed`.
+   *
+   * The plan must be in `running` or `paused` state. Cannot
+   * skip a task that's currently `running` (wait for it to
+   * finish first).
+   */
+  skipTask(planId: string, taskId: string): Promise<Plan>;
+
+  /**
    * Suggest tools and profiles based on a goal description.
    * Uses keyword matching (v0.6.0 baseline).
    */

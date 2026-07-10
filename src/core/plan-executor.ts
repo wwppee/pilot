@@ -56,18 +56,22 @@ import {
 } from "./plan.js";
 import { readdir, unlink, mkdir } from "node:fs/promises";
 import { join } from "node:path";
+import { runPiSession } from "./pi-session-runner.js";
 
 /** Default per-step timeout: 5 minutes. */
 export const DEFAULT_STEP_TIMEOUT_MS = 5 * 60 * 1000;
 
-/** Actions whose implementation is not in MVP. Stubbed to success. */
-export const STUBBED_ACTIONS = new Set<StepAction["type"]>([
-  "pi_session",
-  "pack_install",
-  "condition",
-  "wait",
-  "manual",
-]);
+/**
+ * Actions whose implementation is still TODO. Stubbed to
+ * success so plan execution can be smoke-tested end-to-end
+ * while the real implementation lands.
+ *
+ * v0.6.0 reduced this set: `pi_session` / `pack_install` /
+ * `condition` / `wait` are now real. `manual` (waiting_human)
+ * is the only remaining stub because there's no UI to resolve
+ * the human gate yet.
+ */
+export const STUBBED_ACTIONS = new Set<StepAction["type"]>(["manual"]);
 
 /**
  * Action handler signature. Receives the action + an AbortSignal
@@ -88,6 +92,15 @@ export interface PlanExecutorService {
   activateProfile(name: string): Promise<unknown>;
   /** Apply a policy (generate + write extension). */
   applyPolicy(name: string): Promise<{ path: string }>;
+  /**
+   * Install a pack by source string. Used by `pack_install` steps.
+   * Source format: `npm:foo` (npm package) or a local path.
+   * v0.6.0: this is the same call the public `installPack` service
+   * method makes. We re-declare it here to keep the executor's
+   * service surface minimal — the executor shouldn't be able to
+   * call unrelated methods.
+   */
+  installPack(source: string): Promise<unknown>;
 }
 
 /**
@@ -109,6 +122,12 @@ export class PlanExecutor {
    * before calling `run()`.
    */
   private dispatchers: Map<StepAction["type"], ActionHandler>;
+
+  /**
+   * Per-step record: did the step with this id succeed? Used
+   * by the `condition` action's `step.<id>.success` form.
+   */
+  private stepResults = new Map<string, boolean>();
 
   /** "paused" means user asked to pause; loop will exit after current step. */
   private pauseRequested = false;
@@ -162,6 +181,24 @@ export class PlanExecutor {
       this.dispatchers.set("policy_apply", (step) =>
         defaultPolicyApplyHandler(step, this.service),
       );
+    }
+    if (!this.dispatchers.has("pi_session")) {
+      this.dispatchers.set("pi_session", (step, signal) =>
+        defaultPiSessionHandler(step, signal, this.home),
+      );
+    }
+    if (!this.dispatchers.has("pack_install")) {
+      this.dispatchers.set("pack_install", (step) =>
+        defaultPackInstallHandler(step, this.service),
+      );
+    }
+    if (!this.dispatchers.has("condition")) {
+      this.dispatchers.set("condition", (step, signal) =>
+        defaultConditionHandler(step, signal, this),
+      );
+    }
+    if (!this.dispatchers.has("wait")) {
+      this.dispatchers.set("wait", defaultWaitHandler);
     }
     for (const type of STUBBED_ACTIONS) {
       if (!this.dispatchers.has(type)) {
@@ -234,6 +271,43 @@ export class PlanExecutor {
   /** True if cancel() was called. */
   isCancelled(): boolean {
     return this.cancelRequested;
+  }
+
+  /**
+   * Public dispatcher lookup. Used by the `condition` handler
+   * to run SubSteps with the same dispatcher set as the parent
+   * executor.
+   */
+  getDispatcher(type: StepAction["type"]): ActionHandler | undefined {
+    return this.dispatchers.get(type);
+  }
+
+  /**
+   * Did the step with this id complete successfully?
+   * Returns false if the step hasn't run yet or doesn't exist.
+   */
+  getRecordedStepSuccess(stepId: string): boolean {
+    return this.stepResults.get(stepId) === true;
+  }
+
+  /**
+   * Context object for `condition` JS expressions. Currently
+   * exposes `ctx.steps[id]` → `{ success, summary, ...output }`.
+   */
+  getConditionContext(): {
+    steps: Record<
+      string,
+      { success: boolean; summary?: string; output?: unknown }
+    >;
+  } {
+    const steps: Record<
+      string,
+      { success: boolean; summary?: string; output?: unknown }
+    > = {};
+    for (const [id, ok] of this.stepResults.entries()) {
+      steps[id] = { success: ok };
+    }
+    return { steps };
   }
 
   // ─── main loop ──────────────────────────────────────────
@@ -431,6 +505,7 @@ export class PlanExecutor {
   ): Promise<void> {
     const now = new Date().toISOString();
     const newStatus = success ? "completed" : "failed";
+    this.stepResults.set(step.id, success);
     await this.markStepStatus(
       step.id,
       task.id,
@@ -777,17 +852,226 @@ async function defaultPolicyApplyHandler(
 }
 
 /**
- * Stub for actions not in MVP. Returns success with a marker
- * so the timeline shows the step as "completed (stubbed)".
- * v0.6.0 will replace these with real implementations.
+ * Stub for actions not yet implemented. Returns success with a
+ * marker so the timeline shows the step as "completed (stubbed)".
+ * v0.6.0+ replaces these with real implementations as the UI
+ * surface to drive them lands.
  */
 const defaultStubHandler: ActionHandler = async (step) => {
   return {
     success: true,
-    summary: `Stubbed (v0.5.23): ${step.action.type}`,
+    summary: `Stubbed: ${step.action.type} (no UI to resolve this gate yet)`,
     data: {
       stubbed: true,
-      reason: "v0.5.23 MVP — full implementation in v0.6.0",
+      reason: "Awaiting UI to resolve this gate (waiting_human / manual)",
+    },
+  };
+};
+
+/**
+ * pi_session: spawn a pi subprocess in RPC mode, send a single
+ * prompt, wait for completion, capture the final text + tokens.
+ *
+ * v0.6.0: the heavy lifting is in `pi-session-runner.ts`. The
+ * cwd comes from `step.action.cwd` if set, otherwise from the
+ * plan's `context.cwd`, otherwise from the user's home.
+ */
+async function defaultPiSessionHandler(
+  step: Step,
+  signal: AbortSignal,
+  home: string | undefined,
+): Promise<StepOutput> {
+  if (step.action.type !== "pi_session") {
+    return { success: false, error: "Type mismatch" };
+  }
+  const cwd =
+    step.action.cwd ??
+    (typeof step.input?.cwd === "string" ? step.input.cwd : undefined) ??
+    process.cwd();
+  const timeoutMs =
+    typeof step.input?.timeoutMs === "number"
+      ? step.input.timeoutMs
+      : undefined;
+  const model =
+    typeof step.input?.model === "string" ? step.input.model : undefined;
+  const provider =
+    typeof step.input?.provider === "string" ? step.input.provider : undefined;
+  return runPiSession(
+    step.action.prompt,
+    {
+      cwd,
+      ...(timeoutMs !== undefined ? { timeoutMs } : {}),
+      ...(model !== undefined ? { model } : {}),
+      ...(provider !== undefined ? { provider } : {}),
+    },
+    signal,
+  );
+  void home;
+}
+
+/**
+ * pack_install: call the service's installPack. The source
+ * can be `npm:foo` for an npm package, or a local path.
+ * The service handles the actual fetch / link / absorb.
+ */
+async function defaultPackInstallHandler(
+  step: Step,
+  service: PlanExecutorService,
+): Promise<StepOutput> {
+  if (step.action.type !== "pack_install") {
+    return { success: false, error: "Type mismatch" };
+  }
+  await service.installPack(step.action.source);
+  return {
+    success: true,
+    summary: `Installed pack from ${step.action.source}`,
+    data: { source: step.action.source },
+  };
+}
+
+/**
+ * condition: a small DSL that picks one of then/else SubStep
+ * arrays and runs each SubStep inline.
+ *
+ * v0.6.0 supported `check` forms (in priority order):
+ *   1. `"true"` or `"false"` — literal.
+ *   2. `"step.<id>.success"` — looks up the in-memory step
+ *      output for a previously-completed step. This is the
+ *      MVP-conditional glue: plans can structure themselves
+ *      so each "checkpoint" step's success/failure routes
+ *      further work.
+ *   3. anything else → evaluated as a JS expression against
+ *      a context object `{ steps: { [id]: { success, summary, ...output } } }`.
+ *      Use `eval`-like behavior sparingly — we use the
+ *      `Function` constructor (NOT raw eval) so the parser
+ *      doesn't reach into local scope.
+ *
+ * Future v0.6.1+ will add real expressions (jmespath, etc.)
+ * but the literal + step-success forms cover the common
+ * "if the previous step succeeded, run cleanup" pattern.
+ */
+async function defaultConditionHandler(
+  step: Step,
+  signal: AbortSignal,
+  executor: PlanExecutor,
+): Promise<StepOutput> {
+  if (step.action.type !== "condition") {
+    return { success: false, error: "Type mismatch" };
+  }
+  const truthy = evaluateCondition(step.action.check, executor);
+  const branch = truthy ? step.action.then : step.action.else;
+  // Run each SubStep inline. The SubStep status / output
+  // is captured but not persisted to the plan TOML (SubSteps
+  // live inside the parent's input and aren't first-class
+  // tasks). This is a v0.6.0 trade-off; v0.6.1 will lift
+  // SubSteps into the plan schema.
+  const results: StepOutput[] = [];
+  for (const sub of branch ?? []) {
+    if (signal.aborted) {
+      return {
+        success: false,
+        error: "condition cancelled mid-branch",
+      };
+    }
+    // Build a synthetic Step for the dispatcher to consume.
+    const synthetic: Step = {
+      id: sub.id,
+      description: sub.description,
+      action: sub.action,
+      status: "running",
+      input: sub.input ?? {},
+      retryCount: 0,
+      maxRetries: sub.maxRetries ?? 0,
+    };
+    const handler = executor.getDispatcher(sub.action.type);
+    if (!handler) {
+      return {
+        success: false,
+        error: `No dispatcher for SubStep action ${sub.action.type}`,
+      };
+    }
+    let out: StepOutput;
+    try {
+      out = await handler(synthetic, signal);
+    } catch (err) {
+      out = { success: false, error: (err as Error).message };
+    }
+    results.push(out);
+    if (!out.success) {
+      // Branch failed — record and stop.
+      return {
+        success: false,
+        summary: `Condition branch (${truthy ? "then" : "else"}) failed at ${sub.id}`,
+        data: { results },
+        error: out.error,
+      };
+    }
+  }
+  return {
+    success: true,
+    summary: `Condition (${step.action.check}) → ${truthy ? "then" : "else"} (${results.length} sub-steps)`,
+    data: { results, branch: truthy ? "then" : "else" },
+  };
+}
+
+/**
+ * Evaluate a condition's `check` string.
+ * See defaultConditionHandler for the supported forms.
+ */
+function evaluateCondition(check: string, executor: PlanExecutor): boolean {
+  const trimmed = check.trim();
+  if (trimmed === "true") return true;
+  if (trimmed === "false") return false;
+  // step.<id>.success lookup
+  const m = /^step\.([\w-]+)\.success$/.exec(trimmed);
+  if (m) {
+    const stepId = m[1]!;
+    return executor.getRecordedStepSuccess(stepId);
+  }
+  // Generic JS expression against a context object. We use
+  // `new Function(...)` rather than `eval` so the parser
+  // can't reach into local scope. The expression is still
+  // arbitrary — plans are user-authored and the executor
+  // runs in-process, so this is acceptable.
+  try {
+    const ctx = executor.getConditionContext();
+    const fn = new Function("ctx", `"use strict"; return (${trimmed});`);
+    return Boolean(fn(ctx));
+  } catch {
+    // Unparseable expressions default to false so a typo
+    // doesn't accidentally run the then-branch.
+    return false;
+  }
+}
+
+/**
+ * wait: a real time delay. The `condition` string is ignored
+ * (real "wait until condition X" is out of scope for v0.6.0
+ * — would need a polling subsystem).
+ */
+const defaultWaitHandler: ActionHandler = async (step, signal) => {
+  if (step.action.type !== "wait") {
+    return { success: false, error: "Type mismatch" };
+  }
+  const timeoutMs = step.action.timeoutMs;
+  await new Promise<void>((resolve) => {
+    const timer = setTimeout(resolve, timeoutMs);
+    signal.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      { once: true },
+    );
+  });
+  return {
+    success: true,
+    summary: `Waited ${timeoutMs}ms (${step.action.condition})`,
+    data: {
+      timeoutMs,
+      condition: step.action.condition,
+      aborted: signal.aborted,
     },
   };
 };

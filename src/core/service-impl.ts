@@ -222,6 +222,8 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
       updateTaskInHome(planId, taskId, updates, home),
     updateStep: (planId, taskId, stepId, updates) =>
       updateStepInHome(planId, taskId, stepId, updates, home),
+    retryTask: (planId, taskId) => retryTaskInHome(planId, taskId, home),
+    skipTask: (planId, taskId) => skipTaskInHome(planId, taskId, home),
     suggestTools: (goal) => suggestToolsFromHome(goal, home),
   };
 }
@@ -601,6 +603,7 @@ export function buildExecutorServiceForHome(home: string): PlanExecutorService {
   return {
     activateProfile: (name) => activateProfileByName(name, home),
     applyPolicy: (name) => applyPolicyByName(name, home),
+    installPack: (source) => installPack(source),
   };
 }
 
@@ -876,4 +879,154 @@ async function suggestToolsFromHome(
     ...(p.packages ? { packages: p.packages } : {}),
   }));
   return suggestToolsCore(goal, toolItems, profileItems);
+}
+
+// ─── v0.6.0: retry / skip task endpoints ───────────────────
+
+/**
+ * Retry a failed task: reset the task + all its steps to
+ * `pending`, remove its step ids from the runtime snapshot's
+ * `completedStepIds`, transition the plan back to `running` if
+ * it was `failed`, and re-start the executor if needed.
+ *
+ * Allowed states: plan in {running, paused, failed}. The task
+ * itself may be in any non-`running` state.
+ */
+async function retryTaskInHome(
+  planId: string,
+  taskId: string,
+  home?: string,
+): Promise<Plan> {
+  const plan = await readPlanCore(planId, home);
+  if (!plan) throw PlanErrors.notFound(planId);
+  if (!["running", "paused", "failed"].includes(plan.status)) {
+    throw new PlanError(
+      `Plan cannot be retried from status ${plan.status}: ${planId}`,
+      409,
+    );
+  }
+  const taskIdx = plan.tasks.findIndex((t) => t.id === taskId);
+  if (taskIdx === -1) throw new PlanError(`Task not found: ${taskId}`, 404);
+  const task = plan.tasks[taskIdx]!;
+  if (task.status === "running") {
+    throw new PlanError(
+      `Cannot retry a running task: ${taskId} (let it finish or cancel)`,
+      409,
+    );
+  }
+
+  // Reset task + steps.
+  plan.tasks[taskIdx] = {
+    ...task,
+    status: "pending",
+    startedAt: undefined,
+    completedAt: undefined,
+    result: undefined,
+    steps: task.steps.map((s) => ({
+      ...s,
+      status: "pending",
+      startedAt: undefined,
+      completedAt: undefined,
+      output: undefined,
+    })),
+  };
+
+  // If plan was failed, bring it back to running.
+  const wasFailed = plan.status === "failed";
+  if (wasFailed) {
+    plan.status = "running";
+  }
+
+  const updated = await writePlanCore(planId, plan, home);
+
+  // Drop the task's step ids from the snapshot so the next
+  // executor run re-runs them.
+  const { readRuntimeSnapshot, writeRuntimeSnapshot } =
+    await import("./plan.js");
+  const snap = await readRuntimeSnapshot(planId, home);
+  if (snap) {
+    const stepIds = new Set(task.steps.map((s) => s.id));
+    snap.completedStepIds = snap.completedStepIds.filter(
+      (id) => !stepIds.has(id),
+    );
+    snap.completedTaskIds = snap.completedTaskIds.filter((id) => id !== taskId);
+    await writeRuntimeSnapshot(snap, home);
+  }
+
+  // Emit a `task_started`-ish event so the timeline shows
+  // the retry. (No `plan_resumed` — the plan was either still
+  // running, paused (no change), or was brought back from
+  // failed.)
+  await appendPlanEvent(
+    {
+      timestamp: new Date().toISOString(),
+      planId,
+      type: "task_started",
+      data: { taskId, retried: true, wasFailed },
+    },
+    home,
+  );
+
+  // If the executor is no longer running for this plan, start
+  // a new one. (The pause / running case is handled by the
+  // live executor if it exists.)
+  const registry = getDefaultRegistry();
+  const live = registry.get(planId);
+  if (!live || live.isDone()) {
+    if (home !== undefined) {
+      registry.start(planId, buildExecutorServiceForHome(home), home);
+    }
+  }
+  return updated;
+}
+
+/**
+ * Skip a task: mark the task as `skipped`, emit a
+ * `task_skipped` event. The executor notices on the next
+ * step boundary that the task is skipped and moves on. If
+ * the resulting plan state has no further work, the executor
+ * finalizes the plan as `completed` (or `failed` if any
+ * sibling task is failed).
+ *
+ * Allowed states: plan in {running, paused}, task not in {running}.
+ */
+async function skipTaskInHome(
+  planId: string,
+  taskId: string,
+  home?: string,
+): Promise<Plan> {
+  const plan = await readPlanCore(planId, home);
+  if (!plan) throw PlanErrors.notFound(planId);
+  if (plan.status !== "running" && plan.status !== "paused") {
+    throw new PlanError(
+      `Plan cannot skip task from status ${plan.status}: ${planId}`,
+      409,
+    );
+  }
+  const taskIdx = plan.tasks.findIndex((t) => t.id === taskId);
+  if (taskIdx === -1) throw new PlanError(`Task not found: ${taskId}`, 404);
+  const task = plan.tasks[taskIdx]!;
+  if (task.status === "running") {
+    throw new PlanError(
+      `Cannot skip a running task: ${taskId} (let it finish or cancel)`,
+      409,
+    );
+  }
+
+  plan.tasks[taskIdx] = {
+    ...task,
+    status: "skipped",
+    completedAt: new Date().toISOString(),
+  };
+  const updated = await writePlanCore(planId, plan, home);
+  await appendPlanEvent(
+    {
+      timestamp: new Date().toISOString(),
+      planId,
+      type: "task_skipped",
+      data: { taskId, reason: "user skipped" },
+    },
+    home,
+  );
+  return updated;
 }

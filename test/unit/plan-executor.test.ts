@@ -127,13 +127,19 @@ class MockService implements PlanExecutorService {
 }
 
 describe("plan-executor: STUBBED_ACTIONS", () => {
-  it("exposes the 5 MVP-stubbed action types", () => {
-    expect(STUBBED_ACTIONS.has("pi_session")).toBe(true);
-    expect(STUBBED_ACTIONS.has("pack_install")).toBe(true);
-    expect(STUBBED_ACTIONS.has("condition")).toBe(true);
-    expect(STUBBED_ACTIONS.has("wait")).toBe(true);
+  it("v0.6.0: only `manual` (waiting_human) is still stubbed", () => {
+    // The 5 originally-stubbed actions are now real in v0.6.0:
+    //   - pi_session → runPiSession (RpcClient)
+    //   - pack_install → service.installPack
+    //   - condition → evaluateCondition + SubStep loop
+    //   - wait → setTimeout-based delay
     expect(STUBBED_ACTIONS.has("manual")).toBe(true);
-    // Not stubbed — these are real in MVP.
+    // Now real.
+    expect(STUBBED_ACTIONS.has("pi_session")).toBe(false);
+    expect(STUBBED_ACTIONS.has("pack_install")).toBe(false);
+    expect(STUBBED_ACTIONS.has("condition")).toBe(false);
+    expect(STUBBED_ACTIONS.has("wait")).toBe(false);
+    // Always real.
     expect(STUBBED_ACTIONS.has("pilot_command")).toBe(false);
     expect(STUBBED_ACTIONS.has("profile_switch")).toBe(false);
     expect(STUBBED_ACTIONS.has("policy_apply")).toBe(false);
@@ -257,7 +263,17 @@ describe("PlanExecutor: stub action", () => {
     rmSync(home, { recursive: true, force: true });
   });
 
-  it("stubs pi_session + wait to success with stubbed marker", async () => {
+  it("v0.6.0: `manual` (waiting_human) is the only remaining stub", async () => {
+    // Use a short wait + a manual step to avoid the 60s default
+    // wait timeout in the `wait` dispatcher.
+    const plan2 = makePlan(plan.id, [
+      { id: "s1", action: { type: "manual", prompt: "approve deploy" } },
+      {
+        id: "s2",
+        action: { type: "wait", condition: "tick", timeoutMs: 10 },
+      },
+    ]);
+    await writePlan(plan.id, plan2, home);
     const svc = new MockService();
     const exec = new PlanExecutor({ planId: plan.id, service: svc, home });
     await exec.run();
@@ -269,7 +285,7 @@ describe("PlanExecutor: stub action", () => {
     expect(s1?.status).toBe("completed");
     expect(s1?.output?.success).toBe(true);
     expect(s1?.output?.data).toMatchObject({ stubbed: true });
-    expect(s2?.output?.summary).toContain("Stubbed");
+    expect(s2?.output?.summary).toContain("Waited");
   });
 });
 
@@ -601,4 +617,197 @@ describe("PlanExecutor: real child_process via pilot_command (integration)", () 
       expect(s1?.output?.error).toBeDefined();
     }
   }, 30_000);
+});
+
+// ─── v0.6.0: new action types ───────────────────────────────
+
+describe("PlanExecutor: v0.6.0 wait action", () => {
+  let home: string;
+  let plan: Plan;
+
+  beforeEach(async () => {
+    home = mkdtempSync(join(tmpdir(), "pilot-exec-"));
+    await ensurePlanDirs(home);
+    plan = makePlan("plan-wait", [
+      {
+        id: "s1",
+        action: { type: "wait", condition: "tick", timeoutMs: 50 },
+      },
+    ]);
+    await writePlan(plan.id, plan, home);
+  });
+
+  afterEach(() => {
+    rmSync(home, { recursive: true, force: true });
+  });
+
+  it("waits the configured timeout then completes", async () => {
+    const svc = new MockService();
+    const start = Date.now();
+    const exec = new PlanExecutor({ planId: plan.id, service: svc, home });
+    await exec.run();
+    const elapsed = Date.now() - start;
+    expect(elapsed).toBeGreaterThanOrEqual(40);
+    const reloaded = await readPlan(plan.id, home);
+    const s1 = reloaded?.tasks[0]?.steps[0];
+    expect(s1?.status).toBe("completed");
+    expect(s1?.output?.summary).toContain("Waited 50ms");
+  });
+});
+
+describe("PlanExecutor: v0.6.0 condition action (literal true/false)", () => {
+  let home: string;
+
+  beforeEach(async () => {
+    home = mkdtempSync(join(tmpdir(), "pilot-exec-"));
+    await ensurePlanDirs(home);
+  });
+
+  afterEach(() => {
+    rmSync(home, { recursive: true, force: true });
+  });
+
+  it("runs the then-branch when check is 'true'", async () => {
+    const plan = makePlan("plan-cond-true", [
+      {
+        id: "s1",
+        action: {
+          type: "condition",
+          check: "true",
+          then: [
+            {
+              id: "sub-then",
+              description: "approved",
+              action: { type: "profile_switch", profile: "yes" },
+              input: {},
+              retryCount: 0,
+              maxRetries: 0,
+            },
+          ],
+          else: [
+            {
+              id: "sub-else",
+              description: "denied",
+              action: { type: "profile_switch", profile: "no" },
+              input: {},
+              retryCount: 0,
+              maxRetries: 0,
+            },
+          ],
+        },
+      },
+    ]);
+    await writePlan(plan.id, plan, home);
+    const svc = new MockService();
+    const exec = new PlanExecutor({ planId: plan.id, service: svc, home });
+    await exec.run();
+
+    expect(svc.activateCalls).toEqual(["yes"]);
+  });
+
+  it("runs the else-branch when check is 'false'", async () => {
+    const plan = makePlan("plan-cond-false", [
+      {
+        id: "s1",
+        action: {
+          type: "condition",
+          check: "false",
+          then: [
+            {
+              id: "sub-then",
+              description: "approved",
+              action: { type: "profile_switch", profile: "yes" },
+              input: {},
+              retryCount: 0,
+              maxRetries: 0,
+            },
+          ],
+          else: [
+            {
+              id: "sub-else",
+              description: "denied",
+              action: { type: "profile_switch", profile: "no" },
+              input: {},
+              retryCount: 0,
+              maxRetries: 0,
+            },
+          ],
+        },
+      },
+    ]);
+    await writePlan(plan.id, plan, home);
+    const svc = new MockService();
+    const exec = new PlanExecutor({ planId: plan.id, service: svc, home });
+    await exec.run();
+
+    expect(svc.activateCalls).toEqual(["no"]);
+  });
+
+  it("uses step.<id>.success to gate a follow-up", async () => {
+    const plan = makePlan("plan-cond-step", [
+      {
+        id: "s1",
+        action: { type: "profile_switch", profile: "a" },
+      },
+      {
+        id: "s2",
+        action: {
+          type: "condition",
+          check: "step.s1.success",
+          then: [
+            {
+              id: "sub-yes",
+              description: "follow up",
+              action: { type: "profile_switch", profile: "follow" },
+              input: {},
+              retryCount: 0,
+              maxRetries: 0,
+            },
+          ],
+          else: [],
+        },
+      },
+    ]);
+    await writePlan(plan.id, plan, home);
+    const svc = new MockService();
+    const exec = new PlanExecutor({ planId: plan.id, service: svc, home });
+    await exec.run();
+
+    expect(svc.activateCalls).toEqual(["a", "follow"]);
+  });
+});
+
+describe("PlanExecutor: v0.6.0 pack_install action", () => {
+  let home: string;
+  let plan: Plan;
+
+  beforeEach(async () => {
+    home = mkdtempSync(join(tmpdir(), "pilot-exec-"));
+    await ensurePlanDirs(home);
+    plan = makePlan("plan-pack", [
+      { id: "s1", action: { type: "pack_install", source: "npm:foo" } },
+    ]);
+    await writePlan(plan.id, plan, home);
+  });
+
+  afterEach(() => {
+    rmSync(home, { recursive: true, force: true });
+  });
+
+  it("calls service.installPack with the source", async () => {
+    const svc = new MockService();
+    const installCalls: string[] = [];
+    svc.installPack = async (source: string) => {
+      installCalls.push(source);
+      return { ok: true };
+    };
+    const exec = new PlanExecutor({ planId: plan.id, service: svc, home });
+    await exec.run();
+
+    expect(installCalls).toEqual(["npm:foo"]);
+    const reloaded = await readPlan(plan.id, home);
+    expect(reloaded?.status).toBe("completed");
+    const s1 = reloaded?.tasks[0]?.steps[0];
+    expect(s1?.output?.summary).toContain("npm:foo");
+  });
 });

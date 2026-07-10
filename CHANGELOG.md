@@ -2,6 +2,77 @@
 
 ## Unreleased
 
+### v0.6.0 — PlanExecutor 完整版 (pi_session + pack_install + condition + wait + retry/skip)
+
+把 v0.5.23 MVP 留的 5 个 stub 拆掉了 4 个（保留 `manual`）。PlanExecutor 现在能跑 8 个 action type 中的 7 个真执行。retry / skip endpoint 接进 service + server。
+
+**New: `src/core/pi-session-runner.ts`**
+
+- `class PiSessionRunner` —— single-shot pi subprocess 包装。
+- 用 upstream 的 `RpcClient`（不再用 v0.5.14 的 WebSocket bridge），
+  spawn `pi --mode rpc`，发 `prompt`，等 `promptAndWait` 收完所有
+  event，抓 last assistant text + session stats（tokens / cost）。
+- `signal` 绑 abort → `rpc.abort()`。
+- 单一子进程一次 prompt。multi-turn 走多个 `pi_session` step。
+
+**Real action types (v0.6.0 加 4 个真)**
+
+- `pi_session` → `defaultPiSessionHandler` → `PiSessionRunner`。
+  cwd 来自 `step.action.cwd` / `step.input.cwd` / process.cwd() 顺序。
+  model / provider 可被 `step.input` 覆盖。tokens 写到 `output.tokensUsed`。
+- `pack_install` → `defaultPackInstallHandler` → `service.installPack(source)`。
+  扩了 `PlanExecutorService` 加 `installPack`。`buildExecutorServiceForHome`
+  实现了它。
+- `condition` → `defaultConditionHandler` + 小的 DSL：
+  - `"true"` / `"false"` 字面量
+  - `"step.<id>.success"` —— 查 executor 内 `stepResults` map（每个 step 完成时 `completeStep` 会 `stepResults.set(id, success)`）
+  - 其它 → 当 JS 表达式用 `new Function("ctx", ...)` 跑，ctx 是 `{ steps: { [id]: { success, summary, output } } }`。
+  跑 then/else SubStep 列表（同一 executor 的 dispatcher）。branch 失败 → 整个 step 失败。
+- `wait` → `defaultWaitHandler` → `setTimeout(timeoutMs)`，abort 立即 resolve。
+  condition 字符串暂忽略（真 "wait until X" 需要 polling subsystem，留 v0.6.1）。
+
+**STUBBED_ACTIONS 从 5 个缩到 1 个**
+
+```ts
+export const STUBBED_ACTIONS = new Set<StepAction["type"]>(["manual"]);
+```
+
+`manual` (waiting_human) 没真 UI 让用户 resolve 门，暂留 stub。
+
+**Retry / skip endpoints**
+
+- `service.retryTask(planId, taskId)` —— 把 task + 所有 step 重置成 pending，
+  删 runtime snapshot 里这些 step 的 id，把 plan 从 failed 拉回 running，
+  发 `task_started` event with `retried: true`，若 executor 不在跑了重新启动。
+- `service.skipTask(planId, taskId)` —— task 标 skipped，发 `task_skipped`。
+- 路由：`POST /plans/:id/tasks/:taskId/retry` 和 `/skip`。
+- 限制：retry / skip 在 plan = {running, paused, failed} 时可用（retry 多了 failed），
+  task 不能是 running。error 用 `PlanError(statusCode=409)` 标 409。
+
+**Exposed dispatcher / context API（condition 用）**
+
+- `executor.getDispatcher(type)` —— condition handler 拿同 executor 的 dispatcher 跑 SubStep。
+- `executor.getRecordedStepSuccess(id)` / `getConditionContext()` —— condition DSL 查上下文。
+
+**Tests**
+
+- `test/unit/plan-executor.test.ts` +5 cases：wait timeout、condition
+  `true` / `false` / `step.<id>.success`、pack_install、STUBBED_ACTIONS 收敛。
+- `test/unit/service-plan-retry-skip.test.ts` (新, 7 cases)：retry 成功
+  / running task 拒绝 / completed 拒绝 / 404 未知 task；skip 成功 / 409
+  running / 409 completed。
+- core: 546/546 ✓ (+12)
+- web: 171/171 ✓
+- tsc clean · build clean · format clean · lint clean
+
+**Out of scope (deferred)**
+
+- `manual` (waiting_human) 仍 stub —— 等 UI gate
+- parallel / adaptive strategy
+- WebSocket push live progress（仍 polling）
+- FeedbackEngine
+- multi-plan concurrent
+
 ### v0.5.23 — PlanExecutor MVP (sequential + 3 real actions + crash recovery)
 
 The Plan data model + CRUD + UI shell have been in place since v0.5.7

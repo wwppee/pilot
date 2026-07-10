@@ -179,6 +179,22 @@
 >
 > 测试：core 534/534（+12）、web 171/171、format 双清、lint clean、`npm run build` 成功、tsc clean。
 >
+> **2026-07-11 校准 (16)**：**v0.6.0 已发**——PlanExecutor 完整版。v0.5.23 MVP 的 5 个 stub 砍到 1 个（`manual`）。
+>
+> | 编号 | 位置 | 修复 |
+> |---|---|---|
+> | **新文件** | `src/core/pi-session-runner.ts` | `class PiSessionRunner` —— single-shot pi subprocess 包装。直接 upstream `RpcClient`（不走 v0.5.14 的 WS bridge），spawn `pi --mode rpc`，`promptAndWait` 抓 last text + tokens。`signal` 绑 abort。 |
+> | **真 dispatchers** | `src/core/plan-executor.ts` | `pi_session` / `pack_install` / `condition` / `wait` 4 个新默认 handler。`pi_session` 走 `PiSessionRunner`，`pack_install` 调 `service.installPack`，`condition` 跑 DSL（`true` / `false` / `step.<id>.success` / JS 表达式），`wait` `setTimeout` 立即 resolve。 |
+> | **Service** | `src/core/service.ts` + `service-impl.ts` | 新接口 `retryTask(planId, taskId)` + `skipTask(planId, taskId)`。retry：reset task + steps、清 snapshot 的 step ids、plan 从 failed 拉回 running、re-start executor（必要时）。skip：task 标 skipped、发 `task_skipped` event。两者都拒绝 running task（409）。 |
+> | **Server** | `src/server/server.ts` | `POST /plans/:id/tasks/:taskId/retry` + `/skip` 两条路由。 |
+> | **Exposed API** | `PlanExecutor` 类 | `getDispatcher(type)` / `getRecordedStepSuccess(id)` / `getConditionContext()` —— 给 `condition` handler 用，同 executor dispatcher 跑 SubStep。 |
+> | **STUBBED_ACTIONS 收敛** | `src/core/plan-executor.ts` | 从 5 个缩到 1 个（`manual`）。4 个现在有真实现。 |
+> | **新测试** | `test/unit/plan-executor.test.ts` (+5) + `test/unit/service-plan-retry-skip.test.ts` (新, 7) | wait timeout / condition `true` / `false` / `step.<id>.success` / pack_install / STUBBED_ACTIONS 收敛；retry 成功 / 409 running / 409 completed / 404 未知；skip 成功 / 409 running / 409 completed。 |
+>
+> 故意**不**做：`manual` (waiting_human) 仍 stub、parallel / adaptive、WS 实时 push、FeedbackEngine、multi-plan concurrent。下一个 v0.6.x 走「condition DSL 完整化（jmespath）」+ 「WebSocket live push」+ 「FeedbackEngine」。
+>
+> 测试：core 546/546（+12）、web 171/171、format 双清、lint clean、`npm run build` 成功、tsc clean。
+>
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
 ## 阶段一：看见 Pi（v0.1 - v0.3.x，已发）

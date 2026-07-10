@@ -734,6 +734,16 @@ export async function startServer(
     ),
   );
 
+  // v0.6.0: retry / skip endpoints for failed / blocked tasks.
+  app.post<{ Params: { id: string; taskId: string } }>(
+    "/plans/:id/tasks/:taskId/retry",
+    async (req) => service.retryTask(req.params.id, req.params.taskId),
+  );
+  app.post<{ Params: { id: string; taskId: string } }>(
+    "/plans/:id/tasks/:taskId/skip",
+    async (req) => service.skipTask(req.params.id, req.params.taskId),
+  );
+
   // Tool / Profile suggestion — moved above /plans/:id (P1#9).
   // See the comment near the top of the Plan routes block.
 
