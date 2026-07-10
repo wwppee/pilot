@@ -1,26 +1,24 @@
-"use client";
-
 /**
- * <NavLinks> — client-side nav rendering so the aria-label updates
- * when the user toggles language. Layout passes `currentPath` from
- * the server (Next.js sets `x-invoke-path` on the request), and the
- * nav items themselves use `<T>` so labels stay reactive.
+ * <NavLinks> — client-side nav with icons + tooltips + 3 groups.
  *
- * v0.4.14: nav is now grouped into two semantic buckets —
+ * v0.5.18: complete nav redesign for beginners. Every item now
+ * shows an emoji icon (decorative, aria-hidden) and a one-line
+ * hover/focus tooltip explaining where the link goes. Three
+ * semantic groups instead of two:
  *
  *   - **Inspect** (read-only views): Dashboard / Sessions / Usage /
- *     Tools / Context / Capabilities
- *   - **Manage** (action surfaces): Packages / Forge / Policy /
+ *     Tools / Context / Capabilities / Avatars / Plans / Try pi
+ *   - **Manage** (write actions): Packages / Forge / Policy /
  *     Compose / Profiles
+ *   - **Learn** (onboarding): Glossary / How-tos
  *
- * Visual separators (`•`) keep the buckets distinguishable without
- * consuming vertical space; group labels stay hidden from sighted
- * users but exposed to screen readers via `<span class="sr-only">`
- * so the structure is communicated through assistive tech too.
+ * Group labels visible only when there's room (sm:); the bullet
+ * separator stays for visual chunking. Tooltips use pure CSS
+ * `:hover` / `:focus-within` so the nav stays zero-JS-state.
  */
 
-import Link from "next/link";
 import { useT } from "./I18n";
+import { NavTooltip } from "./NavTooltip";
 
 type LabelKey =
   | "nav.dashboard"
@@ -36,48 +34,130 @@ type LabelKey =
   | "nav.forge"
   | "nav.avatars"
   | "nav.plans"
-  | "nav.try";
+  | "nav.try"
+  | "nav.help";
 
 interface NavItem {
   href: string;
   labelKey: LabelKey;
+  icon: string;
+  hint: string;
 }
 
 interface NavGroup {
-  /** sr-only label for screen readers; also shown visually when there's room. */
-  labelKey: "nav.groupInspect" | "nav.groupManage";
+  labelKey: "nav.groupInspect" | "nav.groupManage" | "nav.groupLearn";
   items: readonly NavItem[];
 }
 
 /**
- * Two semantic groups. The order within each group is intentional:
- * "Inspect" leads with the Dashboard (default landing page) and
- * follows the lifecycle read order; "Manage" leads with Packages
- * (most common action) and ends with Profiles (most opinionated).
+ * Three semantic groups. "Inspect" leads with the Dashboard
+ * (default landing) and follows the read order. "Manage" leads
+ * with Packages (most common write). "Learn" hosts onboarding.
  */
 export const NAV_GROUPS: readonly NavGroup[] = [
   {
     labelKey: "nav.groupInspect",
     items: [
-      { href: "/", labelKey: "nav.dashboard" },
-      { href: "/sessions", labelKey: "nav.sessions" },
-      { href: "/usage", labelKey: "nav.usage" },
-      { href: "/tools", labelKey: "nav.tools" },
-      { href: "/context", labelKey: "nav.context" },
-      { href: "/capabilities", labelKey: "nav.capabilities" },
-      { href: "/avatars", labelKey: "nav.avatars" },
-      { href: "/plans", labelKey: "nav.plans" },
-      { href: "/try", labelKey: "nav.try" },
+      {
+        href: "/",
+        labelKey: "nav.dashboard",
+        icon: "🏠",
+        hint: "Today's stats + recent activity",
+      },
+      {
+        href: "/try",
+        labelKey: "nav.try",
+        icon: "💬",
+        hint: "Chat with pi from the browser",
+      },
+      {
+        href: "/sessions",
+        labelKey: "nav.sessions",
+        icon: "📋",
+        hint: "Browse past pi conversations",
+      },
+      {
+        href: "/usage",
+        labelKey: "nav.usage",
+        icon: "📊",
+        hint: "Tokens, cost, by-model breakdown",
+      },
+      {
+        href: "/tools",
+        labelKey: "nav.tools",
+        icon: "🔧",
+        hint: "Tools pi can call + their usage",
+      },
+      {
+        href: "/context",
+        labelKey: "nav.context",
+        icon: "📄",
+        hint: "Project rules pi reads on startup",
+      },
+      {
+        href: "/capabilities",
+        labelKey: "nav.capabilities",
+        icon: "🧩",
+        hint: "What pi is currently allowed to do",
+      },
+      {
+        href: "/avatars",
+        labelKey: "nav.avatars",
+        icon: "🎭",
+        hint: "Project's expected config (diff vs current)",
+      },
+      {
+        href: "/plans",
+        labelKey: "nav.plans",
+        icon: "📝",
+        hint: "Multi-step tasks for pi (v0.5.13+ UI)",
+      },
     ],
   },
   {
     labelKey: "nav.groupManage",
     items: [
-      { href: "/packages", labelKey: "nav.packages" },
-      { href: "/forge", labelKey: "nav.forge" },
-      { href: "/policy", labelKey: "nav.policy" },
-      { href: "/compose", labelKey: "nav.compose" },
-      { href: "/profiles", labelKey: "nav.profiles" },
+      {
+        href: "/packages",
+        labelKey: "nav.packages",
+        icon: "📦",
+        hint: "Browse + install pi extensions",
+      },
+      {
+        href: "/forge",
+        labelKey: "nav.forge",
+        icon: "🛠",
+        hint: "Create / package your own extension",
+      },
+      {
+        href: "/policy",
+        labelKey: "nav.policy",
+        icon: "🛡",
+        hint: "Tool safety rules + confirm/block lists",
+      },
+      {
+        href: "/compose",
+        labelKey: "nav.compose",
+        icon: "🧪",
+        hint: "Try composable Box Garden prototypes",
+      },
+      {
+        href: "/profiles",
+        labelKey: "nav.profiles",
+        icon: "👤",
+        hint: "Saved capability bundles (model + tools)",
+      },
+    ],
+  },
+  {
+    labelKey: "nav.groupLearn",
+    items: [
+      {
+        href: "/help",
+        labelKey: "nav.help",
+        icon: "❓",
+        hint: "Glossary + how-tos for beginners",
+      },
     ],
   },
 ] as const;
@@ -92,7 +172,7 @@ export function NavLinks({ currentPath }: { currentPath: string }) {
 
   return (
     <nav
-      className="flex flex-wrap items-baseline gap-x-1 gap-y-1 text-sm"
+      className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm"
       role="navigation"
       aria-label={t("nav.ariaLabel")}
     >
@@ -104,34 +184,22 @@ export function NavLinks({ currentPath }: { currentPath: string }) {
           aria-label={t(group.labelKey)}
         >
           <span className="sr-only">{t(group.labelKey)}</span>
-          {/* Visible group label: small caps, faint — or hide on
-              narrow screens. Stays a real DOM node so a sighted
-              keyboard user can skip past via Tab order. */}
           <span
             aria-hidden="true"
             className="hidden sm:inline text-[10px] uppercase tracking-wide text-[var(--text-muted)]"
           >
             {t(group.labelKey)}
           </span>
-          {group.items.map((item) => {
-            const active = isActive(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="text-[var(--text-muted)] hover:text-[var(--text)]"
-                aria-current={active ? "page" : undefined}
-                data-active={active ? "true" : undefined}
-                style={
-                  active
-                    ? { color: "var(--accent)", fontWeight: 600 }
-                    : undefined
-                }
-              >
-                {t(item.labelKey)}
-              </Link>
-            );
-          })}
+          {group.items.map((item) => (
+            <NavTooltip
+              key={item.href}
+              href={item.href}
+              label={t(item.labelKey)}
+              icon={item.icon}
+              hint={item.hint}
+              active={isActive(item.href)}
+            />
+          ))}
           {gi < NAV_GROUPS.length - 1 && (
             <span
               aria-hidden="true"

@@ -36,6 +36,8 @@ import {
 } from "@/components/SessionPanel";
 import { BubbleActions } from "@/components/BubbleActions";
 import { OverflowMenu, OverflowMenuItem } from "@/components/OverflowMenu";
+import { Hint } from "@/components/Hint";
+import { GlossaryTerm } from "@/components/GlossaryTerm";
 
 function safeStringify(v: unknown, maxLen = 200): string {
   try {
@@ -286,6 +288,19 @@ export default function TryPage() {
         <p className="text-sm text-[var(--text-muted)] mt-1 hidden sm:block">
           <T k="try.subtitle" />
         </p>
+        <div className="mt-3 hidden sm:block">
+          <Hint summary="What is this page?">
+            This page opens a real pi session in your browser. Click{" "}
+            <strong>Connect</strong>, type a message, and watch pi stream a
+            reply. Every user bubble has a hidden{" "}
+            <strong>Fork from here</strong> button (hover over it) — forking
+            creates a new branch of the conversation from that exact prompt.
+            Rename / Clone at the top save or duplicate the session.{" "}
+            <GlossaryTerm term="rpc">RPC</GlossaryTerm> is the protocol pi
+            speaks over WebSocket; the dev-details panel at the bottom shows the
+            raw events if you're curious.
+          </Hint>
+        </div>
       </header>
 
       {/* Status strip — desktop only (mobile overflow menu covers it). */}

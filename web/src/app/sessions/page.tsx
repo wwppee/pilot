@@ -4,6 +4,9 @@
  * v0.5.9+: added a Topic column showing the first user message
  * preview (≤120 chars). Each row is now self-describing — users can
  * scan their history without clicking into each one.
+ *
+ * v0.5.18+: added a "what is a session" Hint so beginners understand
+ * what they're looking at.
  */
 import Link from "next/link";
 export const dynamic = "force-dynamic";
@@ -13,6 +16,7 @@ import type { SessionInfo } from "@/lib/types";
 import { T } from "@/components/I18n";
 import { EmptyState } from "@/components/EmptyState";
 import { RichT } from "@/components/RichT";
+import { Hint } from "@/components/Hint";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 
 export default async function SessionsPage() {
@@ -40,7 +44,14 @@ export default async function SessionsPage() {
         <h1 className="text-2xl font-bold mb-1">
           <T k="sessions.h1" />
         </h1>
-        <p className="text-[var(--text-muted)] text-sm">{subtitle}</p>
+        <p className="text-[var(--text-muted)] text-sm mb-3">{subtitle}</p>
+        <Hint summary="What's a session?">
+          A <strong>session</strong> is one continuous conversation with pi —
+          saved as a JSONL file in{" "}
+          <code className="kbd">~/.pi/agent/sessions/</code>. Each prompt you
+          send is a new entry. Click any row to see the full transcript and any
+          tool calls pi made.
+        </Hint>
       </header>
 
       <div className="space-y-4">

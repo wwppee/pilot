@@ -50,6 +50,17 @@ const zh: Dict = {
   "try.tool.args": "参数",
   "try.developerDetails": "开发者详情",
   "try.developerDetailsHint": "pi RPC 桥接的原始事件——便于调试。",
+  // v0.5.18: /help page — glossary + how-tos for beginners.
+  "help.h1": "帮助 — 新手入门",
+  "help.subtitle":
+    "术语表、操作指引、架构总览。每个页面也都有内联提示 — 留意小号斜体的解释。",
+  "help.section.howDoI": "我想…",
+  "help.section.glossary": "术语表",
+  "help.section.glossaryHint":
+    "全应用的 hover 提示都用这套定义 — 鼠标停在带下划线的术语上即可。",
+  "help.section.architecture": "架构",
+  "help.section.architectureBody":
+    "Pilot 是 pi 的管理面板。pi（编程 agent）作为 Node 子进程运行；Pilot 通过 WebSocket → RPC 桥接为每个浏览器标签页 spawn 一个子进程，读取其会话 JSONL 文件做统计，并用 Next.js web UI 展示。你也可以直接在终端用 pi — Pilot 只是让你在浏览器里看清和管理它的状态。",
   // v0.5.16: pi session tree (rename / clone / fork).
   "try.session.title": "会话",
   "try.session.unnamed": "未命名会话",
@@ -75,6 +86,8 @@ const zh: Dict = {
   // v0.4.14: nav groups
   "nav.groupInspect": "查看",
   "nav.groupManage": "管理",
+  "nav.groupLearn": "学习",
+  "nav.help": "帮助",
 
   // Server status
   "server.up": "pilot 服务 · v{version}",

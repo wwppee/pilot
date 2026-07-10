@@ -2,6 +2,39 @@
 
 ## Unreleased
 
+### v0.5.18 — Beginner-friendly guidance (welcome banner, glossary, /help, redesigned nav)
+
+Massive onboarding pass. Every page should now make sense to a first-time user without external docs.
+
+**New shared components**
+- `<Hint>` — inline collapsible "What is this?" / "What's a session?" expandable. Use anywhere you'd write a footnote.
+- `<GlossaryTerm>` — dotted-underline inline jargon with the canonical definition as the `title` (hover) + `aria-label`. Backed by `lib/glossary.ts` (13 entries: pilot, pi, session, capability, avatar, profile, pack, fork, context, policy, plan, rpc, token, contextWindow) — same definition used everywhere.
+- `<WelcomeBanner>` — dismissible 3-step first-visit card. SSR-safe (checks localStorage in `useEffect`). Shown once per browser per `dismissKey`.
+- `<NavTooltip>` — popover-on-hover wrapper around a nav link. Pure CSS `:hover`/`:focus-within`, zero JS state.
+
+**Nav redesign**
+- Icons (emoji, decorative) on every item: 🏠 💬 📋 📊 🔧 📄 🧩 🎭 📝 📦 🛠 🛡 🧪 👤 ❓
+- One-line tooltip on every item ("Browse past pi conversations" etc).
+- Reorder: Try pi moves to position 2 (most natural starting point for beginners).
+- New third group: **Learn** with `/help`.
+
+**`/help` page (new)**
+- "How do I…" — 6 starter cards (start first session, find past session, install a tool, etc).
+- "Glossary" — full 13-term list with id anchors so other pages can deep-link.
+- "Architecture" — one-paragraph explainer of pilot / pi / WS bridge / RPC.
+
+**Per-page improvements (v0.5.18 ships Dashboard / Sessions / Try; remaining pages in v0.5.19)**
+- **Dashboard**: WelcomeBanner on top; StatCards gain inline `?` GlossaryTerm on Sessions + Tokens (`title=` definitions on hover).
+- **Sessions**: top-of-page `<Hint summary="What's a session?">` paragraph.
+- **Try**: top-of-page `<Hint summary="What is this page?">` paragraph explaining Connect / Fork / Rename / Clone + the `<GlossaryTerm term="rpc">RPC</GlossaryTerm>` link.
+
+**Tests**
+- New `web/tests/onboarding.test.tsx` (8 cases): Hint expand/collapse, GlossaryTerm canonical text + title + aria-label, every glossary key has non-empty short + definition.
+- Updated `web/tests/nav-links.test.tsx` (now 16): three groups, 15 items, Learn → /help, Inspect order includes Try pi at position 2.
+- core unit: 522/522 ✓ (unchanged)
+- web: 163/163 ✓ (+10)
+- format clean (root + web) · lint clean
+
 ### v0.5.17 — Mobile responsive /try + duplicate-bubble fix
 
 Two issues from a phone-sized viewport test:

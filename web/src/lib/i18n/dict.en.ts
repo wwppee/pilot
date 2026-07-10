@@ -53,6 +53,17 @@ const en: Dict = {
   "try.developerDetails": "Developer details",
   "try.developerDetailsHint":
     "Raw events from the pi RPC bridge — useful for debugging.",
+  // v0.5.18: /help page — glossary + how-tos for beginners.
+  "help.h1": "Help — Pilot for beginners",
+  "help.subtitle":
+    "Glossary, how-tos, and architecture overview. Every page in Pilot also has inline hints — look for the small italic prompts.",
+  "help.section.howDoI": "How do I…",
+  "help.section.glossary": "Glossary",
+  "help.section.glossaryHint":
+    "The same definitions are used by the inline tooltip hints across the app — hover any underlined term.",
+  "help.section.architecture": "Architecture",
+  "help.section.architectureBody":
+    "Pilot is a management plane for pi. pi (the coding agent) runs as a Node subprocess. Pilot spawns one subprocess per browser tab via WebSocket → RPC bridge, reads its session JSONL files for stats, and exposes the result as a Next.js web UI. You can use pi directly from your terminal without Pilot — Pilot just makes the state visible and manageable from a browser.",
   // v0.5.16: pi session tree (rename / clone / fork).
   "try.session.title": "Session",
   "try.session.unnamed": "Untitled session",
@@ -79,6 +90,8 @@ const en: Dict = {
   // v0.4.14: nav groups
   "nav.groupInspect": "Inspect",
   "nav.groupManage": "Manage",
+  "nav.groupLearn": "Learn",
+  "nav.help": "Help",
 
   // Server status
   "server.up": "pilot server · v{version}",

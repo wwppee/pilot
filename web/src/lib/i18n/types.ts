@@ -43,6 +43,14 @@ export type Dict = {
   "nav.capabilities": string;
   "nav.avatars": string;
   "nav.plans": string;
+  // v0.5.18: /help page.
+  "help.h1": string;
+  "help.subtitle": string;
+  "help.section.howDoI": string;
+  "help.section.glossary": string;
+  "help.section.glossaryHint": string;
+  "help.section.architecture": string;
+  "help.section.architectureBody": string;
   // v0.5.15+: try pi — chat UI in the browser.
   "nav.try": string;
   // v0.5.15+: /try page.
@@ -94,6 +102,8 @@ export type Dict = {
   "try.events.emptyDisconnected": string;
   "nav.groupInspect": string;
   "nav.groupManage": string;
+  "nav.groupLearn": string;
+  "nav.help": string;
 
   // ─── Server status pill ──────────────────────────────────────
   "server.up": string;

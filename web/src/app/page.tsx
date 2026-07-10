@@ -12,6 +12,8 @@ import { AutoRefresh, LivePulse } from "@/components/AutoRefresh";
 import { T } from "@/components/I18n";
 import { EmptyState } from "@/components/EmptyState";
 import { RichT } from "@/components/RichT";
+import { WelcomeBanner } from "@/components/WelcomeBanner";
+import { GlossaryTerm } from "@/components/GlossaryTerm";
 import { negotiateLocale, renderT, type Locale } from "@/lib/i18n";
 import type {
   Capability,
@@ -101,6 +103,29 @@ export default async function DashboardPage() {
     <div className="space-y-10">
       <AutoRefresh intervalMs={10_000} />
 
+      <WelcomeBanner
+        title="Welcome to Pilot"
+        intro="Pilot is pi's management dashboard. Three steps to get going:"
+        dismissKey="pilot-welcome-v1"
+        steps={[
+          {
+            href: "/try",
+            label: "Chat with pi",
+            desc: "Open the Try page, connect, and send your first prompt.",
+          },
+          {
+            href: "/packages",
+            label: "Install a tool",
+            desc: "Browse the registry and add one pi extension.",
+          },
+          {
+            href: "/help",
+            label: "Read the glossary",
+            desc: "Hover any underlined term, or open the help page.",
+          },
+        ]}
+      />
+
       {hasNothing && <EmptyStateCards locale={locale} />}
 
       <header className="flex items-center justify-between">
@@ -129,33 +154,29 @@ export default async function DashboardPage() {
             label={renderT(locale, "home.card.sessions")}
             value={stats?.totalSessions ?? 0}
             accent="accent"
-            locale={locale}
+            hintKey="session"
           />
           <StatCard
             label={renderT(locale, "home.card.messages")}
             value={stats?.totalMessages ?? 0}
             accent="accent"
-            locale={locale}
           />
           <StatCard
             label={renderT(locale, "home.card.toolCalls")}
             value={stats?.totalToolCalls ?? 0}
             accent="accent-2"
-            locale={locale}
           />
           <StatCard
             label={renderT(locale, "home.card.tokens")}
             value={usage?.totalTokens ?? 0}
             accent="accent-2"
-            isTokens
-            locale={locale}
+            hintKey="token"
           />
           <StatCard
             label={renderT(locale, "home.card.cost")}
             value={usage ? Math.round(usage.totalCost * 10000) / 10000 : 0}
             accent="warn"
             isFloat
-            locale={locale}
           />
         </div>
       </section>
@@ -324,31 +345,33 @@ function StatCard({
   label,
   value,
   accent,
-  isTokens,
   isFloat,
-  locale,
+  hintKey,
 }: {
   label: string;
   value: number;
   accent: "accent" | "accent-2" | "warn";
-  isTokens?: boolean;
   isFloat?: boolean;
-  locale: Locale;
+  /** Optional GlossaryTerm key to show inline next to the label. */
+  hintKey?: "session" | "token";
 }) {
   let display: string;
   if (isFloat) {
-    display = renderT(locale, "currency.usd", {
-      amount: value.toFixed(4),
-    });
-  } else if (isTokens) {
-    display = value.toLocaleString();
+    display = `$${value.toFixed(4)}`;
   } else {
     display = value.toLocaleString();
   }
   return (
     <div className="surface rounded-lg p-4">
-      <div className="text-xs uppercase tracking-wide text-[var(--text-muted)]">
-        {label}
+      <div className="text-xs uppercase tracking-wide text-[var(--text-muted)] flex items-center gap-2">
+        <span>{label}</span>
+        {hintKey && (
+          <GlossaryTerm term={hintKey} variant="plain">
+            <span className="opacity-60 normal-case tracking-normal text-[10px]">
+              ?
+            </span>
+          </GlossaryTerm>
+        )}
       </div>
       <div
         className="text-3xl font-semibold mt-1 tabular-nums"
