@@ -1,22 +1,22 @@
 /**
  * /try — chat with pi from the browser, with session-tree actions.
  *
- * v0.5.15: rebuilt from v0.5.14 Playground into a real chat UI.
- * v0.5.16: added session-tree actions (rename / clone / fork per
- *          user bubble). Each user bubble can spawn a new branch
- *          via `fork(entryId)`; the header shows the current
- *          session name + message count + a "forked from X"
- *          indicator when the latest action was a fork.
+ * v0.5.15: real chat UI (user / assistant bubbles, streaming,
+ *          thinking, tool calls).
+ * v0.5.16: session-tree actions (rename / clone / fork per bubble).
+ * v0.5.17: mobile-friendly layout. Status strip + SessionPanel +
+ *          input bar collapse on <640px viewports; less-frequent
+ *          actions move to a single overflow menu; chat bubbles
+ *          go full-width on small screens; input bar is sticky.
  *
  * Architecture:
  *   - `usePiSession` gives us raw events + a typed `send()`.
- *   - `lib/chat-stream.ts` reduces events into ChatMessage[].
- *   - `SessionPanel` (top strip) + `BubbleActions` (per-bubble)
- *     surface tree ops.
- *   - State syncing: we call `get_state` on connect + after each
- *     mutation (rename / clone / fork). There's no public
- *     tree-change event from pi, so polling-on-mutation is the
- *     simplest reliable strategy.
+ *   - `lib/chat-stream.ts` reduces events into ChatMessage[]
+ *     (filters out user-role events so user bubbles come from
+ *      localUserMessages only — avoids duplicate bubbles).
+ *   - `SessionPanel` (compact mode on mobile) + `BubbleActions`
+ *     (per-bubble) + `OverflowMenu` (mobile actions drawer).
+ *   - State syncing via `get_state` on connect + after mutations.
  */
 "use client";
 
@@ -35,10 +35,8 @@ import {
   type SessionState,
 } from "@/components/SessionPanel";
 import { BubbleActions } from "@/components/BubbleActions";
+import { OverflowMenu, OverflowMenuItem } from "@/components/OverflowMenu";
 
-/**
- * Safely stringify a value for the developer-details log row.
- */
 function safeStringify(v: unknown, maxLen = 200): string {
   try {
     return JSON.stringify(v).slice(0, maxLen);
@@ -47,7 +45,6 @@ function safeStringify(v: unknown, maxLen = 200): string {
   }
 }
 
-/** Narrow a loose object into our SessionState view of pi's state. */
 function parseSessionState(raw: unknown): SessionState {
   const empty = emptySessionState();
   if (!raw || typeof raw !== "object") return empty;
@@ -69,19 +66,11 @@ export default function TryPage() {
   const [lastError, setLastError] = useState<string | null>(null);
   const [showDevDetails, setShowDevDetails] = useState(false);
 
-  // User-authored messages are NOT in the event stream — we
-  // synthesize them locally and prepend to the reducer output.
   const [localUserMessages, setLocalUserMessages] = useState<ChatMessage[]>([]);
 
-  // Session state (synced via get_state on connect + after mutations).
   const [sessionState, setSessionState] =
     useState<SessionState>(emptySessionState());
   const [forkedFrom, setForkedFrom] = useState<string | null>(null);
-  // Cache the previous session name when forking, so we can show
-  // "↳ forked from X" until the user sends a new message.
-  const prevSessionNameRef = useRef<string>("");
-
-  // Counter for stable React keys on the developer-details log.
   const eventCounter = useRef(0);
 
   /** Re-fetch the session state via get_state. */
@@ -91,20 +80,16 @@ export default function TryPage() {
       const data = (await session.send({ type: "get_state" })) as unknown;
       setSessionState(parseSessionState(data));
     } catch (e) {
-      // get_state can fail mid-stream — ignore, the state pill
-      // already shows the connection status.
       setLastError((e as Error).message);
     }
   }, [session]);
 
-  // Refresh state on every connect.
   useEffect(() => {
     if (session.state === "connected") {
       void refreshSessionState();
     }
   }, [session.state, refreshSessionState]);
 
-  // Reduce the raw event stream to assistant / tool messages.
   const streamMessages = useMemo(() => {
     const events = session.events.map((e) => e.event) as Array<
       Record<string, unknown>
@@ -134,18 +119,14 @@ export default function TryPage() {
     return merged;
   }, [localUserMessages, streamMessages]);
 
-  // Auto-scroll the chat to the bottom as new content arrives.
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages.length, lastMessageText(messages)]);
 
-  // Clear forkedFrom indicator once a new user message is sent.
   useEffect(() => {
     if (forkedFrom && localUserMessages.length > 0) {
-      // Only clear if the latest user message is after the fork
-      // (i.e. they actually sent something new in the new branch).
       setForkedFrom(null);
     }
   }, [localUserMessages.length, forkedFrom]);
@@ -163,7 +144,6 @@ export default function TryPage() {
       setLastError((e as Error).message);
     } finally {
       setSending(false);
-      // Refresh message count after a turn completes.
       void refreshSessionState();
     }
   };
@@ -193,28 +173,12 @@ export default function TryPage() {
   };
 
   const handleClone = async () => {
-    // Capture the name BEFORE clone so we can show "Cloned — now in X".
-    prevSessionNameRef.current = sessionState.sessionName;
     setLocalUserMessages([]);
     setForkedFrom(null);
     await session.send({ type: "clone" });
     await refreshSessionState();
-    // Friendly toast-style confirmation. The new name is now in
-    // sessionState.sessionName (since refreshSessionState already
-    // ran). The "from X" hint is implicit in the session panel
-    // (user can rename + see old name in their file browser).
   };
 
-  /**
-   * Fork from a specific user message bubble. We need to map the
-   * bubble's text → pi's entryId, since pi identifies tree nodes
-   * by entryId (not our synthetic `user-<ts>`).
-   *
-   * 1. Call get_fork_messages() to get [{entryId, text}].
-   * 2. Find the entry whose text matches the bubble.
-   * 3. Call fork(entryId).
-   * 4. Refresh state + show "forked from <oldName>".
-   */
   const handleFork = useCallback(
     async (bubble: ChatMessage) => {
       const textBlock = bubble.blocks.find((b) => b.type === "text");
@@ -225,14 +189,11 @@ export default function TryPage() {
         type: "get_fork_messages",
       })) as Array<{ entryId: string; text: string }> | unknown;
       const list = Array.isArray(forkable) ? forkable : [];
-      // Match by exact text. If multiple matches (same prompt
-      // twice), pick the last — that's the most recent occurrence.
       const match = [...list].reverse().find((m) => m.text === bubbleText);
       if (!match) {
         throw new Error("could not find this message in pi's tree");
       }
 
-      prevSessionNameRef.current = sessionState.sessionName;
       setForkedFrom(sessionState.sessionName || t("try.session.unnamed"));
       setLocalUserMessages([]);
       await session.send({ type: "fork", entryId: match.entryId });
@@ -258,29 +219,84 @@ export default function TryPage() {
     }
   })();
 
+  const connected = session.state === "connected";
+
   return (
-    <main className="flex h-[calc(100vh-6rem)] flex-col gap-4">
-      <header className="surface rounded-lg p-4">
-        <h1 className="text-xl font-bold">
-          <T k="try.h1" />
-        </h1>
-        <p className="text-sm text-[var(--text-muted)] mt-2">
+    <main className="flex h-[calc(100dvh-4rem)] flex-col gap-3 sm:gap-4 sm:h-[calc(100vh-6rem)]">
+      <header className="surface rounded-lg p-3 sm:p-4">
+        <div className="flex items-center gap-3">
+          <h1 className="text-lg sm:text-xl font-bold">
+            <T k="try.h1" />
+          </h1>
+          <div className="flex-1" />
+          {/* Mobile overflow menu: collapses New session / Abort /
+              Disconnect / Rename / Clone. Connect / Send stay
+              visible as primary actions. */}
+          <div className="sm:hidden">
+            <OverflowMenu ariaLabel="More actions">
+              {connected ? (
+                <>
+                  <OverflowMenuItem
+                    onClick={handleNewSession}
+                    disabled={sending}
+                  >
+                    <T k="try.action.newSession" />
+                  </OverflowMenuItem>
+                  <OverflowMenuItem onClick={handleAbort} disabled={sending}>
+                    <T k="try.action.abort" />
+                  </OverflowMenuItem>
+                  <OverflowMenuItem onClick={session.disconnect}>
+                    <T k="try.action.disconnect" />
+                  </OverflowMenuItem>
+                  <OverflowMenuItem
+                    onClick={() => {
+                      // Click the inline rename button in the
+                      // SessionPanel — we forward by ID. The
+                      // component looks up its own state.
+                      const btn = document.getElementById(
+                        "session-panel-rename-btn",
+                      );
+                      btn?.click();
+                    }}
+                    disabled={!sessionState.sessionId}
+                  >
+                    <T k="try.session.rename" />
+                  </OverflowMenuItem>
+                  <OverflowMenuItem
+                    onClick={handleClone}
+                    disabled={!sessionState.sessionId}
+                  >
+                    <T k="try.session.clone" />
+                  </OverflowMenuItem>
+                </>
+              ) : (
+                <OverflowMenuItem
+                  onClick={session.connect}
+                  disabled={
+                    session.state === "fetching-token" ||
+                    session.state === "connecting"
+                  }
+                >
+                  <T k="try.action.connect" />
+                </OverflowMenuItem>
+              )}
+            </OverflowMenu>
+          </div>
+        </div>
+        <p className="text-sm text-[var(--text-muted)] mt-1 hidden sm:block">
           <T k="try.subtitle" />
         </p>
       </header>
 
-      <section className="surface rounded-lg p-3 flex items-center gap-3 flex-wrap">
+      {/* Status strip — desktop only (mobile overflow menu covers it). */}
+      <section className="hidden sm:flex surface rounded-lg p-3 items-center gap-3 flex-wrap">
         <span
           className="pill"
           style={{
-            background:
-              session.state === "connected"
-                ? "color-mix(in srgb, var(--accent-2) 18%, transparent)"
-                : "color-mix(in srgb, var(--text-muted) 12%, transparent)",
-            color:
-              session.state === "connected"
-                ? "var(--accent-2)"
-                : "var(--text-muted)",
+            background: connected
+              ? "color-mix(in srgb, var(--accent-2) 18%, transparent)"
+              : "color-mix(in srgb, var(--text-muted) 12%, transparent)",
+            color: connected ? "var(--accent-2)" : "var(--text-muted)",
           }}
         >
           {session.state}
@@ -289,7 +305,7 @@ export default function TryPage() {
           <T k={statusLabel} />
         </span>
         <div className="flex-1" />
-        {session.state === "connected" ? (
+        {connected ? (
           <>
             <button
               type="button"
@@ -330,22 +346,35 @@ export default function TryPage() {
         )}
       </section>
 
-      <SessionPanel
-        sessionState={sessionState}
-        onRename={handleRename}
-        onClone={handleClone}
-        forkedFrom={forkedFrom}
-      />
+      {/* Mobile: compact name + count, no inline buttons. */}
+      <div className="sm:hidden">
+        <SessionPanel
+          sessionState={sessionState}
+          onRename={handleRename}
+          onClone={handleClone}
+          forkedFrom={forkedFrom}
+          compact
+        />
+      </div>
+      {/* Desktop: full panel with rename + clone buttons. */}
+      <div className="hidden sm:block">
+        <SessionPanel
+          sessionState={sessionState}
+          onRename={handleRename}
+          onClone={handleClone}
+          forkedFrom={forkedFrom}
+        />
+      </div>
 
       <section
         ref={scrollRef}
-        className="surface rounded-lg flex-1 overflow-y-auto p-4 space-y-4 min-h-0"
+        className="surface rounded-lg flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 min-h-0"
       >
         {messages.length === 0 ? (
           <p className="text-[var(--text-muted)] italic text-sm">
             <T
               k={
-                session.state === "connected"
+                connected
                   ? "try.chat.emptyConnected"
                   : "try.chat.emptyDisconnected"
               }
@@ -365,7 +394,9 @@ export default function TryPage() {
         )}
       </section>
 
-      <section className="surface rounded-lg p-4 space-y-3">
+      {/* Input bar — sticky on mobile so the keyboard pushing the
+          viewport doesn't hide it. */}
+      <section className="surface rounded-lg p-3 sm:p-4 space-y-2 sm:space-y-3 sticky bottom-2 sm:bottom-auto z-[1]">
         <label className="block">
           <span className="sr-only">
             <T k="try.prompt.label" />
@@ -379,24 +410,24 @@ export default function TryPage() {
                 void handleSend();
               }
             }}
-            disabled={session.state !== "connected" || sending}
+            disabled={!connected || sending}
             placeholder={t("try.prompt.placeholder")}
             rows={2}
-            className="w-full surface-2 rounded px-3 py-2 text-sm outline-none focus:border-[var(--accent)] resize-none"
+            className="w-full surface-2 rounded px-3 py-2 text-base sm:text-sm outline-none focus:border-[var(--accent)] resize-none min-h-[44px]"
           />
         </label>
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={handleSend}
-            disabled={
-              session.state !== "connected" || sending || !prompt.trim()
-            }
-            className="btn"
+            disabled={!connected || sending || !prompt.trim()}
+            className="btn min-h-[44px] px-5"
           >
             <T k="try.action.send" />
           </button>
-          <span className="text-xs text-[var(--text-muted)]">⌘/Ctrl-Enter</span>
+          <span className="text-xs text-[var(--text-muted)] hidden sm:inline">
+            ⌘/Ctrl-Enter
+          </span>
         </div>
       </section>
 
@@ -475,8 +506,6 @@ function MessageBubble({
   onFork,
 }: {
   message: ChatMessage;
-  // Pass undefined explicitly — exactOptionalPropertyTypes
-  // disallows `prop?: T` where the source value is `T | undefined`.
   onFork: (() => Promise<void> | void) | undefined;
 }) {
   const isUser = message.role === "user";
@@ -486,7 +515,7 @@ function MessageBubble({
       data-role={message.role}
     >
       <div
-        className={`max-w-[80%] rounded-lg px-4 py-2 text-sm space-y-2 ${
+        className={`max-w-[92%] sm:max-w-[80%] rounded-lg px-3 py-2 sm:px-4 sm:py-2 text-sm sm:text-sm space-y-2 ${
           isUser
             ? "bg-[var(--accent)] text-[var(--accent-fg)]"
             : "surface-2 text-[var(--text)]"
@@ -533,7 +562,11 @@ function BlockView({
   switch (block.type) {
     case "text":
       if (!block.text && messageStatus === "streaming" && isLast) return null;
-      return <p className="whitespace-pre-wrap break-words">{block.text}</p>;
+      return (
+        <p className="whitespace-pre-wrap break-words text-[15px] sm:text-sm leading-relaxed">
+          {block.text}
+        </p>
+      );
     case "thinking":
       if (!block.text) return null;
       return (

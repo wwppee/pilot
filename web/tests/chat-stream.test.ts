@@ -203,4 +203,36 @@ describe("reduceStream", () => {
     expect(u.status).toBe("complete");
     expect(u.blocks[0]).toEqual({ type: "text", text: "hi" });
   });
+
+  it("skips user-role message_start events (no duplicate user bubbles)", () => {
+    // pi echoes the user message back in its event stream via a
+    // message_start with role: "user". The reducer must ignore it
+    // — the local userMessage() already provides the bubble, and
+    // otherwise we render two user bubbles per prompt.
+    const messages = reduceStream([
+      { type: "message_start", message: { role: "user", timestamp: 1 } },
+      {
+        type: "message_update",
+        message: { role: "user" },
+        assistantMessageEvent: {
+          type: "text_delta",
+          contentIndex: 0,
+          delta: "echoed text",
+        },
+      },
+      { type: "message_end", message: { role: "user" } },
+    ]);
+    expect(messages).toHaveLength(0);
+  });
+
+  it("still creates user bubbles via userMessage() helper", () => {
+    // Sanity check: the helper is the canonical source of user
+    // bubbles; the event stream never produces them.
+    const a = userMessage("hi");
+    const b = userMessage("there");
+    expect([a, b].map((m) => m.blocks[0])).toEqual([
+      { type: "text", text: "hi" },
+      { type: "text", text: "there" },
+    ]);
+  });
 });

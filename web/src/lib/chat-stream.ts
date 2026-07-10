@@ -115,6 +115,12 @@ export function reduceStream(events: StreamEvent[]): ChatMessage[] {
         const m = ev.message;
         if (!m) break;
         const role = (m.role ?? "assistant") as ChatMessage["role"];
+        // User messages are echoed back by pi in its event stream
+        // (pi puts the user message into the conversation), but we
+        // synthesize them locally via `userMessage(text)` so the
+        // bubble shows up immediately. Skip the echo here to avoid
+        // showing two user bubbles per prompt.
+        if (role === "user") break;
         const id = `msg-${m.timestamp ?? out.length}-${out.length}`;
         out.push({
           id,

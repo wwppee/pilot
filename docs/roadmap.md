@@ -89,6 +89,15 @@
 >
 > 新增 `web/tests/try-session.test.tsx` 9 个用例（SessionPanel 6 + BubbleActions 3）。core 522/522、web 148/148（+9）、lint clean、format 双清。
 >
+> **2026-07-10 校准 (9)**：**v0.5.17 已发**——手机宽度下 `/try` 有两个问题：
+>
+> | 编号 | 位置 | 修复 |
+> |---|---|---|
+> | **bug** | `web/src/lib/chat-stream.ts` | 一个 prompt 出现两个 user bubble。reducer 没跳过 pi 回传的 `message_start {role: "user"}` 事件，加上本地 `userMessage()` 合成就有了两个。reducer 跳过 user-role 事件即可；user bubble 只来自 `userMessage()`。 |
+> | **响应式** | `web/src/app/try/page.tsx` + 新 `web/src/components/OverflowMenu.tsx` | 手机宽度下三个 button 行 + 输入框挤一起。改成：mobile 折叠到单个 `⋯` overflow 菜单（原生 `<details>`，零 JS）；SessionPanel 加 `compact` 模式（mobile 只显名称+计数）；input bar sticky bottom + 44px 触屏目标；chat bubble mobile `max-w-[92%]`，desktop `80%`；header subtitle mobile 隐藏；页面高度用 `100dvh` 处理 mobile 浏览器 chrome。 |
+>
+> 新增 `web/tests/overflow-menu.test.tsx` 3 个用例 + `chat-stream.test.ts` +2。core 522/522、web 153/153（+5）、lint clean、format 双清。
+>
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
 ## 阶段一：看见 Pi（v0.1 - v0.3.x，已发）

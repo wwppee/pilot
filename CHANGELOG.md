@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### v0.5.17 — Mobile responsive /try + duplicate-bubble fix
+
+Two issues from a phone-sized viewport test:
+
+1. **Duplicate user bubbles** — `chat-stream.ts`'s reducer created a second user bubble from pi's `message_start` event (pi echoes the user message into its session) on top of the locally-synthesized one. The reducer now skips `role: "user"` events so user bubbles come from `userMessage()` only. New test: `skips user-role message_start events`.
+2. **Mobile responsive** — `<640px` viewports were cramped (3 stacked button rows, tiny bubbles, no sticky input). New layout:
+   - **Overflow menu** (`components/OverflowMenu.tsx`) collapses Connect / New session / Abort / Disconnect / Rename / Clone behind a single `⋯` button on mobile. Native `<details>` for free click-outside-to-close + keyboard nav, no JS state machine.
+   - **SessionPanel `compact` mode** — mobile shows just session name + count; the rename + clone buttons move to the overflow menu. Desktop keeps the full inline panel.
+   - **Chat bubbles** go `max-w-[92%]` on mobile (was `max-w-[80%]`) so the chat feels less cramped on phones.
+   - **Input bar sticky bottom** on mobile (`sticky bottom-2`); buttons get a `min-h-[44px]` touch target.
+   - **Header subtitle** hidden on mobile, shown at `sm:` and up.
+   - **Page height** uses `100dvh` on mobile (handles mobile browser chrome) and `100vh` on desktop.
+
+**Tests**
+- `web/tests/chat-stream.test.ts` +2 (now 8): user-role events filtered, helper is the canonical source.
+- `web/tests/overflow-menu.test.tsx` (new, 3 cases): trigger renders, item click invokes callback, disabled disables.
+- core unit: 522/522 ✓ (unchanged)
+- web: 153/153 ✓ (+5)
+- format clean (root + web) · lint clean (`--max-warnings 0`)
+
 ### v0.5.16 — Session tree actions (rename / clone / fork per bubble)
 
 Wire pi's session tree into the `/try` chat UI. The page already streamed messages, but until now you couldn't see or control the tree.

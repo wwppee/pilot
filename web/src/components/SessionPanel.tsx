@@ -3,19 +3,10 @@
  * tree actions (rename / clone). The companion per-bubble fork
  * menu lives in `BubbleActions.tsx`.
  *
- * v0.5.16: pi's session is a tree — each prompt can branch via
- * `fork(entryId)`. This panel surfaces the current leaf:
- *
- *   - `sessionId` + `sessionName` (from `get_state`)
- *   - Inline rename (calls `set_session_name`)
- *   - Clone the current branch into a new session file (calls
- *     `clone()` — emits a new session id; we re-fetch state after)
- *   - "Forked from X" indicator when the user just forked
- *
- * State syncing strategy: `get_state` is cheap and we only call it
- * on connect + after mutations. There's no public tree-change event
- * (pi doesn't emit `session_forked` / `session_switched`), so this
- * is the simplest reliable approach.
+ * v0.5.17: added a `compact` prop for mobile — the rename + clone
+ * buttons are hidden on small viewports; the page wires them into
+ * an overflow menu elsewhere. The session name + message count
+ * stay inline so users still see what session they're in.
  */
 "use client";
 
@@ -24,7 +15,7 @@ import { T, useT } from "@/components/I18n";
 
 /**
  * Loose-typed RpcSessionState — narrowed from pi's SDK so the web
- * bundle stays light. Only the fields we actually render.
+ * bundle stays light.
  */
 export type SessionState = {
   sessionId: string;
@@ -49,19 +40,21 @@ export function SessionPanel({
   onRename,
   onClone,
   forkedFrom,
+  compact = false,
 }: {
   sessionState: SessionState;
   onRename: (name: string) => Promise<void> | void;
   onClone: () => Promise<void> | void;
   forkedFrom: string | null;
+  /** Mobile / narrow: hide the rename + clone buttons (caller
+   * puts them in an overflow menu). Defaults to false. */
+  compact?: boolean;
 }) {
   const t = useT();
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState("");
   const [busy, setBusy] = useState(false);
 
-  // Reset the editor draft whenever the underlying name changes
-  // (e.g. after a successful rename).
   useEffect(() => {
     if (!editing) setDraftName(sessionState.sessionName);
   }, [sessionState.sessionName, editing]);
@@ -99,9 +92,36 @@ export function SessionPanel({
       ? "try.session.messageCount.one"
       : "try.session.messageCount.other";
 
+  // Mobile compact: name + count as a single line, no rename
+  // button, no clone button. Caller wires those into an
+  // overflow menu elsewhere on the page.
+  if (compact) {
+    return (
+      <div className="surface rounded-lg p-3 flex items-center gap-3 flex-wrap text-sm min-h-[44px]">
+        <span className="text-[var(--text-muted)] text-xs uppercase tracking-wide shrink-0">
+          <T k="try.session.title" />
+        </span>
+        <span className="font-medium truncate flex-1 min-w-0">
+          {displayName}
+        </span>
+        <span className="text-xs text-[var(--text-muted)] shrink-0">
+          {t(countKey, { count: sessionState.messageCount })}
+        </span>
+        {forkedFrom && (
+          <span
+            className="text-xs text-[var(--text-muted)] italic shrink-0"
+            title={forkedFrom}
+          >
+            <T k="try.session.forkedFrom" params={{ name: forkedFrom }} />
+          </span>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className="surface rounded-lg p-3 flex items-center gap-3 flex-wrap text-sm">
-      <span className="text-[var(--text-muted)] text-xs uppercase tracking-wide">
+    <div className="surface rounded-lg p-3 flex items-center gap-3 flex-wrap text-sm min-h-[44px]">
+      <span className="text-[var(--text-muted)] text-xs uppercase tracking-wide shrink-0 hidden sm:inline">
         <T k="try.session.title" />
       </span>
 
@@ -141,10 +161,11 @@ export function SessionPanel({
         <>
           <button
             type="button"
+            id="session-panel-rename-btn"
             onClick={startEdit}
             disabled={!sessionState.sessionId}
             title={t("try.session.rename")}
-            className="font-medium hover:underline focus:underline focus:outline-none"
+            className="font-medium hover:underline focus:underline focus:outline-none truncate max-w-[40ch]"
           >
             {displayName}
           </button>
