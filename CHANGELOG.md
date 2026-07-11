@@ -2,6 +2,115 @@
 
 ## Unreleased
 
+### v0.6.10 — server-side board persistence (Save to / Load from server)
+
+`/compose` has shipped block-to-block connections (v0.6.7),
+drag-to-create (v0.6.8), arrow head + label (v0.6.9). But every
+layout was trapped in one browser's `localStorage` — no way to
+move to a different machine, share with a teammate, or recover
+from a profile wipe. v0.6.10 lets you save the canvas to the
+server.
+
+**New storage**
+
+- `~/.pilot/compose-boards/<safe-id>.json` — one file per
+  board, full `ComposeState` JSON (matches the localStorage
+  format byte-for-byte so save/load is a 1-line copy, no
+  schema round-trip).
+- New `core/compose-boards.ts` module: `listBoards` /
+  `loadBoard` / `saveBoard` / `deleteBoard` + Zod schemas
+  that validate on read and write. Bad JSON or wrong
+  version silently dropped to `null` (a corrupt board
+  shouldn't take down the whole sidebar).
+- `isValidBoardId` constrains ids to `[a-zA-Z0-9_-]{1,64}`
+  so a board named `../../etc/passwd` never lands in our
+  JSON file. Auto-generated ids use the documented
+  `board-<ts36>-<rand6>` shape.
+- Atomic save: write to a `.tmp-<pid>-<ts>` file then
+  `unlink`+`writeFile` the real one. A crash mid-write
+  doesn't leave a half-truncated `.json`. Same pattern
+  plan-history uses for snapshots.
+
+**New HTTP routes**
+
+- `GET    /api/compose/boards`            → `BoardSummary[]`
+- `GET    /api/compose/boards/:id`        → `BoardSnapshot` (404 if missing)
+- `PUT    /api/compose/boards/:id`        → `BoardSnapshot` (path id wins)
+- `POST   /api/compose/boards`            → 201 + `BoardSnapshot` (auto-id)
+- `DELETE /api/compose/boards/:id`        → 204 (404 if missing)
+
+**Service-layer wiring**
+
+- `PilotService` interface gains `listComposeBoards` /
+  `getComposeBoard` / `saveComposeBoard` /
+  `deleteComposeBoard`. Same lazy-import pattern as the
+  other compose*FromService helpers (avoids pulling
+  `fs`/`zod` into callers that don't need persistence).
+- Mirrored in `core/service-impl.ts` so CLI / server / web
+  all share one implementation, no drift.
+
+**Web UI**
+
+- New "Save to server" / "Load from server" buttons in the
+  toolbar (left of the existing Export / Import / Clear
+  group). Click opens a small absolute-positioned panel
+  anchored to the toolbar — lighter than a modal and
+  state-resident.
+- Save panel: text input for the layout name (defaults to
+  the current `state.name` or empty) + Enter-to-save + a
+  status line ("Saved · <id>" / "Save failed" /
+  "Saving…"). Auto-reuses the last-saved id when the name
+  hasn't changed, so a typical "save again" flow overwrites
+  the same file instead of creating a new one.
+- Load panel: list of every saved board with name /
+  blockCount / connectionCount / updated date. Click
+  anywhere on a row to load; per-row × button to delete
+  (with confirm). Empty state shows "No saved boards yet".
+- Server replaces the local canvas wholesale on load
+  (v0.6.10 first cut; merge / merge-on-conflict lands in
+  v0.6.11 along with the dedicated `/compose/boards`
+  list page).
+- `lastSavedId` tracked separately so the next save with
+  the same name overwrites the same file (no orphaned
+  duplicates from name typos).
+
+**i18n**
+
+- 16 new keys (en + zh) covering the toolbar buttons,
+  panel labels, status messages, confirm prompts:
+  `compose.toolbar.{saveTitle,loadTitle,boardsTitle}`,
+  `compose.board.{saving,saved,saveError,loading,loaded,
+  loadError,empty,namePrompt,namePlaceholder,
+  confirmOverwrite,confirmDelete,deleted,deleteError}`.
+
+**Stats**
+
+- root tests: **584/584** ✓ (was 559; +25 compose-boards)
+- web tests: **201/201** ✓ (unchanged — UI affordances
+  ride on existing test infrastructure; per-API
+  integration tests land with v0.6.11's list page)
+- format:check root + web: ✓
+- lint (root `eslint src test --max-warnings 0`): ✓
+- tsc root + web: ✓
+- production build (`next build`): ✓
+
+**Sandbox caveat**
+
+`pilot start` wasn't running, so the new toolbar affordance
++ panel render path can't be Playwright-verified from the
+sandbox. Server-side `core/compose-boards.ts` is fully
+covered by 25 vitest cases (list / save / load / delete
+round-trips, schema validation, ID safety, corrupt-JSON
+recovery). User must `pilot start` + `pilot dashboard` to
+try the Save / Load flow.
+
+**Deferred to v0.6.11**
+
+The dedicated `/compose/boards` list page (multi-board
+picker, rename, bulk delete, share-link) was scoped out of
+this slice to keep v0.6.10 reviewable. The API surface is
+already in place; v0.6.11 is UI-only on top of it.
+
 ### v0.6.9 — connection arrow head + free-text label (schema v3)
 
 The v0.6.7 / v0.6.8 connections are pure arrows with no

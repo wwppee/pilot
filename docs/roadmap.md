@@ -365,6 +365,38 @@
 >
 > **故意没做**（v0.6.10+ 留）：server-side board persistence（让 /compose layout 跨设备同步）、multiple connections (A↔B 双向)、connection color 自定义、auto-route 避开 block 中心。
 >
+> **2026-07-12 校准 (26)**：**v0.6.10 已发** —— server-side board persistence。/compose 6 个版本（v0.4.4 → v0.6.9）后，layout 还在 localStorage，跨设备看不到。v0.6.10 把 /compose 完成"工具化"最后一公里：每块 layout 可以 save 到 server，从另一台 machine load 回来。
+>
+> | 类别 | 位置 | 改动 |
+> |---|---|---|
+> | **新 module** | `src/core/compose-boards.ts` | `listBoards` / `loadBoard` / `saveBoard` / `deleteBoard` + Zod schemas；`isValidBoardId` 防 path traversal；`generateBoardId` = `board-<ts36>-<rand6>`；原子 save (`.tmp-<pid>-<ts>` + rename) |
+> | **新 routes** | `src/server/server.ts:582-630` | `GET/POST/PUT/DELETE /api/compose/boards[/:id]` — 404/201/204 状态码语义对齐 REST；path id 永远 wins over body id |
+> | **Service 接口** | `src/core/service.ts:336-373` | `PilotService` 加 4 个方法；保持 lazy-import 模式（避免 fs/zod 污染非持久化 caller） |
+> | **Service impl** | `src/core/service-impl.ts:559-590` | 4 个 `*FromService` 内部函数转 `await import("./compose-boards.js")` — 跟其他 compose*FromService 模式一致 |
+> | **Web types** | `web/src/lib/types.ts:585-595` | `BoardSummary` interface (id, name, updatedAt, createdAt, blockCount, connectionCount) — 镜像 core 的同名 type |
+> | **Web API client** | `web/src/lib/pilot-browser.ts:300-340` | `api.composeBoards()` / `composeBoard(id)` / `saveComposeBoard(id, state)` / `deleteComposeBoard(id)`；404 → `null` / `false` (UI 不用 try/catch) |
+> | **Web UI** | `web/src/app/compose/ComposeBoard.tsx:312-329, 889-1014, 1287-1412, 1414-1530` | 新 state (`serverPanel` / `boardNameInput` / `boardList` / `boardStatus` / `lastSavedId`) + 5 个 callback (`openSavePanel` / `openLoadPanel` / `closeServerPanel` / `saveBoardToServer` / `loadBoardFromServer` / `deleteServerBoard`) + toolbar Save/Load buttons + absolute-positioned panel 渲染（Save / Load 两种 body 模式） |
+> | **CSS** | `web/src/app/compose/compose.css:36-41, 123-209` | `.compose-page { position: relative }` 让 absolute panel 锚定；`.compose-server-panel` 320px wide + shadow + `top: 64px`（toolbar 52px + 12px gap）；`.compose-board-list-item-load` 整行可点 + name + meta 副行；`.compose-toolbar button[data-active="true"]` 强调 active 按钮 |
+> | **i18n** | 16 新 key (en + zh)：`compose.toolbar.{saveTitle,loadTitle,boardsTitle}` + 13 `compose.board.*` (状态、错误、placeholder、确认) |
+> | **Tests** | `test/unit/compose-boards.test.ts` (25 cases) | list empty / list sort / save round-trip / load 404-corrupt-wrong-version / delete hit-miss / ID safety (`../`, `a*65`, empty) / atomic write 不留 `.tmp` / 不可改 connection kind |
+>
+> 关键设计：
+>
+> - **storage 用 JSON 不用 TOML**：与 web localStorage byte-level 一致，save/load 零 schema round-trip。`kind` / `label` 字段是 free-form user text，TOML escaping 没必要。v0.4.4 已 export/import JSON，路径最一致。
+> - **service lazy-import**：和现有 `*FromService` 模式一致。`service-impl.ts` 不直接 import `compose-boards.ts`，而是运行时 dynamic import，避免 fs/zod 拉进只读 compose listing 的 caller。
+> - **Zod 校验 on read AND on write**：list 跳过 corrupt 文件（不 throw），单条 load 失败返 `null`，save 时用 schema 验证 blocks / connections / version 全部合规 — 多层防御，坏数据不会爬到内存里。
+> - **PUT/POST 双路由**：PUT 用 path id（"save this id, replace if exists"），POST 不带 id 让 server 分配（"create new"）。HTTP 语义清晰。
+> - **`lastSavedId` 跟踪**：web 端记住上次 save 的 id，name 没变就 reuse（同 board 覆盖），name 变了就生成新 id（不同 board 不覆盖）。避免 name typo 产生一堆重复文件。
+> - **panel 用 absolute 不用 modal**：toolbar 已经在文档顶部，panel 落在 toolbar 下方右侧 64px，shadow + z-index: 50 让它浮在 canvas 上。比 modal 轻（无 portal、无 backdrop），state 也好管。
+> - **`name: undefined` 处理**：`exactOptionalPropertyTypes: true` 下，`{name: undefined}` spread 不合法。用 `delete next.name` 而不是 `next.name = undefined`，JSON 序列化也干净。
+> - **25 个 core test 不写 web test**：web 端 save/load 是 thin wrapper，TypeScript type 已经检查 API 契约；UI 测试需要在 sandbox 起 pilot server（blocked by `pilot start` not running），v0.6.11 列表页 + Playwright 一起补。
+>
+> 验证限制：sandbox 没起 pilot server，toolbar Save/Load 不能 Playwright 测（user 本机 `pilot start` 后能看到 panel）。但 server-side `core/compose-boards.ts` 完全覆盖（25 cases：list/save/load/delete round-trip + schema 验证 + ID safety + 坏文件 recovery）。tsc + production build + 201/201 web tests（无变化）+ 584/584 core tests（+25 这次）+ format 双清 + lint clean 全过。
+>
+> 测试：core **584/584**、web **201/201**，format 双清、lint clean、tsc clean（root + web）、production build OK。
+>
+> **故意没做**（v0.6.11+ 留）：`/compose/boards` 列表页（multi-board picker + rename + bulk delete + share-link）—— 纯 UI 切片，API 已经齐了；multiple connections (A↔B 双向)；connection color 自定义；auto-route 避开 block 中心。
+>
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
 ## 阶段一：看见 Pi（v0.1 - v0.3.x，已发）
