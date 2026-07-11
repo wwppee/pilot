@@ -562,6 +562,11 @@ const en: Dict = {
   "compose.inspector.connectionsTo": "To this block",
   "compose.announce.connectionAdded": "Connected {from} → {to}",
   "compose.announce.connectionRemoved": "Disconnected {from} → {to}",
+  // v0.6.8: right-edge connector handle on selected blocks. Drag
+  // it to another block to draw a connection in one gesture (vs.
+  // the inspector's two-click picker).
+  "compose.handle.aria": "Drag to another block to connect",
+  "compose.handle.title": "Drag to connect",
   // v0.5.11+ currency formatting.
   "currency.usd": "${amount}",
 

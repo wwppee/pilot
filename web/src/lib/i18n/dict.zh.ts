@@ -545,6 +545,10 @@ const zh: Dict = {
   "compose.inspector.connectionsTo": "到达此块",
   "compose.announce.connectionAdded": "已连接 {from} → {to}",
   "compose.announce.connectionRemoved": "已断开 {from} → {to}",
+  // v0.6.8: 选中 block 右侧 connector 把手，拖到另一 block
+  // 一次性画连接（对比 inspector 里 2-click picker）。
+  "compose.handle.aria": "拖到另一块以建立连接",
+  "compose.handle.title": "拖动以连接",
   // v0.5.11+ 货币格式。
   "currency.usd": "US${amount}",
 

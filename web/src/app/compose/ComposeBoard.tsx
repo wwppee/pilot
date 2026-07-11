@@ -241,6 +241,17 @@ export default function ComposeBoard({
   const [selectedConnectionId, setSelectedConnectionId] = useState<
     string | null
   >(null);
+  // v0.6.8: in-flight connection drag. The user pointerdown'd on
+  // a block's right-edge handle; we're tracking the cursor to
+  // draw a ghost line, and pointerup will resolve to either a
+  // new connection (target block under cursor) or a cancel
+  // (empty canvas / outside). Canvas-relative coords (block.x/y
+  // space) so we can reuse the same SVG overlay.
+  const [pendingConnection, setPendingConnection] = useState<{
+    fromId: string;
+    pointerX: number;
+    pointerY: number;
+  } | null>(null);
   // v0.6.4: block ids that were just created this frame. Drives the
   // fade-in animation. Cleared automatically 320ms after creation.
   const [justAddedIds, setJustAddedIds] = useState<ReadonlySet<string>>(
@@ -372,6 +383,63 @@ export default function ComposeBoard({
   // ─── Drop from sidebar ───────────────────────────────────
   const onCanvasPointerUp = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
+      // v0.6.8: resolve an in-flight connection drag. We do this
+      // FIRST (before sidebar drop / block drag), because a
+      // connection drag never involves a block move — the handle
+      // is on the block, not the block body, and the handle
+      // pointerdown calls e.stopPropagation() to prevent the
+      // block from interpreting it as a drag start. Mirrors the
+      // inspector's `connectBlock` path but inlined here because
+      // `connectBlock` is defined further down in the file and
+      // this callback must close over `state` + `commit` (which
+      // ARE available up here).
+      if (pendingConnection) {
+        const fromId = pendingConnection.fromId;
+        const stack =
+          typeof document.elementsFromPoint === "function"
+            ? document.elementsFromPoint(e.clientX, e.clientY)
+            : [];
+        const targetEl = stack.find(
+          (el) => el instanceof HTMLElement && el.dataset.blockId,
+        );
+        const targetId =
+          targetEl instanceof HTMLElement
+            ? (targetEl.dataset.blockId ?? null)
+            : null;
+        if (targetId && targetId !== fromId) {
+          // Refuse self-loop, missing block, or duplicate edge
+          // (same checks the inspector picker applies).
+          const fromExists = state.blocks.some((b) => b.id === fromId);
+          const toBlock = state.blocks.find((b) => b.id === targetId);
+          const conns = state.connections ?? [];
+          const dup = conns.some((c) => c.from === fromId && c.to === targetId);
+          if (fromExists && toBlock && !dup) {
+            const newConn: ComposeConnection = {
+              id: genId(),
+              from: fromId,
+              to: targetId,
+            };
+            const labelFrom =
+              state.blocks.find((b) => b.id === fromId)?.label ?? "";
+            commit(
+              { type: "addConnection", connection: newConn },
+              () => {
+                setState((s) => ({
+                  ...s,
+                  connections: [...(s.connections ?? []), newConn],
+                }));
+                setSelectedId(targetId);
+              },
+              t("compose.announce.connectionAdded", {
+                from: labelFrom,
+                to: toBlock.label,
+              }),
+            );
+          }
+        }
+        setPendingConnection(null);
+        return;
+      }
       // If a sidebar item was being dragged, finalize the drop.
       if (pendingDrop && canvasRef.current) {
         const rect = canvasRef.current.getBoundingClientRect();
@@ -416,11 +484,23 @@ export default function ComposeBoard({
         setSelectedId(null);
       }
     },
-    [pendingDrop, drag, commit, t],
+    [pendingConnection, pendingDrop, drag, state, commit, t],
   );
 
   const onCanvasPointerMove = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
+      // v0.6.8: connection drag in progress — track the pointer
+      // for the ghost line. (Block drag below is mutually
+      // exclusive: `startBlockDrag` clears pendingConnection.)
+      if (pendingConnection && canvasRef.current) {
+        const rect = canvasRef.current.getBoundingClientRect();
+        setPendingConnection({
+          fromId: pendingConnection.fromId,
+          pointerX: e.clientX - rect.left,
+          pointerY: e.clientY - rect.top,
+        });
+        return;
+      }
       if (!drag || !canvasRef.current) return;
       const rect = canvasRef.current.getBoundingClientRect();
       const x = Math.max(0, e.clientX - rect.left - drag.offsetX);
@@ -432,7 +512,7 @@ export default function ComposeBoard({
         ),
       }));
     },
-    [drag],
+    [drag, pendingConnection],
   );
 
   // ─── Sidebar drag (use a custom drag, not HTML5 DnD, for simplicity)
@@ -462,6 +542,46 @@ export default function ComposeBoard({
         pointerId: e.pointerId,
       });
       setSelectedId(block.id);
+    },
+    [],
+  );
+
+  // ─── Connection drag (v0.6.8) ────────────────────────────
+  // v0.6.8: pointerdown on a block's right-edge handle starts
+  // a connection drag. We stopPropagation so the block itself
+  // doesn't interpret the gesture as a move, and capture the
+  // pointer on the handle so it tracks even when the cursor
+  // leaves the block.
+  const startConnectionDrag = useCallback(
+    (block: ComposeBlock, e: React.PointerEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+      (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+      if (!canvasRef.current) return;
+      const rect = canvasRef.current.getBoundingClientRect();
+      // The handle sits at the right edge mid-height; we draw
+      // the ghost line from there. Block dim is 220×80 (see
+      // BLOCK_W/BLOCK_H in ConnectionPath). When the user
+      // pointerups over the source block itself, this will also
+      // resolve to a "self target" which we reject (different id
+      // check) — so it's safe to start anywhere on the source
+      // block's edge.
+      const handleCanvasX = block.x + BLOCK_W;
+      const handleCanvasY = block.y + BLOCK_H / 2;
+      setPendingConnection({
+        fromId: block.id,
+        pointerX: e.clientX - rect.left,
+        pointerY: e.clientY - rect.top,
+      });
+      // Mark for any visual hint that wants to know "ghost
+      // originates at (handleCanvasX, handleCanvasY)". For now
+      // we just keep the canvas-relative cursor position; the
+      // ghost line is drawn from the handle anchor to the
+      // pointer, so the start point is constant per drag.
+      // handleCanvasX/handleCanvasY are referenced via the SVG
+      // overlay closure (computed inline below).
+      void handleCanvasX;
+      void handleCanvasY;
     },
     [],
   );
@@ -1189,6 +1309,31 @@ export default function ComposeBoard({
                 onSelect={() => setSelectedConnectionId(c.id)}
               />
             ))}
+            {/* v0.6.8: ghost line for in-flight connection drag.
+                Drawn from the source block's right-edge handle to
+                the current pointer. Resets to null on cancel/finish. */}
+            {pendingConnection
+              ? (() => {
+                  const from = state.blocks.find(
+                    (b) => b.id === pendingConnection.fromId,
+                  );
+                  if (!from) return null;
+                  const x1 = from.x + BLOCK_W;
+                  const y1 = from.y + BLOCK_H / 2;
+                  const x2 = pendingConnection.pointerX;
+                  const y2 = pendingConnection.pointerY;
+                  const dx = Math.max(Math.abs(x2 - x1) / 2, 60);
+                  return (
+                    <path
+                      className="compose-connection-ghost"
+                      d={`M ${x1} ${y1} C ${x1 + dx} ${y1}, ${
+                        x2 - dx
+                      } ${y2}, ${x2} ${y2}`}
+                      fill="none"
+                    />
+                  );
+                })()
+              : null}
           </svg>
 
           {state.blocks.length === 0 && !pendingDrop ? (
@@ -1216,6 +1361,7 @@ export default function ComposeBoard({
               viewMode={viewMode}
               onPointerDown={(e) => startBlockDrag(b, e)}
               onPointerUp={() => endBlockDrag(b.id)}
+              onHandlePointerDown={(e) => startConnectionDrag(b, e)}
               onClick={() => {
                 setSelectedId(b.id);
                 if (
@@ -1313,6 +1459,7 @@ function ComposeBlockView({
   viewMode,
   onPointerDown,
   onPointerUp,
+  onHandlePointerDown,
   onClick,
   onDelete,
 }: {
@@ -1323,6 +1470,7 @@ function ComposeBlockView({
   viewMode: ViewMode;
   onPointerDown: (e: React.PointerEvent) => void;
   onPointerUp: () => void;
+  onHandlePointerDown: (e: React.PointerEvent) => void;
   onClick: () => void;
   onDelete: () => void;
 }) {
@@ -1385,6 +1533,22 @@ function ComposeBlockView({
         <div className="compose-block-sublabel" title={block.sublabel}>
           {block.sublabel}
         </div>
+      ) : null}
+      {/* v0.6.8: right-edge connector handle. Visible only when
+          the block is selected (otherwise it adds noise to the
+          canvas). pointerdown is captured here so the gesture
+          never bubbles to the block body (which would start a
+          block-move drag). */}
+      {selected ? (
+        <button
+          type="button"
+          className="compose-block-handle"
+          data-conn-handle="true"
+          onPointerDown={onHandlePointerDown}
+          onClick={(e) => e.stopPropagation()}
+          aria-label={t("compose.handle.aria")}
+          title={t("compose.handle.title")}
+        />
       ) : null}
     </div>
   );

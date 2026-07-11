@@ -509,6 +509,9 @@ export type Dict = {
   "compose.inspector.connectionsTo": string;
   "compose.announce.connectionAdded": string;
   "compose.announce.connectionRemoved": string;
+  // v0.6.8: right-edge connector handle on selected blocks.
+  "compose.handle.aria": string;
+  "compose.handle.title": string;
   // v0.5.11+ currency formatting.
   "currency.usd": string;
 

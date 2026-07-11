@@ -498,6 +498,62 @@
   animation: compose-block-fade-in 0.22s ease-out;
 }
 
+/* v0.6.8: right-edge connector handle. Visible only on
+   selected blocks (rendered conditionally in JSX) — sits
+   centered on the right edge, 12px circle with an accent
+   ring, signals "drag to connect". pointerdown is captured
+   in JSX with e.stopPropagation() so the gesture never
+   starts a block-move drag. */
+.compose-block-handle {
+  position: absolute;
+  top: 50%;
+  right: -8px;
+  transform: translate(0, -50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--canvas-bg, #fff);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  padding: 0;
+  margin: 0;
+  cursor: crosshair;
+  z-index: 2;
+  /* Subtle pulse so users notice the handle on a selected
+     block — the first connection gesture shouldn't be
+     discoverable only by hovering. */
+  animation: compose-handle-attention 1.8s ease-in-out infinite;
+}
+.compose-block-handle:hover,
+.compose-block-handle:focus-visible {
+  background: var(--accent-strong, #1d4ed8);
+  outline: none;
+  transform: translate(0, -50%) scale(1.15);
+}
+@keyframes compose-handle-attention {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(59, 130, 246, 0.45),
+      0 1px 3px rgba(0, 0, 0, 0.18);
+  }
+  50% {
+    box-shadow:
+      0 0 0 6px rgba(59, 130, 246, 0),
+      0 1px 3px rgba(0, 0, 0, 0.18);
+  }
+}
+/* v0.6.8: ghost line for in-flight connection drag. Drawn
+   dashed + accent-tinted so the user can see the path
+   before releasing. */
+.compose-connection-ghost {
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
 /* v0.6.4: while a sidebar item is being dragged, the canvas gets
    a dashed inner border + soft accent tint to signal "drop here". */
 @keyframes compose-canvas-pulse {
