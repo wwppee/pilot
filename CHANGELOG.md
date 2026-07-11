@@ -2,6 +2,57 @@
 
 ## Unreleased
 
+### v0.6.6 — P2 hotfix: ComposeBoard hydration mismatch (silent since v0.4.4)
+
+v0.4.4 introduced `ComposeBoard` with two pieces of state
+lazy-initialized from `localStorage` inside `useState`:
+
+  const [state, setState] = useState<ComposeState>(() => loadState());
+  const [viewMode, setViewMode] = useState<ViewMode>(() => loadViewMode());
+
+`loadState()` checks `typeof window === "undefined"` and returns
+`emptyState()` in SSR — so the server renders "0 个块" and the
+"Modern" skin toggle. On the client, the same `loadState()`
+runs but the `typeof window` branch is now `true`, so it reads
+`localStorage` and returns the persisted state — which on a
+user's second visit is "2 个块" and the "Cozy" skin.
+
+This is React's classic SSR/CSR text mismatch. The warning has
+been silently present on every Compose page view since v0.4.4
+(3+ minor versions), including all of v0.6.2 / v0.6.3 / v0.6.4 /
+v0.6.5. Doesn't break anything functionally — React just
+throws away the SSR HTML and re-renders the client — but it
+pollutes the console and silently hides real hydration issues.
+
+**Fix**: stop lazy-initializing from localStorage. SSR and the
+client's first render must produce identical UI, so both start
+from the default `emptyState` / "modern" skin. After hydration,
+a `useEffect` reads localStorage and re-renders. The re-render
+triggered by `setState` in `useEffect` is not a hydration — it's
+just a normal update after the tree is already attached.
+
+  - `useState<ComposeState>(emptyState)`  // was: `() => loadState()`
+  - `useState<ViewMode>("modern")`        // was: `() => loadViewMode()`
+  - `useEffect(() => { setState(loadState()); setViewMode(loadViewMode()); }, [])`
+
+No other state is localStorage-backed at component init, so no
+other changes needed.
+
+**Verified end-to-end**:
+
+- Pre-fix: dev console shows the hydration warning on every
+  /compose load.
+- Post-fix: dev console is clean (only the unrelated favicon
+  404). Block count "2 个块" + 2 block DOM elements render
+  correctly after the post-hydration re-render.
+
+**Files touched**: `web/src/app/compose/ComposeBoard.tsx` only
+(3 useState + 1 useEffect).
+
+**Tests**: core 559/559, web 189/189 (no new tests — this is a
+3-line fix verified by console behavior, not a test case), format
+双清, lint clean, tsc clean (root + web), production build OK.
+
 ### v0.6.5 — /compose inspector real entity fields
 
 v0.6.2 / v0.6.4 made the inspector functional, but every block

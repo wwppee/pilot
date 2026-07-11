@@ -284,6 +284,18 @@
 >
 > **故意没做**（v0.6.6+ 留）：block-to-block 连线 / 多 board / 快捷键 modal / block hover tooltip。
 >
+> **2026-07-11 校准 (22)**：**v0.6.6 hotfix 已发** —— ComposeBoard hydration mismatch 修了。这个 bug 静默存在跨 4 个 minor 版本（v0.4.4 起就有，到 v0.6.5 都还在）。
+>
+> | 类别 | 位置 | 修复 |
+> |---|---|---|
+> | **Root cause** | `web/app/compose/ComposeBoard.tsx:197-198` (v0.4.4 起) | `useState(() => loadState())` 和 `useState(() => loadViewMode())` 在 SSR 时 `loadState()` 走 `typeof window === "undefined"` 分支返回 `emptyState()`（"0 个块"、"Modern"），client hydration 时同一函数走 `localStorage` 分支返回持久化 state（"2 个块"、"Cozy"）。React 18 dev 模式控制台报 hydration warning，3 个版本没人发现。 |
+> | **Fix** | `web/app/compose/ComposeBoard.tsx:197-211` (v0.6.6) | 不再 lazy-init。`useState(emptyState)` + `useState("modern")` 给 SSR 和 client first render 一致 default。`useEffect(() => { setState(loadState()); setViewMode(loadViewMode()); }, [])` 在 mount 后读 localStorage 触发 re-render（post-hydration 正常 update，不算 hydration mismatch）。 |
+> | **验证** | Playwright console log | before fix：dev console 报 "Hydration failed because the server rendered text didn't match the client"。after fix：console 干净（只有 favicon 404 与本修复无关）。block count "2 个块" + 2 block DOM elements 正常 render。 |
+>
+> 教训：`useState(() => readLocalStorage())` 模式看起来 lazy / clean，但破坏 SSR 假设（"useState init must produce identical value on SSR + client first render"）。任何"从客户端持久化读"的 state 都应该在 `useEffect` 里 load，init 用 server-safe default。
+>
+> 测试：core **559/559**、web **189/189**、format 双清、lint clean、tsc clean（root + web）、production build OK。
+>
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
 ## 阶段一：看见 Pi（v0.1 - v0.3.x，已发）
