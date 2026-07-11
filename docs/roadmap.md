@@ -266,6 +266,24 @@
 >
 > **故意没做**（v0.6.5+ 留）：block-to-block 连线 / 多 board / 快捷键 modal / block hover tooltip。
 >
+> **2026-07-11 校准 (21)**：**v0.6.5 已发** —— `/compose` inspector 真正显示 entity 字段。user "无从下手"的最后一块拼图：选中一个 block 之前只能看到 id/kind/refId/position 这 5 个 metadata，现在能看到 session 的 cwd/size/entries，profile 的 model/packages，policy 的 6 类 rule 列表等。
+>
+> | 类别 | 位置 | 改动 |
+> |---|---|---|
+> | **新 server 端点** | `src/server/server.ts:553-578` | `GET /compose/catalog/:kind/:id` 返回 discriminated-union `ComposeEntityDetail`。404 not found / 400 unknown kind。 |
+> | **新 helper** | `src/core/compose-listing.ts:111-294` | `getComposeEntityDetail(source, kind, id)` 复用现有 `ComposeDataSource` interface；`ComposeEntityDetail` union type 5 kind × 不同 field set。 |
+> | **Service wire** | `src/core/service.ts:325-330` + `src/core/service-impl.ts:201-202, 526-548` | `PilotService.getComposeEntityDetail(kind, id)` 通过 `getComposeEntityDetailFromService(home, ...)` 调 helper。 |
+> | **新 browserApi 方法** | `web/lib/pilot-browser.ts:296-310` | `composeEntityDetail(kind, id)` 走 `/api/pilot/*` proxy，404 → null（不 throw）。 |
+> | **Inspector fetch + render** | `web/app/compose/ComposeBoard.tsx:1268-1310` | `useEffect` 在 `block.kind`/`block.refId` 变时 fetch detail。`hydrated` guard 防止 `formatRelative` (Date.now()) 触发 React #418 hydration mismatch。 |
+> | **kind-specific 渲染** | `web/app/compose/ComposeBoard.tsx:1394-1548` | `InspectorDetailFields` switch on `detail.kind`：session → cwd/model/entries/size/firstUsed/lastUsed/preview；pack → source/packKind/enabled；profile → model/provider/thinking/team/desc/packages；policy → desc + 6 类 rule list (with count)；capability → title/type/desc/sources/conflicts/requires。 |
+> | **`pilot<T>()` overload** | `web/lib/pilot.ts:54-103` | 加 `nullableStatuses` 选项：404 → `T \| null` 而非 throw。现有 server-side callers 保持 `T` 返回类型不变。 |
+>
+> 关键 bug fix：**client-bundle `node:fs/promises` 错误**。v0.6.4 build work 是因为 `ComposeBoard` 导入 `pilot.ts` 但**没在 client 调用** - Turbopack tree-shake 把 `node:fs/promises` dead-code 掉了。v0.6.5 真正 client 调用 `api.composeEntityDetail(...)` 后整个 `pilot.ts` 被拉进 client bundle，Turbopack 拒绝（"chunking context does not support external modules"）。修法：`ComposeBoard` 改 import `pilot-browser.ts`（v0.4.7 已经为这个原因 split 出过），走 `/api/pilot/*` proxy，token 永远不离开 server。
+>
+> 测试：core **559/559**（+6 detail）、web **189/189**、format 双清、lint clean、tsc clean（root + web）、production build OK。
+>
+> **故意没做**（v0.6.6+ 留）：block-to-block 连线 / 多 board / 快捷键 modal / block hover tooltip。
+>
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
 ## 阶段一：看见 Pi（v0.1 - v0.3.x，已发）
