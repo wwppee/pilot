@@ -333,6 +333,38 @@
 >
 > **故意没做**（v0.6.8+ 留）：block 边缘 drag-to-create connection / connection label 类型 / arrow head / server-side board persistence。
 >
+> **2026-07-12 校准 (25)**：**v0.6.9 已发** —— connection arrow head + free-text label。v0.6.7 / v0.6.8 的 connection 只是纯箭头，"A → B" 没说为什么；v0.6.9 让 edge 真正有名字。
+>
+> | 类别 | 位置 | 改动 |
+> |---|---|---|
+> | **Schema v3** | `web/src/lib/types.ts:411-447` | `ComposeConnection` 加 `label?: string` + `kind?: ConnectionLabelKind`；`ComposeState.version: 2 → 3` |
+> | **新 type union** | `web/src/lib/types.ts:402-409` | `ConnectionLabelKind = flows \| uses \| feeds \| depends \| produces \| manual` — 语义不是视觉，默认 `flows`（线本身仍 accent 色） |
+> | **新 history entry** | `web/src/lib/compose-history.ts:40-58` | `updateConnectionLabel` kind：存 `fromLabel/toLabel/fromKind/toKind`（`""` = clear，区别于 `undefined` = "no change"） |
+> | **applyEntry / invertEntry** | `web/src/lib/compose-history.ts:128-160, 188-197` | `applyEntry` 用 `delete`（不是 `=undefined`），确保 JSON round-trip 没多余 `label: undefined`；`invertEntry` swap before/after |
+> | **SVG marker** | `web/src/app/compose/ComposeBoard.tsx:1310-1329` | `<defs>` 里两个 `<marker>`：`compose-arrow-default` / `compose-arrow-selected`（后者 markerWidth/Height 8 vs 7 + selected 时切 url）。`fill="currentColor"` 让 head 跟 line 同色 |
+> | **ConnectionPath** | `web/src/app/compose/ComposeBoard.tsx:2230-2283` | 加 `markerEnd={...}` 指向对应 marker；新增 `data-kind={...}` 让 CSS 走 kind 着色；`midX = (x1+x2)/2, midY = (y1+y2)/2 - 6`（cubic bezier 中点公式可化简）渲染 `<text>` label |
+> | **ConnectionList 编辑器** | `web/src/app/compose/ComposeBoard.tsx:1921-2005` | 每个 connection 从 row 改成 column：header（方向 + peer 名 + disconnect）+ editor（text input + kind `<select>`），input 清空 → `""` → 清除 |
+> | **Inspector wiring** | `web/src/app/compose/ComposeBoard.tsx:1641-1654, 1743-1752` | BlockInspector 加 `onUpdateLabel` prop；`ConnectionList` 同样接 |
+> | **顶层 updateConnectionLabel** | `web/src/app/compose/ComposeBoard.tsx:805-867` | normalize：textbox 空 → `undefined`；history entry 用 `""` 表达 clear（避免 `exactOptionalPropertyTypes: true` 报 `label: undefined` 不合法） |
+> | **CSS** | `web/src/app/compose/compose.css:678-820` | `.compose-connection-item` 改 column；新增 `.compose-connection-item-header` / `.compose-connection-item-editor` / `.compose-connection-label-input` / `.compose-connection-kind-select`；`.compose-connection-label` SVG text：`paint-order: stroke; stroke: var(--bg); stroke-width: 4px` 出 pill 效果；cozy 模式 halo 用 `#f5ecd9`；6 个 `data-kind` 着色（accent / cozy-accent-2 / cozy-accent / hitl / cozy-profile / text-muted） |
+> | **i18n** | 13 新 key (en + zh)：`compose.inspector.connectionLabel{,placeholder,none}` + 6 个 `compose.connectionLabel.kind.{flows,uses,feeds,depends,produces,manual}` + `compose.connectionLabel.tooltip` + `compose.announce.connectionLabelUpdated` |
+> | **Tests** | `web/tests/compose-history.test.ts:200-366` | +9 case：set / preserve other edges / clear via `""` / invertEntry swap / round-trip undo/redo / preserves blocks / preserves from/to + `web/tests/compose-state.test.ts` 升 `version: 2 → 3` |
+>
+> 关键设计：
+>
+> - **"clear" 用 `""` 而不是 `undefined`**：`exactOptionalPropertyTypes: true` 不让 `label: undefined` 字面量存在。History entry 用 `string` (label) / `ConnectionLabelKind \| ""` (kind) — 既是 type-safe，也保证 JSON round-trip 不会带 `label: undefined` 字段。React 层负责 normalize（`textbox 空 → undefined` → `entry 里用 ""`）。
+> - **SVG marker color = `currentColor`**：让 head 跟 line 同色，省去颜色同步逻辑。Selected 时换 marker url（默认 7x7，selected 8x8 + drop-shadow filter）。
+> - **Label pill 靠 `paint-order: stroke`**：不用 `<rect>` 背景，stroke 用 `var(--bg)` 出"光晕"，文字保持 currentColor，可读性 OK。cozy 模式 halo 切到 `#f5ecd9`。
+> - **Bezier 中点可化简**：`x1 + dx` / `x2 - dx` 这两个 control point 的 Y 跟端点 Y 一样，所以 `B(0.5)` = `(x1+x2)/2, (y1+y2)/2`。减 6px 是因为文字居中时实际视觉中心偏下，要往线上面挪一点。
+> - **每改一次 label = 1 history entry**：跟 drag-to-move 一样"commit on change end"模式，不是 per-keystroke。`useCallback` 闭包能拿到最新 state，no-op short-circuit（`fromLabel === toLabel && fromKind === toKind`）避免空格 toggle 产生空 entry。
+> - **Schema v3 兼容 v1/v2**：loader 已 accept v1/v2/v3；新字段 optional，老存档打开正常。
+>
+> 验证限制：sandbox 没起 pilot server，arrow head + label 不能 Playwright 测。tsc + production build + 201/201 web tests（+7 这次）+ 559/559 core tests + format 双清 + lint clean 全过。本机 `pilot start` 后能看到。
+>
+> 测试：core **559/559**、web **201/201**（+7 label + 1 升 version），format 双清、lint clean、tsc clean（root + web）、production build OK。
+>
+> **故意没做**（v0.6.10+ 留）：server-side board persistence（让 /compose layout 跨设备同步）、multiple connections (A↔B 双向)、connection color 自定义、auto-route 避开 block 中心。
+>
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
 ## 阶段一：看见 Pi（v0.1 - v0.3.x，已发）

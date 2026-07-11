@@ -2,6 +2,91 @@
 
 ## Unreleased
 
+### v0.6.9 — connection arrow head + free-text label (schema v3)
+
+The v0.6.7 / v0.6.8 connections are pure arrows with no
+semantics — "A goes to B", that's it. Useful for layout,
+useless for meaning. v0.6.9 lets you actually name the
+edge.
+
+**Arrow head**
+
+- SVG `<defs><marker>` with two flavors (`compose-arrow-default`
+  / `compose-arrow-selected`). Selected edges get a slightly
+  larger, accent-tinted head with a soft drop-shadow; default
+  edges inherit the line's `currentColor` so the head
+  matches the line.
+- `marker-end="url(#…)"` on the bezier path. Same geometry
+  scales with `markerUnits="userSpaceOnUse"` so the head
+  doesn't get pixel-bound when the canvas zooms.
+
+**Free-text label + semantic kind**
+
+- Each connection now carries an optional `label: string` and
+  `kind: ConnectionLabelKind`. The kind is one of
+  `flows` / `uses` / `feeds` / `depends` / `produces` /
+  `manual` — semantic, not visual. Default is no kind (the
+  line stays accent-tinted and the user can pick later).
+- The SVG renderer paints the label at the bezier midpoint
+  (which collapses to `(x1+x2)/2, y1+y2 - 6` because both
+  control points share Y with their endpoints). The label
+  has a `paint-order: stroke; stroke: var(--bg); stroke-width:
+  4px` halo so it stays readable when it overlaps the line.
+- Cozy skin overrides the halo to `#f5ecd9` (warm cream)
+  so labels don't get cross-eyed against the dotted grid.
+- Kind-driven tint on the line + arrow. `data-kind` on the
+  `<g>` drives a CSS variable cascade so `flows` uses
+  `--accent`, `uses` uses `--cozy-accent-2`, etc.
+
+**Inspector editor**
+
+- Each connection in the "Connections" list now has a
+  two-cell editor row: a text input for the free-text label
+  and a `<select>` for the kind (with a "none" option that
+  clears the kind). Empty textbox normalises to `undefined`
+  so the SVG renderer can keep its `connection.label ? ...`
+  check simple.
+- The connection list item is now column-shaped (header on
+  top, editor row below) so the new editor has somewhere
+  to sit without competing for horizontal space with the
+  peer-block name + disconnect button.
+
+**State / schema**
+
+- Bumped `ComposeState.version` to `3`. v1 and v2 saves
+  load fine — the new `label` / `kind` fields are optional
+  and the loader drops unknown versions to an empty state
+  rather than mis-parsing.
+- New history entry kind `updateConnectionLabel` with
+  before/after for `label` and `kind`. The entry uses `""`
+  (not `undefined`) to mean "clear this field" — the type
+  is `string` for `fromLabel`/`toLabel` and
+  `ConnectionLabelKind | ""` for `fromKind`/`toKind`. This
+  is a strict-`exactOptionalPropertyTypes` friendly shape
+  and round-trips losslessly through JSON.
+- `invertEntry` swaps before/after, so undo/redo on the
+  inline editor works the same way as for any other entry.
+- New `announce.connectionLabelUpdated` (en + zh) so
+  screen-reader users hear when a label is committed.
+
+**i18n**
+
+- 13 new keys: `compose.inspector.connectionLabel`,
+  `…connectionLabel.placeholder`, `…connectionLabel.none`,
+  `compose.connectionLabel.kind.{flows,uses,feeds,depends,
+  produces,manual}`, `compose.connectionLabel.tooltip`,
+  `compose.announce.connectionLabelUpdated`.
+- `web/tests/i18n.test.ts` auto-validates every key in
+  `types.ts` is present in both `dict.en.ts` and
+  `dict.zh.ts`.
+
+**Sandbox caveat:** `pilot start` wasn't running, so
+Playwright end-to-end on `/compose` still can't be verified
+from the sandbox (ComposeBoard never mounts because the
+server isn't up). User must `pilot start` + `pilot
+dashboard` to confirm visually. tsc + production build +
+201/201 web tests + 559/559 core tests all green.
+
 ### v0.6.8 — drag-to-create connection (right-edge handle, live ghost line)
 
 The v0.6.7 connection picker is two clicks: select a block →
