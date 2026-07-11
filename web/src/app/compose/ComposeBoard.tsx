@@ -194,8 +194,18 @@ export default function ComposeBoard({
   initialCatalog: ComposeCatalog;
 }) {
   const t = useT();
-  const [state, setState] = useState<ComposeState>(() => loadState());
-  const [viewMode, setViewMode] = useState<ViewMode>(() => loadViewMode());
+  // v0.6.6 hydration fix: don't lazy-init from localStorage. SSR
+  // and client first render must produce identical UI, so both
+  // start from emptyState() / "modern". After hydration, the
+  // useEffect below reads localStorage and re-renders. This kills
+  // the "0 个块" vs "2 个块" hydration warning that had been
+  // silently present since v0.4.4.
+  const [state, setState] = useState<ComposeState>(emptyState);
+  const [viewMode, setViewMode] = useState<ViewMode>("modern");
+  useEffect(() => {
+    setState(loadState());
+    setViewMode(loadViewMode());
+  }, []);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const [pendingDrop, setPendingDrop] = useState<PendingDrop | null>(null);
@@ -1344,11 +1354,11 @@ function BlockInspector({
         </dd>
       </dl>
 
-      {hydrated && detail !== undefined
-        ? detail === null
-          ? null
-          : <InspectorDetailFields detail={detail} />
-        : null}
+      {hydrated && detail !== undefined ? (
+        detail === null ? null : (
+          <InspectorDetailFields detail={detail} />
+        )
+      ) : null}
 
       <div className="compose-inspector-actions">
         {href ? (
