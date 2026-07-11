@@ -534,6 +534,17 @@ const zh: Dict = {
   "compose.inspector.detail.conflicts": "冲突",
   "compose.inspector.detail.requires": "依赖",
   "compose.inspector.detail.noneCount": "（无）",
+  // v0.6.7: 连接。
+  "compose.inspector.connections": "连接",
+  "compose.inspector.connect": "连接到…",
+  "compose.inspector.connectTo": "连接到 {label}",
+  "compose.inspector.cancelConnect": "取消",
+  "compose.inspector.disconnect": "断开",
+  "compose.inspector.noConnections": "暂无连接",
+  "compose.inspector.connectionsFrom": "从此块出发",
+  "compose.inspector.connectionsTo": "到达此块",
+  "compose.announce.connectionAdded": "已连接 {from} → {to}",
+  "compose.announce.connectionRemoved": "已断开 {from} → {to}",
   // v0.5.11+ 货币格式。
   "currency.usd": "US${amount}",
 

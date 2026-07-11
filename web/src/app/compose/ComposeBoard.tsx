@@ -35,6 +35,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   ComposeBlock,
   ComposeCatalog,
+  ComposeConnection,
   ComposeEntity,
   ComposeEntityDetail,
   ComposeEntityKind,
@@ -119,7 +120,7 @@ interface PendingDrop {
 function emptyState(): ComposeState {
   return {
     blocks: [],
-    version: 1,
+    version: 2,
     updatedAt: new Date().toISOString(),
     name: "default",
   };
@@ -130,11 +131,25 @@ function loadState(): ComposeState {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return emptyState();
-    const parsed = JSON.parse(raw) as ComposeState;
-    if (parsed.version !== 1 || !Array.isArray(parsed.blocks)) {
+    const parsed = JSON.parse(raw) as Partial<ComposeState> & {
+      version?: number;
+    };
+    // v0.6.7: accept both v1 (no `connections` field) and v2. v1
+    // saves load fine — `connections` is treated as `[]` until the
+    // user adds an edge. Unknown future versions drop to empty
+    // state (we'd rather lose board than silently mis-parse).
+    if (
+      (parsed.version as number | undefined) !== 1 &&
+      (parsed.version as number | undefined) !== 2
+    ) {
       return emptyState();
     }
-    return parsed;
+    if (!Array.isArray(parsed.blocks)) return emptyState();
+    return {
+      ...emptyState(),
+      ...parsed,
+      connections: Array.isArray(parsed.connections) ? parsed.connections : [],
+    } as ComposeState;
   } catch {
     return emptyState();
   }
@@ -216,6 +231,16 @@ export default function ComposeBoard({
     future: HistoryEntry[];
   }>({ past: [], future: [] });
   const [inspectorOpen, setInspectorOpen] = useState(false);
+  // v0.6.7: when non-null, the inspector shows a "Connect to..."
+  // target picker for this block id. Cleared on dismiss or
+  // successful connect.
+  const [connectingFromId, setConnectingFromId] = useState<string | null>(null);
+  // v0.6.7: which connection line is currently selected (for
+  // visual emphasis and future click-to-delete; right now we
+  // delete from the inspector list, not the line itself).
+  const [selectedConnectionId, setSelectedConnectionId] = useState<
+    string | null
+  >(null);
   // v0.6.4: block ids that were just created this frame. Drives the
   // fade-in animation. Cleared automatically 320ms after creation.
   const [justAddedIds, setJustAddedIds] = useState<ReadonlySet<string>>(
@@ -586,6 +611,74 @@ export default function ComposeBoard({
   );
 
   /**
+   * v0.6.7: add a directed edge from `fromId` to `toId`. Refuses
+   * self-loops, duplicate edges, and edges whose endpoints are
+   * not in the current block set (e.g. a stale block id left
+   * over from a deleted entry).
+   */
+  const connectBlock = useCallback(
+    (fromId: string, toId: string) => {
+      if (fromId === toId) return;
+      const conn: ComposeConnection = {
+        id: genId(),
+        from: fromId,
+        to: toId,
+      };
+      const conns = state.connections ?? [];
+      if (conns.some((c) => c.from === fromId && c.to === toId)) return;
+      if (
+        !state.blocks.some((b) => b.id === fromId) ||
+        !state.blocks.some((b) => b.id === toId)
+      ) {
+        return;
+      }
+      const fromBlock = state.blocks.find((b) => b.id === fromId);
+      const toBlock = state.blocks.find((b) => b.id === toId);
+      commit(
+        { type: "addConnection", connection: conn },
+        () => {
+          setState((s) => ({
+            ...s,
+            connections: [...(s.connections ?? []), conn],
+          }));
+        },
+        t("compose.announce.connectionAdded", {
+          from: fromBlock?.label ?? "?",
+          to: toBlock?.label ?? "?",
+        }),
+      );
+      setConnectingFromId(null);
+    },
+    [state.connections, state.blocks, commit, t],
+  );
+
+  const disconnectConnection = useCallback(
+    (connectionId: string) => {
+      const conns = state.connections ?? [];
+      const conn = conns.find((c) => c.id === connectionId);
+      if (!conn) return;
+      const fromBlock = state.blocks.find((b) => b.id === conn.from);
+      const toBlock = state.blocks.find((b) => b.id === conn.to);
+      commit(
+        { type: "removeConnection", connection: conn },
+        () => {
+          setState((s) => ({
+            ...s,
+            connections: (s.connections ?? []).filter(
+              (c) => c.id !== connectionId,
+            ),
+          }));
+        },
+        t("compose.announce.connectionRemoved", {
+          from: fromBlock?.label ?? "?",
+          to: toBlock?.label ?? "?",
+        }),
+      );
+    },
+    [state.connections, state.blocks, commit, t],
+  );
+
+  /**
    * Add a sidebar entity as a block in the canvas center. Used by
    * the explicit "+" button on each sidebar item (and the click
    * fallback). The drag-from-sidebar path lives in onCanvasPointerUp.
@@ -731,12 +824,27 @@ export default function ComposeBoard({
       const reader = new FileReader();
       reader.onload = () => {
         try {
-          const parsed = JSON.parse(String(reader.result)) as ComposeState;
-          if (parsed.version !== 1 || !Array.isArray(parsed.blocks)) {
+          const parsed = JSON.parse(
+            String(reader.result),
+          ) as Partial<ComposeState> & { version?: number };
+          if (
+            (parsed.version as number | undefined) !== 1 &&
+            (parsed.version as number | undefined) !== 2
+          ) {
             alert(t("compose.alert.invalidVersion"));
             return;
           }
-          setState(parsed);
+          if (!Array.isArray(parsed.blocks)) {
+            alert(t("compose.alert.invalidVersion"));
+            return;
+          }
+          setState({
+            ...emptyState(),
+            ...parsed,
+            connections: Array.isArray(parsed.connections)
+              ? parsed.connections
+              : [],
+          });
           // Imported state replaces history; the user can still
           // undo the import itself, but subsequent operations
           // start fresh.
@@ -1062,6 +1170,27 @@ export default function ComposeBoard({
           aria-label={t("btn.ariaComposeCanvas")}
           tabIndex={0}
         >
+          {/* v0.6.7: SVG overlay for connection lines. Sits at the
+              bottom of the canvas z-stack so blocks render on top
+              of it. Width/height use the canvas's own dimensions
+              (set by CSS) — we draw paths in canvas-relative
+              coords because block.x/y are already canvas-relative. */}
+          <svg
+            className="compose-connections"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+          >
+            {(state.connections ?? []).map((c) => (
+              <ConnectionPath
+                key={c.id}
+                connection={c}
+                blocks={state.blocks}
+                selected={c.id === selectedConnectionId}
+                onSelect={() => setSelectedConnectionId(c.id)}
+              />
+            ))}
+          </svg>
+
           {state.blocks.length === 0 && !pendingDrop ? (
             <div className="compose-empty" aria-hidden="true">
               <div className="compose-empty-title">
@@ -1150,6 +1279,13 @@ export default function ComposeBoard({
               catalogEntity={catalogIndex.get(
                 `${selectedBlock.kind}:${selectedBlock.refId}`,
               )}
+              allBlocks={state.blocks}
+              connections={state.connections ?? []}
+              connectingFromId={connectingFromId}
+              onStartConnect={() => setConnectingFromId(selectedBlock.id)}
+              onCancelConnect={() => setConnectingFromId(null)}
+              onConnect={(toId) => connectBlock(selectedBlock.id, toId)}
+              onDisconnect={disconnectConnection}
             />
           ) : (
             <div className="compose-inspector-empty">
@@ -1263,6 +1399,13 @@ function BlockInspector({
   onMoveToTop,
   onMoveToBottom,
   catalogEntity,
+  allBlocks,
+  connections,
+  connectingFromId,
+  onStartConnect,
+  onCancelConnect,
+  onConnect,
+  onDisconnect,
 }: {
   block: ComposeBlock;
   onDelete: () => void;
@@ -1270,6 +1413,13 @@ function BlockInspector({
   onMoveToTop: () => void;
   onMoveToBottom: () => void;
   catalogEntity: ComposeEntity | undefined;
+  allBlocks: ComposeBlock[];
+  connections: ComposeConnection[];
+  connectingFromId: string | null;
+  onStartConnect: () => void;
+  onCancelConnect: () => void;
+  onConnect: (toId: string) => void;
+  onDisconnect: (connectionId: string) => void;
 }) {
   const t = useT();
   const meta = KIND_META[block.kind](t);
@@ -1360,6 +1510,50 @@ function BlockInspector({
         )
       ) : null}
 
+      {/* v0.6.7: connections — incoming + outgoing edges for this
+          block, with per-edge disconnect buttons. The "Connect to…"
+          button toggles a small picker panel below. */}
+      <div className="compose-inspector-connections">
+        <div className="compose-inspector-connections-header">
+          <h4>{t("compose.inspector.connections")}</h4>
+          {connectingFromId === block.id ? (
+            <button
+              type="button"
+              className="btn small secondary"
+              onClick={onCancelConnect}
+              aria-label={t("compose.inspector.cancelConnect")}
+            >
+              ✕
+            </button>
+          ) : allBlocks.length > 1 ? (
+            <button
+              type="button"
+              className="btn small secondary"
+              onClick={onStartConnect}
+              title={t("compose.inspector.connect")}
+            >
+              + {t("compose.inspector.connect")}
+            </button>
+          ) : null}
+        </div>
+        {connectingFromId === block.id ? (
+          <ConnectingPicker
+            allBlocks={allBlocks}
+            excludeId={block.id}
+            existingConnections={connections}
+            onPick={onConnect}
+            onCancel={onCancelConnect}
+          />
+        ) : (
+          <ConnectionList
+            block={block}
+            allBlocks={allBlocks}
+            connections={connections}
+            onDisconnect={onDisconnect}
+          />
+        )}
+      </div>
+
       <div className="compose-inspector-actions">
         {href ? (
           <a className="btn small" href={href}>
@@ -1396,6 +1590,156 @@ function BlockInspector({
         </button>
       </div>
     </div>
+  );
+}
+
+/**
+ * v0.6.7: "Connect to..." picker — shown inside the inspector
+ * when the user clicks the + button. Lists every other block
+ * with a "Connect" button. Already-connected targets are
+ * labelled as such so the user knows the edge already exists.
+ */
+function ConnectingPicker({
+  allBlocks,
+  excludeId,
+  existingConnections,
+  onPick,
+  onCancel,
+}: {
+  allBlocks: ComposeBlock[];
+  excludeId: string;
+  existingConnections: ComposeConnection[];
+  onPick: (toId: string) => void;
+  onCancel: () => void;
+}) {
+  const t = useT();
+  const candidates = allBlocks.filter((b) => b.id !== excludeId);
+  if (candidates.length === 0) {
+    return (
+      <p className="muted small">{t("compose.inspector.noConnections")}</p>
+    );
+  }
+  return (
+    <ul
+      className="compose-connect-picker"
+      role="listbox"
+      aria-label={t("compose.inspector.connectTo", { label: "" })}
+    >
+      {candidates.map((b) => {
+        const alreadyConnected = existingConnections.some(
+          (c) => c.from === excludeId && c.to === b.id,
+        );
+        return (
+          <li key={b.id}>
+            <button
+              type="button"
+              className="btn small secondary compose-connect-picker-item"
+              disabled={alreadyConnected}
+              onClick={() => onPick(b.id)}
+              title={b.label}
+            >
+              <span className="muted small">{KIND_LABEL_FOR(b.kind)}</span>
+              <span className="compose-connect-picker-label">{b.label}</span>
+              {alreadyConnected ? (
+                <span className="muted small">✓</span>
+              ) : (
+                <span className="muted small">→</span>
+              )}
+            </button>
+          </li>
+        );
+      })}
+      <li>
+        <button
+          type="button"
+          className="btn small secondary"
+          onClick={onCancel}
+        >
+          ✕ {t("compose.inspector.closeDrawer")}
+        </button>
+      </li>
+    </ul>
+  );
+}
+
+/** Helper: pull the i18n key for a kind label without an i18n
+ * function (the picker is rendered above the BlockInspector t). */
+function KIND_LABEL_FOR(kind: ComposeEntityKind): string {
+  switch (kind) {
+    case "session":
+      return "💬";
+    case "pack":
+      return "📦";
+    case "profile":
+      return "🎛";
+    case "policy":
+      return "🛡";
+    case "capability":
+      return "🧩";
+  }
+}
+
+/**
+ * v0.6.7: list the edges touching this block (incoming +
+ * outgoing) with per-edge disconnect buttons. Empty state
+ * shows a "no connections yet" hint.
+ */
+function ConnectionList({
+  block,
+  allBlocks,
+  connections,
+  onDisconnect,
+}: {
+  block: ComposeBlock;
+  allBlocks: ComposeBlock[];
+  connections: ComposeConnection[];
+  onDisconnect: (connectionId: string) => void;
+}) {
+  const t = useT();
+  const outgoing = connections.filter((c) => c.from === block.id);
+  const incoming = connections.filter((c) => c.to === block.id);
+  const all = [
+    ...outgoing.map((c) => ({
+      c,
+      other: allBlocks.find((b) => b.id === c.to),
+      dir: "from" as const,
+    })),
+    ...incoming.map((c) => ({
+      c,
+      other: allBlocks.find((b) => b.id === c.from),
+      dir: "to" as const,
+    })),
+  ];
+  if (all.length === 0) {
+    return (
+      <p className="muted small">{t("compose.inspector.noConnections")}</p>
+    );
+  }
+  return (
+    <ul className="compose-connection-list">
+      {all.map(({ c, other, dir }) => (
+        <li key={c.id} className="compose-connection-item">
+          <span className="muted small" aria-hidden="true">
+            {dir === "from" ? "→" : "←"}
+          </span>
+          <span
+            className="compose-connection-label"
+            title={other?.label ?? "?"}
+          >
+            {other?.label ?? "?"}
+          </span>
+          <button
+            type="button"
+            className="btn small secondary compose-connection-disconnect"
+            onClick={() => onDisconnect(c.id)}
+            aria-label={t("compose.inspector.disconnect")}
+            title={t("compose.inspector.disconnect")}
+          >
+            ×
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -1666,4 +2010,54 @@ function formatRelative(iso: string): string {
   const mon = Math.round(day / 30);
   if (mon < 12) return `${mon}mo ago`;
   return `${Math.round(mon / 12)}y ago`;
+}
+
+/**
+ * v0.6.7: one connection line as an SVG path. Reads the from/to
+ * block's position + dimensions from the blocks array and draws
+ * a cubic bezier between the right edge of `from` and the left
+ * edge of `to`. Block dimensions are pinned to the ComposeBlockView
+ * styles (220×80-ish) — if those change, update BLOCK_W / BLOCK_H
+ * below.
+ */
+const BLOCK_W = 220;
+const BLOCK_H = 80;
+
+function ConnectionPath({
+  connection,
+  blocks,
+  selected,
+  onSelect,
+}: {
+  connection: ComposeConnection;
+  blocks: ComposeBlock[];
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const from = blocks.find((b) => b.id === connection.from);
+  const to = blocks.find((b) => b.id === connection.to);
+  if (!from || !to) return null;
+  const x1 = from.x + BLOCK_W;
+  const y1 = from.y + BLOCK_H / 2;
+  const x2 = to.x;
+  const y2 = to.y + BLOCK_H / 2;
+  const dx = Math.max(Math.abs(x2 - x1) / 2, 60);
+  const path = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+  return (
+    <g
+      data-connection-id={connection.id}
+      data-selected={selected}
+      className="compose-connection-path"
+      onClick={onSelect}
+      style={{ cursor: "pointer" }}
+    >
+      <path
+        d={path}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={selected ? 2.5 : 1.5}
+        opacity={selected ? 1 : 0.6}
+      />
+    </g>
+  );
 }

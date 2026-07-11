@@ -19,7 +19,7 @@ import type { ComposeBlock, ComposeState } from "../src/lib/types";
 function makeState(blocks: ComposeBlock[] = []): ComposeState {
   return {
     blocks,
-    version: 1,
+    version: 2,
     updatedAt: "2026-07-11T00:00:00.000Z",
     name: "test",
   };
@@ -147,5 +147,61 @@ describe("applyEntry / invertEntry", () => {
     const snapshot = JSON.parse(JSON.stringify(state));
     applyEntry(state, { type: "remove", block });
     expect(state).toEqual(snapshot);
+  });
+});
+
+// ─── v0.6.7: addConnection / removeConnection ───────────────
+
+describe("addConnection / removeConnection (v0.6.7)", () => {
+  const a: ComposeBlock = makeBlock({ id: "a" });
+  const b: ComposeBlock = makeBlock({ id: "b", x: 400, y: 400 });
+  const conn = { id: "c1", from: "a", to: "b" };
+
+  it("addConnection adds to state.connections and selects nothing", () => {
+    const { state, selectedId } = applyEntry(makeState([a, b]), {
+      type: "addConnection",
+      connection: conn,
+    });
+    expect(state.connections).toEqual([conn]);
+    expect(selectedId).toBeNull();
+  });
+
+  it("removeConnection drops from state.connections", () => {
+    const start = { ...makeState([a, b]), connections: [conn] };
+    const { state, selectedId } = applyEntry(start, {
+      type: "removeConnection",
+      connection: conn,
+    });
+    expect(state.connections).toEqual([]);
+    expect(selectedId).toBeNull();
+  });
+
+  it("addConnection invert → removeConnection (and back)", () => {
+    const addInv = invertEntry({ type: "addConnection", connection: conn });
+    expect(addInv).toEqual({ type: "removeConnection", connection: conn });
+    const remInv = invertEntry({ type: "removeConnection", connection: conn });
+    expect(remInv).toEqual({ type: "addConnection", connection: conn });
+  });
+
+  it("addConnection round-trip: add → undo → redo preserves state", () => {
+    let s = makeState([a, b]);
+    s = applyEntry(s, { type: "addConnection", connection: conn }).state;
+    expect(s.connections).toEqual([conn]);
+    // undo via invertEntry
+    s = applyEntry(
+      s,
+      invertEntry({ type: "addConnection", connection: conn }),
+    ).state;
+    expect(s.connections).toEqual([]);
+    // redo
+    s = applyEntry(s, { type: "addConnection", connection: conn }).state;
+    expect(s.connections).toEqual([conn]);
+  });
+
+  it("preserves state.connections when applying non-connection entries", () => {
+    const start = { ...makeState([a, b]), connections: [conn] };
+    const { state } = applyEntry(start, { type: "remove", block: a });
+    expect(state.connections).toEqual([conn]);
+    expect(state.blocks).toEqual([b]);
   });
 });

@@ -498,6 +498,17 @@ export type Dict = {
   "compose.inspector.detail.conflicts": string;
   "compose.inspector.detail.requires": string;
   "compose.inspector.detail.noneCount": string;
+  // v0.6.7: block-to-block connections.
+  "compose.inspector.connections": string;
+  "compose.inspector.connect": string;
+  "compose.inspector.connectTo": string;
+  "compose.inspector.cancelConnect": string;
+  "compose.inspector.disconnect": string;
+  "compose.inspector.noConnections": string;
+  "compose.inspector.connectionsFrom": string;
+  "compose.inspector.connectionsTo": string;
+  "compose.announce.connectionAdded": string;
+  "compose.announce.connectionRemoved": string;
   // v0.5.11+ currency formatting.
   "currency.usd": string;
 

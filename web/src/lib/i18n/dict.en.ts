@@ -551,6 +551,17 @@ const en: Dict = {
   "compose.inspector.detail.conflicts": "conflicts",
   "compose.inspector.detail.requires": "requires",
   "compose.inspector.detail.noneCount": "(none)",
+  // v0.6.7: connections.
+  "compose.inspector.connections": "Connections",
+  "compose.inspector.connect": "Connect to…",
+  "compose.inspector.connectTo": "Connect to {label}",
+  "compose.inspector.cancelConnect": "Cancel",
+  "compose.inspector.disconnect": "Disconnect",
+  "compose.inspector.noConnections": "No connections yet",
+  "compose.inspector.connectionsFrom": "From this block",
+  "compose.inspector.connectionsTo": "To this block",
+  "compose.announce.connectionAdded": "Connected {from} → {to}",
+  "compose.announce.connectionRemoved": "Disconnected {from} → {to}",
   // v0.5.11+ currency formatting.
   "currency.usd": "${amount}",
 

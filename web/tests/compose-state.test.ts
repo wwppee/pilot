@@ -13,7 +13,7 @@ import type { ComposeState, ComposeBlock } from "../src/lib/types";
 function makeState(blocks: ComposeBlock[]): ComposeState {
   return {
     blocks,
-    version: 1,
+    version: 2,
     updatedAt: "2026-07-03T00:00:00.000Z",
     name: "test",
   };
@@ -52,7 +52,7 @@ describe("ComposeState roundtrip", () => {
     const json = JSON.stringify(original);
     const parsed = JSON.parse(json) as ComposeState;
     expect(parsed.blocks).toHaveLength(0);
-    expect(parsed.version).toBe(1);
+    expect(parsed.version).toBe(2);
   });
 
   it("rejects unknown version", () => {
@@ -62,12 +62,13 @@ describe("ComposeState roundtrip", () => {
       updatedAt: "x",
     } as unknown as ComposeState;
     expect(fake.version).not.toBe(1);
+    expect(fake.version).not.toBe(2);
   });
 
   it("rejects non-array blocks", () => {
     const fake = {
       blocks: "not an array",
-      version: 1,
+      version: 2,
     } as unknown as ComposeState;
     expect(Array.isArray(fake.blocks)).toBe(false);
   });

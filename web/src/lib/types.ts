@@ -541,10 +541,35 @@ export interface ComposeBlock {
   href?: string;
 }
 
+/**
+ * v0.6.7: a directed edge between two blocks on the Compose
+ * canvas. Pure data — no styling/state per edge yet. The SVG
+ * renderer treats it as a soft visual hint, not a workflow
+ * execution primitive.
+ */
+export interface ComposeConnection {
+  /** Stable connection id (uuid). Keeps history entries small. */
+  id: string;
+  /** Source block id (line starts at the right edge of this block). */
+  from: string;
+  /** Target block id (line ends at the left edge of this block). */
+  to: string;
+}
+
 export interface ComposeState {
   blocks: ComposeBlock[];
-  /** Schema version — bump when changing ComposeBlock shape. */
-  version: 1;
+  /**
+   * v0.6.7+: directed edges between blocks. Optional on the
+   * type so v1 saves load without migration; saved as `[]` for
+   * v2.
+   */
+  connections?: ComposeConnection[];
+  /**
+   * Schema version.
+   *  - 1: original (v0.4.4 - v0.6.6) — blocks only
+   *  - 2: v0.6.7+ — adds `connections: ComposeConnection[]`
+   */
+  version: 2;
   /** ISO timestamp of last save. */
   updatedAt: string;
   /** Optional human-readable name for this layout. */
