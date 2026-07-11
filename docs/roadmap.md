@@ -296,6 +296,26 @@
 >
 > 测试：core **559/559**、web **189/189**、format 双清、lint clean、tsc clean（root + web）、production build OK。
 >
+> **2026-07-11 校准 (23)**：**v0.6.7 已发** —— `/compose` block-to-block 连接。compose 是 sandbox，"可视化组合" 的核心是让 block 之间能连线。v0.6.5 + v0.6.6 把 inspector 真正信息化了，v0.6.7 把"组合"这一步补上。
+>
+> | 类别 | 位置 | 改动 |
+> |---|---|---|
+> | **新 schema** | `web/lib/types.ts:525-562` | `ComposeConnection = {id, from, to}` + `ComposeState.connections?: Connection[]` + version 1 → 2。`loadState` 接受 v1 + v2（v1 无 `connections` 字段 = `[]`）。 |
+> | **新 history entries** | `web/lib/compose-history.ts:24-36, 78-99, 119-126` | `addConnection` / `removeConnection` 走 `applyEntry` / `invertEntry`。5 个新 unit test 覆盖 apply/invert/round-trip/preservation。 |
+> | **SVG overlay** | `web/app/compose/ComposeBoard.tsx:1177-1202` | canvas 内 SVG z-index 0，每个 connection 一个 `<g>` + bezier path。点 line → setSelectedConnectionId 高亮。 |
+> | **inspector connections** | `web/app/compose/ComposeBoard.tsx:1540-1570` | "Connections" section 列出此 block 的 incoming + outgoing 边，每条带 × disconnect 按钮。 |
+> | **Connect to… picker** | `web/app/compose/ComposeBoard.tsx:1603-1665` | 选中 block 点 "+ Connect to…" 按钮 → 弹出 picker 列出所有 other blocks（已连的标 ✓）。点候选 → create connection → 自动关 picker。 |
+> | **i18n** | 9 新 key (en + zh)：`connections` / `connect` / `connectTo` / `cancelConnect` / `disconnect` / `noConnections` / `connectionsFrom` / `connectionsTo` / `announce.{connectionAdded,connectionRemoved}` |
+> | **CSS** | `web/app/compose/compose.css:519-624` | `.compose-connections` overlay + `.compose-inspector-connections` section + picker + per-edge disconnect 按钮 |
+>
+> 关键设计：`BLOCK_W = 220, BLOCK_H = 80` 常量在 `ConnectionPath` 内固定，确保 SVG bezier 端点跟 `ComposeBlockView` 样式同步。Connection state 完全 undoable（走 history stack）。`loadState` 接受 v1 + v2 双版本（v1 save 没 `connections` 字段 = `[]`）。
+>
+> 验证限制：sandbox 没起 pilot server，page 走 error 分支不挂 ComposeBoard。本机 `pilot start` 后能正常 work。tsc + build + 14 history tests + 19 state tests 全过。
+>
+> 测试：core **559/559**、web **194/194**（+5 detail）、format 双清、lint clean、tsc clean（root + web）、production build OK。
+>
+> **故意没做**（v0.6.8+ 留）：block 边缘 drag-to-create connection / connection label 类型 / arrow head / server-side board persistence。
+>
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
 ## 阶段一：看见 Pi（v0.1 - v0.3.x，已发）

@@ -2,6 +2,105 @@
 
 ## Unreleased
 
+### v0.6.7 — block-to-block connections (schema v2, SVG overlay, inspector connect picker)
+
+Compose is a sandbox. The whole point is to lay out a stack of
+entities (session / pack / profile / policy / capability) and
+see what the composition looks like. v0.6.6 made the inspector
+show real entity fields; v0.6.7 adds the missing "between" —
+directed edges from one block to another.
+
+**New state**
+
+- `ComposeState.connections: ComposeConnection[]` (optional on
+  the type so v1 saves still load; treated as `[]` until the
+  user adds an edge)
+- `ComposeConnection = { id, from, to }` — `id` is stable so
+  history entries stay small (we re-find the edge by id, not
+  by a positional index that would shift on every add)
+- `version` bumped 1 → 2. `loadState()` accepts both versions
+  (v1 saves load fine; new saves always write v2). `importJson`
+  validates the same way. Future versions drop to empty state
+  rather than mis-parse.
+
+**New history entries**
+
+- `addConnection` / `removeConnection` — extend the existing
+  pure-function `applyEntry` / `invertEntry` in
+  `lib/compose-history.ts`. Refuse self-loops, duplicate edges,
+  and edges whose endpoints aren't in the current block set
+  (would render as broken line-ends).
+- 5 new test cases in `tests/compose-history.test.ts` covering
+  apply / invert / round-trip / preservation across
+  non-related entries.
+
+**UI**
+
+- SVG overlay inside the canvas — one `<g>` per connection,
+  cubic bezier from the right edge of the source block to
+  the left edge of the target block. Click a line to select
+  it (visual emphasis only for now; the inspector list is
+  where the user actually disconnects).
+- Inspector gets a "Connections" section: list of incoming +
+  outgoing edges with per-edge "×" disconnect button. Empty
+  state shows "No connections yet". The "+ Connect to…"
+  button toggles a small picker panel listing every other
+  block (with existing targets marked ✓) so the user can
+  wire up the composition in two clicks.
+- Connection state is fully undoable — undo/redo work
+  through the new history entries.
+- The connections array is included in export/import — the
+  JSON file round-trips.
+
+**CSS**
+
+- `.compose-connections` overlay (canvas-relative, z-index 0
+  so blocks render on top).
+- `.compose-inspector-connections` section, picker list, and
+  per-edge disconnect button styling.
+- Block dimensions are pinned to 220×80 via `BLOCK_W` /
+  `BLOCK_H` constants in `ConnectionPath` so the bezier
+  anchors stay in sync with `ComposeBlockView` styles.
+
+**i18n**: 9 new keys (en + zh) — `compose.inspector.connections`,
+`connect`, `connectTo`, `cancelConnect`, `disconnect`,
+`noConnections`, `connectionsFrom`, `connectionsTo`,
+`compose.announce.{connectionAdded,connectionRemoved}`.
+
+**Files touched**
+
+- `web/src/lib/types.ts` — `ComposeConnection` + state.connections
+  + version bump
+- `web/src/lib/compose-history.ts` — addConnection/removeConnection
+- `web/src/app/compose/ComposeBoard.tsx` — SVG overlay, picker,
+  callbacks, ConnectionPath, ConnectingPicker, ConnectionList,
+  loadState v1/v2 dual support
+- `web/src/app/compose/compose.css` — overlay + inspector section
+- `web/src/lib/i18n/{types,dict.en,dict.zh}.ts` — 9 new keys
+- `web/tests/compose-history.test.ts` — 5 new cases
+- `web/tests/compose-state.test.ts` — update v1 → v2 expectations
+
+**Tests**
+
+- core: 559/559 (no core changes this release)
+- web: **194/194** (+5 history detail cases)
+- `format:check` clean both repos
+- `lint` clean (root)
+- `tsc` clean (root + web)
+- `npm run build` succeeds
+
+**What's NOT in v0.6.7 (deferred to v0.6.8+)**
+
+- Drag-from-block-edge to create a connection (current flow is
+  click "+ Connect to…" → click target). Drag is more
+  intuitive but adds another pointer-event state machine.
+- Edge label / type (e.g. "uses", "depends on") — current
+  edges are pure visual hints, no semantic.
+- Arrowhead direction at the target end. Right now the line
+  just terminates at the target's left edge.
+- Server-side persistence of the board (current state lives in
+  localStorage; same as before).
+
 ### v0.6.6 — P2 hotfix: ComposeBoard hydration mismatch (silent since v0.4.4)
 
 v0.4.4 introduced `ComposeBoard` with two pieces of state
