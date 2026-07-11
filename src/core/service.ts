@@ -322,6 +322,17 @@ export interface PilotService {
    */
   listComposeEntities(): Promise<import("./compose-listing.js").ComposeCatalog>;
 
+  /**
+   * v0.6.5: full detail of a single compose entity. Discriminated
+   * union by `kind`. Returns `null` when the entity is not found
+   * (or when the kind is unknown). The HTTP layer maps `null` to
+   * 404.
+   */
+  getComposeEntityDetail(
+    kind: import("./compose-listing.js").ComposeEntityKind,
+    id: string,
+  ): Promise<import("./compose-listing.js").ComposeEntityDetail | null>;
+
   // ─── Tool policies (v0.4.3) ──────────────────────────
 
   /** List all tool policies in `~/.pilot/policy/`. */

@@ -50,21 +50,44 @@ async function getToken(): Promise<string | null> {
   }
 }
 
-/** Fetch a pilot endpoint, injecting the token. */
+/**
+ * Fetch a pilot endpoint, injecting the token.
+ *
+ * Two overloads:
+ *  - default: returns `T` and throws on any non-2xx.
+ *  - with `nullableStatuses`: returns `T | null`. Codes listed in
+ *    `nullableStatuses` (e.g. 404) are converted to `null` instead
+ *    of throwing. Used for "fetch a thing that might have been
+ *    deleted" flows (e.g. v0.6.5 inspector detail for a stale
+ *    Compose block).
+ */
+export async function pilot<T>(path: string, init?: RequestInit): Promise<T>;
 export async function pilot<T>(
   path: string,
-  init: RequestInit = {},
-): Promise<T> {
+  init: RequestInit & { nullableStatuses: number[] },
+): Promise<T | null>;
+export async function pilot<T>(
+  path: string,
+  init: RequestInit & { nullableStatuses?: number[] } = {},
+): Promise<T | null> {
+  const { nullableStatuses, ...fetchInit } = init;
   const token = await getToken();
   const url = `${PILOT_BASE}${path}`;
-  const headers = new Headers(init.headers);
+  const headers = new Headers(fetchInit.headers);
   headers.set("accept", "application/json");
   if (token) headers.set("x-pilot-token", token);
-  if (init.body && !headers.has("content-type")) {
+  if (fetchInit.body && !headers.has("content-type")) {
     headers.set("content-type", "application/json");
   }
-  const res = await fetch(url, { ...init, headers, cache: "no-store" });
+  const res = await fetch(url, {
+    ...fetchInit,
+    headers,
+    cache: "no-store",
+  });
   if (!res.ok) {
+    if (nullableStatuses?.includes(res.status)) {
+      return null;
+    }
     const text = await res.text();
     throw new PilotApiError(text || res.statusText, res.status);
   }
@@ -368,6 +391,14 @@ export const api = {
 
   // ─── Compose catalog (v0.4.4+) ────────────────────────────
   composeCatalog: () => pilot<ComposeCatalog>("/compose/catalog"),
+  // v0.6.5: per-entity full detail for the inspector. Returns
+  // `null` (NOT throws) when the server replies 404, so the UI
+  // can render a "stale" state without try/catch noise.
+  composeEntityDetail: (kind: string, id: string) =>
+    pilot<import("./types").ComposeEntityDetail>(
+      `/compose/catalog/${encodeURIComponent(kind)}/${encodeURIComponent(id)}`,
+      { nullableStatuses: [404] },
+    ),
 
   // ─── Plans (v0.5.7+ — Agent capability layer) ──────────
   plans: () => pilot<Plan[]>("/plans"),

@@ -198,6 +198,8 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
     discoverProjectContext: (cwd) => discoverProjectContext(cwd, home),
 
     listComposeEntities: () => listComposeEntitiesFromService(home),
+    getComposeEntityDetail: (kind, id) =>
+      getComposeEntityDetailFromService(home, kind, id),
 
     listPolicies: () => listPoliciesFromHome(home),
     getPolicy: (name) => tryReadPolicy(name, home),
@@ -519,6 +521,30 @@ async function listComposeEntitiesFromService(
     listPolicies: () => listPoliciesFromHome(home),
     listCapabilities: () => listCapabilities(home),
   });
+}
+
+/**
+ * v0.6.5: per-entity full detail. Shares the same data-source
+ * wiring as `listComposeEntitiesFromService` so the two paths
+ * stay in sync (e.g. same session filter / same list of packs).
+ */
+async function getComposeEntityDetailFromService(
+  home: string | undefined,
+  kind: import("./compose-listing.js").ComposeEntityKind,
+  id: string,
+): Promise<import("./compose-listing.js").ComposeEntityDetail | null> {
+  const { getComposeEntityDetail } = await import("./compose-listing.js");
+  return getComposeEntityDetail(
+    {
+      listSessions: () => listSessions(undefined, home),
+      listPacks: () => listPacks(home),
+      listProfiles: () => listProfiles(home),
+      listPolicies: () => listPoliciesFromHome(home),
+      listCapabilities: () => listCapabilities(home),
+    },
+    kind,
+    id,
+  );
 }
 
 // ─── Policy (v0.4.3) ───────────────────────────────────────

@@ -45,6 +45,8 @@ import type {
   ToolPolicyInput,
   PolicyDecision,
   ComposeCatalog,
+  ComposeEntityDetail,
+  ComposeEntityKind,
   Plan,
   PlanToolSuggestion,
 } from "./types.js";
@@ -294,6 +296,23 @@ export const browserApi = {
     ),
 
   composeCatalog: () => browserFetch<ComposeCatalog>("/compose/catalog"),
+  // v0.6.5: per-entity full detail for the inspector. Returns
+  // `null` (not throws) on 404 so the UI can render "stale" without
+  // try/catch noise around every render.
+  composeEntityDetail: async (
+    kind: ComposeEntityKind,
+    id: string,
+  ): Promise<ComposeEntityDetail | null> => {
+    try {
+      return await browserFetch<ComposeEntityDetail>(
+        `/compose/catalog/${encodeURIComponent(kind)}/${encodeURIComponent(id)}`,
+      );
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (status === 404) return null;
+      throw e;
+    }
+  },
 
   // ─── Plans (v0.5.7+) ──────────────────────────────────
   plans: () => browserFetch<Plan[]>("/plans"),

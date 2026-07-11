@@ -550,6 +550,35 @@ export async function startServer(
 
   app.get("/compose/catalog", async () => service.listComposeEntities());
 
+  // v0.6.5: per-entity full detail for the inspector. Returns
+  // 404 when the entity is not found.
+  app.get<{ Params: { kind: string; id: string } }>(
+    "/compose/catalog/:kind/:id",
+    async (req, reply) => {
+      const { kind, id } = req.params;
+      const allowedKinds = [
+        "session",
+        "pack",
+        "profile",
+        "policy",
+        "capability",
+      ] as const;
+      if (!allowedKinds.includes(kind as (typeof allowedKinds)[number])) {
+        await reply.code(400).send({ error: `unknown kind: ${kind}` });
+        return;
+      }
+      const detail = await service.getComposeEntityDetail(
+        kind as (typeof allowedKinds)[number],
+        decodeURIComponent(id),
+      );
+      if (!detail) {
+        await reply.code(404).send({ error: "not found" });
+        return;
+      }
+      return detail;
+    },
+  );
+
   app.get("/policies", async () => service.listPolicies());
 
   app.get<{ Params: { name: string } }>("/policies/:name", async (req) => {

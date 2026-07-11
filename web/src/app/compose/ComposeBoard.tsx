@@ -36,6 +36,7 @@ import type {
   ComposeBlock,
   ComposeCatalog,
   ComposeEntity,
+  ComposeEntityDetail,
   ComposeEntityKind,
   ComposeState,
 } from "../../lib/types";
@@ -45,6 +46,7 @@ import {
   MAX_HISTORY,
   type HistoryEntry,
 } from "../../lib/compose-history";
+import { api, PilotApiError } from "../../lib/pilot-browser";
 import { useT } from "@/components/I18n";
 
 /**
@@ -596,9 +598,7 @@ export default function ComposeBoard({
         x: 40 + offset,
         y: 40 + offset,
         label: entity.label,
-        ...(entity.sublabel !== undefined
-          ? { sublabel: entity.sublabel }
-          : {}),
+        ...(entity.sublabel !== undefined ? { sublabel: entity.sublabel } : {}),
         ...(entity.href !== undefined ? { href: entity.href } : {}),
       };
       setState((s) => ({ ...s, blocks: [...s.blocks, block] }));
@@ -1265,6 +1265,44 @@ function BlockInspector({
   const meta = KIND_META[block.kind](t);
   const stale = !catalogEntity;
   const href = block.href ?? catalogEntity?.href;
+
+  // v0.6.5: fetch the real entity detail so the inspector can
+  // show actual fields (cwd / size / packages / policy rules /
+  // etc.) instead of just the cached label. Re-fetches when the
+  // selected block changes; `stale` is handled separately.
+  //
+  // `hydrated` is the post-hydration guard. During SSR + the first
+  // client paint, the detail block must render the same thing on
+  // both sides (else React #418 hydration mismatch — `formatRelative`
+  // uses `Date.now()` so it diverges between server and client).
+  // We keep `detail` undefined until the first useEffect fires, and
+  // only render the rich fields after `hydrated` is true.
+  const [detail, setDetail] = useState<ComposeEntityDetail | null | undefined>(
+    undefined,
+  );
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    setHydrated(true);
+    let cancelled = false;
+    setDetail(undefined);
+    api
+      .composeEntityDetail(block.kind, block.refId)
+      .then((d) => {
+        if (!cancelled) setDetail(d);
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) {
+          setDetail(null);
+          if (!(e instanceof PilotApiError && e.status === 404)) {
+            console.warn("compose detail fetch failed", e);
+          }
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [block.kind, block.refId]);
+
   return (
     <div className="compose-inspector-body">
       <header
@@ -1306,6 +1344,12 @@ function BlockInspector({
         </dd>
       </dl>
 
+      {hydrated && detail !== undefined
+        ? detail === null
+          ? null
+          : <InspectorDetailFields detail={detail} />
+        : null}
+
       <div className="compose-inspector-actions">
         {href ? (
           <a className="btn small" href={href}>
@@ -1343,4 +1387,273 @@ function BlockInspector({
       </div>
     </div>
   );
+}
+
+/**
+ * v0.6.5: kind-specific real-entity field renderer. Shows the
+ * fields that make the entity actually useful — not just the
+ * cached label/sublabel.
+ */
+function InspectorDetailFields({ detail }: { detail: ComposeEntityDetail }) {
+  const t = useT();
+  switch (detail.kind) {
+    case "session":
+      return (
+        <dl className="compose-inspector-fields">
+          {detail.cwd ? (
+            <>
+              <dt>{t("compose.inspector.detail.cwd")}</dt>
+              <dd className="mono small" title={detail.cwd}>
+                {detail.cwd}
+              </dd>
+            </>
+          ) : null}
+          {detail.model ? (
+            <>
+              <dt>{t("compose.inspector.detail.model")}</dt>
+              <dd>{detail.model}</dd>
+            </>
+          ) : null}
+          <>
+            <dt>{t("compose.inspector.detail.entries")}</dt>
+            <dd>{detail.entries}</dd>
+          </>
+          <>
+            <dt>{t("compose.inspector.detail.size")}</dt>
+            <dd>{formatBytes(detail.sizeBytes)}</dd>
+          </>
+          {detail.startedAt ? (
+            <>
+              <dt>{t("compose.inspector.detail.firstUsed")}</dt>
+              <dd className="mono small" title={detail.startedAt}>
+                {formatRelative(detail.startedAt)}
+              </dd>
+            </>
+          ) : null}
+          {detail.lastUsedAt ? (
+            <>
+              <dt>{t("compose.inspector.detail.lastUsed")}</dt>
+              <dd className="mono small" title={detail.lastUsedAt}>
+                {formatRelative(detail.lastUsedAt)}
+              </dd>
+            </>
+          ) : null}
+          {detail.firstUserPreview ? (
+            <>
+              <dt>{t("compose.inspector.detail.preview")}</dt>
+              <dd
+                className="small"
+                style={{ fontStyle: "italic" }}
+                title={detail.firstUserPreview}
+              >
+                “{detail.firstUserPreview}”
+              </dd>
+            </>
+          ) : null}
+        </dl>
+      );
+    case "pack":
+      return (
+        <dl className="compose-inspector-fields">
+          <dt>{t("compose.inspector.detail.source")}</dt>
+          <dd className="mono small" title={detail.source}>
+            {detail.source}
+          </dd>
+          <dt>{t("compose.inspector.detail.type")}</dt>
+          <dd>{detail.packKind}</dd>
+          <dt>{t("compose.inspector.detail.enabled")}</dt>
+          <dd>{detail.enabled ? "✓" : "✗"}</dd>
+        </dl>
+      );
+    case "profile":
+      return (
+        <dl className="compose-inspector-fields">
+          {detail.model ? (
+            <>
+              <dt>{t("compose.inspector.detail.model")}</dt>
+              <dd>{detail.model}</dd>
+            </>
+          ) : null}
+          {detail.provider ? (
+            <>
+              <dt>{t("compose.inspector.detail.provider")}</dt>
+              <dd>{detail.provider}</dd>
+            </>
+          ) : null}
+          {detail.thinking ? (
+            <>
+              <dt>{t("compose.inspector.detail.thinking")}</dt>
+              <dd>{detail.thinking}</dd>
+            </>
+          ) : null}
+          {detail.team ? (
+            <>
+              <dt>{t("compose.inspector.detail.team")}</dt>
+              <dd>{detail.team}</dd>
+            </>
+          ) : null}
+          {detail.description ? (
+            <>
+              <dt>{t("compose.inspector.detail.description")}</dt>
+              <dd
+                className="small"
+                style={{ whiteSpace: "pre-wrap" }}
+                title={detail.description}
+              >
+                {detail.description}
+              </dd>
+            </>
+          ) : null}
+          <>
+            <dt>{t("compose.inspector.detail.packages")}</dt>
+            <dd>
+              {detail.packages.length > 0
+                ? detail.packages.join(", ")
+                : t("compose.inspector.detail.noneCount")}
+            </dd>
+          </>
+        </dl>
+      );
+    case "policy":
+      return (
+        <dl className="compose-inspector-fields">
+          {detail.description ? (
+            <>
+              <dt>{t("compose.inspector.detail.description")}</dt>
+              <dd
+                className="small"
+                style={{ whiteSpace: "pre-wrap" }}
+                title={detail.description}
+              >
+                {detail.description}
+              </dd>
+            </>
+          ) : null}
+          {renderRuleList(t, t("compose.inspector.detail.allow"), detail.allow)}
+          {renderRuleList(t, t("compose.inspector.detail.deny"), detail.deny)}
+          {renderRuleList(
+            t,
+            t("compose.inspector.detail.denyPaths"),
+            detail.denyPaths,
+          )}
+          {renderRuleList(
+            t,
+            t("compose.inspector.detail.denyCommands"),
+            detail.denyCommands,
+          )}
+          {renderRuleList(
+            t,
+            t("compose.inspector.detail.sensitivePatterns"),
+            detail.sensitivePatterns,
+          )}
+          {renderRuleList(
+            t,
+            t("compose.inspector.detail.requireApproval"),
+            detail.requireApproval,
+          )}
+        </dl>
+      );
+    case "capability":
+      return (
+        <dl className="compose-inspector-fields">
+          {detail.title ? (
+            <>
+              <dt>{t("compose.inspector.detail.title")}</dt>
+              <dd>{detail.title}</dd>
+            </>
+          ) : null}
+          {detail.type ? (
+            <>
+              <dt>{t("compose.inspector.detail.type")}</dt>
+              <dd>{detail.type}</dd>
+            </>
+          ) : null}
+          {detail.description ? (
+            <>
+              <dt>{t("compose.inspector.detail.description")}</dt>
+              <dd
+                className="small"
+                style={{ whiteSpace: "pre-wrap" }}
+                title={detail.description}
+              >
+                {detail.description}
+              </dd>
+            </>
+          ) : null}
+          <dt>{t("compose.inspector.detail.sources")}</dt>
+          <dd>
+            {detail.sources.length > 0
+              ? detail.sources.map((s) => `${s.type}:${s.ref}`).join(", ")
+              : t("compose.inspector.detail.noneCount")}
+          </dd>
+          {detail.conflicts.length > 0 ? (
+            <>
+              <dt>{t("compose.inspector.detail.conflicts")}</dt>
+              <dd>{detail.conflicts.join(", ")}</dd>
+            </>
+          ) : null}
+          {detail.requires.length > 0 ? (
+            <>
+              <dt>{t("compose.inspector.detail.requires")}</dt>
+              <dd>{detail.requires.join(", ")}</dd>
+            </>
+          ) : null}
+        </dl>
+      );
+  }
+}
+
+function renderRuleList(
+  t: (k: string) => string,
+  label: string,
+  items: string[],
+) {
+  return (
+    <>
+      <dt>
+        {label} ({items.length})
+      </dt>
+      <dd
+        className="small"
+        title={
+          items.length > 0
+            ? items.join("\n")
+            : t("compose.inspector.detail.noneCount")
+        }
+      >
+        {items.length > 0
+          ? items.join(", ")
+          : t("compose.inspector.detail.noneCount")}
+      </dd>
+    </>
+  );
+}
+
+/** Format bytes as KB / MB so the inspector shows something readable. */
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/**
+ * Format an ISO timestamp as a short relative time. Avoids a
+ * runtime dep on a date-fns-style library — the inspector is a
+ * small surface, "3 days ago" is enough.
+ */
+function formatRelative(iso: string): string {
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return iso;
+  const diffMs = Date.now() - t;
+  const sec = Math.round(diffMs / 1000);
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.round(hr / 24);
+  if (day < 30) return `${day}d ago`;
+  const mon = Math.round(day / 30);
+  if (mon < 12) return `${mon}mo ago`;
+  return `${Math.round(mon / 12)}y ago`;
 }

@@ -108,6 +108,166 @@ export async function listComposeEntities(
   };
 }
 
+/**
+ * v0.6.5: per-entity full-detail view. The catalog is a thin index
+ * (id/label/sublabel/href) for the sidebar; this returns the
+ * real fields so the inspector can render the entity the way
+ * the dedicated detail page does — without forcing a navigation.
+ *
+ * Returned shape is a discriminated union by `kind` so the UI
+ * can switch on `detail.kind` and read the right field set
+ * without a runtime guard.
+ *
+ * Returns `null` when the entity is not found, or when the kind
+ * is unknown. The HTTP layer maps `null` → 404.
+ */
+export type ComposeEntityDetail =
+  | {
+      kind: "session";
+      /** Pretty cwd (decoded from the id-encoded form). */
+      cwd?: string;
+      model?: string;
+      entries: number;
+      sizeBytes: number;
+      lastUsedAt?: string;
+      startedAt?: string;
+      firstUserPreview?: string;
+    }
+  | {
+      kind: "pack";
+      name: string;
+      source: string;
+      enabled: boolean;
+      packKind: string;
+      version?: string;
+      description?: string;
+      homepage?: string;
+    }
+  | {
+      kind: "profile";
+      name: string;
+      model?: string;
+      provider?: string;
+      thinking?: string;
+      packages: string[];
+      description?: string;
+      notes?: string;
+      team?: string;
+    }
+  | {
+      kind: "policy";
+      name: string;
+      description?: string;
+      allow: string[];
+      deny: string[];
+      denyPaths: string[];
+      denyCommands: string[];
+      sensitivePatterns: string[];
+      requireApproval: string[];
+    }
+  | {
+      kind: "capability";
+      id: string;
+      title?: string;
+      type?: string;
+      description?: string;
+      sources: Array<{ type: string; ref: string }>;
+      conflicts: string[];
+      requires: string[];
+    };
+
+/**
+ * Read the full detail of a single compose entity. Reuses the
+ * same data sources as `listComposeEntities` so the per-entity
+ * shape stays consistent with the catalog index.
+ *
+ * `listSessions` is the only list-and-filter path because there
+ * is no per-id SessionInfo getter in PilotService today (sessions
+ * live in JSONL files keyed by encoded cwd).
+ */
+export async function getComposeEntityDetail(
+  source: ComposeDataSource,
+  kind: ComposeEntityKind,
+  id: string,
+): Promise<ComposeEntityDetail | null> {
+  switch (kind) {
+    case "session": {
+      const all = await source.listSessions();
+      const s = all.find((x) => x.id === id);
+      if (!s) return null;
+      return {
+        kind: "session",
+        ...(s.cwd ? { cwd: s.cwd } : {}),
+        ...(s.model ? { model: s.model } : {}),
+        entries: s.entries,
+        sizeBytes: s.sizeBytes,
+        ...(s.lastUsedAt ? { lastUsedAt: s.lastUsedAt } : {}),
+        ...(s.startedAt ? { startedAt: s.startedAt } : {}),
+        ...(s.firstUserPreview ? { firstUserPreview: s.firstUserPreview } : {}),
+      };
+    }
+    case "pack": {
+      const all = await source.listPacks();
+      const p = all.find((x) => x.name === id);
+      if (!p) return null;
+      return {
+        kind: "pack",
+        name: p.name,
+        source: p.source,
+        enabled: p.enabled,
+        packKind: p.kind,
+      };
+    }
+    case "profile": {
+      const all = await source.listProfiles();
+      const p = all.find((x) => x.name === id);
+      if (!p) return null;
+      return {
+        kind: "profile",
+        name: p.name,
+        ...(p.model ? { model: p.model } : {}),
+        ...(p.provider ? { provider: p.provider } : {}),
+        ...(p.thinking ? { thinking: p.thinking } : {}),
+        packages: p.packages ?? [],
+        ...(p.description ? { description: p.description } : {}),
+        ...(p.notes ? { notes: p.notes } : {}),
+        ...(p.team ? { team: p.team } : {}),
+      };
+    }
+    case "policy": {
+      const all = await source.listPolicies();
+      const p = all.find((x) => x.name === id);
+      if (!p) return null;
+      return {
+        kind: "policy",
+        name: p.name,
+        ...(p.description ? { description: p.description } : {}),
+        allow: p.allow,
+        deny: p.deny,
+        denyPaths: p.denyPaths,
+        denyCommands: p.denyCommands,
+        sensitivePatterns: p.sensitivePatterns,
+        requireApproval: p.requireApproval,
+      };
+    }
+    case "capability": {
+      const all = await source.listCapabilities();
+      const c = all.find((x) => x.id === id);
+      if (!c) return null;
+      return {
+        kind: "capability",
+        id: c.id,
+        ...(c.title ? { title: c.title } : {}),
+        ...(c.type ? { type: c.type } : {}),
+        ...(c.description ? { description: c.description } : {}),
+        sources: c.sources.map((s) => ({ type: s.type, ref: s.ref })),
+        conflicts: c.compatibility?.conflicts ?? [],
+        requires: c.compatibility?.requires ?? [],
+      };
+    }
+  }
+}
+
 // ─── Conversions ──────────────────────────────────────────────
 
 function toSessionEntity(s: SessionInfo): ComposeEntity {

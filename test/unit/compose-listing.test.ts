@@ -3,7 +3,10 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { listComposeEntities } from "../../src/core/compose-listing.js";
+import {
+  listComposeEntities,
+  getComposeEntityDetail,
+} from "../../src/core/compose-listing.js";
 import type {
   SessionInfo,
   InstalledPack,
@@ -216,5 +219,95 @@ describe("listComposeEntities", () => {
       listCapabilities: async () => [],
     });
     expect(catalog.sessions[0]?.label).toBe("single");
+  });
+});
+
+// ─── v0.6.5: getComposeEntityDetail ───────────────────────
+
+describe("getComposeEntityDetail", () => {
+  const source = {
+    listSessions: async () => [
+      {
+        ...makeSession("--x--", "claude-sonnet"),
+        sizeBytes: 1234,
+        entries: 17,
+        firstUserPreview: "refactor the compose sidebar",
+      },
+    ],
+    listPacks: async () => [
+      { ...makePack("pi-subagents"), enabled: true, kind: "skill" },
+    ],
+    listProfiles: async () => [
+      {
+        ...makeProfile("default", "claude-sonnet"),
+        packages: ["a", "b", "c"],
+        thinking: "medium",
+      },
+    ],
+    listPolicies: async () => [makePolicy("safe-bash")],
+    listCapabilities: async () => [makeCapability("cap-1", "tool")],
+  };
+
+  it("returns full session detail", async () => {
+    const d = await getComposeEntityDetail(source, "session", "--x--");
+    expect(d).toMatchObject({
+      kind: "session",
+      cwd: "/Users/test/project",
+      model: "claude-sonnet",
+      entries: 17,
+      sizeBytes: 1234,
+      firstUserPreview: "refactor the compose sidebar",
+    });
+  });
+
+  it("returns null for unknown session id", async () => {
+    expect(await getComposeEntityDetail(source, "session", "nope")).toBeNull();
+  });
+
+  it("returns full pack detail (no version/description — those need getPack)", async () => {
+    const d = await getComposeEntityDetail(source, "pack", "pi-subagents");
+    expect(d).toMatchObject({
+      kind: "pack",
+      name: "pi-subagents",
+      source: "npm:pi-subagents",
+      enabled: true,
+      packKind: "skill",
+    });
+  });
+
+  it("returns full profile detail with packages + thinking", async () => {
+    const d = await getComposeEntityDetail(source, "profile", "default");
+    expect(d).toMatchObject({
+      kind: "profile",
+      name: "default",
+      model: "claude-sonnet",
+      thinking: "medium",
+      packages: ["a", "b", "c"],
+    });
+  });
+
+  it("returns full policy detail with all 6 rule arrays", async () => {
+    const d = await getComposeEntityDetail(source, "policy", "safe-bash");
+    expect(d).toMatchObject({
+      kind: "policy",
+      name: "safe-bash",
+      allow: ["read"],
+      deny: ["bash"],
+      denyPaths: ["**/.env"],
+      denyCommands: ["^rm"],
+      sensitivePatterns: [],
+      requireApproval: [],
+    });
+  });
+
+  it("returns full capability detail with sources + compat", async () => {
+    const d = await getComposeEntityDetail(source, "capability", "cap-1");
+    expect(d).toMatchObject({
+      kind: "capability",
+      id: "cap-1",
+      title: "cap-1",
+      type: "tool",
+    });
+    expect(Array.isArray(d?.sources)).toBe(true);
   });
 });

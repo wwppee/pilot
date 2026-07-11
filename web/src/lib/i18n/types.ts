@@ -469,6 +469,35 @@ export type Dict = {
   "compose.inspector.moveBottom": string;
   // v0.6.4: block-creation feedback ("just added" announcement).
   "compose.announce.justAdded": string;
+  // v0.6.5: inspector detail (real-entity fields, not just id+kind).
+  "compose.inspector.loading": string;
+  "compose.inspector.error": string;
+  "compose.inspector.detail.cwd": string;
+  "compose.inspector.detail.entries": string;
+  "compose.inspector.detail.size": string;
+  "compose.inspector.detail.lastUsed": string;
+  "compose.inspector.detail.firstUsed": string;
+  "compose.inspector.detail.model": string;
+  "compose.inspector.detail.packages": string;
+  "compose.inspector.detail.thinking": string;
+  "compose.inspector.detail.provider": string;
+  "compose.inspector.detail.team": string;
+  "compose.inspector.detail.preview": string;
+  "compose.inspector.detail.source": string;
+  "compose.inspector.detail.enabled": string;
+  "compose.inspector.detail.title": string;
+  "compose.inspector.detail.type": string;
+  "compose.inspector.detail.description": string;
+  "compose.inspector.detail.sources": string;
+  "compose.inspector.detail.allow": string;
+  "compose.inspector.detail.deny": string;
+  "compose.inspector.detail.denyPaths": string;
+  "compose.inspector.detail.denyCommands": string;
+  "compose.inspector.detail.sensitivePatterns": string;
+  "compose.inspector.detail.requireApproval": string;
+  "compose.inspector.detail.conflicts": string;
+  "compose.inspector.detail.requires": string;
+  "compose.inspector.detail.noneCount": string;
   // v0.5.11+ currency formatting.
   "currency.usd": string;
 

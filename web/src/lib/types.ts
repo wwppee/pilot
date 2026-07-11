@@ -551,6 +551,66 @@ export interface ComposeState {
   name?: string;
 }
 
+/**
+ * v0.6.5: per-entity full-detail view returned by
+ * `GET /compose/catalog/:kind/:id`. Discriminated union by `kind`
+ * so the inspector can switch on `detail.kind` and read the
+ * right field set without runtime guards.
+ *
+ * Mirrors `core/compose-listing.ts#ComposeEntityDetail` — keep
+ * in sync when adding fields.
+ */
+export type ComposeEntityDetail =
+  | {
+      kind: "session";
+      cwd?: string;
+      model?: string;
+      entries: number;
+      sizeBytes: number;
+      lastUsedAt?: string;
+      startedAt?: string;
+      firstUserPreview?: string;
+    }
+  | {
+      kind: "pack";
+      name: string;
+      source: string;
+      enabled: boolean;
+      packKind: string;
+    }
+  | {
+      kind: "profile";
+      name: string;
+      model?: string;
+      provider?: string;
+      thinking?: string;
+      packages: string[];
+      description?: string;
+      notes?: string;
+      team?: string;
+    }
+  | {
+      kind: "policy";
+      name: string;
+      description?: string;
+      allow: string[];
+      deny: string[];
+      denyPaths: string[];
+      denyCommands: string[];
+      sensitivePatterns: string[];
+      requireApproval: string[];
+    }
+  | {
+      kind: "capability";
+      id: string;
+      title?: string;
+      type?: string;
+      description?: string;
+      sources: Array<{ type: string; ref: string }>;
+      conflicts: string[];
+      requires: string[];
+    };
+
 // ─── Plans (v0.5.7+ — Agent capability layer) ──────────────────
 //
 // Mirrors `core/plan.ts` (PlanSchema / TaskSchema / StepSchema).
