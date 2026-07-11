@@ -2,6 +2,76 @@
 
 ## Unreleased
 
+### v0.6.4 — /compose operation visibility: undo counter, block actions, drag/drop animation, Strict-Mode bug fix
+
+The v0.6.2/v0.6.3 release made the layout work and added undo/
+redo, but the operations were still easy to miss. This release
+polishes the interactions and fixes one real bug that the
+v0.6.2 Strict-Mode setup had been hiding.
+
+**What's new**
+
+- **Toolbar undo/redo: stack count.** When `canUndo`/`canRedo`
+  is true, the button text now includes the count — `↶ Undo · 3`
+  / `↷ Redo · 1`. When the stack is empty the original
+  `↶ Undo` / `↷ Redo` is shown.
+- **Inspector per-block actions.** Each block now has
+  `Duplicate (⎘)`, `Top (⤒)`, `Bottom (⤓)` alongside the
+  existing "open detail page" link and Remove. Duplicate creates
+  a copy offset 24px down-right so the user can see the pair.
+  Top / Bottom reorder within the blocks array (z-order = render
+  order; the moved block lands at the new z-position).
+- **Drag/drop visual feedback:**
+  - Sidebar item the user is currently dragging out is dimmed to
+    40% opacity with a dashed accent ring (`data-dragging="true"`)
+  - Canvas gets a slow pulsing inset accent border while a
+    sidebar item is being dragged over it
+    (`data-pending="true"`)
+  - Each newly added block fades + scales in over 220ms
+    (`data-just-added="true"`); cleared 320ms after creation
+
+**Bug fix: Strict-Mode double-history-push**
+
+`addBlockAtCenter` previously deferred its history push + flash
+via `queueMicrotask` inside a `setState((s) => ...)` updater.
+React 18 Strict Mode runs the updater twice in **dev**, so the
+microtask fired twice and produced **TWO** history entries per
+click. Production was unaffected (Strict Mode is dev-only).
+Symptom: dev-mode undo button showed `↶ Undo · 4` after only two
+`+`-button clicks. Moved the side effects out of the updater;
+both dev and prod now show the correct count.
+
+**i18n:** 8 new keys (en + zh) — `compose.toolbar.{undoWithCount,
+redoWithCount}`, `compose.inspector.{duplicate, duplicateTitle,
+moveTop, moveBottom}`, `compose.announce.justAdded`.
+
+**Files touched**
+
+- `web/src/app/compose/ComposeBoard.tsx`
+- `web/src/app/compose/compose.css`
+- `web/src/lib/i18n/{types,dict.en,dict.zh}.ts`
+
+**Tests**
+
+- core: 553/553 (unchanged)
+- web: 189/189 (unchanged)
+- `format:check` clean both repos
+- `lint` clean (root)
+- `tsc` clean (root + web)
+- `npm run build` succeeds (production)
+- Playwright DOM-level verification (production build, no Strict
+  Mode double-call): `+` × 3 → `↶ Undo · 3`; all 5 inspector
+  actions present; block border-color = `rgb(121, 192, 255)`
+  (`var(--accent)`); dark theme body bg = `rgb(11, 13, 16)`
+  (`var(--bg)`)
+
+**What's intentionally NOT in v0.6.4 (deferred)**
+
+- Block-to-block edges / connections (v0.6.5+)
+- Multi-board / server-side persistence (v0.6.5+)
+- Keyboard-shortcut modal (`?` button) (v0.6.5+)
+- Block hover tooltip showing arrow-key hints (v0.6.5+)
+
 ### v0.6.3 — hotfix: /compose CSS module → global CSS so classes actually apply
 
 v0.6.2 shipped a complete /compose UI overhaul that **never

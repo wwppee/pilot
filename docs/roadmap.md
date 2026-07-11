@@ -251,6 +251,21 @@
 >
 > 测试：core **553/553**、web **189/189**（没变）、format 双清、lint clean、tsc clean、build OK、**Playwright 视觉验证**。
 >
+> **2026-07-11 校准 (20)**：**v0.6.4 已发** —— `/compose` 操作可见性。继续深化 v0.6.2/v0.6.3 的体验，user 直接 critical "完全无从下手"的痛点还没完全消化完。
+>
+> | 类别 | 位置 | 改动 |
+> |---|---|---|
+> | **Toolbar undo/redo 计数** | `web/app/compose/ComposeBoard.tsx:730-749` | `canUndo`/`canRedo` 为真时按钮文字带 stack count（`↶ Undo · 3` / `↷ Redo · 1`）；空 stack 时用原 label。2 个新 i18n key `compose.toolbar.{undoWithCount,redoWithCount}`。 |
+> | **Inspector 4 个新 action** | `web/app/compose/ComposeBoard.tsx:497-580` + `1216-1262` | 每个 block 加 Duplicate (⎘) / Top (⤒) / Bottom (⤓) 按钮。Duplicate 创建 24px 偏移副本；Top / Bottom 重排 blocks 数组（z-order = render 顺序）。5 个新 i18n key。 |
+> | **Drag/drop 视觉反馈** | `web/app/compose/compose.css:484-525` | sidebar item `data-dragging="true"` → 40% 透明 + dashed accent ring；canvas `data-pending="true"` → 慢速 pulse inset accent；新 block `data-just-added="true"` → 220ms fade+scale 动画。 |
+> | **Strict-Mode bug fix** | `web/app/compose/ComposeBoard.tsx:556-588` | v0.6.2 `addBlockAtCenter` 在 `setState((s) => ...)` 内部用 `queueMicrotask(() => setHistory(...))`。React 18 Strict Mode dev 模式双调用 → 每次 +button click 推 2 个 history entry。修了：把 side effect 移出 updater。production 不受影响（Strict Mode 是 dev-only）。 |
+>
+> 关键设计：Strict-Mode bug 是 dev 模式独有但 user 在 `npm run dev` 下会看到 undo count 异常。production 跑是干净的。Playwright production 验证：3 次 +button → undo = 3，5 个 inspector action 全部就位。
+>
+> 测试：core **553/553**、web **189/189**、format 双清、lint clean、tsc clean、production build OK、Playwright DOM-level verify 全过。
+>
+> **故意没做**（v0.6.5+ 留）：block-to-block 连线 / 多 board / 快捷键 modal / block hover tooltip。
+>
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
 ## 阶段一：看见 Pi（v0.1 - v0.3.x，已发）
