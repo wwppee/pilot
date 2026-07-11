@@ -2,6 +2,105 @@
 
 ## Unreleased
 
+### v0.6.5 — /compose inspector real entity fields
+
+v0.6.2 / v0.6.4 made the inspector functional, but every block
+showed the same five metadata rows (id, kind, refId, position,
+cached sublabel). A "session" block, a "policy" block, and a
+"profile" block all rendered the same fields — no way to see the
+real entity's cwd / size / rules / packages without navigating
+away. This release adds per-entity full-detail rendering.
+
+**New server endpoint**
+
+- `GET /compose/catalog/:kind/:id` returns a discriminated-union
+  `ComposeEntityDetail` (session / pack / profile / policy /
+  capability) with the entity's real fields. Returns 404 when
+  the entity is not found, 400 when the kind is unknown.
+- `core/compose-listing.ts#getComposeEntityDetail` is the pure
+  helper that backs it, plus the exported `ComposeEntityDetail`
+  union type.
+- `PilotService.getComposeEntityDetail` + service-impl adapter
+  share the data-source wiring with the existing
+  `listComposeEntities` so the two paths stay in sync.
+
+**Client changes**
+
+- `web/src/lib/pilot-browser.ts#composeEntityDetail` is the
+  browser-safe fetch (404 → null, no throw noise).
+- `BlockInspector` does a `useEffect` fetch on `block.kind` /
+  `block.refId` change; renders a `hydrated` guard so client
+  and SSR don't disagree on `Date.now()`-derived text
+  (React #418 fix).
+- `InspectorDetailFields` switches on `detail.kind` and renders
+  kind-specific `<dl>` rows:
+  - **session** → cwd / model / entries / size (B/KB/MB) /
+    firstUsed / lastUsed (relative time) / firstUserPreview
+  - **pack** → source / packKind / enabled
+  - **profile** → model / provider / thinking / team /
+    description / packages list
+  - **policy** → description + all six rule lists (allow / deny
+    / denyPaths / denyCommands / sensitivePatterns /
+    requireApproval) with rule counts
+  - **capability** → title / type / description / sources list /
+    conflicts / requires
+- `pilot.ts` `pilot<T>()` gains function overloads:
+  - `pilot(path, init?)` → `Promise<T>` (default)
+  - `pilot(path, { nullableStatuses: [...] })` →
+    `Promise<T | null>`
+
+**Bug fix: client-bundle import of `node:fs/promises`**
+
+- v0.6.4 build worked because `ComposeBoard` imported
+  `pilot.ts` but never *called* any of its functions client-side
+  — Turbopack tree-shook the `node:fs/promises` import away.
+- v0.6.5's `useEffect` fetch of `composeEntityDetail` actually
+  pulls `pilot.ts` into the client bundle, which Turbopack
+  rejects with "the chunking context does not support external
+  modules (request: node:fs/promises)".
+- Fix: `ComposeBoard` now imports from `pilot-browser.ts` (the
+  v0.4.7 split that was already in place for this exact reason)
+  instead of `pilot.ts`. The browser variant routes through
+  Next.js's `/api/pilot/*` proxy so the token never reaches the
+  browser, and there's no `node:fs` to drag in.
+
+**i18n**: 28 new keys (en + zh) — `compose.inspector.loading` +
+`compose.inspector.error` + 26 `compose.inspector.detail.*`
+labels (cwd / entries / size / lastUsed / firstUsed / model /
+packages / thinking / provider / team / preview / source /
+enabled / title / type / description / sources / allow / deny /
+denyPaths / denyCommands / sensitivePatterns / requireApproval /
+conflicts / requires / noneCount).
+
+**Files touched**
+
+- `src/core/compose-listing.ts`
+- `src/core/service.ts`
+- `src/core/service-impl.ts`
+- `src/server/server.ts`
+- `test/unit/compose-listing.test.ts` (6 new detail cases)
+- `web/src/lib/types.ts`
+- `web/src/lib/pilot.ts`
+- `web/src/lib/pilot-browser.ts`
+- `web/src/app/compose/ComposeBoard.tsx`
+- `web/src/lib/i18n/{types,dict.en,dict.zh}.ts`
+
+**Tests**
+
+- core: 559/559 (+6 detail)
+- web: 189/189 (unchanged)
+- `format:check` clean both repos
+- `lint` clean (root)
+- `tsc` clean (root + web)
+- `npm run build` succeeds (production)
+
+**What's intentionally NOT in v0.6.5 (deferred)**
+
+- Block-to-block edges / connections
+- Multi-board / server-side persistence of board state
+- Keyboard-shortcut modal (`?` button)
+- Block hover tooltip showing arrow-key hints
+
 ### v0.6.4 — /compose operation visibility: undo counter, block actions, drag/drop animation, Strict-Mode bug fix
 
 The v0.6.2/v0.6.3 release made the layout work and added undo/
