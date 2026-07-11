@@ -2,6 +2,70 @@
 
 ## Unreleased
 
+### v0.6.8 — drag-to-create connection (right-edge handle, live ghost line)
+
+The v0.6.7 connection picker is two clicks: select a block →
+"Connect to…" → pick from a list. That works for the cold case
+where the user is exploring, but the common case is "I already
+know A should go to B" — a drag gesture is one motion, no menu
+scans, no list re-reads.
+
+**New gesture**
+
+- Right-edge handle on the selected block — 14px accent dot
+  with a subtle pulse so it's discoverable without hovering.
+  Only the selected block shows a handle, so the canvas stays
+  quiet at rest.
+- pointerdown on the handle captures the pointer and enters
+  "connection drag" mode. The block's own pointerdown handler
+  sees `stopPropagation()` and never starts a move drag.
+- pointermove draws a dashed accent bezier (ghost line) from
+  the handle's anchor to the current pointer position.
+- pointerup hit-tests the topmost `.compose-block` under the
+  cursor via `document.elementsFromPoint` + `data-block-id`.
+  On a valid target (different from source, not already
+  connected) it commits a single `addConnection` history
+  entry; everything else (self-loop, missing block, duplicate
+  edge) is silently ignored — same refusal policy as the
+  v0.6.7 inspector picker, no toast spam on mis-drag.
+- Successful drops also flip the inspector to the target block
+  so the user sees the new connection listed immediately.
+
+**State changes**
+
+- New `pendingConnection: { fromId, pointerX, pointerY } | null`
+  on `ComposeBoard`. Cleared on every pointerup or pointer
+  cancel. Canvas-relative coords so the SVG overlay can reuse
+  the same coordinate system as existing connection paths.
+- `onCanvasPointerMove` is now an `if/else`: connection drag
+  first (just tracks pointer), block drag second (moves
+  block). They never run together because `startBlockDrag`
+  doesn't fire for handle pointerdowns (stopPropagation).
+
+**CSS / accessibility**
+
+- `.compose-block-handle` — absolute positioned on the right
+  edge mid-height, accent fill, white inset border, subtle
+  pulse animation, 14px hit target.
+- `.compose-block-handle:hover` / `:focus-visible` scales to
+  1.15× for tactile feedback.
+- `data-conn-handle="true"` selector hook for future styling.
+- `.compose-connection-ghost` — dashed stroke at 0.7 opacity,
+  `pointer-events: none` so it never blocks hit-test on
+  underlying blocks.
+- `aria-label` / `title` on the handle (en + zh, 2 new i18n
+  keys) so screen-reader users get the same hint as mouse
+  users: "Drag to another block to connect".
+
+**No backend changes.** All wiring is local — connections
+still live in `localStorage` under the same `connections` key
+introduced in v0.6.7.
+
+**Sandbox caveat:** `pilot start` wasn't running, so the
+gesture couldn't be Playwright-verified end-to-end. tsc +
+production build + 194/194 web tests + 559/559 core tests all
+green.
+
 ### v0.6.7 — block-to-block connections (schema v2, SVG overlay, inspector connect picker)
 
 Compose is a sandbox. The whole point is to lay out a stack of

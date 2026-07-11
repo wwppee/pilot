@@ -312,6 +312,23 @@
 >
 > 验证限制：sandbox 没起 pilot server，page 走 error 分支不挂 ComposeBoard。本机 `pilot start` 后能正常 work。tsc + build + 14 history tests + 19 state tests 全过。
 >
+> **2026-07-11 校准 (24)**：**v0.6.8 已发** —— drag-to-create connection。v0.6.7 picker 是 2-click（block → "+ Connect to…" → pick from list），drag-to-create 是一次 gesture（block 边缘 handle → 拖到 target）。前者的"探索者"体验完整，后者的"已知道 A→B"体验是 1 步。
+>
+> | 类别 | 位置 | 改动 |
+> |---|---|---|
+> | **新 state** | `web/app/compose/ComposeBoard.tsx:189-198` | `pendingConnection: { fromId, pointerX, pointerY } \| null` canvas-相对坐标，pointerup 后清掉 |
+> | **新 callback** | `web/app/compose/ComposeBoard.tsx:548-585` | `startConnectionDrag(block, e)`：handle pointerdown 时 `e.stopPropagation()` 阻止 block move drag 触发，调 `setPointerCapture` 让 handle 跟 cursor 出 block 边界也不丢 |
+> | **扩展 onCanvasPointerMove** | `web/app/compose/ComposeBoard.tsx:498-512` | 优先处理 connection drag（更新 pointer 位置）→ 然后才是 block drag。互斥：handle pointerdown 已 stopPropagation，block drag 不会同时跑 |
+> | **扩展 onCanvasPointerUp** | `web/app/compose/ComposeBoard.tsx:388-444` | connection drag 优先 resolve：`document.elementsFromPoint(e.clientX, e.clientY)` 找顶层 `.compose-block` → 读 `data-block-id` 拿 target → self-loop / missing / duplicate 拒绝 → 调 `addConnection` history entry → `setSelectedId(targetId)` flip inspector |
+> | **handle 渲染** | `web/app/compose/ComposeBoard.tsx:1540-1556` | `ComposeBlockView` 加 `onHandlePointerDown` prop。`{selected ? <button data-conn-handle className="compose-block-handle" /> : null}` |
+> | **ghost line** | `web/app/compose/ComposeBoard.tsx:1309-1336` | SVG overlay 末尾条件渲染 `path.compose-connection-ghost`：source 块右边缘 → cursor 位置，cubic bezier 同 `ConnectionPath`（`dx = max(\|x2-x1\|/2, 60)`） |
+> | **CSS** | `web/app/compose/compose.css:501-555` | `.compose-block-handle` 14px accent dot 居中右边缘 + `box-shadow` 0→6px 脉冲（1.8s loop）。hover/focus 1.15× scale。`.compose-connection-ghost` dashed accent stroke @ 0.7 opacity + `pointer-events: none` |
+> | **i18n** | 2 新 key (en + zh): `compose.handle.aria` / `compose.handle.title` |
+>
+> 关键设计：handle pointerdown 调 `setPointerCapture`（handle 上）+ `e.stopPropagation()`，让 handle 即使 cursor 跑出 block 边界也能继续收 pointermove（直到 release）。`elementsFromPoint` 走 `data-block-id` 拿 target ID，零状态依赖（不靠 React state 推算）。所有拒绝路径（self-loop / missing / duplicate）和 v0.6.7 picker 完全一致 — 不引入新策略。Ghost line 和正式 connection 用同一套 bezier 公式（`ConnectionPath` 内 `BLOCK_W / BLOCK_H`），保证 release 那一刻 ghost → 正式线没有视觉跳跃。
+>
+> 验证限制：sandbox 没起 pilot server，drag gesture 不能 Playwright 测。tsc + production build + 194/194 web tests + 559/559 core tests + format + lint 全过。本机 `pilot start` 后能体验。
+>
 > 测试：core **559/559**、web **194/194**（+5 detail）、format 双清、lint clean、tsc clean（root + web）、production build OK。
 >
 > **故意没做**（v0.6.8+ 留）：block 边缘 drag-to-create connection / connection label 类型 / arrow head / server-side board persistence。
