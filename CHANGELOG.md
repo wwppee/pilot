@@ -2,6 +2,53 @@
 
 ## Unreleased
 
+### v0.6.3 — hotfix: /compose CSS module → global CSS so classes actually apply
+
+v0.6.2 shipped a complete /compose UI overhaul that **never
+rendered**. Root cause: the CSS file was `compose.module.css`
+imported via `import "./compose.module.css"` from the page-level
+server component. Under Next.js 16, `*.module.css` is treated as
+a CSS Module — every class gets hashed through the bundler. The
+className strings in `ComposeBoard.tsx`
+(`"compose-page"`, `"compose-grid"`, `"compose-toolbar"`,
+`"compose-sidebar"`, `"compose-canvas"`, `"compose-block"`, …)
+never matched anything in the served stylesheet, so the v0.6.2
+grid layout never took effect — the page rendered as a single
+column of stacked elements (toolbar, then sidebar contents, then
+inspector contents, with no canvas column and no inspector
+column at all).
+
+**Verified by Playwright screenshot, before / after the rename:**
+
+- **before:** all elements stacked vertically, no canvas column,
+  toolbar's mobile-only "Open details" button visible (because
+  `.compose-toolbar-inspector-trigger { display: none }` was
+  also dead), no toolbar wrapping
+- **after:** 3-column grid (sidebar 280px / canvas 1fr / inspector
+  320px) at ≥1024px, sticky toolbar on top, mobile bottom-sheet
+  drawer at <1024px, all v0.6.2 changes visible
+
+**Fix:** rename `compose.module.css` → `compose.css` (unscoped
+global CSS, matching the v0.4.4-v0.6.1 contract where
+`className="…"` was already used directly) + update the `import`
+path. No component / i18n / type changes — strictly a
+build-config fix.
+
+**Files touched:**
+
+- `web/src/app/compose/compose.module.css` → `web/src/app/compose/compose.css` (rename only — same content)
+- `web/src/app/compose/page.tsx` (1 line: import path)
+
+**Tests:**
+
+- core: 553/553 (unchanged)
+- web: 189/189 (unchanged)
+- `format:check` clean both repos
+- `lint` clean (root)
+- `tsc` clean (root + web)
+- `npm run build` succeeds
+- Playwright visual verification: 3-column grid renders as designed
+
 ### v0.6.2 — /compose UI experience overhaul (toolbar + undo/redo + ellipsis + mobile drawer)
 
 `/compose` was first shipped in v0.4.4 as a "box garden" canvas

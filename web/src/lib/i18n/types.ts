@@ -459,6 +459,16 @@ export type Dict = {
   "compose.announce.undone": string;
   "compose.announce.redone": string;
   "compose.announce.historyEmpty": string;
+  // v0.6.4: undo/redo with stack-count suffix.
+  "compose.toolbar.undoWithCount": string;
+  "compose.toolbar.redoWithCount": string;
+  // v0.6.4: per-block actions (duplicate, move to top/bottom).
+  "compose.inspector.duplicate": string;
+  "compose.inspector.duplicateTitle": string;
+  "compose.inspector.moveTop": string;
+  "compose.inspector.moveBottom": string;
+  // v0.6.4: block-creation feedback ("just added" announcement).
+  "compose.announce.justAdded": string;
   // v0.5.11+ currency formatting.
   "currency.usd": string;
 

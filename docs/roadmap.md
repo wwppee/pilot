@@ -239,6 +239,18 @@
 >
 > 测试：core **553/553**（没动）、web **189/189**（+9 history）、format 双清、lint clean、`npm run build` 成功、tsc clean（root + web）。
 >
+> **2026-07-11 校准 (19)**：**v0.6.3 hotfix 已发** —— v0.6.2 那个 UI 改动在用户环境**根本没渲染**。
+>
+> | 类别 | 位置 | 修复 |
+> |---|---|---|
+> | **Root cause** | `web/app/compose/compose.module.css` + `page.tsx` | 文件名 `compose.module.css` + `import "./compose.module.css"` —— Next.js 16 把 `*.module.css` 当 CSS Module 处理，所有 class 都被 hash 化。但 `ComposeBoard.tsx` 全文用的都是直接 className 字符串（`className="compose-page"` 等），没有 import 为 `styles` 对象 —— 所以**全部 CSS 一条都没生效**。整个 v0.6.2 的 grid / toolbar / sidebar / canvas / inspector / mobile drawer 都是 dead code，渲染出来就是把所有元素堆一列。 |
+> | **Fix** | `web/app/compose/compose.css` (rename) + `page.tsx` (import path) | `compose.module.css` → `compose.css`（unscoped global CSS，跟 v0.4.4-v0.6.1 一致）。1 行 import 路径改完，零组件改动。 |
+> | **验证** | Playwright 截图 before/after | before：单列堆叠，画板不存在，toolbar 移动端 "Open details" 按钮（`.compose-toolbar-inspector-trigger { display:none }` 也死了）也露出来。after：3 栏 grid (280/1fr/320)、sticky toolbar、移动端 bottom-sheet drawer 全部正确。 |
+>
+> 教训：v0.6.2 release 前我应该自起 dev server 截一张图验证，而不是只看 `tsc + build + test` 全过就发。**build OK ≠ 实际渲染 OK**。CSS 加载/解析/类名匹配是 build pipeline 之外的事。
+>
+> 测试：core **553/553**、web **189/189**（没变）、format 双清、lint clean、tsc clean、build OK、**Playwright 视觉验证**。
+>
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
 ## 阶段一：看见 Pi（v0.1 - v0.3.x，已发）

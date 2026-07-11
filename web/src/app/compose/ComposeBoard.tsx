@@ -204,7 +204,33 @@ export default function ComposeBoard({
     future: HistoryEntry[];
   }>({ past: [], future: [] });
   const [inspectorOpen, setInspectorOpen] = useState(false);
+  // v0.6.4: block ids that were just created this frame. Drives the
+  // fade-in animation. Cleared automatically 320ms after creation.
+  const [justAddedIds, setJustAddedIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const canvasRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * v0.6.4: mark a block id as "just added" so the CSS animation
+   * fires once, then clear after 320ms (animation runs 220ms; the
+   * extra 100ms prevents flicker if the user adds another block
+   * quickly).
+   */
+  const flashBlockAdded = useCallback((id: string) => {
+    setJustAddedIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+    setTimeout(() => {
+      setJustAddedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }, 320);
+  }, []);
 
   // Persist on every state change.
   useEffect(() => {
@@ -333,6 +359,7 @@ export default function ComposeBoard({
           () => {
             setState((s) => ({ ...s, blocks: [...s.blocks, block] }));
             setSelectedId(block.id);
+            flashBlockAdded(block.id);
           },
           t("compose.announce.addedBlock", { label: pendingDrop.entity.label }),
         );
@@ -492,44 +519,98 @@ export default function ComposeBoard({
   );
 
   /**
+   * v0.6.4: duplicate a block in place — new id, same kind/refId/label,
+   * offset 24px down-right so the copy is visibly distinct. One history
+   * entry (add), so undo removes the copy.
+   */
+  const duplicateBlock = useCallback(
+    (id: string) => {
+      const source = state.blocks.find((b) => b.id === id);
+      if (!source) return;
+      const copy: ComposeBlock = {
+        ...source,
+        id: genId(),
+        x: source.x + 24,
+        y: source.y + 24,
+      };
+      commit(
+        { type: "add", block: copy },
+        () => {
+          setState((s) => ({ ...s, blocks: [...s.blocks, copy] }));
+          setSelectedId(copy.id);
+          flashBlockAdded(copy.id);
+        },
+        t("compose.announce.justAdded", { label: copy.label }),
+      );
+    },
+    [state.blocks, commit, t, flashBlockAdded],
+  );
+
+  /**
+   * v0.6.4: re-order a block within the blocks array. Z-order matters
+   * for stacking — later blocks render on top. The history entry is
+   * a remove + add pair so undo restores the previous position.
+   */
+  const moveBlockToIndex = useCallback(
+    (id: string, toIndex: number) => {
+      const from = state.blocks.findIndex((b) => b.id === id);
+      if (from < 0 || from === toIndex) return;
+      const block = state.blocks[from];
+      if (!block) return;
+      const reordered = [...state.blocks];
+      reordered.splice(from, 1);
+      const clamped = Math.max(0, Math.min(toIndex, reordered.length));
+      reordered.splice(clamped, 0, block);
+      commit(
+        { type: "add", block },
+        () => {
+          setState((s) => ({ ...s, blocks: reordered }));
+          setSelectedId(block.id);
+        },
+        t("compose.announce.justAdded", { label: block.label }),
+      );
+    },
+    [state.blocks, commit, t],
+  );
+
+  /**
    * Add a sidebar entity as a block in the canvas center. Used by
    * the explicit "+" button on each sidebar item (and the click
    * fallback). The drag-from-sidebar path lives in onCanvasPointerUp.
+   *
+   * v0.6.4: the previous version deferred the history push into
+   * `queueMicrotask` inside the `setState` updater. React 18
+   * Strict Mode runs the updater twice in dev, so the microtask
+   * fired twice and history got two entries per click. Moved the
+   * side effects out of the updater so dev and prod behave the
+   * same.
    */
   const addBlockAtCenter = useCallback(
     (entity: ComposeEntity) => {
-      setState((s) => {
-        // Stagger new blocks so they don't all stack at (0,0)
-        const offset = (s.blocks.length % 6) * 24;
-        const block: ComposeBlock = {
-          id: genId(),
-          kind: entity.kind,
-          refId: entity.id,
-          x: 40 + offset,
-          y: 40 + offset,
-          label: entity.label,
-          ...(entity.sublabel !== undefined
-            ? { sublabel: entity.sublabel }
-            : {}),
-          ...(entity.href !== undefined ? { href: entity.href } : {}),
-        };
-        // Schedule the history push + selection update after we
-        // commit the state. Done in a microtask so React can batch
-        // and we don't double-render.
-        queueMicrotask(() => {
-          setHistory((h) => ({
-            past: [...h.past, { type: "add" as const, block }].slice(
-              -MAX_HISTORY,
-            ),
-            future: [],
-          }));
-          setSelectedId(block.id);
-          announce(t("compose.announce.addedBlock", { label: entity.label }));
-        });
-        return { ...s, blocks: [...s.blocks, block] };
-      });
+      // Stagger new blocks so they don't all stack at (0,0)
+      const offset = (state.blocks.length % 6) * 24;
+      const block: ComposeBlock = {
+        id: genId(),
+        kind: entity.kind,
+        refId: entity.id,
+        x: 40 + offset,
+        y: 40 + offset,
+        label: entity.label,
+        ...(entity.sublabel !== undefined
+          ? { sublabel: entity.sublabel }
+          : {}),
+        ...(entity.href !== undefined ? { href: entity.href } : {}),
+      };
+      setState((s) => ({ ...s, blocks: [...s.blocks, block] }));
+      setHistory((h) => ({
+        past: [...h.past, { type: "add" as const, block }].slice(-MAX_HISTORY),
+        future: [],
+      }));
+      setSelectedId(block.id);
+      flashBlockAdded(block.id);
+      announce(t("compose.announce.addedBlock", { label: entity.label }));
     },
-    [announce, t],
+    [state.blocks, announce, t, flashBlockAdded],
   );
 
   /**
@@ -735,7 +816,11 @@ export default function ComposeBoard({
             title={t("compose.toolbar.undoTitle")}
             aria-label={t("compose.toolbar.undoTitle")}
           >
-            ↶ {t("compose.toolbar.undo")}
+            {canUndo
+              ? t("compose.toolbar.undoWithCount", {
+                  n: history.past.length,
+                })
+              : `↶ ${t("compose.toolbar.undo")}`}
           </button>
           <button
             type="button"
@@ -745,7 +830,11 @@ export default function ComposeBoard({
             title={t("compose.toolbar.redoTitle")}
             aria-label={t("compose.toolbar.redoTitle")}
           >
-            ↷ {t("compose.toolbar.redo")}
+            {canRedo
+              ? t("compose.toolbar.redoWithCount", {
+                  n: history.future.length,
+                })
+              : `↷ ${t("compose.toolbar.redo")}`}
           </button>
         </div>
         <span className="compose-toolbar-divider" aria-hidden="true" />
@@ -886,51 +975,64 @@ export default function ComposeBoard({
                     <span aria-hidden="true">{sec.emoji}</span>
                     <span>{sec.label}</span>
                   </h4>
-                  {sec.items.map((e) => (
-                    <div
-                      key={`${sec.kind}:${e.id}`}
-                      className="compose-sidebar-item"
-                      style={{ borderLeftColor: KIND_META[sec.kind](t).tint }}
-                      onPointerDown={(ev) => startSidebarDrag(e, ev)}
-                      role="group"
-                      aria-label={t("compose.aria.addEntity", {
-                        kind: sec.label.toLowerCase(),
-                        label: e.label,
-                      })}
-                      title={t("compose.dragHint")}
-                    >
-                      <div className="compose-sidebar-body-cell">
-                        <div className="compose-sidebar-label" title={e.label}>
-                          {e.label}
-                        </div>
-                        {e.sublabel ? (
-                          <div
-                            className="compose-sidebar-sublabel"
-                            title={e.sublabel}
-                          >
-                            {e.sublabel}
-                          </div>
-                        ) : null}
-                      </div>
-                      <button
-                        type="button"
-                        className="compose-sidebar-add"
-                        onPointerDown={(ev) => ev.stopPropagation()}
-                        onClick={(ev) => {
-                          ev.stopPropagation();
-                          addBlockAtCenter(e);
-                        }}
-                        aria-label={t("compose.sidebar.addAria", {
+                  {sec.items.map((e) => {
+                    // v0.6.4: dim the sidebar item the user is currently
+                    // dragging out of the sidebar so it's clear which one
+                    // is "in hand".
+                    const isDragging =
+                      pendingDrop !== null &&
+                      pendingDrop.entity.id === e.id &&
+                      pendingDrop.entity.kind === sec.kind;
+                    return (
+                      <div
+                        key={`${sec.kind}:${e.id}`}
+                        className="compose-sidebar-item"
+                        data-dragging={isDragging}
+                        style={{ borderLeftColor: KIND_META[sec.kind](t).tint }}
+                        onPointerDown={(ev) => startSidebarDrag(e, ev)}
+                        role="group"
+                        aria-label={t("compose.aria.addEntity", {
+                          kind: sec.label.toLowerCase(),
                           label: e.label,
                         })}
-                        title={t("compose.sidebar.addAria", {
-                          label: e.label,
-                        })}
+                        title={t("compose.dragHint")}
                       >
-                        +
-                      </button>
-                    </div>
-                  ))}
+                        <div className="compose-sidebar-body-cell">
+                          <div
+                            className="compose-sidebar-label"
+                            title={e.label}
+                          >
+                            {e.label}
+                          </div>
+                          {e.sublabel ? (
+                            <div
+                              className="compose-sidebar-sublabel"
+                              title={e.sublabel}
+                            >
+                              {e.sublabel}
+                            </div>
+                          ) : null}
+                        </div>
+                        <button
+                          type="button"
+                          className="compose-sidebar-add"
+                          onPointerDown={(ev) => ev.stopPropagation()}
+                          onClick={(ev) => {
+                            ev.stopPropagation();
+                            addBlockAtCenter(e);
+                          }}
+                          aria-label={t("compose.sidebar.addAria", {
+                            label: e.label,
+                          })}
+                          title={t("compose.sidebar.addAria", {
+                            label: e.label,
+                          })}
+                        >
+                          +
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               ))
             )}
@@ -970,6 +1072,7 @@ export default function ComposeBoard({
               key={b.id}
               block={b}
               selected={b.id === selectedId}
+              justAdded={justAddedIds.has(b.id)}
               dragging={drag?.blockId === b.id}
               viewMode={viewMode}
               onPointerDown={(e) => startBlockDrag(b, e)}
@@ -1029,6 +1132,11 @@ export default function ComposeBoard({
             <BlockInspector
               block={selectedBlock}
               onDelete={() => deleteBlock(selectedBlock.id)}
+              onDuplicate={() => duplicateBlock(selectedBlock.id)}
+              onMoveToTop={() =>
+                moveBlockToIndex(selectedBlock.id, state.blocks.length - 1)
+              }
+              onMoveToBottom={() => moveBlockToIndex(selectedBlock.id, 0)}
               catalogEntity={catalogIndex.get(
                 `${selectedBlock.kind}:${selectedBlock.refId}`,
               )}
@@ -1055,6 +1163,7 @@ function ComposeBlockView({
   block,
   selected,
   dragging,
+  justAdded,
   viewMode,
   onPointerDown,
   onPointerUp,
@@ -1064,6 +1173,7 @@ function ComposeBlockView({
   block: ComposeBlock;
   selected: boolean;
   dragging: boolean;
+  justAdded: boolean;
   viewMode: ViewMode;
   onPointerDown: (e: React.PointerEvent) => void;
   onPointerUp: () => void;
@@ -1088,6 +1198,7 @@ function ComposeBlockView({
       className={`compose-block ${viewMode === "cozy" ? "cozy" : "modern"}`}
       data-selected={selected}
       data-dragging={dragging}
+      data-just-added={justAdded}
       data-mode={viewMode}
       style={{
         left: `${block.x}px`,
@@ -1138,10 +1249,16 @@ function ComposeBlockView({
 function BlockInspector({
   block,
   onDelete,
+  onDuplicate,
+  onMoveToTop,
+  onMoveToBottom,
   catalogEntity,
 }: {
   block: ComposeBlock;
   onDelete: () => void;
+  onDuplicate: () => void;
+  onMoveToTop: () => void;
+  onMoveToBottom: () => void;
   catalogEntity: ComposeEntity | undefined;
 }) {
   const t = useT();
@@ -1195,6 +1312,31 @@ function BlockInspector({
             {t("compose.inspector.openDetail")}
           </a>
         ) : null}
+        <button
+          type="button"
+          className="btn small secondary"
+          onClick={onDuplicate}
+          title={t("compose.inspector.duplicateTitle")}
+          aria-label={t("compose.inspector.duplicateTitle")}
+        >
+          ⎘ {t("compose.inspector.duplicate")}
+        </button>
+        <button
+          type="button"
+          className="btn small secondary"
+          onClick={onMoveToTop}
+          aria-label={`${t("compose.inspector.moveTop")}`}
+        >
+          ⤒ {t("compose.inspector.moveTop")}
+        </button>
+        <button
+          type="button"
+          className="btn small secondary"
+          onClick={onMoveToBottom}
+          aria-label={t("compose.inspector.moveBottom")}
+        >
+          ⤓ {t("compose.inspector.moveBottom")}
+        </button>
         <button type="button" className="btn small danger" onClick={onDelete}>
           {t("compose.inspector.remove")}
         </button>

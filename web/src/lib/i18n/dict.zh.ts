@@ -495,6 +495,16 @@ const zh: Dict = {
   "compose.announce.undone": "已撤销上一步",
   "compose.announce.redone": "已重做",
   "compose.announce.historyEmpty": "没有可撤销的操作",
+  // v0.6.4: undo/redo 带栈计数。
+  "compose.toolbar.undoWithCount": "↶ 撤销 · {n}",
+  "compose.toolbar.redoWithCount": "↷ 重做 · {n}",
+  // v0.6.4: 块操作。
+  "compose.inspector.duplicate": "复制",
+  "compose.inspector.duplicateTitle": "在它旁边加一个副本",
+  "compose.inspector.moveTop": "置顶",
+  "compose.inspector.moveBottom": "置底",
+  // v0.6.4: 添加完成的播报。
+  "compose.announce.justAdded": "已添加 {label} — 按 ⌘/Ctrl+Z 撤销",
   // v0.5.11+ 货币格式。
   "currency.usd": "US${amount}",
 

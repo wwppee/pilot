@@ -249,6 +249,14 @@
   background: var(--surface);
   border-color: var(--text-muted);
 }
+/* v0.6.4: drag feedback — the sidebar item the user is currently
+   dragging out into the canvas gets dimmed + ringed so the user
+   has a visual "I'm holding this" cue. */
+.compose-sidebar-item[data-dragging="true"] {
+  opacity: 0.4;
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+}
 
 .compose-sidebar-body-cell {
   flex: 1;
@@ -471,6 +479,38 @@
   outline: 3px solid var(--accent);
   outline-offset: 2px;
   box-shadow: 0 0 0 5px rgba(121, 192, 255, 0.3);
+}
+
+/* v0.6.4: fade-in animation for newly added blocks. Set
+   `data-just-added="true"` for ~250ms after creation so the user
+   has visible feedback that the drop succeeded. */
+@keyframes compose-block-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.compose-block[data-just-added="true"] {
+  animation: compose-block-fade-in 0.22s ease-out;
+}
+
+/* v0.6.4: while a sidebar item is being dragged, the canvas gets
+   a dashed inner border + soft accent tint to signal "drop here". */
+@keyframes compose-canvas-pulse {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+  50% {
+    box-shadow: inset 0 0 0 2px rgba(121, 192, 255, 0.5);
+  }
+}
+.compose-canvas[data-pending="true"] {
+  animation: compose-canvas-pulse 1.2s ease-in-out infinite;
 }
 
 /* ─── Inspector ─────────────────────────────────────────── */

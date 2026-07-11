@@ -512,6 +512,16 @@ const en: Dict = {
   "compose.announce.undone": "Undid last change",
   "compose.announce.redone": "Redid last change",
   "compose.announce.historyEmpty": "Nothing to undo",
+  // v0.6.4: undo/redo with stack-count suffix.
+  "compose.toolbar.undoWithCount": "↶ Undo · {n}",
+  "compose.toolbar.redoWithCount": "↷ Redo · {n}",
+  // v0.6.4: per-block actions.
+  "compose.inspector.duplicate": "Duplicate",
+  "compose.inspector.duplicateTitle": "Add a copy of this block beside it",
+  "compose.inspector.moveTop": "Top",
+  "compose.inspector.moveBottom": "Bottom",
+  // v0.6.4: just-added announcement.
+  "compose.announce.justAdded": "Added {label} — press ⌘/Ctrl+Z to undo",
   // v0.5.11+ currency formatting.
   "currency.usd": "${amount}",
 
