@@ -567,6 +567,17 @@ const en: Dict = {
   // the inspector's two-click picker).
   "compose.handle.aria": "Drag to another block to connect",
   "compose.handle.title": "Drag to connect",
+  "compose.inspector.connectionLabel": "Connection label",
+  "compose.inspector.connectionLabel.placeholder": "Type a label…",
+  "compose.inspector.connectionLabel.none": "No label",
+  "compose.connectionLabel.kind.flows": "flows to",
+  "compose.connectionLabel.kind.uses": "uses",
+  "compose.connectionLabel.kind.feeds": "feeds",
+  "compose.connectionLabel.kind.depends": "depends on",
+  "compose.connectionLabel.kind.produces": "produces",
+  "compose.connectionLabel.kind.manual": "manual",
+  "compose.connectionLabel.tooltip": "Click to edit connection label",
+  "compose.announce.connectionLabelUpdated": "Connection label updated",
   // v0.5.11+ currency formatting.
   "currency.usd": "${amount}",
 

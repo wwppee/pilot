@@ -549,6 +549,17 @@ const zh: Dict = {
   // 一次性画连接（对比 inspector 里 2-click picker）。
   "compose.handle.aria": "拖到另一块以建立连接",
   "compose.handle.title": "拖动以连接",
+  "compose.inspector.connectionLabel": "连接标签",
+  "compose.inspector.connectionLabel.placeholder": "输入标签…",
+  "compose.inspector.connectionLabel.none": "无标签",
+  "compose.connectionLabel.kind.flows": "流向",
+  "compose.connectionLabel.kind.uses": "使用",
+  "compose.connectionLabel.kind.feeds": "提供",
+  "compose.connectionLabel.kind.depends": "依赖",
+  "compose.connectionLabel.kind.produces": "产出",
+  "compose.connectionLabel.kind.manual": "手动",
+  "compose.connectionLabel.tooltip": "点击编辑连接标签",
+  "compose.announce.connectionLabelUpdated": "连接标签已更新",
   // v0.5.11+ 货币格式。
   "currency.usd": "US${amount}",
 

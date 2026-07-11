@@ -546,7 +546,20 @@ export interface ComposeBlock {
  * canvas. Pure data — no styling/state per edge yet. The SVG
  * renderer treats it as a soft visual hint, not a workflow
  * execution primitive.
+ *
+ * v0.6.9: optional `label` (free-text) and `kind` (one of
+ * `flows`/`uses`/`feeds`/`depends`/`produces`/`manual`).
+ * Both are optional; the arrow + free text alone still render
+ * fine when the user doesn't pick a kind.
  */
+export type ConnectionLabelKind =
+  | "flows"
+  | "uses"
+  | "feeds"
+  | "depends"
+  | "produces"
+  | "manual";
+
 export interface ComposeConnection {
   /** Stable connection id (uuid). Keeps history entries small. */
   id: string;
@@ -554,6 +567,10 @@ export interface ComposeConnection {
   from: string;
   /** Target block id (line ends at the left edge of this block). */
   to: string;
+  /** v0.6.9: optional free-text label (e.g. "via npm"). */
+  label?: string;
+  /** v0.6.9: optional semantic kind (default: "flows"). */
+  kind?: ConnectionLabelKind;
 }
 
 export interface ComposeState {
@@ -561,15 +578,16 @@ export interface ComposeState {
   /**
    * v0.6.7+: directed edges between blocks. Optional on the
    * type so v1 saves load without migration; saved as `[]` for
-   * v2.
+   * v2 / v3.
    */
   connections?: ComposeConnection[];
   /**
    * Schema version.
    *  - 1: original (v0.4.4 - v0.6.6) — blocks only
-   *  - 2: v0.6.7+ — adds `connections: ComposeConnection[]`
+   *  - 2: v0.6.7 - v0.6.8 — adds `connections: ComposeConnection[]`
+   *  - 3: v0.6.9+ — connections may have `label` + `kind`
    */
-  version: 2;
+  version: 3;
   /** ISO timestamp of last save. */
   updatedAt: string;
   /** Optional human-readable name for this layout. */

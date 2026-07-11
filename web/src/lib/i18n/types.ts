@@ -512,6 +512,18 @@ export type Dict = {
   // v0.6.8: right-edge connector handle on selected blocks.
   "compose.handle.aria": string;
   "compose.handle.title": string;
+  // v0.6.9: arrow head + connection label.
+  "compose.inspector.connectionLabel": string;
+  "compose.inspector.connectionLabel.placeholder": string;
+  "compose.inspector.connectionLabel.none": string;
+  "compose.connectionLabel.kind.flows": string;
+  "compose.connectionLabel.kind.uses": string;
+  "compose.connectionLabel.kind.feeds": string;
+  "compose.connectionLabel.kind.depends": string;
+  "compose.connectionLabel.kind.produces": string;
+  "compose.connectionLabel.kind.manual": string;
+  "compose.connectionLabel.tooltip": string;
+  "compose.announce.connectionLabelUpdated": string;
   // v0.5.11+ currency formatting.
   "currency.usd": string;
 

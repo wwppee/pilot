@@ -20,7 +20,12 @@
  *     one place — ComposeBoard just wires the UI
  */
 
-import type { ComposeBlock, ComposeConnection, ComposeState } from "./types";
+import type {
+  ComposeBlock,
+  ComposeConnection,
+  ComposeState,
+  ConnectionLabelKind,
+} from "./types";
 
 /** Max entries held in past[]; oldest are dropped on overflow. */
 export const MAX_HISTORY = 50;
@@ -37,7 +42,28 @@ export type HistoryEntry =
       toY: number;
     }
   | { type: "addConnection"; connection: ComposeConnection }
-  | { type: "removeConnection"; connection: ComposeConnection };
+  | { type: "removeConnection"; connection: ComposeConnection }
+  | {
+      /**
+       * v0.6.9: edit a connection's free-text label and/or semantic
+       * kind. The entry stores BEFORE/AFTER so undo/redo round-trips
+       * work without re-fetching the live state. The connection id
+       * is enough to find the edge — `from`/`to` don't need to be
+       * tracked here.
+       *
+       * `""` (empty string) means "clear this field" — the React
+       * layer normalises the user's empty textbox into `""` before
+       * committing, so the history entry round-trips losslessly.
+       * We intentionally don't use `undefined` because that would
+       * collide with "field not touched in this entry".
+       */
+      type: "updateConnectionLabel";
+      connectionId: string;
+      fromLabel: string;
+      toLabel: string;
+      fromKind: ConnectionLabelKind | "";
+      toKind: ConnectionLabelKind | "";
+    };
 
 export interface HistoryState {
   past: HistoryEntry[];
@@ -98,6 +124,37 @@ export function applyEntry(
         },
         selectedId: null,
       };
+    case "updateConnectionLabel": {
+      // v0.6.9: rewrite just label + kind on the matching edge.
+      // Selection doesn't change — the user was already looking
+      // at this block; only the inline editor mutated.
+      // ComposeState doesn't carry selection (selectedId is a
+      // sibling useState in the React layer), so we return null
+      // and let the React layer keep its existing selection.
+      //
+      // `""` in entry.toLabel/toKind means "clear this field";
+      // anything else is the new value. We `delete` rather than
+      // assign undefined so the resulting connection object
+      // matches the schema (no `label: undefined` floating
+      // around in JSON).
+      const conns = state.connections ?? [];
+      const updated = conns.map((c) => {
+        if (c.id !== entry.connectionId) return c;
+        const next: ComposeConnection = { ...c };
+        if (entry.toLabel === "") {
+          delete next.label;
+        } else {
+          next.label = entry.toLabel;
+        }
+        if (entry.toKind === "") {
+          delete next.kind;
+        } else {
+          next.kind = entry.toKind;
+        }
+        return next;
+      });
+      return { state: { ...state, connections: updated }, selectedId: null };
+    }
   }
 }
 
@@ -124,5 +181,16 @@ export function invertEntry(entry: HistoryEntry): HistoryEntry {
       return { type: "removeConnection", connection: entry.connection };
     case "removeConnection":
       return { type: "addConnection", connection: entry.connection };
+    case "updateConnectionLabel":
+      // Swap before/after so undo flips back to `from` and redo
+      // (which applies the entry as-is) restores `to`.
+      return {
+        type: "updateConnectionLabel",
+        connectionId: entry.connectionId,
+        fromLabel: entry.toLabel,
+        toLabel: entry.fromLabel,
+        fromKind: entry.toKind,
+        toKind: entry.fromKind,
+      };
   }
 }

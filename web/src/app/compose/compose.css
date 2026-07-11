@@ -621,22 +621,68 @@
   flex-direction: column;
   gap: 4px;
 }
+/* v0.6.9: connection item is now column-shaped so the inline
+   label editor (input + kind <select>) can sit on its own row
+   under the header. Pre-v0.6.9 this was a single row showing
+   just the peer block's name. */
 .compose-connection-item {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  flex-direction: column;
+  gap: 4px;
   padding: 4px 6px;
   background: var(--surface);
   border-radius: 3px;
   border: 1px solid var(--border);
   font-size: 12px;
 }
-.compose-connection-item .compose-connection-label {
+.compose-connection-item-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.compose-connection-item-header .compose-connection-peer {
   flex: 1;
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.compose-connection-item-editor {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.compose-connection-label-input {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 6px;
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  min-height: 22px;
+}
+.compose-connection-label-input:focus {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+.compose-connection-kind-select {
+  flex-shrink: 0;
+  padding: 3px 4px;
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  min-height: 22px;
+  max-width: 110px;
+}
+.compose-connection-kind-select:focus {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
 }
 .compose-connection-disconnect {
   width: 22px;
@@ -645,6 +691,50 @@
   min-height: 0;
   font-size: 14px;
   line-height: 1;
+}
+/* v0.6.9: inline label on the connection line. The
+   `paint-order: stroke; stroke: var(--bg); stroke-width: 4;`
+   trick paints a "halo" of canvas background color under the
+   glyphs so the label stays readable when it overlaps the
+   bezier line, without needing an actual <rect> background. */
+.compose-connections .compose-connection-label {
+  font-size: 11px;
+  font-family: inherit;
+  font-weight: 500;
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+  fill: currentColor;
+  pointer-events: none;
+  user-select: none;
+}
+/* Cozy skin: keep the same readability trick but tint the
+   halo with the warm cream background so labels don't get
+   cross-eyed against the dotted grid. */
+.compose-canvas.cozy .compose-connections .compose-connection-label {
+  stroke: #f5ecd9;
+}
+/* Kind-driven tint on the line + arrow. CSS variables set
+   per data-kind on the <g>; currentColor cascades into the
+   marker so the arrowhead stays in sync with the line. */
+.compose-connections [data-kind="flows"] path {
+  color: var(--accent);
+}
+.compose-connections [data-kind="uses"] path {
+  color: var(--cozy-accent-2);
+}
+.compose-connections [data-kind="feeds"] path {
+  color: var(--cozy-accent);
+}
+.compose-connections [data-kind="depends"] path {
+  color: var(--hitl);
+}
+.compose-connections [data-kind="produces"] path {
+  color: var(--cozy-profile);
+}
+.compose-connections [data-kind="manual"] path {
+  color: var(--text-muted);
 }
 
 .compose-connect-picker {

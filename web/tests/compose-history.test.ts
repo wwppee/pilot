@@ -19,7 +19,7 @@ import type { ComposeBlock, ComposeState } from "../src/lib/types";
 function makeState(blocks: ComposeBlock[] = []): ComposeState {
   return {
     blocks,
-    version: 2,
+    version: 3,
     updatedAt: "2026-07-11T00:00:00.000Z",
     name: "test",
   };
@@ -203,5 +203,150 @@ describe("addConnection / removeConnection (v0.6.7)", () => {
     const { state } = applyEntry(start, { type: "remove", block: a });
     expect(state.connections).toEqual([conn]);
     expect(state.blocks).toEqual([b]);
+  });
+});
+
+// ─── v0.6.9: updateConnectionLabel ───────────────────────────
+
+import type { ComposeConnection } from "../src/lib/types";
+
+describe("updateConnectionLabel (v0.6.9)", () => {
+  const a: ComposeBlock = makeBlock({ id: "a" });
+  const b: ComposeBlock = makeBlock({ id: "b", x: 400, y: 400 });
+  const conn: ComposeConnection = { id: "c-lab", from: "a", to: "b" };
+
+  it("sets label and kind on the matching edge", () => {
+    const start = { ...makeState([a, b]), connections: [conn] };
+    const { state } = applyEntry(start, {
+      type: "updateConnectionLabel",
+      connectionId: "c-lab",
+      fromLabel: "",
+      toLabel: "via npm",
+      fromKind: "",
+      toKind: "uses",
+    });
+    expect(state.connections?.[0]?.label).toBe("via npm");
+    expect(state.connections?.[0]?.kind).toBe("uses");
+  });
+
+  it("preserves other edges untouched", () => {
+    const conn2: ComposeConnection = { id: "c-other", from: "b", to: "a" };
+    const start = {
+      ...makeState([a, b]),
+      connections: [conn, conn2],
+    };
+    const { state } = applyEntry(start, {
+      type: "updateConnectionLabel",
+      connectionId: "c-lab",
+      fromLabel: "",
+      toLabel: "via npm",
+      fromKind: "",
+      toKind: "uses",
+    });
+    const labelled = state.connections?.find((c) => c.id === "c-lab");
+    const other = state.connections?.find((c) => c.id === "c-other");
+    expect(labelled?.label).toBe("via npm");
+    expect(labelled?.kind).toBe("uses");
+    expect(other).toEqual(conn2);
+  });
+
+  it("clears label and kind when to* are empty string", () => {
+    const labelled: ComposeConnection = {
+      ...conn,
+      label: "old",
+      kind: "uses",
+    };
+    const start = { ...makeState([a, b]), connections: [labelled] };
+    const { state } = applyEntry(start, {
+      type: "updateConnectionLabel",
+      connectionId: "c-lab",
+      fromLabel: "old",
+      toLabel: "",
+      fromKind: "uses",
+      toKind: "",
+    });
+    expect(state.connections?.[0]?.label).toBeUndefined();
+    expect(state.connections?.[0]?.kind).toBeUndefined();
+    // The connection object should NOT carry `label: undefined`
+    // or `kind: undefined` — `delete` ensures JSON.stringify
+    // drops the keys entirely (round-trip stable).
+    expect("label" in (state.connections?.[0] ?? {})).toBe(false);
+    expect("kind" in (state.connections?.[0] ?? {})).toBe(false);
+  });
+
+  it("invertEntry swaps before/after values", () => {
+    const entry: HistoryEntry = {
+      type: "updateConnectionLabel",
+      connectionId: "c-lab",
+      fromLabel: "old",
+      toLabel: "new",
+      fromKind: "uses",
+      toKind: "feeds",
+    };
+    const inverted = invertEntry(entry);
+    expect(inverted).toEqual({
+      type: "updateConnectionLabel",
+      connectionId: "c-lab",
+      fromLabel: "new",
+      toLabel: "old",
+      fromKind: "feeds",
+      toKind: "uses",
+    });
+  });
+
+  it("undo/redo round-trip: edit label → undo → redo preserves state", () => {
+    const start = { ...makeState([a, b]), connections: [conn] };
+    const edit: HistoryEntry = {
+      type: "updateConnectionLabel",
+      connectionId: "c-lab",
+      fromLabel: "",
+      toLabel: "via npm",
+      fromKind: "",
+      toKind: "uses",
+    };
+    // apply
+    let s = applyEntry(start, edit).state;
+    expect(s.connections?.[0]?.label).toBe("via npm");
+    expect(s.connections?.[0]?.kind).toBe("uses");
+    // undo — invertEntry swaps, so we apply toLabel="" / toKind=""
+    s = applyEntry(s, invertEntry(edit)).state;
+    expect(s.connections?.[0]?.label).toBeUndefined();
+    expect(s.connections?.[0]?.kind).toBeUndefined();
+    // redo
+    s = applyEntry(s, edit).state;
+    expect(s.connections?.[0]?.label).toBe("via npm");
+    expect(s.connections?.[0]?.kind).toBe("uses");
+  });
+
+  it("preserves state.blocks when applying updateConnectionLabel", () => {
+    const start = { ...makeState([a, b]), connections: [conn] };
+    const { state } = applyEntry(start, {
+      type: "updateConnectionLabel",
+      connectionId: "c-lab",
+      fromLabel: "",
+      toLabel: "x",
+      fromKind: "",
+      toKind: "manual",
+    });
+    expect(state.blocks).toEqual([a, b]);
+  });
+
+  it("preserves from/to on the edge — only label/kind change", () => {
+    const labelled: ComposeConnection = {
+      ...conn,
+      label: "old",
+      kind: "uses",
+    };
+    const start = { ...makeState([a, b]), connections: [labelled] };
+    const { state } = applyEntry(start, {
+      type: "updateConnectionLabel",
+      connectionId: "c-lab",
+      fromLabel: "old",
+      toLabel: "new",
+      fromKind: "uses",
+      toKind: "feeds",
+    });
+    expect(state.connections?.[0]?.from).toBe("a");
+    expect(state.connections?.[0]?.to).toBe("b");
   });
 });

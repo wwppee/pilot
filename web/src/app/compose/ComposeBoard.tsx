@@ -40,6 +40,7 @@ import type {
   ComposeEntityDetail,
   ComposeEntityKind,
   ComposeState,
+  ConnectionLabelKind,
 } from "../../lib/types";
 import {
   applyEntry,
@@ -120,7 +121,7 @@ interface PendingDrop {
 function emptyState(): ComposeState {
   return {
     blocks: [],
-    version: 2,
+    version: 3,
     updatedAt: new Date().toISOString(),
     name: "default",
   };
@@ -134,14 +135,14 @@ function loadState(): ComposeState {
     const parsed = JSON.parse(raw) as Partial<ComposeState> & {
       version?: number;
     };
-    // v0.6.7: accept both v1 (no `connections` field) and v2. v1
-    // saves load fine — `connections` is treated as `[]` until the
-    // user adds an edge. Unknown future versions drop to empty
-    // state (we'd rather lose board than silently mis-parse).
-    if (
-      (parsed.version as number | undefined) !== 1 &&
-      (parsed.version as number | undefined) !== 2
-    ) {
+    // v0.6.9: accept v1 (blocks only), v2 (blocks + connections),
+    // v3 (connections may carry `label` + `kind`). v1 + v2 saves
+    // load fine — `connections` is treated as `[]` until the user
+    // adds an edge, and `label`/`kind` stay undefined. Unknown
+    // future versions drop to empty state (we'd rather lose the
+    // board than silently mis-parse).
+    const v = parsed.version as number | undefined;
+    if (v !== 1 && v !== 2 && v !== 3) {
       return emptyState();
     }
     if (!Array.isArray(parsed.blocks)) return emptyState();
@@ -798,6 +799,73 @@ export default function ComposeBoard({
     [state.connections, state.blocks, commit, t],
   );
 
+  // v0.6.9: edit a connection's free-text label and/or semantic
+  // kind. The inputs are committed one entry at a time so undo
+  // can step through character-by-character edits — same pattern
+  // drag-to-move uses (one entry per drag-end, not per frame).
+  const updateConnectionLabel = useCallback(
+    (
+      connectionId: string,
+      nextLabel: string | undefined,
+      nextKind: ConnectionLabelKind | undefined,
+    ) => {
+      const conns = state.connections ?? [];
+      const conn = conns.find((c) => c.id === connectionId);
+      if (!conn) return;
+      // Empty string vs undefined: an empty textbox is the user's
+      // way to clear the label. Normalize to undefined so the
+      // SVG renderer can use `connection.label ? ...` without
+      // worrying about empty strings. The ConnectionList <select>
+      // never passes "" (it maps "" → undefined on the way out),
+      // so we only normalise the label here.
+      const normLabel = nextLabel?.trim() === "" ? undefined : nextLabel;
+      // History entry uses "" to mean "clear this field" (vs the
+      // original value which may also have been undefined → "").
+      // Undefined can't appear inside an entry because
+      // exactOptionalPropertyTypes won't let us build a literal
+      // `label: undefined` field. See compose-history.ts.
+      const fromLabel = conn.label ?? "";
+      const toLabel = normLabel ?? "";
+      const fromKind: ConnectionLabelKind | "" = conn.kind ?? "";
+      const toKind: ConnectionLabelKind | "" = nextKind ?? "";
+      if (fromLabel === toLabel && fromKind === toKind) return;
+      commit(
+        {
+          type: "updateConnectionLabel",
+          connectionId,
+          fromLabel,
+          toLabel,
+          fromKind,
+          toKind,
+        },
+        () => {
+          setState((s) => ({
+            ...s,
+            connections: (s.connections ?? []).map((c) => {
+              if (c.id !== connectionId) return c;
+              const next: ComposeConnection = { ...c };
+              if (normLabel === undefined) {
+                delete next.label;
+              } else {
+                next.label = normLabel;
+              }
+              if (nextKind === undefined) {
+                delete next.kind;
+              } else {
+                next.kind = nextKind;
+              }
+              return next;
+            }),
+          }));
+        },
+        t("compose.announce.connectionLabelUpdated", {
+          label: normLabel ?? "",
+        }),
+      );
+    },
+    [state.connections, commit, t],
+  );
+
   /**
    * Add a sidebar entity as a block in the canvas center. Used by
    * the explicit "+" button on each sidebar item (and the click
@@ -1300,6 +1368,38 @@ export default function ComposeBoard({
             xmlns="http://www.w3.org/2000/svg"
             aria-hidden="true"
           >
+            {/* v0.6.9: arrowhead <marker>s. Two flavors so the
+                selected edge can swap to a brighter head without
+                duplicating geometry. `fill="context-stroke"` would
+                also work in newer browsers but we keep the explicit
+                `currentColor` so the path's own `color` CSS rule
+                drives both line and head. */}
+            <defs>
+              <marker
+                id="compose-arrow-default"
+                viewBox="0 0 10 10"
+                refX="9"
+                refY="5"
+                markerWidth="7"
+                markerHeight="7"
+                orient="auto-start-reverse"
+                markerUnits="userSpaceOnUse"
+              >
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" />
+              </marker>
+              <marker
+                id="compose-arrow-selected"
+                viewBox="0 0 10 10"
+                refX="9"
+                refY="5"
+                markerWidth="8"
+                markerHeight="8"
+                orient="auto-start-reverse"
+                markerUnits="userSpaceOnUse"
+              >
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor" />
+              </marker>
+            </defs>
             {(state.connections ?? []).map((c) => (
               <ConnectionPath
                 key={c.id}
@@ -1432,6 +1532,7 @@ export default function ComposeBoard({
               onCancelConnect={() => setConnectingFromId(null)}
               onConnect={(toId) => connectBlock(selectedBlock.id, toId)}
               onDisconnect={disconnectConnection}
+              onUpdateLabel={updateConnectionLabel}
             />
           ) : (
             <div className="compose-inspector-empty">
@@ -1570,6 +1671,7 @@ function BlockInspector({
   onCancelConnect,
   onConnect,
   onDisconnect,
+  onUpdateLabel,
 }: {
   block: ComposeBlock;
   onDelete: () => void;
@@ -1584,6 +1686,11 @@ function BlockInspector({
   onCancelConnect: () => void;
   onConnect: (toId: string) => void;
   onDisconnect: (connectionId: string) => void;
+  onUpdateLabel: (
+    connectionId: string,
+    label: string | undefined,
+    kind: ConnectionLabelKind | undefined,
+  ) => void;
 }) {
   const t = useT();
   const meta = KIND_META[block.kind](t);
@@ -1714,6 +1821,7 @@ function BlockInspector({
             allBlocks={allBlocks}
             connections={connections}
             onDisconnect={onDisconnect}
+            onUpdateLabel={onUpdateLabel}
           />
         )}
       </div>
@@ -1853,11 +1961,17 @@ function ConnectionList({
   allBlocks,
   connections,
   onDisconnect,
+  onUpdateLabel,
 }: {
   block: ComposeBlock;
   allBlocks: ComposeBlock[];
   connections: ComposeConnection[];
   onDisconnect: (connectionId: string) => void;
+  onUpdateLabel: (
+    connectionId: string,
+    label: string | undefined,
+    kind: ConnectionLabelKind | undefined,
+  ) => void;
 }) {
   const t = useT();
   const outgoing = connections.filter((c) => c.from === block.id);
@@ -1883,24 +1997,79 @@ function ConnectionList({
     <ul className="compose-connection-list">
       {all.map(({ c, other, dir }) => (
         <li key={c.id} className="compose-connection-item">
-          <span className="muted small" aria-hidden="true">
-            {dir === "from" ? "→" : "←"}
-          </span>
-          <span
-            className="compose-connection-label"
-            title={other?.label ?? "?"}
-          >
-            {other?.label ?? "?"}
-          </span>
-          <button
-            type="button"
-            className="btn small secondary compose-connection-disconnect"
-            onClick={() => onDisconnect(c.id)}
-            aria-label={t("compose.inspector.disconnect")}
-            title={t("compose.inspector.disconnect")}
-          >
-            ×
-          </button>
+          <div className="compose-connection-item-header">
+            <span className="muted small" aria-hidden="true">
+              {dir === "from" ? "→" : "←"}
+            </span>
+            <span
+              className="compose-connection-peer"
+              title={other?.label ?? "?"}
+            >
+              {other?.label ?? "?"}
+            </span>
+            <button
+              type="button"
+              className="btn small secondary compose-connection-disconnect"
+              onClick={() => onDisconnect(c.id)}
+              aria-label={t("compose.inspector.disconnect")}
+              title={t("compose.inspector.disconnect")}
+            >
+              ×
+            </button>
+          </div>
+          <div className="compose-connection-item-editor">
+            <input
+              type="text"
+              className="compose-connection-label-input"
+              value={c.label ?? ""}
+              placeholder={t("compose.inspector.connectionLabel.placeholder")}
+              aria-label={t("compose.inspector.connectionLabel")}
+              title={t("compose.connectionLabel.tooltip")}
+              onChange={(e) =>
+                onUpdateLabel(
+                  c.id,
+                  e.target.value === "" ? undefined : e.target.value,
+                  c.kind,
+                )
+              }
+            />
+            <select
+              className="compose-connection-kind-select"
+              value={c.kind ?? ""}
+              aria-label={t("compose.inspector.connectionLabel")}
+              title={t("compose.connectionLabel.tooltip")}
+              onChange={(e) => {
+                const v = e.target.value;
+                onUpdateLabel(
+                  c.id,
+                  c.label,
+                  v === "" ? undefined : (v as ConnectionLabelKind),
+                );
+              }}
+            >
+              <option value="">
+                {t("compose.inspector.connectionLabel.none")}
+              </option>
+              <option value="flows">
+                {t("compose.connectionLabel.kind.flows")}
+              </option>
+              <option value="uses">
+                {t("compose.connectionLabel.kind.uses")}
+              </option>
+              <option value="feeds">
+                {t("compose.connectionLabel.kind.feeds")}
+              </option>
+              <option value="depends">
+                {t("compose.connectionLabel.kind.depends")}
+              </option>
+              <option value="produces">
+                {t("compose.connectionLabel.kind.produces")}
+              </option>
+              <option value="manual">
+                {t("compose.connectionLabel.kind.manual")}
+              </option>
+            </select>
+          </div>
         </li>
       ))}
     </ul>
@@ -2207,10 +2376,17 @@ function ConnectionPath({
   const y2 = to.y + BLOCK_H / 2;
   const dx = Math.max(Math.abs(x2 - x1) / 2, 60);
   const path = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+  // v0.6.9: the cubic bezier collapses to a straight-line midpoint
+  // because the two control points share Y with their endpoints.
+  // We nudge the text up a few pixels so it doesn't overlap the
+  // line itself.
+  const midX = (x1 + x2) / 2;
+  const midY = (y1 + y2) / 2 - 6;
   return (
     <g
       data-connection-id={connection.id}
       data-selected={selected}
+      data-kind={connection.kind ?? ""}
       className="compose-connection-path"
       onClick={onSelect}
       style={{ cursor: "pointer" }}
@@ -2221,7 +2397,19 @@ function ConnectionPath({
         stroke="currentColor"
         strokeWidth={selected ? 2.5 : 1.5}
         opacity={selected ? 1 : 0.6}
+        markerEnd={`url(#${selected ? "compose-arrow-selected" : "compose-arrow-default"})`}
       />
+      {connection.label ? (
+        <text
+          x={midX}
+          y={midY}
+          textAnchor="middle"
+          className="compose-connection-label"
+          data-testid="compose-connection-label"
+        >
+          {connection.label}
+        </text>
+      ) : null}
     </g>
   );
 }
