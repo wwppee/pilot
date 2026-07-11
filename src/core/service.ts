@@ -333,6 +333,40 @@ export interface PilotService {
     id: string,
   ): Promise<import("./compose-listing.js").ComposeEntityDetail | null>;
 
+  // ─── Compose boards (v0.6.10) ─────────────────────────
+
+  /**
+   * List every persisted /compose board as a lightweight summary
+   * (no blocks / connections in the payload). Sorted newest-first.
+   * Returns [] when the directory doesn't exist yet.
+   */
+  listComposeBoards(): Promise<import("./compose-boards.js").BoardSummary[]>;
+
+  /**
+   * Load a single board's full state (blocks + connections + meta).
+   * Returns null on missing file, invalid id, or schema failure.
+   * HTTP layer maps `null` to 404.
+   */
+  getComposeBoard(
+    id: string,
+  ): Promise<import("./compose-boards.js").BoardSnapshot | null>;
+
+  /**
+   * Create or update a board. When `input.id` is omitted, a fresh
+   * id is generated. Preserves `createdAt` on update; `updatedAt`
+   * always reflects the current call. Returns the persisted
+   * snapshot (with id assigned + timestamps filled in).
+   */
+  saveComposeBoard(
+    input: import("./compose-boards.js").BoardInput,
+  ): Promise<import("./compose-boards.js").BoardSnapshot>;
+
+  /**
+   * Delete a board. Returns true when the file existed and was
+   * removed; false on invalid id or already-gone file.
+   */
+  deleteComposeBoard(id: string): Promise<boolean>;
+
   // ─── Tool policies (v0.4.3) ──────────────────────────
 
   /** List all tool policies in `~/.pilot/policy/`. */

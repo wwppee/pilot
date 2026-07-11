@@ -47,6 +47,8 @@ import type {
   ComposeCatalog,
   ComposeEntityDetail,
   ComposeEntityKind,
+  ComposeState,
+  BoardSummary,
   Plan,
   PlanToolSuggestion,
 } from "./types.js";
@@ -310,6 +312,43 @@ export const browserApi = {
     } catch (e) {
       const status = (e as { status?: number }).status;
       if (status === 404) return null;
+      throw e;
+    }
+  },
+
+  // ─── Compose boards (v0.6.10) ─────────────────────────
+  // Server-persisted /compose layouts. The localStorage
+  // canonical editor calls these for "Save to server" /
+  // "Load from server" — the dedicated /compose/boards
+  // list page (with multi-board delete + rename) lands in v0.6.11.
+  composeBoards: () => browserFetch<BoardSummary[]>("/compose/boards"),
+  composeBoard: async (id: string): Promise<ComposeState | null> => {
+    try {
+      return await browserFetch<ComposeState>(`/compose/boards/${id}`);
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (status === 404) return null;
+      throw e;
+    }
+  },
+  saveComposeBoard: (id: string, state: ComposeState) =>
+    // Server returns a `BoardSummary` (id + name + updatedAt +
+    // createdAt). We only need `id` on the client — `state` is
+    // already in our React tree, so we don't ask the server to
+    // echo it back. The full BoardSnapshot is in the JSON body
+    // but we ignore it here.
+    browserFetch<BoardSummary>(`/compose/boards/${id}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(state),
+    }),
+  deleteComposeBoard: async (id: string): Promise<boolean> => {
+    try {
+      await browserFetch<void>(`/compose/boards/${id}`, { method: "DELETE" });
+      return true;
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (status === 404) return false;
       throw e;
     }
   },

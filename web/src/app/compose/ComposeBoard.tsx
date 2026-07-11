@@ -33,6 +33,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
+  BoardSummary,
   ComposeBlock,
   ComposeCatalog,
   ComposeConnection,
@@ -303,6 +304,23 @@ export default function ComposeBoard({
     setLiveMessage("");
     setTimeout(() => setLiveMessage(msg), 50);
   }, []);
+
+  // v0.6.10: server-side board persistence. `serverPanel` is the
+  // currently-open affordance (`save` or `load`); the actual state
+  // for each lives in dedicated refs/states below. Status reflects
+  // the in-flight request so the panel can show "Saving…" or
+  // "Save failed" without a global toast.
+  const [serverPanel, setServerPanel] = useState<"save" | "load" | null>(null);
+  const [boardNameInput, setBoardNameInput] = useState("");
+  const [boardList, setBoardList] = useState<BoardSummary[]>([]);
+  const [boardListLoaded, setBoardListLoaded] = useState(false);
+  type BoardStatus =
+    | { kind: "idle" }
+    | { kind: "saving" }
+    | { kind: "saved"; id: string }
+    | { kind: "error"; msg: string };
+  const [boardStatus, setBoardStatus] = useState<BoardStatus>({ kind: "idle" });
+  const [lastSavedId, setLastSavedId] = useState<string | null>(null);
 
   // Build a quick lookup map of catalog entities for hydration.
   const catalogIndex = useMemo(() => {
@@ -866,6 +884,154 @@ export default function ComposeBoard({
     [state.connections, commit, t],
   );
 
+  // ─── Server-side board persistence (v0.6.10) ────────────
+  //
+  // The web's localStorage is the canonical editor. These handlers
+  // mirror the canvas state to `~/.pilot/compose-boards/<id>.json`
+  // (on the server) so the user can move between machines / share
+  // a layout. The dedicated /compose/boards list page with rename
+  // + multi-delete lands in v0.6.11; for now the toolbar gives
+  // us Save / Load affordances that hit the same API.
+
+  const openSavePanel = useCallback(() => {
+    setBoardNameInput(state.name ?? "");
+    setBoardStatus({ kind: "idle" });
+    setServerPanel("save");
+  }, [state.name]);
+
+  const openLoadPanel = useCallback(async () => {
+    setServerPanel("load");
+    if (boardListLoaded) return;
+    try {
+      const list = await api.composeBoards();
+      setBoardList(list);
+      setBoardListLoaded(true);
+    } catch (e) {
+      console.warn("composeBoards list fetch failed", e);
+      // Show empty list + the user can retry by reopening the panel.
+      setBoardList([]);
+      setBoardListLoaded(true);
+    }
+  }, [boardListLoaded]);
+
+  const closeServerPanel = useCallback(() => {
+    setServerPanel(null);
+    setBoardStatus({ kind: "idle" });
+  }, []);
+
+  const saveBoardToServer = useCallback(async () => {
+    const name = boardNameInput.trim();
+    if (!name) {
+      setBoardStatus({ kind: "error", msg: t("compose.board.namePrompt") });
+      return;
+    }
+    setBoardStatus({ kind: "saving" });
+    try {
+      // Server generates the id on the first save; subsequent saves
+      // (overwrite) reuse the last-saved id when the name matches.
+      // We only auto-reuse when the user hasn't changed the name,
+      // otherwise a new board is created.
+      const reuseId = lastSavedId
+        ? state.name === name
+          ? lastSavedId
+          : null
+        : null;
+      const payload: ComposeState = {
+        ...state,
+        name,
+        // Server will fill updatedAt + createdAt; we still ship
+        // the field so the schema is non-optional in transit.
+        updatedAt: new Date().toISOString(),
+      };
+      const id =
+        reuseId ??
+        `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const saved = await api.saveComposeBoard(id, payload);
+      setLastSavedId(saved.id);
+      setBoardStatus({ kind: "saved", id: saved.id });
+      // Update the local state.name so subsequent saves with the
+      // same name hit the same id (overwrite path). Conditional
+      // mutation + `delete` keeps exactOptionalPropertyTypes happy
+      // (we can't spread `{name: undefined}` onto a slot typed
+      // `name?: string`).
+      setState((s) => {
+        const next: ComposeState = { ...s };
+        if (name) next.name = name;
+        else delete next.name;
+        return next;
+      });
+      // Refresh the load-list cache so the new board shows up.
+      setBoardListLoaded(false);
+      announce(t("compose.board.saved"));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setBoardStatus({ kind: "error", msg });
+      announce(t("compose.board.saveError"));
+    }
+  }, [boardNameInput, state, lastSavedId, announce, t]);
+
+  const loadBoardFromServer = useCallback(
+    async (id: string) => {
+      try {
+        const loaded = await api.composeBoard(id);
+        if (!loaded) {
+          setBoardStatus({ kind: "error", msg: t("compose.board.loadError") });
+          return;
+        }
+        // The server returns a plain ComposeState (no `id` field on
+        // state, but `name` and `updatedAt` are server-managed).
+        // Replace the local canvas wholesale — v0.6.10 first cut
+        // doesn't try to merge. `name` is optional in the type
+        // so we conditionally spread to avoid the
+        // exactOptionalPropertyTypes trap.
+        const next: ComposeState = {
+          blocks: loaded.blocks,
+          connections: loaded.connections ?? [],
+          version: loaded.version,
+          updatedAt: loaded.updatedAt,
+          ...(loaded.name ? { name: loaded.name } : {}),
+        };
+        setState(next);
+        setLastSavedId(id);
+        setSelectedId(null);
+        setHistory({ past: [], future: [] });
+        setServerPanel(null);
+        setBoardStatus({ kind: "idle" });
+        announce(t("compose.board.loaded"));
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setBoardStatus({ kind: "error", msg });
+        announce(t("compose.board.loadError"));
+      }
+    },
+    [announce, t],
+  );
+
+  const deleteServerBoard = useCallback(
+    async (id: string) => {
+      const ok = window.confirm(t("compose.board.confirmDelete"));
+      if (!ok) return;
+      try {
+        const removed = await api.deleteComposeBoard(id);
+        if (!removed) {
+          setBoardStatus({
+            kind: "error",
+            msg: t("compose.board.deleteError"),
+          });
+          return;
+        }
+        setBoardList((list) => list.filter((b) => b.id !== id));
+        if (lastSavedId === id) setLastSavedId(null);
+        announce(t("compose.board.deleted"));
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setBoardStatus({ kind: "error", msg });
+        announce(t("compose.board.deleteError"));
+      }
+    },
+    [lastSavedId, announce, t],
+  );
+
   /**
    * Add a sidebar entity as a block in the canvas center. Used by
    * the explicit "+" button on each sidebar item (and the click
@@ -1182,6 +1348,30 @@ export default function ComposeBoard({
         <div className="compose-toolbar-group">
           <button
             type="button"
+            onClick={openSavePanel}
+            className="btn small"
+            disabled={state.blocks.length === 0}
+            title={t("compose.toolbar.saveTitle")}
+            aria-label={t("compose.toolbar.saveTitle")}
+            data-active={serverPanel === "save"}
+          >
+            ↑ {t("compose.toolbar.saveTitle")}
+          </button>
+          <button
+            type="button"
+            onClick={openLoadPanel}
+            className="btn small secondary"
+            title={t("compose.toolbar.loadTitle")}
+            aria-label={t("compose.toolbar.loadTitle")}
+            data-active={serverPanel === "load"}
+          >
+            ↓ {t("compose.toolbar.loadTitle")}
+          </button>
+        </div>
+        <span className="compose-toolbar-divider" aria-hidden="true" />
+        <div className="compose-toolbar-group">
+          <button
+            type="button"
             onClick={exportJson}
             className="btn small"
             disabled={state.blocks.length === 0}
@@ -1227,6 +1417,132 @@ export default function ComposeBoard({
           {t("compose.inspector.openDrawer")}
         </button>
       </div>
+
+      {/* v0.6.10: server-side board panels. Save / Load open as
+          absolute-positioned dropdowns anchored to the toolbar —
+          lighter than a modal and easier to keep state-resident.
+          The dedicated /compose/boards list page lands in v0.6.11
+          with full rename / multi-delete. */}
+      {serverPanel ? (
+        <div
+          className="compose-server-panel"
+          role="dialog"
+          aria-label={
+            serverPanel === "save"
+              ? t("compose.toolbar.saveTitle")
+              : t("compose.toolbar.loadTitle")
+          }
+        >
+          <div className="compose-server-panel-header">
+            <strong>
+              {serverPanel === "save"
+                ? t("compose.toolbar.saveTitle")
+                : t("compose.toolbar.loadTitle")}
+            </strong>
+            <button
+              type="button"
+              className="btn small secondary"
+              onClick={closeServerPanel}
+              aria-label="×"
+              title="×"
+            >
+              ×
+            </button>
+          </div>
+          {serverPanel === "save" ? (
+            <div className="compose-server-panel-body">
+              <label className="muted small" htmlFor="compose-board-name">
+                {t("compose.board.namePrompt")}
+              </label>
+              <input
+                id="compose-board-name"
+                type="text"
+                className="compose-board-name-input"
+                value={boardNameInput}
+                placeholder={t("compose.board.namePlaceholder")}
+                onChange={(e) => setBoardNameInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") saveBoardToServer();
+                }}
+                autoFocus
+              />
+              {boardStatus.kind === "error" ? (
+                <p className="compose-board-status error small">
+                  {boardStatus.msg}
+                </p>
+              ) : null}
+              {boardStatus.kind === "saved" ? (
+                <p className="compose-board-status success small">
+                  ✓ {t("compose.board.saved")} · {boardStatus.id}
+                </p>
+              ) : null}
+              <div className="compose-server-panel-actions">
+                <button
+                  type="button"
+                  className="btn small"
+                  onClick={saveBoardToServer}
+                  disabled={boardStatus.kind === "saving"}
+                >
+                  {boardStatus.kind === "saving"
+                    ? t("compose.board.saving")
+                    : t("compose.toolbar.saveTitle")}
+                </button>
+                <button
+                  type="button"
+                  className="btn small secondary"
+                  onClick={closeServerPanel}
+                >
+                  {t("btn.cancel")}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="compose-server-panel-body">
+              {boardList.length === 0 ? (
+                <p className="muted small">{t("compose.board.empty")}</p>
+              ) : (
+                <ul className="compose-board-list">
+                  {boardList.map((b) => (
+                    <li key={b.id} className="compose-board-list-item">
+                      <button
+                        type="button"
+                        className="compose-board-list-item-load"
+                        onClick={() => loadBoardFromServer(b.id)}
+                        title={b.id}
+                      >
+                        <span className="compose-board-list-name">
+                          {b.name || b.id}
+                        </span>
+                        <span className="muted small">
+                          {b.blockCount}{" "}
+                          {t("compose.inspector.blockCount.one", {
+                            count: b.blockCount,
+                          }).replace("1 ", "")}{" "}
+                          · {b.connectionCount} ↔ · {b.updatedAt.slice(0, 10)}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        className="btn small secondary"
+                        onClick={() => deleteServerBoard(b.id)}
+                        aria-label={t("compose.board.confirmDelete")}
+                        title={t("compose.board.confirmDelete")}
+                      >
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {boardStatus.kind === "error" ? (
+                <p className="compose-board-status error small">
+                  {boardStatus.msg}
+                </p>
+              ) : null}
+            </div>
+          )}
+        </div>
+      ) : null}
 
       <div className="compose-grid">
         {/* ─── Sidebar ─────────────────────────────────────── */}

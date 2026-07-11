@@ -524,6 +524,23 @@ export type Dict = {
   "compose.connectionLabel.kind.manual": string;
   "compose.connectionLabel.tooltip": string;
   "compose.announce.connectionLabelUpdated": string;
+  // v0.6.10: server-side board persistence (Save to / Load from server).
+  "compose.toolbar.saveTitle": string;
+  "compose.toolbar.loadTitle": string;
+  "compose.toolbar.boardsTitle": string;
+  "compose.board.saving": string;
+  "compose.board.saved": string;
+  "compose.board.saveError": string;
+  "compose.board.loading": string;
+  "compose.board.loaded": string;
+  "compose.board.loadError": string;
+  "compose.board.empty": string;
+  "compose.board.namePrompt": string;
+  "compose.board.namePlaceholder": string;
+  "compose.board.confirmOverwrite": string;
+  "compose.board.confirmDelete": string;
+  "compose.board.deleted": string;
+  "compose.board.deleteError": string;
   // v0.5.11+ currency formatting.
   "currency.usd": string;
 

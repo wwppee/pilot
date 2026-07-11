@@ -579,6 +579,61 @@ export async function startServer(
     },
   );
 
+  // ─── Compose boards (v0.6.10) ─────────────────────────
+  //
+  // Persistence for /compose layouts. The web client treats these
+  // as a "Save to server" / "Load from server" affordance on top
+  // of its localStorage canonical editor. The dedicated list page
+  // /compose/boards (multi-board picker + delete) lands in v0.6.11.
+
+  app.get("/compose/boards", async () => service.listComposeBoards());
+
+  app.get<{ Params: { id: string } }>(
+    "/compose/boards/:id",
+    async (req, reply) => {
+      const board = await service.getComposeBoard(req.params.id);
+      if (!board) {
+        await reply.code(404).send({ error: "board not found" });
+        return;
+      }
+      return board;
+    },
+  );
+
+  app.put<{
+    Params: { id: string };
+    Body: import("../core/compose-boards.js").BoardInput;
+  }>("/compose/boards/:id", async (req) => {
+    // The path id wins over the body id — the URL is the file
+    // identity, body id is just a hint for "create with this id".
+    const input = { ...req.body, id: req.params.id };
+    const board = await service.saveComposeBoard(input);
+    return board;
+  });
+
+  app.post<{ Body: import("../core/compose-boards.js").BoardInput }>(
+    "/compose/boards",
+    async (req, reply) => {
+      // POST creates with an auto-generated id when the body
+      // doesn't supply one. The returned snapshot carries the id.
+      const board = await service.saveComposeBoard(req.body);
+      await reply.code(201).send(board);
+      return;
+    },
+  );
+
+  app.delete<{ Params: { id: string } }>(
+    "/compose/boards/:id",
+    async (req, reply) => {
+      const ok = await service.deleteComposeBoard(req.params.id);
+      if (!ok) {
+        await reply.code(404).send({ error: "board not found" });
+        return;
+      }
+      await reply.code(204).send();
+    },
+  );
+
   app.get("/policies", async () => service.listPolicies());
 
   app.get<{ Params: { name: string } }>("/policies/:name", async (req) => {

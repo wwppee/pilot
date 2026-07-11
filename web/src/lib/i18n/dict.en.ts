@@ -578,6 +578,25 @@ const en: Dict = {
   "compose.connectionLabel.kind.manual": "manual",
   "compose.connectionLabel.tooltip": "Click to edit connection label",
   "compose.announce.connectionLabelUpdated": "Connection label updated",
+  // v0.6.10: server-side board persistence.
+  "compose.toolbar.saveTitle": "Save to server",
+  "compose.toolbar.loadTitle": "Load from server",
+  "compose.toolbar.boardsTitle": "Manage boards",
+  "compose.board.saving": "Saving…",
+  "compose.board.saved": "Saved",
+  "compose.board.saveError": "Save failed",
+  "compose.board.loading": "Loading…",
+  "compose.board.loaded": "Loaded",
+  "compose.board.loadError": "Load failed",
+  "compose.board.empty": "No saved boards yet",
+  "compose.board.namePrompt": "Name this layout",
+  "compose.board.namePlaceholder": "e.g. data-pipeline-v2",
+  "compose.board.confirmOverwrite":
+    "A layout with this name already exists. Replace it?",
+  "compose.board.confirmDelete":
+    "Delete this saved board? Your current local layout is kept.",
+  "compose.board.deleted": "Board deleted",
+  "compose.board.deleteError": "Delete failed",
   // v0.5.11+ currency formatting.
   "currency.usd": "${amount}",
 

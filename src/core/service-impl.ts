@@ -201,6 +201,11 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
     getComposeEntityDetail: (kind, id) =>
       getComposeEntityDetailFromService(home, kind, id),
 
+    listComposeBoards: () => listComposeBoardsFromService(home),
+    getComposeBoard: (id) => getComposeBoardFromService(home, id),
+    saveComposeBoard: (input) => saveComposeBoardFromService(home, input),
+    deleteComposeBoard: (id) => deleteComposeBoardFromService(home, id),
+
     listPolicies: () => listPoliciesFromHome(home),
     getPolicy: (name) => tryReadPolicy(name, home),
     setPolicy: (name, input) => writePolicyWithHome(name, input, home),
@@ -545,6 +550,45 @@ async function getComposeEntityDetailFromService(
     kind,
     id,
   );
+}
+
+// ─── Compose boards (v0.6.10) ──────────────────────────────
+
+/**
+ * Thin wrappers over `core/compose-boards.ts` so the service
+ * layer can lazy-import the module (avoids pulling fs/zod into
+ * callers that only need read-only compose listing). Same pattern
+ * as the other compose*FromService helpers.
+ */
+async function listComposeBoardsFromService(
+  home?: string,
+): Promise<import("./compose-boards.js").BoardSummary[]> {
+  const { listBoards } = await import("./compose-boards.js");
+  return listBoards(home);
+}
+
+async function getComposeBoardFromService(
+  home: string | undefined,
+  id: string,
+): Promise<import("./compose-boards.js").BoardSnapshot | null> {
+  const { loadBoard } = await import("./compose-boards.js");
+  return loadBoard(id, home);
+}
+
+async function saveComposeBoardFromService(
+  home: string | undefined,
+  input: import("./compose-boards.js").BoardInput,
+): Promise<import("./compose-boards.js").BoardSnapshot> {
+  const { saveBoard } = await import("./compose-boards.js");
+  return saveBoard(input, home);
+}
+
+async function deleteComposeBoardFromService(
+  home: string | undefined,
+  id: string,
+): Promise<boolean> {
+  const { deleteBoard } = await import("./compose-boards.js");
+  return deleteBoard(id, home);
 }
 
 // ─── Policy (v0.4.3) ───────────────────────────────────────

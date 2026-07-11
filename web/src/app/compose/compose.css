@@ -38,6 +38,7 @@
   flex-direction: column;
   gap: 12px;
   min-height: 500px;
+  position: relative;
 }
 
 /* ─── Toolbar ───────────────────────────────────────────── */
@@ -115,6 +116,116 @@
   .compose-toolbar-inspector-trigger {
     display: inline-flex;
   }
+}
+
+/* v0.6.10: server-side board panel. Anchored to .compose-page
+   (relative) and stacked under the toolbar (the toolbar is
+   ~52px tall + 12px gap = 64px from the page top). Two modes
+   (save / load) share the same shell; the body switches based
+   on the openPanel state. */
+.compose-server-panel {
+  position: absolute;
+  top: 64px;
+  right: 12px;
+  width: 320px;
+  max-width: calc(100vw - 24px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  z-index: 50;
+}
+.compose-server-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.compose-server-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+.compose-server-panel-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+.compose-board-name-input {
+  padding: 6px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  min-height: 28px;
+}
+.compose-board-name-input:focus {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+.compose-board-status {
+  margin: 0;
+}
+.compose-board-status.success {
+  color: var(--cozy-accent);
+}
+.compose-board-status.error {
+  color: var(--hitl);
+}
+.compose-board-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.compose-board-list-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  background: var(--surface-2);
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+.compose-board-list-item-load {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 4px 6px;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text);
+  font-family: inherit;
+}
+.compose-board-list-item-load:hover {
+  background: var(--surface);
+  border-radius: 3px;
+}
+.compose-board-list-name {
+  font-weight: 500;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.compose-toolbar button[data-active="true"] {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
 }
 
 /* ─── Grid ──────────────────────────────────────────────── */

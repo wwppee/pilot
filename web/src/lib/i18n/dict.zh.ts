@@ -560,6 +560,23 @@ const zh: Dict = {
   "compose.connectionLabel.kind.manual": "手动",
   "compose.connectionLabel.tooltip": "点击编辑连接标签",
   "compose.announce.connectionLabelUpdated": "连接标签已更新",
+  // v0.6.10: server-side board persistence.
+  "compose.toolbar.saveTitle": "保存到服务器",
+  "compose.toolbar.loadTitle": "从服务器加载",
+  "compose.toolbar.boardsTitle": "管理布局",
+  "compose.board.saving": "保存中…",
+  "compose.board.saved": "已保存",
+  "compose.board.saveError": "保存失败",
+  "compose.board.loading": "加载中…",
+  "compose.board.loaded": "已加载",
+  "compose.board.loadError": "加载失败",
+  "compose.board.empty": "暂无已保存的布局",
+  "compose.board.namePrompt": "给这个布局起个名字",
+  "compose.board.namePlaceholder": "例如 data-pipeline-v2",
+  "compose.board.confirmOverwrite": "已存在同名布局,是否覆盖?",
+  "compose.board.confirmDelete": "删除这个已保存的布局?当前本地布局保留。",
+  "compose.board.deleted": "布局已删除",
+  "compose.board.deleteError": "删除失败",
   // v0.5.11+ 货币格式。
   "currency.usd": "US${amount}",
 

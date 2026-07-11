@@ -573,6 +573,20 @@ export interface ComposeConnection {
   kind?: ConnectionLabelKind;
 }
 
+/**
+ * v0.6.10: lightweight summary of a server-persisted board,
+ * returned by `GET /api/compose/boards`. Mirrors
+ * `core/compose-boards.ts#BoardSummary` — keep in sync.
+ */
+export interface BoardSummary {
+  id: string;
+  name: string;
+  updatedAt: string;
+  createdAt: string;
+  blockCount: number;
+  connectionCount: number;
+}
+
 export interface ComposeState {
   blocks: ComposeBlock[];
   /**
