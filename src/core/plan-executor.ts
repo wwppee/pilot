@@ -352,7 +352,10 @@ export class PlanExecutor {
           if (this.cancelRequested) break;
         }
         // Skip task if its dependsOn are not all completed.
-        if (!areDependsOnSatisfied(task, completedStepIds)) {
+        // v0.6.11: areDependsOnSatisfied now reads the live plan
+        // and checks task-level completion against `task.status`,
+        // not the `completedStepIds` set (which is step-level).
+        if (!areDependsOnSatisfied(task, plan)) {
           await this.skipTask(task, "blocked by dependsOn");
           continue;
         }
@@ -765,24 +768,24 @@ function stepTimeoutMs(step: Step): number {
   return DEFAULT_STEP_TIMEOUT_MS;
 }
 
-function areDependsOnSatisfied(
-  task: Task,
-  completedStepIds: Set<string>,
-): boolean {
-  // dependsOn is task ids, not step ids. We treat a task
-  // as "satisfied" when all of its dependsOn task ids appear
-  // in completedStepIds as the task's last step (heuristic —
-  // MVP doesn't track per-task completion separately in the
-  // snapshot). To make this robust without restructuring
-  // the snapshot, we re-read the plan here.
-  // For MVP, we just return true; dependsOn is a soft hint,
-  // not enforced. The full executor in v0.6.0 will read the
-  // task's current status from the plan TOML.
+/**
+ * v0.6.11: actually evaluate `task.dependsOn`. The previous MVP
+ * version always returned `true`, which silently broke the
+ * `sequential` strategy's ordering guarantees whenever a user
+ * authored a non-trivial DAG. The check is intentionally simple:
+ * a dependsOn entry is "satisfied" iff the referenced task is
+ * already in the `completed` state in the live plan. Anything
+ * else (pending / running / failed / skipped / blocked) blocks
+ * the dependent task.
+ */
+function areDependsOnSatisfied(task: Task, plan: Plan): boolean {
   if (task.dependsOn.length === 0) return true;
-  // Read plan from disk synchronously? No — we'd block. Return
-  // true and let the user notice if order is wrong. v0.6.0
-  // will fix this.
-  void completedStepIds;
+  const byId = new Map(plan.tasks.map((t) => [t.id, t]));
+  for (const depId of task.dependsOn) {
+    const dep = byId.get(depId);
+    if (!dep) return false; // dangling reference — fail closed
+    if (dep.status !== "completed") return false;
+  }
   return true;
 }
 

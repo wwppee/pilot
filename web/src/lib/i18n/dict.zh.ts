@@ -4,6 +4,7 @@ const zh: Dict = {
   // Skip link / a11y
   "skip.toMain": "跳到主要内容",
   "nav.ariaLabel": "主导航",
+  "aria.moreActions": "更多操作",
 
   // Brand
   "brand.name": "pilot",
@@ -427,6 +428,10 @@ const zh: Dict = {
   "compose.canvasEmpty": "画布为空 — 选中侧栏项后按 {key} 添加。",
   "compose.canvasSelectBlock":
     "点击画布上的方块查看详情。按 {del} 删除，按 {esc} 取消选中。",
+  // v0.6.11: key names are keyboard conventions and don't translate.
+  // "Delete" / "Esc" stay literal in zh too.
+  "compose.canvasSelectBlock.keys":
+    "点击画布上的方块查看详情。按 Delete 删除,按 Esc 取消选中。",
   "compose.removeBlock": "移除方块",
   // v0.5.10+: 实体标签（单复数 + 分组标题）。
   "compose.entity.session": "会话",
@@ -543,6 +548,11 @@ const zh: Dict = {
   "compose.inspector.noConnections": "暂无连接",
   "compose.inspector.connectionsFrom": "从此块出发",
   "compose.inspector.connectionsTo": "到达此块",
+  // v0.6.11: BlockInspector always-shown metadata fields.
+  "compose.inspector.field.id": "ID",
+  "compose.inspector.field.kind": "类型",
+  "compose.inspector.field.refId": "引用 ID",
+  "compose.inspector.field.position": "位置",
   "compose.announce.connectionAdded": "已连接 {from} → {to}",
   "compose.announce.connectionRemoved": "已断开 {from} → {to}",
   // v0.6.8: 选中 block 右侧 connector 把手，拖到另一 block
@@ -577,6 +587,13 @@ const zh: Dict = {
   "compose.board.confirmDelete": "删除这个已保存的布局?当前本地布局保留。",
   "compose.board.deleted": "布局已删除",
   "compose.board.deleteError": "删除失败",
+  // v0.6.11: board list meta — unit only (no count baked in).
+  // zh has no grammatical plural, so `one` and `other` share the
+  // same form.
+  "compose.boardList.blockCount.one": "个块",
+  "compose.boardList.blockCount.other": "个块",
+  "compose.boardList.connectionCount.one": "条连接",
+  "compose.boardList.connectionCount.other": "条连接",
   // v0.5.11+ 货币格式。
   "currency.usd": "US${amount}",
 

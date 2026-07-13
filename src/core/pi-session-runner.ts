@@ -38,6 +38,8 @@
 import { RpcClient } from "@earendil-works/pi-coding-agent";
 import { execSync } from "node:child_process";
 import { existsSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { StepOutput } from "./plan.js";
 
 /**
@@ -70,8 +72,28 @@ function resolvePiCliPath(): string {
   } catch {
     // pi not on PATH.
   }
-  // Last resort.
-  return "dist/cli.js";
+  // v0.6.11: last-resort fallback. The previous version returned
+  // the bare string "dist/cli.js" — a relative path that would
+  // only resolve if the user's CWD happened to be pilot's repo
+  // root. Fail loud instead: the caller catches the throw and
+  // reports "pi CLI not found" to the user (rather than spawning
+  // a non-existent process and surfacing a confusing ENOENT
+  // further down the stack). The 2nd line is a relative
+  // sibling fallback that works when pilot is running from
+  // its installed package layout (`node_modules/pilot/dist/cli.js`
+  // sits next to `dist/core/pi-session-runner.js`).
+  try {
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    const sibling = path.resolve(here, "..", "cli.js");
+    if (existsSync(sibling)) return sibling;
+  } catch {
+    // import.meta.url not available — fall through to throw.
+  }
+  throw new Error(
+    "pi CLI not found: install @earendil-works/pi-coding-agent globally, " +
+      "or put `pi` on PATH, or run pilot from a directory where " +
+      "`dist/cli.js` is a sibling of this module.",
+  );
 }
 
 export interface PiSessionRunnerOptions {

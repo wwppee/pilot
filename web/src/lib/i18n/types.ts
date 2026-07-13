@@ -24,6 +24,7 @@ export type Dict = {
   // ─── Skip link / a11y ────────────────────────────────────────
   "skip.toMain": string;
   "nav.ariaLabel": string;
+  "aria.moreActions": string;
 
   // ─── Brand ───────────────────────────────────────────────────
   "brand.name": string;
@@ -390,6 +391,11 @@ export type Dict = {
   "compose.canvasAria": string;
   "compose.canvasEmpty": string;
   "compose.canvasSelectBlock": string;
+  // v0.6.11: same as `canvasSelectBlock` but with the key
+  // names baked in (no placeholders). The plain `canvasSelectBlock`
+  // is kept for the few places that still want to interpolate
+  // a custom key label; new code should prefer this variant.
+  "compose.canvasSelectBlock.keys": string;
   "compose.removeBlock": string;
   // v0.5.10+: entity labels (singular + plural section header).
   "compose.entity.session": string;
@@ -507,6 +513,14 @@ export type Dict = {
   "compose.inspector.noConnections": string;
   "compose.inspector.connectionsFrom": string;
   "compose.inspector.connectionsTo": string;
+  // v0.6.11: BlockInspector field labels for the always-shown
+  // metadata (id / kind / refId / position). zh translations are
+  // human-readable; en stays as the schema field name so the
+  // mapping is obvious when reading the code.
+  "compose.inspector.field.id": string;
+  "compose.inspector.field.kind": string;
+  "compose.inspector.field.refId": string;
+  "compose.inspector.field.position": string;
   "compose.announce.connectionAdded": string;
   "compose.announce.connectionRemoved": string;
   // v0.6.8: right-edge connector handle on selected blocks.
@@ -541,6 +555,16 @@ export type Dict = {
   "compose.board.confirmDelete": string;
   "compose.board.deleted": string;
   "compose.board.deleteError": string;
+  // v0.6.11: board list meta. The toolbar / drawer entries use
+  // `compose.inspector.blockCount.{one,other}` which embed the
+  // count. The list row only wants the *unit* ("block" / "blocks"
+  // / "个块") so the number sits in a separate span. Keeping the
+  // two surfaces separate is much cleaner than a `.replace("1 ", "")`
+  // hack on a string that already has the count baked in.
+  "compose.boardList.blockCount.one": string;
+  "compose.boardList.blockCount.other": string;
+  "compose.boardList.connectionCount.one": string;
+  "compose.boardList.connectionCount.other": string;
   // v0.5.11+ currency formatting.
   "currency.usd": string;
 

@@ -587,6 +587,24 @@ export interface BoardSummary {
   connectionCount: number;
 }
 
+/**
+ * v0.6.11: payload shape for `PUT /api/compose/boards/:id` and
+ * `POST /api/compose/boards`. Mirrors `core/compose-boards.ts#BoardInput`
+ * — keep in sync.
+ *
+ * The server fills in `id` (when omitted), `createdAt` (on first
+ * save), and `updatedAt` (always). Callers only need to ship the
+ * fields they actually want to persist; `id` is optional and
+ * taken from the path when present.
+ */
+export interface BoardInput {
+  id?: string;
+  name: string;
+  blocks: ComposeBlock[];
+  connections: ComposeConnection[];
+  version: 1 | 2 | 3;
+}
+
 export interface ComposeState {
   blocks: ComposeBlock[];
   /**

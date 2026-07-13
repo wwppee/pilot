@@ -4,6 +4,7 @@ const en: Dict = {
   // Skip link / a11y
   "skip.toMain": "Skip to main content",
   "nav.ariaLabel": "Main",
+  "aria.moreActions": "More actions",
 
   // Brand
   "brand.name": "pilot",
@@ -442,6 +443,14 @@ const en: Dict = {
   "compose.canvasEmpty": "Empty canvas — pick a sidebar item and press {key}.",
   "compose.canvasSelectBlock":
     "Click a block on the canvas to inspect it. Press {del} to remove it, or {esc} to deselect.",
+  // v0.6.11: same text as `canvasSelectBlock` but without
+  // {del}/{esc} placeholders — the caller used to pass
+  // `{del: "Delete", esc: "Escape"}` as a hardcoded English
+  // literal, which broke under zh locale. Key names (Delete /
+  // Escape / Esc) are keyboard conventions and don't translate,
+  // so we bake them into the translation string directly.
+  "compose.canvasSelectBlock.keys":
+    "Click a block on the canvas to inspect it. Press Delete to remove it, or Escape to deselect.",
   "compose.removeBlock": "Remove block",
   // v0.5.10+: entity labels.
   "compose.entity.session": "Session",
@@ -560,6 +569,13 @@ const en: Dict = {
   "compose.inspector.noConnections": "No connections yet",
   "compose.inspector.connectionsFrom": "From this block",
   "compose.inspector.connectionsTo": "To this block",
+  // v0.6.11: BlockInspector always-shown metadata fields.
+  // English stays as the schema field name so the mapping
+  // between code and UI is obvious.
+  "compose.inspector.field.id": "id",
+  "compose.inspector.field.kind": "kind",
+  "compose.inspector.field.refId": "refId",
+  "compose.inspector.field.position": "position",
   "compose.announce.connectionAdded": "Connected {from} → {to}",
   "compose.announce.connectionRemoved": "Disconnected {from} → {to}",
   // v0.6.8: right-edge connector handle on selected blocks. Drag
@@ -597,6 +613,11 @@ const en: Dict = {
     "Delete this saved board? Your current local layout is kept.",
   "compose.board.deleted": "Board deleted",
   "compose.board.deleteError": "Delete failed",
+  // v0.6.11: board list meta — unit only (no count baked in).
+  "compose.boardList.blockCount.one": "block",
+  "compose.boardList.blockCount.other": "blocks",
+  "compose.boardList.connectionCount.one": "connection",
+  "compose.boardList.connectionCount.other": "connections",
   // v0.5.11+ currency formatting.
   "currency.usd": "${amount}",
 

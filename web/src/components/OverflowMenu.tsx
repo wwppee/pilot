@@ -11,6 +11,7 @@
 "use client";
 
 import { type ReactNode, useEffect, useRef } from "react";
+import { useT } from "./I18n";
 
 interface OverflowMenuProps {
   /** Trigger label / icon shown when closed. Default: "⋯". */
@@ -31,9 +32,14 @@ interface OverflowMenuProps {
 export function OverflowMenu({
   trigger = "⋯",
   children,
-  ariaLabel = "More actions",
+  ariaLabel,
   triggerClassName = "btn secondary",
 }: OverflowMenuProps) {
+  // v0.6.11: pull the default aria-label from i18n so /try
+  // (and any future caller) gets the localised string for
+  // free. Callers can still override explicitly.
+  const t = useT();
+  const resolvedAriaLabel = ariaLabel ?? t("aria.moreActions");
   const ref = useRef<HTMLDetailsElement>(null);
 
   // Close on item click — we listen for any <button> child with
@@ -55,7 +61,7 @@ export function OverflowMenu({
     <details ref={ref} className="relative">
       <summary
         className={`${triggerClassName} list-none cursor-pointer select-none [&::-webkit-details-marker]:hidden`}
-        aria-label={ariaLabel}
+        aria-label={resolvedAriaLabel}
       >
         {trigger}
       </summary>

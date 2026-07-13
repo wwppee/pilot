@@ -19,7 +19,7 @@
  *   GET    /capabilities/:id         — get one capability
  */
 
-import Fastify, { type FastifyInstance } from "fastify";
+import Fastify, { type FastifyInstance, type FastifyReply } from "fastify";
 import fastifyCookie from "@fastify/cookie";
 import fastifyWebsocket from "@fastify/websocket";
 import { randomUUID } from "node:crypto";
@@ -588,9 +588,22 @@ export async function startServer(
 
   app.get("/compose/boards", async () => service.listComposeBoards());
 
+  // v0.6.11: validate the path id at the route boundary so an
+  // unsafe id (path traversal, oversized, garbage) returns 400
+  // instead of silently dropping to 404 inside the service.
+  // Mirrors `isValidBoardId` in core/compose-boards.ts.
+  const assertBoardId = async (id: string, reply: FastifyReply) => {
+    if (!/^[a-zA-Z0-9_-]{1,64}$/.test(id)) {
+      await reply.code(400).send({ error: `invalid board id: ${id}` });
+      return false;
+    }
+    return true;
+  };
+
   app.get<{ Params: { id: string } }>(
     "/compose/boards/:id",
     async (req, reply) => {
+      if (!(await assertBoardId(req.params.id, reply))) return;
       const board = await service.getComposeBoard(req.params.id);
       if (!board) {
         await reply.code(404).send({ error: "board not found" });
@@ -603,7 +616,8 @@ export async function startServer(
   app.put<{
     Params: { id: string };
     Body: import("../core/compose-boards.js").BoardInput;
-  }>("/compose/boards/:id", async (req) => {
+  }>("/compose/boards/:id", async (req, reply) => {
+    if (!(await assertBoardId(req.params.id, reply))) return;
     // The path id wins over the body id — the URL is the file
     // identity, body id is just a hint for "create with this id".
     const input = { ...req.body, id: req.params.id };
@@ -616,6 +630,16 @@ export async function startServer(
     async (req, reply) => {
       // POST creates with an auto-generated id when the body
       // doesn't supply one. The returned snapshot carries the id.
+      // If the body DOES supply a malformed id, surface that as 400
+      // so the client doesn't get a silent auto-generated id.
+      if (req.body.id !== undefined) {
+        if (!/^[a-zA-Z0-9_-]{1,64}$/.test(req.body.id)) {
+          await reply
+            .code(400)
+            .send({ error: `invalid board id: ${req.body.id}` });
+          return;
+        }
+      }
       const board = await service.saveComposeBoard(req.body);
       await reply.code(201).send(board);
       return;
@@ -625,6 +649,7 @@ export async function startServer(
   app.delete<{ Params: { id: string } }>(
     "/compose/boards/:id",
     async (req, reply) => {
+      if (!(await assertBoardId(req.params.id, reply))) return;
       const ok = await service.deleteComposeBoard(req.params.id);
       if (!ok) {
         await reply.code(404).send({ error: "board not found" });

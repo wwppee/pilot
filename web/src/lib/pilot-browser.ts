@@ -48,6 +48,7 @@ import type {
   ComposeEntityDetail,
   ComposeEntityKind,
   ComposeState,
+  BoardInput,
   BoardSummary,
   Plan,
   PlanToolSuggestion,
@@ -331,16 +332,20 @@ export const browserApi = {
       throw e;
     }
   },
-  saveComposeBoard: (id: string, state: ComposeState) =>
+  // v0.6.11: signature now takes a `BoardInput` (the actual
+  // server contract) instead of the full `ComposeState`. The
+  // old signature shipped `updatedAt` (which the server always
+  // overwrites) and would have shipped any future state fields
+  // — making the wire contract wider than the schema intends.
+  saveComposeBoard: (id: string, input: BoardInput) =>
     // Server returns a `BoardSummary` (id + name + updatedAt +
-    // createdAt). We only need `id` on the client — `state` is
-    // already in our React tree, so we don't ask the server to
-    // echo it back. The full BoardSnapshot is in the JSON body
-    // but we ignore it here.
+    // createdAt). We only need `id` on the client — the input
+    // is already in our React tree, so we don't ask the server
+    // to echo it back.
     browserFetch<BoardSummary>(`/compose/boards/${id}`, {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(state),
+      body: JSON.stringify(input),
     }),
   deleteComposeBoard: async (id: string): Promise<boolean> => {
     try {

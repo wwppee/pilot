@@ -287,7 +287,7 @@ export default function TryPage() {
               Disconnect / Rename / Clone. Connect / Send stay
               visible as primary actions. */}
           <div className="sm:hidden">
-            <OverflowMenu ariaLabel="More actions">
+            <OverflowMenu>
               {connected ? (
                 <>
                   <OverflowMenuItem

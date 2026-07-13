@@ -9,11 +9,21 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { OverflowMenu, OverflowMenuItem } from "../src/components/OverflowMenu";
+import { I18nProvider } from "../src/components/I18n";
+
+// v0.6.11: OverflowMenu now calls `useT()` to resolve its
+// default aria-label, so the tests need the I18nProvider in
+// the tree. (Without it `useT` throws "must be used inside
+// <I18nProvider>" and the test errors out before the trigger
+// can render.)
+function renderWithI18n(ui: React.ReactNode) {
+  return render(<I18nProvider initialLocale="en">{ui}</I18nProvider>);
+}
 
 describe("OverflowMenu", () => {
   it("renders the trigger and opens on click", () => {
     const onItem = vi.fn();
-    render(
+    renderWithI18n(
       <OverflowMenu>
         <OverflowMenuItem onClick={onItem}>Do thing</OverflowMenuItem>
       </OverflowMenu>,
@@ -28,7 +38,7 @@ describe("OverflowMenu", () => {
 
   it("calls onClick when an item is clicked", () => {
     const onItem = vi.fn();
-    render(
+    renderWithI18n(
       <OverflowMenu>
         <OverflowMenuItem onClick={onItem}>Action</OverflowMenuItem>
       </OverflowMenu>,
@@ -40,7 +50,7 @@ describe("OverflowMenu", () => {
 
   it("respects the disabled prop", () => {
     const onItem = vi.fn();
-    render(
+    renderWithI18n(
       <OverflowMenu>
         <OverflowMenuItem onClick={onItem} disabled>
           Action
