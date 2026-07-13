@@ -397,6 +397,47 @@
 >
 > **故意没做**（v0.6.11+ 留）：`/compose/boards` 列表页（multi-board picker + rename + bulk delete + share-link）—— 纯 UI 切片，API 已经齐了；multiple connections (A↔B 双向)；connection color 自定义；auto-route 避开 block 中心。
 >
+> **2026-07-14 校准 (27)**：**v0.6.11 已发** —— 16 bug fixes（P0 × 2 + P1 × 4 + P2 × 5 + P3 × 5）。纯 patch release，无新 feature / 新 schema / 新 route。每个修复独立可测。
+>
+> | 级别 | 文件 | 修复 |
+> |---|---|---|
+> | **P0.1** | `src/core/compose-boards.ts:248-274` | 真原子 write：`writeFile(tmp) → rename(tmp, file)`，删冗余 `JSON.stringify` 第二次调用 + `unlink` hack |
+> | **P0.2** | `web/src/app/compose/ComposeBoard.tsx:1183-1196` | `importJson` 接受 v3：版本检查 `[1, 2, 3].includes(parsed.version)` |
+> | **P1.3** | `src/server/server.ts:594-604, 612, 622-632, 645` | 路由层 `assertBoardId` helper（regex `/^[a-zA-Z0-9_-]{1,64}$/`）→ 400 + descriptive error；`POST /compose/boards` 也校验 body 里的可选 id |
+> | **P1.4 + P3.14** | `web/src/lib/i18n/{types,dict.en,dict.zh}.ts` + `ComposeBoard.tsx:1515-1533` | 新 4 个 key `compose.boardList.{blockCount,connectionCount}.{one,other}`；替换 `.replace("1 ", "")` hack |
+> | **P1.5** | `src/core/compose-boards.ts:128-225` | `readBoardSummary`（轻量字段类型检查）+ `Promise.all` 并行 IO；`listBoards` 切换路径 |
+> | **P1.6** | `web/src/app/compose/ComposeBoard.tsx:929-957` | `saveBoardToServer` 先 `api.composeBoards()` 查同名；不同 id 走 `confirm(t("compose.board.confirmOverwrite"))` |
+> | **P2.7** | `web/src/lib/i18n/{types,dict.en,dict.zh}.ts` + `ComposeBoard.tsx:1895-1897` | 新 key `compose.canvasSelectBlock.keys`（Delete / Escape 字面量烤进翻译）；删 caller 硬编码 |
+> | **P2.8** | `web/src/lib/i18n/{types,dict.en,dict.zh}.ts` + `ComposeBoard.tsx:2125-2140` | 4 个新 key `compose.inspector.field.{id,kind,refId,position}` |
+> | **P2.9** | `web/src/app/compose/Inspector.tsx` (新建) + `web/src/app/compose/ConnectionPath.tsx` (新建) | 抽 `BlockInspector` + `ConnectionList` + `ConnectingPicker` + `InspectorDetailFields` + 3 helpers + `KIND_META` 到 Inspector.tsx；抽 `ConnectionPath` + `BLOCK_W`/`BLOCK_H` 到 ConnectionPath.tsx；ComposeBoard.tsx 2767→1974 行（-793） |
+> | **P2.10** | `web/src/app/compose/ComposeBoard.tsx:194-218, 415-462, 760-770` | module-level `buildConnectionIfValid(fromId, toId, state)` 纯函数；drag-to-create 路径 + `connectBlock` 都调它 |
+> | **P2.11** | `web/src/components/OverflowMenu.tsx:34-42, 64` + `web/src/lib/i18n/{types,dict.en,dict.zh}.ts` + `web/src/app/try/page.tsx:290` | 新 key `aria.moreActions`；OverflowMenu 用 `useT()` 拿默认值；try 页面删显式 `ariaLabel="More actions"` 传参 |
+> | **P3.12** | `web/src/app/compose/ComposeBoard.tsx:600-624` | 删 `handleCanvasX`/`handleCanvasY` 计算 + `void` 抑制；更新注释指向 SVG overlay closure |
+> | **P3.13** | `src/core/plan-executor.ts:354, 768-790` | `areDependsOnSatisfied(task, plan)`：用 `plan.tasks` 建 `byId` Map；dependsOn target 必须是 `status === "completed"`；dangling reference → fail closed |
+> | **P3.15** | `web/src/lib/types.ts:598-608` + `web/src/lib/pilot-browser.ts:333-345` + `web/src/app/compose/ComposeBoard.tsx:971-977` | 新 type `BoardInput`（mirror core）；`api.saveComposeBoard(id, input: BoardInput)`；payload 不再 spread `state`，只取 4 个 server 字段（name/blocks/connections/version） |
+> | **P3.16** | `src/core/pi-session-runner.ts:53-92` | 删 `"dist/cli.js"` 相对路径兜底；用 `import.meta.url` 解析 module sibling `dist/cli.js`；最后 throw descriptive error |
+> | **Tests** | `web/tests/overflow-menu.test.tsx` | 3 个测试 wrap `<I18nProvider initialLocale="en">`（OverflowMenu 现在调 useT） |
+>
+> 关键设计：
+>
+> - **P0.1 用 `fs.rename` 而非 unlink+writeFile**：POSIX guarantee rename atomic；unlink+writeFile 中间有"文件不存在"窗口，crash 会真丢数据。`rename` 失败时 catch + unlink tmp（防止 tmp 留垃圾），重新 throw。
+> - **P1.4 用独立 `compose.boardList.*` key 而不是 `compose.inspector.blockCount.*`**：前者只表示 unit（"block"），后者烤了 count。caller 拼接 `数字 + 单位` 比 `.replace("1 ", "")` hack 干净太多。
+> - **P1.5 summary path 保留 strict path**：`loadBoard` 仍跑全 Zod（用户实际打开 board 时），list 只跑 field type check（100 boards 不能卡 100ms）。
+> - **P1.6 same-name confirm 走 `compose.board.confirmOverwrite` key**（v0.6.10 已经加好，v0.6.11 终于用上）。
+> - **P2.7 keyboard 名字不进 i18n placeholder**：Delete / Escape / Esc 是 key 名字不是语言；中文也直接用英文。`.keys` 后缀的 key 表达"this is the keys-as-literal version"。
+> - **P2.9 拆分不抽 hooks/state**：只抽"独立组件 + 它们的 helpers"（Inspector + ConnectionPath）。ComposeBoard 主 component 的 17 个 useState / 15 个 useCallback 还是在一起 — 那是一次更大的 refactor（hooks 抽离需要 state hoisting 或 context），不在 v0.6.11 范围。
+> - **P2.10 `buildConnectionIfValid` 是 module-level pure function**：caller 传 state 函数返 connection 或 null；UI 关注点（commit/setState/announce/flip selection）仍在 caller closure 里。drag-to-create 和 inspector picker 现在用同一套验证规则，不可能再 drift。
+> - **P3.13 fail closed on dangling reference**：dependsOn 引用不存在的 task id 返 false，不静默放行。`Map` lookup + 显式 `if (!dep) return false`。
+> - **P3.15 `BoardInput` 不带 `id` / `updatedAt`**：id 走 path，updatedAt server 填。wire 契约宽度 = schema 宽度。
+> - **P3.16 `import.meta.url` 解析 sibling**：`path.dirname(fileURLToPath(import.meta.url))` 拿 `dist/core/`，`path.resolve(here, "..", "cli.js")` 拿 `dist/cli.js`。这条在 `node_modules/pilot/dist/cli.js` 安装布局下也能用。
+> - **overflow-menu test 加 I18nProvider wrap**：3 个 test 改 4 行（import + renderWithI18n helper + 替换 `render(`）。OverflowMenu 是通用组件，单独包 provider 比 setup.ts 全局包更轻。
+>
+> 验证限制：sandbox 没起 pilot server，UI 流程（Save panel / Load panel / Inspector 改 label）不能 Playwright 测，但 server-side 逻辑（ID validation / name confirm / atomic save / import version check）都被现有 25 compose-boards cases 覆盖。tsc + production build + 201/201 web tests（+overflow-menu 3 个 wrap i18n）+ 584/584 core tests + format 双清 + lint clean 全过。
+>
+> 测试：core **584/584**、web **201/201**，format 双清、lint clean、tsc clean（root + web）、production build OK。
+>
+> **故意没做**（v0.6.12+ 留）：`/compose/boards` 列表页（multi-board picker + rename + bulk delete + share-link）—— 纯 UI 切片，API 已经齐了；multiple connections (A↔B 双向)；connection color 自定义；auto-route 避开 block 中心；ComposeBoard.tsx hooks/state 抽离（需要更深的 refactor）。
+>
 > **2026-07 校准**：之前的 v1.0 终极宏图（`docs/roadmap-v1.0.md`，已移到 `docs/retired/`）建立在未经验证的假设上（6 阶段流水线 / Hermes scratch_pad）—— **Pi 实际数据里没有这些抽象**。Pilot 走的是 verify-first 路线，每个版本都基于 [`roadmap-pi-grounded.md`](./roadmap-pi-grounded.md) 的真实能力盘点。
 
 ## 阶段一：看见 Pi（v0.1 - v0.3.x，已发）

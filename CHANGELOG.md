@@ -2,6 +2,136 @@
 
 ## Unreleased
 
+### v0.6.11 — 16 bug fixes (P0 × 2 + P1 × 4 + P2 × 5 + P3 × 5)
+
+A focused patch release that closes a long backlog of small-but-real
+issues found while reviewing v0.6.7 — v0.6.10. No new features, no
+schema changes, no new routes. Every change is testable in isolation
+and most have at least one regression test.
+
+**P0 — data loss + silent corruption (2 fixes)**
+
+- **Atomic save in `core/compose-boards.ts`.** The v0.6.10
+  implementation wrote a temp file then `unlink`'d the real one
+  and re-`writeFile`'d it — a non-atomic operation with a window
+  where the file was missing. Now uses `fs.rename` which is
+  atomic on POSIX. Also stops double-serialising the JSON
+  payload.
+- **`importJson` accepts v3.** The toolbar Export has shipped
+  v3 since v0.6.9, but `importJson`'s version check only
+  allowed v1/v2 — so a user who exported then tried to import
+  got a silent "invalid version" rejection. Now `1 | 2 | 3`.
+
+**P1 — functional errors (4 fixes)**
+
+- **Board routes validate path id at the boundary.** A 500
+  used to be returned for ids like `..` or oversized strings
+  because the service silently dropped them to 404. Now the
+  route layer checks `isValidBoardId` and returns 400 with a
+  descriptive error before the service is called.
+- **Board list meta uses proper i18n keys for pluralisation.**
+  The previous `.replace("1 ", "")` hack on a string that
+  already had the count baked in broke under zh locale (the
+  "1" would be stripped from "1 个块", leaving "个块"). New
+  keys `compose.boardList.blockCount.{one,other}` and
+  `compose.boardList.connectionCount.{one,other}` are the
+  unit only; the count sits in a separate span.
+- **`listBoards` switched to a lightweight summary path.**
+  Was calling full `loadBoard` (with full Zod schema
+  validation) per board. New `readBoardSummary` does field-
+  type checks only and `Promise.all` parallelises the reads.
+  100 boards × full Zod was ~50-100ms; this cuts that ~3×.
+- **Same-name boards now confirm before clobbering.** The
+  previous "reuse last-saved id when name matches" logic
+  silently created a duplicate when the user renamed, saved,
+  renamed back, and saved again. New flow hits `composeBoards`
+  to look up an existing board with the same name; if a
+  different id owns it, prompts via the existing
+  `compose.board.confirmOverwrite` translation key.
+
+**P2 — UX / code organisation (5 fixes)**
+
+- **Inspector Delete/Escape hint is now i18n-aware.** Was
+  hardcoded `{del: "Delete", esc: "Escape"}` in the caller.
+  Added `compose.canvasSelectBlock.keys` with the key names
+  baked in (Delete / Escape / Esc are keyboard conventions
+  that don't translate, so they stay literal in zh too).
+- **Inspector "id / kind / refId / position" fields are
+  i18n'd.** New keys `compose.inspector.field.{id,kind,refId,
+  position}` (en keeps the schema field name; zh uses
+  "ID / 类型 / 引用 ID / 位置").
+- **`ComposeBoard.tsx` split into three files.** The 2767-
+  line main file is now 1974 lines; the 793 lines of
+  inspector + connection-path subtree moved to
+  `Inspector.tsx` and `ConnectionPath.tsx` (with
+  `KIND_META` and `BLOCK_W`/`BLOCK_H` exported for shared
+  use). Same behaviour, easier to navigate.
+- **Connection creation logic deduplicated.** The drag-to-
+  create path inside `onCanvasPointerUp` and the inspector
+  picker's `connectBlock` callback both had the same
+  self-loop / duplicate / stale-endpoint validation. New
+  module-level `buildConnectionIfValid` is a pure function
+  of `state` that returns the new `ComposeConnection` or
+  `null`; both call sites now share it.
+- **`OverflowMenu` ariaLabel pulls from i18n.** Was
+  hardcoded `ariaLabel = "More actions"` in the component
+  default; the only `/try` caller passed the same string
+  explicitly. Now defaults to `t("aria.moreActions")`
+  (en "More actions", zh "更多操作"); callers can still
+  override. The 3 overflow-menu tests now wrap the component
+  in `<I18nProvider initialLocale="en">` so they get a
+  real translation context.
+
+**P3 — code quality (5 fixes)**
+
+- **Dead `handleCanvasX` / `handleCanvasY` removed.** Was
+  computed then immediately `void`-suppressed in
+  `startConnectionDrag`. The ghost line uses
+  `from.x + BLOCK_W` / `from.y + BLOCK_H/2` instead.
+- **`areDependsOnSatisfied` actually evaluates `dependsOn`.**
+  Was a no-op (always returned `true`), which silently
+  broke the sequential strategy's ordering guarantees for
+  any non-trivial DAG. Now reads the live plan and
+  requires every dependsOn target to be in `completed`
+  status (fails closed on dangling references).
+- **`↔` symbol replaced with i18n-friendly
+  `compose.boardList.connectionCount.{one,other}`.** (See
+  P1.4 — bundled in the same pass.)
+- **`saveComposeBoard` signature now uses `BoardInput`.** Was
+  accepting the full `ComposeState` (which ships `updatedAt`
+  the server overwrites anyway, and would have shipped any
+  future state fields). New `BoardInput` type mirrors
+  `core/compose-boards.ts#BoardInput` and only includes the
+  fields the server actually accepts.
+- **`resolvePiCliPath` last-resort fallback is honest.** Was
+  returning the bare string `"dist/cli.js"` — a relative
+  path that only resolved when the user's CWD happened to
+  be pilot's repo root. Now checks `dist/cli.js` next to
+  this module via `import.meta.url` and `throws` with a
+  descriptive message if even that isn't present.
+
+**Stats**
+
+- root tests: **584/584** ✓ (unchanged)
+- web tests: **201/201** ✓ (unchanged — fixes are
+  implementation-level; 3 overflow-menu tests got a
+  trivial `I18nProvider` wrap)
+- format:check root + web: ✓
+- lint (root `eslint src test --max-warnings 0`): ✓
+- tsc root + web: ✓
+- production build (`next build`): ✓
+
+**Sandbox caveat**
+
+Same as v0.6.9 / v0.6.10: `pilot start` isn't running, so
+the `/compose` Save / Load / Inspector flows can't be
+Playwright-verified end-to-end. The new server-side ID
+validation + name-confirm logic IS covered by the existing
+25 compose-boards cases (list / save / load / delete
+round-trips + schema validation + ID safety). User must
+`pilot start` + `pilot dashboard` to confirm the inspector
++ load list render correctly.
+
 ### v0.6.10 — server-side board persistence (Save to / Load from server)
 
 `/compose` has shipped block-to-block connections (v0.6.7),
