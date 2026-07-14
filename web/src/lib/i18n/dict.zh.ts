@@ -1160,6 +1160,12 @@ const zh: Dict = {
   "compose.boards.renameDialog.placeholder": "例如：研究会话 2026-07-15",
   "compose.boards.renameDialog.confirm": "保存",
   "compose.boards.renameDialog.cancel": "取消",
+  "compose.boards.renameDialog.maxLengthError": "最多 {n} 个字符",
+  "compose.boards.announce.bulkDeletedWithFailures":
+    "已删除 {n} 个画板，{m} 个失败",
+  "compose.boards.row.select": "选择此画板",
+  "compose.boards.column.selectAria": "选择",
+  "try.hint.forkFromHere": "从这里分叉",
   "compose.boards.toolbar.openBoards": "画板",
   "compose.boards.toolbar.openBoardsTitle": "浏览 / 重命名 / 删除已保存的画板",
 };

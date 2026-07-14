@@ -159,9 +159,15 @@ export function BoardListView() {
     }
     setSelected(new Set());
     if (failed > 0) {
+      // v0.6.13: was a hardcoded `(${failed} failed)` suffix
+      // appended to an English message; i18n key with both
+      // {n} and {m} placeholders now produces "已删除 N 个
+      // 画板，M 个失败" in zh.
       window.alert(
-        t("compose.boards.announce.bulkDeleted", { n: ids.length - failed }) +
-          ` (${failed} failed)`,
+        t("compose.boards.announce.bulkDeletedWithFailures", {
+          n: ids.length - failed,
+          m: failed,
+        }),
       );
     } else {
       announce(t("compose.boards.announce.bulkDeleted", { n: ids.length }));
@@ -309,7 +315,10 @@ export function BoardListView() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-[var(--text-muted)] border-b border-[var(--border-subtle)]">
-                <th className="px-3 py-2 w-8" aria-label="select" />
+                <th
+                  className="px-3 py-2 w-8"
+                  aria-label={t("compose.boards.column.selectAria")}
+                />
                 <th className="px-3 py-2">{t("compose.boards.column.name")}</th>
                 <th className="px-3 py-2 w-24 text-right">
                   {t("compose.boards.column.blocks.one")}

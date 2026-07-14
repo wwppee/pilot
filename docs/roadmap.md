@@ -395,7 +395,32 @@
 >
 > 测试：core **584/584**、web **201/201**，format 双清、lint clean、tsc clean（root + web）、production build OK。
 >
-> **故意没做**（v0.6.12+ 留）：multiple connections (A↔B 双向)；connection color 自定义；auto-route 避开 block 中心；ComposeBoard.tsx hooks/state 抽离。
+> **故意没做**（v0.6.13+ 留）：multiple connections (A↔B 双向)；connection color 自定义；auto-route 避开 block 中心；ComposeBoard.tsx hooks/state 抽离；**全站 i18n audit pass**（v0.6.13 只扫了 /compose 和 /try，其他页面 — sessions / packages / forge / plans / avatars / tools / context — 各自有 v0.4.x-v0.5.x 时代遗留的硬编码英文，需要单独一次 pass）。
+>
+> **2026-07-15 校准 (29)**：**v0.6.13 已发** —— 8 i18n cleanup + 1 stale comment。hotfix to v0.6.12，纯 cleanup，无新 feature / 新 schema / 新 route。每项独立可测。`/compose/boards` 四个 v0.6.12 引入的英文硬编码全收掉（`<title>` / RenameDialog max-length error / BoardListView bulk partial-failure / 表头 select-all aria），加上 v0.6.11 之前就有的两处（Inspector `<dt>kind</dt>` + try page "Fork from here"）和两处 a11y polish（BoardRow checkbox aria-label 不再是 count 形状 / 表头 aria-label 走 i18n key）。外加 ComposeBoard.tsx 的 stale `handleCanvasX/Y` breadcrumb 清理（v0.6.11 P3.12 删了那个变量但 comment 漏改了）。
+>
+> | 级别 | 文件 | 修复 |
+> |---|---|---|
+> | **P2.1** | `web/src/app/compose/boards/page.tsx:19` | `metadata.title` 改 `generateMetadata` 接 `Accept-Language`：en "Boards — Pilot" / zh "画板 — Pilot"。其他页面（/、/compose、/sessions…）早就有这个 pattern，v0.6.12 漏了。`<h1>` body 一直走 `<T k="compose.boards.title" />` 是对的，只有 `<title>` tag 错。 |
+> | **P2.2** | `web/src/app/compose/boards/RenameDialog.tsx:67` | `` `Max ${MAX_LENGTH} characters` `` → `t("compose.boards.renameDialog.maxLengthError", { n: MAX_LENGTH })`（en "Max {n} characters" / zh "最多 {n} 个字符"） |
+> | **P2.3** | `web/src/app/compose/boards/BoardListView.tsx:163` | 末尾 `` ` (${failed} failed)` `` 拼到英文 message 后面 → 单 key `compose.boards.announce.bulkDeletedWithFailures` 带 `{n}` / `{m}` 两个占位（en "Deleted {n} board(s), {m} failed" / zh "已删除 {n} 个画板，{m} 个失败"）。一条 message 一个 template — "partial success" 是单一语义不该拆。 |
+> | **P2.4** | `web/src/app/try/page.tsx:351` | `<strong>Fork from here</strong>` raw → `<strong>{t("try.hint.forkFromHere")}</strong>`。其他 `<strong>` run（Connect / rpc）早就 i18n'd，这个漏了。 |
+> | **P3.5** | `web/src/app/compose/Inspector.tsx:566` | `<dt>kind</dt>` raw → `t("compose.inspector.field.kind")`。同文件第 177 行已经用这个 key，是 detail 块漏迁。 |
+> | **P3.6** | `web/src/app/compose/boards/BoardRow.tsx:65` | checkbox `aria-label` 从 `t("compose.boards.bulk.selected", { n: checked ? 1 : 0 })` 改专用 key `compose.boards.row.select`（en "Select this board" / zh "选择此画板"）。n=0 时 "0 selected" 是 per-row toggle 语义（应该是 "未选"/"select"）不是 multi-select 状态。 |
+> | **P3.7** | `web/src/app/compose/boards/BoardListView.tsx:312` | `<th aria-label="select">` raw → `aria-label={t("compose.boards.column.selectAria")}`（en "Select" / zh "选择"）。 |
+> | **P3.8** | `web/src/app/compose/ComposeBoard.tsx:578` | stale `handleCanvasX/Y` breadcrumb 清理 — v0.6.11 P3.12 删了那个变量但 comment 漏改。改写为描述当前架构（anchor 是 `from.x` + `from.y` 的纯函数，不另起 ref）。 |
+> | **i18n** | `web/src/lib/i18n/{types,dict.en,dict.zh}.ts` | 5 新 key：`compose.boards.renameDialog.maxLengthError` / `compose.boards.announce.bulkDeletedWithFailures` / `compose.boards.row.select` / `compose.boards.column.selectAria` / `try.hint.forkFromHere` |
+>
+> 关键设计：
+>
+> - **P2.1 `<title>` 走 `generateMetadata` 而非 i18n key**：metadata 不是内容，加 i18n key 是 ceremony 无 payoff。`generateMetadata` 接 `Accept-Language` 是 next 14+ 标准 pattern（layout.tsx 早就在用），保持一致。
+> - **P2.3 partial-failure 用单 key + 两个占位不是两个 key**："Deleted 3 boards, 2 failed" 是一个语义（partial success report），拆成 "Deleted {n} boards" + "{m} failed" 会让模板组合时丢失连接词（"and" / "，"），英文尤其糟。
+> - **P3.6 per-row checkbox aria-label 不复用 bulk.selected**：bulk 状态是"我选了几个"，per-row 是"我要不要选这个 row"。两个语义不该共用 key，否则 n=0 时出现 "已选 0 项"（"已选"暗示状态而不是 toggle 意图）。
+> - **P3.8 删 stale comment 时改写描述而非简单删除**：comment 解释 "为什么 ghost line 用 from.x + BLOCK_W 而不另起 ref" 是 architectural decision 文档；删了 variable name 但保留了"anchor 是 pure function of grid position"这一信息。代码 review 时这条信息还有用。
+>
+> 验证：现有 web 214/214 test 全过（i18n dict completeness 测自动覆盖新 5 key 存在性）。tsc + format + production build 全过。`boards.test.tsx` 没新增 test — 修的都是 i18n 字符串，i18n provider wrap 已经覆盖 en locale 路径，zh 等价路径靠 i18n.test.ts 的 dict completeness 兜底。
+>
+> 测试：core **541/541**（无变化）、web **214/214**（无变化）、format 双清、tsc clean（root + web）、production build OK。
 >
 > **2026-07-15 校准 (28)**：**v0.6.12 已发** —— `/compose/boards` 列表页（multi-board picker + rename + bulk delete + copy-as-JSON share）。`/compose` v0.6.10 引入 server persistence 后只暴露了 toolbar Save/Load dropdown（单板快速存读），没有"管理多个板"的入口。v0.6.12 把这个表面补上：4-state 列表（loading / ok-empty / ok-with-rows / error）、per-row 4 actions（Open / Rename / Copy as JSON / Delete）、bulk select + sticky bottom bar、live-region a11y announcements、4 个新文件（`page.tsx` + `BoardListView` + `BoardRow` + `RenameDialog`）+ 1 个新 page route (`/compose/boards`) + 1 个新 PATCH endpoint (`/api/compose/boards/:id`)。
 >

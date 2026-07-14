@@ -347,7 +347,7 @@ export default function TryPage() {
               k="try.hint.body"
               values={{
                 s1: <strong>Connect</strong>,
-                s2: <strong>Fork from here</strong>,
+                s2: <strong>{t("try.hint.forkFromHere")}</strong>,
                 rpc: (
                   <GlossaryTerm term="rpc" locale={locale}>
                     RPC

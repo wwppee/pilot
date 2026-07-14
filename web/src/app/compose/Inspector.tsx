@@ -563,7 +563,7 @@ function InspectorDetailFields({ detail }: { detail: ComposeEntityDetail }) {
           <dd>{detail.enabled ? "✓" : "—"}</dd>
           <dt>{t("compose.inspector.detail.title")}</dt>
           <dd>{detail.name}</dd>
-          <dt>kind</dt>
+          <dt>{t("compose.inspector.field.kind")}</dt>
           <dd>{detail.packKind}</dd>
         </dl>
       );

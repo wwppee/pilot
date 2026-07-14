@@ -2,6 +2,123 @@
 
 ## Unreleased
 
+### v0.6.13 — 8 i18n cleanups + 1 stale comment (hotfix to v0.6.12)
+
+A focused cleanup release that closes a small backlog of
+"English-only strings in zh-rendered UI" and one dead-code
+breadcrumb that v0.6.12 left behind. No new features, no
+schema changes, no new routes. Every change is testable in
+isolation and falls out of either an i18n key addition or a
+3-line code edit.
+
+**P2 — i18n hardcoded strings in v0.6.12 code (4 fixes)**
+
+- **`boards/page.tsx` `<title>` is now locale-aware.** Was
+  `export const metadata = { title: "Boards — Pilot" }` —
+  hardcoded English. Now `generateMetadata` reads
+  `Accept-Language` and returns `"画板 — Pilot"` for zh.
+  Other pages (`/`, `/compose`, `/sessions`, …) already
+  had this pattern; v0.6.12 missed it for the new boards
+  page. (The `<h1>` body text was already i18n-keyed via
+  `<T k="compose.boards.title" />` — only the `<title>` tag
+  was wrong.)
+- **`RenameDialog` max-length error is now i18n-keyed.**
+  Was `` `Max ${MAX_LENGTH} characters` `` — a JS template
+  literal that rendered English even in zh. New key
+  `compose.boards.renameDialog.maxLengthError` =
+  `"Max {n} characters"` (en) / `"最多 {n} 个字符"` (zh).
+- **`BoardListView` bulk-delete partial-failure message
+  is now i18n-keyed.** Was the trailing
+  `(${failed} failed)` glued onto the end of an English
+  success message. New key
+  `compose.boards.announce.bulkDeletedWithFailures` =
+  `"Deleted {n} board(s), {m} failed"` (en) /
+  `"已删除 {n} 个画板，{m} 个失败"` (zh). Single key with
+  two placeholders rather than two keys with one each —
+  the message has one semantic shape ("partial success
+  report") so it should be one template.
+- **`/try` "Fork from here" affordance is now i18n-keyed.**
+  Was `<strong>Fork from here</strong>` raw text inside
+  the `try.hint.body` RichT — the `<strong>` wrapper
+  stayed for styling but the children go through a new
+  `try.hint.forkFromHere` key. (Other `<strong>` runs in
+  the same hint were already keyed — this was the only
+  one missed.)
+
+**P3 — i18n hardcoded strings in v0.6.11 code (1 fix)**
+
+- **`Inspector.tsx` `<dt>kind</dt>` is now i18n-keyed.**
+  Was raw text in a detail block that had 4 other i18n'd
+  siblings — easy to miss in a refactor. Now
+  `t("compose.inspector.field.kind")` (same key the
+  summary block at line 177 already uses).
+
+**P3 — a11y polish (2 fixes)**
+
+- **`BoardRow` checkbox `aria-label` is no longer
+  count-shaped.** Was `t("compose.boards.bulk.selected",
+  { n: checked ? 1 : 0 })` — this read as "0 selected"
+  when the row was unchecked, which is a per-row toggle
+  semantically, not a multi-select status. New dedicated
+  key `compose.boards.row.select` = `"Select this board"`
+  (en) / `"选择此画板"` (zh). The bulk count text in the
+  top-left header is unaffected.
+- **Boards list select-all column header now has a real
+  accessible name.** Was bare `aria-label="select"` —
+  English-only, lowercase, no semantic context. New key
+  `compose.boards.column.selectAria` = `"Select"` (en) /
+  `"选择"` (zh).
+
+**P3 — stale code breadcrumb (1 fix)**
+
+- **`ComposeBoard.tsx` ghost-line comment no longer
+  references the deleted `handleCanvasX/Y` ref.**
+  v0.6.11 P3.12 deleted the actual `handleCanvasX/Y`
+  variable and replaced the `void`-suppressed call with
+  a pure-function read of `from.x + BLOCK_W`. The
+  refactor left a comment breadcrumb in `startConnectionDrag`
+  saying "to avoid threading a separate `handleCanvasX/Y`
+  ref through React state" — but the variable no longer
+  exists, so the breadcrumb was pointing at code that
+  wasn't there. Rewrote the comment to describe the
+  *current* architecture (the anchor is a pure function
+  of `from.x` + `from.y`) without naming a ghost.
+
+**i18n**
+
+- **5 new keys** under `compose.boards.*` (maxLengthError /
+  bulkDeletedWithFailures / row.select / column.selectAria)
+  and one under `try.hint.*` (forkFromHere).
+- **en + zh both updated.** All 5 are template strings with
+  `{n}` / `{m}` placeholders for pluralised / partial-success
+  reporting.
+- **i18n `dict completeness` test passes** — every new key
+  exists in both dictionaries (the test runs as part of
+  `npx vitest run`).
+
+**Stats**
+
+- root tests: **541/541** ✓ (unchanged)
+- web tests: **214/214** ✓ (unchanged — fixes are
+  implementation-level; the existing 13 boards.test.tsx
+  cases cover the i18n surface implicitly via the
+  `<I18nProvider initialLocale="en">` wrapper)
+- format:check root + web: ✓
+- tsc root + web: ✓
+- production build (`next build`): ✓
+
+**Deliberately NOT done (v0.6.14+ backlog)**
+
+Same as v0.6.12: multiple connections (A↔B 双向),
+connection color 自定义, auto-route 避开 block 中心,
+ComposeBoard.tsx hooks/state 抽离. Plus the
+v0.6.13 leftover: an audit pass on remaining
+English-only strings in other pages — I scanned the
+/compose tree and the /try page, but the rest of the
+app (sessions / packages / forge / plans / avatars /
+tools / context / etc.) has its own v0.4.x-v0.5.x-era
+hardcoded text that deserves a separate pass.
+
 ### v0.6.12 — `/compose/boards` list page (multi-board picker + rename + bulk delete + copy-as-JSON share)
 
 v0.6.10 introduced server-side board persistence and the

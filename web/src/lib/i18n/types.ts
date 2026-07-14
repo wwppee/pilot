@@ -1104,6 +1104,24 @@ export type Dict = {
   "compose.boards.renameDialog.placeholder": string;
   "compose.boards.renameDialog.confirm": string;
   "compose.boards.renameDialog.cancel": string;
+  // v0.6.13: inline max-length error in the rename dialog
+  // (was `Max 200 characters` hardcoded).
+  "compose.boards.renameDialog.maxLengthError": string;
+  // v0.6.13: bulk delete partial-failure message (was
+  // `(${failed} failed)` hardcoded).
+  "compose.boards.announce.bulkDeletedWithFailures": string;
+  // v0.6.13: per-row checkbox accessible label (was
+  // `{n} selected` with n=0 producing nonsense "0 selected"
+  // when the row was unchecked).
+  "compose.boards.row.select": string;
+  // v0.6.13: select-all column header accessible name
+  // (was bare "select" hardcoded).
+  "compose.boards.column.selectAria": string;
+  // v0.6.13: the "Fork from here" affordance on the /try
+  // hint — extracted out of a `<strong>Fork from here</strong>`
+  // inside the hint body so zh users see the translation
+  // instead of the English.
+  "try.hint.forkFromHere": string;
   "compose.boards.toolbar.openBoards": string;
   "compose.boards.toolbar.openBoardsTitle": string;
 };

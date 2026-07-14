@@ -64,7 +64,12 @@ export function RenameDialog({ board, onCancel, onConfirm }: Props) {
       return;
     }
     if (trimmed.length > MAX_LENGTH) {
-      setError(`Max ${MAX_LENGTH} characters`);
+      // v0.6.13: was `Max ${MAX_LENGTH} characters` hardcoded;
+      // i18n key with a placeholder lets zh users see "最多 200
+      // 个字符" instead of the English error.
+      setError(
+        t("compose.boards.renameDialog.maxLengthError", { n: MAX_LENGTH }),
+      );
       return;
     }
     if (trimmed === board.name) {

@@ -1212,6 +1212,12 @@ const en: Dict = {
   "compose.boards.renameDialog.placeholder": "e.g. Research session 2026-07-15",
   "compose.boards.renameDialog.confirm": "Save",
   "compose.boards.renameDialog.cancel": "Cancel",
+  "compose.boards.renameDialog.maxLengthError": "Max {n} characters",
+  "compose.boards.announce.bulkDeletedWithFailures":
+    "Deleted {n} board(s), {m} failed",
+  "compose.boards.row.select": "Select this board",
+  "compose.boards.column.selectAria": "Select",
+  "try.hint.forkFromHere": "Fork from here",
   "compose.boards.toolbar.openBoards": "Boards",
   "compose.boards.toolbar.openBoardsTitle":
     "Browse / rename / delete saved boards",

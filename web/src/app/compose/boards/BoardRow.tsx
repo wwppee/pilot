@@ -62,7 +62,13 @@ export function BoardRow({
           type="checkbox"
           checked={checked}
           onChange={(e) => onToggle(e.target.checked)}
-          aria-label={t("compose.boards.bulk.selected", { n: checked ? 1 : 0 })}
+          // v0.6.13: was `bulk.selected` with n=0/1, which
+          // read as "0 selected" / "1 selected" — the
+          // unchecked state in particular was nonsensical
+          // ("0 selected" sounds like an empty selection
+          // status, not a per-row toggle). Use a dedicated
+          // select-this-board key instead.
+          aria-label={t("compose.boards.row.select")}
         />
       </td>
       <td className="px-3 py-2 align-top">

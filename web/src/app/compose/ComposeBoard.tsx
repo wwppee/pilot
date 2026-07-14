@@ -574,9 +574,15 @@ export default function ComposeBoard({
       // line is drawn from that anchor to the current pointer.
       // The anchor is `(block.x + BLOCK_W, block.y + BLOCK_H/2)`
       // — see the SVG overlay below, which re-computes it from
-      // `from.x` + `from.y` to avoid threading a separate
-      // `handleCanvasX/Y` ref through React state. Block dim is
-      // 220×80 (BLOCK_W/BLOCK_H in ConnectionPath).
+      // `from.x` + `from.y` to keep the anchor a pure function
+      // of the block's grid position (no separate ref to thread
+      // through React state). Block dim is 220×80
+      // (BLOCK_W/BLOCK_H in ConnectionPath).
+      //
+      // v0.6.13: removed the leftover "handleCanvasX/Y" mention
+      // — that variable was already deleted by the v0.6.11
+      // P3.12 refactor and the reference was a stale breadcrumb
+      // that pointed at code that no longer existed.
       setPendingConnection({
         fromId: block.id,
         pointerX: e.clientX - rect.left,
