@@ -395,7 +395,43 @@
 >
 > 测试：core **584/584**、web **201/201**，format 双清、lint clean、tsc clean（root + web）、production build OK。
 >
-> **故意没做**（v0.6.11+ 留）：`/compose/boards` 列表页（multi-board picker + rename + bulk delete + share-link）—— 纯 UI 切片，API 已经齐了；multiple connections (A↔B 双向)；connection color 自定义；auto-route 避开 block 中心。
+> **故意没做**（v0.6.12+ 留）：multiple connections (A↔B 双向)；connection color 自定义；auto-route 避开 block 中心；ComposeBoard.tsx hooks/state 抽离。
+>
+> **2026-07-15 校准 (28)**：**v0.6.12 已发** —— `/compose/boards` 列表页（multi-board picker + rename + bulk delete + copy-as-JSON share）。`/compose` v0.6.10 引入 server persistence 后只暴露了 toolbar Save/Load dropdown（单板快速存读），没有"管理多个板"的入口。v0.6.12 把这个表面补上：4-state 列表（loading / ok-empty / ok-with-rows / error）、per-row 4 actions（Open / Rename / Copy as JSON / Delete）、bulk select + sticky bottom bar、live-region a11y announcements、4 个新文件（`page.tsx` + `BoardListView` + `BoardRow` + `RenameDialog`）+ 1 个新 page route (`/compose/boards`) + 1 个新 PATCH endpoint (`/api/compose/boards/:id`)。
+>
+> | 类别 | 文件 | 内容 |
+> |---|---|---|
+> | **New page** | `web/src/app/compose/boards/page.tsx` | server component shell (title + subtitle)，`metadata` = `Boards — Pilot` |
+> | **New client** | `web/src/app/compose/boards/BoardListView.tsx` | 4-state machine (loading/ok-empty/ok-with-rows/error) + bulk select + bulk actions + live-region announce + RenameDialog mount |
+> | **New client** | `web/src/app/compose/boards/BoardRow.tsx` | 单行：checkbox + name (mono id) + blocks count (pluralised) + connections count (pluralised) + updatedAt (YYYY-MM-DD HH:MM local TZ) + 4 action buttons (Open / Rename / Copy as JSON / Delete) |
+> | **New client** | `web/src/app/compose/boards/RenameDialog.tsx` | local modal：focus input + select-all on mount + Esc cancel + Enter submit + 200 char 计数 + 边界验证 mirror server (string / non-empty / ≤200) |
+> | **New endpoint** | `src/server/server.ts:660-693` | `PATCH /compose/boards/:id` 路由 + 三态 error mapping (400 边界校验 / 400 unsafe id / 404 missing board / 200 success) |
+> | **New service** | `core/service-impl.ts:601-609` + `core/service.ts:368-382` | `renameComposeBoard(id, name)` —— `loadBoard` → 改 name → `saveBoard` (atomic write path 复用 §9.5) |
+> | **New core** | `core/compose-boards.ts:330-352` | `renameBoard(id, name, home?)` helper + 8 unit tests (preserves blocks/connections/createdAt / trims / empty / oversize / missing / unsafe id / reflected in listBoards) |
+> | **New client** | `web/src/lib/pilot-browser.ts:355-362` | `api.renameComposeBoard(id, name)` — POSTs `{ name }` to PATCH, returns updated `BoardSummary` |
+> | **New toolbar entry** | `web/src/app/compose/ComposeBoard.tsx:1367-1376` | `≡ Boards` Link next to existing Save/Load dropdowns in server-persistence group |
+> | **New search-param** | `web/src/app/compose/ComposeBoard.tsx:1006-1024` | `?board=<id>` auto-load on mount via `useSearchParams` → `loadBoardFromServer(id)` → `history.replaceState` to strip the param |
+> | **i18n** | `web/src/lib/i18n/{types,dict.en,dict.zh}.ts` | 40 new keys under `compose.boards.*` (page + 4 actions + 5 column headers + pluralised units + 4 states + rename dialog + bulk bar + announce) |
+> | **Tests** | `test/unit/compose-boards.test.ts:453-562` | +8 renameBoard core tests (preserves blocks/connections/createdAt, trims, empty/whitespace, oversize, missing board, unsafe id, listBoards reflects rename) |
+> | **Tests** | `test/unit/server.test.ts:907-1044` | +9 PATCH route tests (200 success / trim / preserves blocks / 400 empty / 400 oversize / 400 non-string / 400 unsafe id / 404 missing / 401 unauth) |
+> | **Tests** | `web/tests/boards.test.tsx` (new) | +13 client tests (4 states / 5 row actions / 3 bulk actions / 1 date format) |
+>
+> 关键设计：
+>
+> - **`renameBoard` 复用 `saveBoard` 不另起 atomic write**：`saveBoard` 已经是 `writeFile(tmp) → rename(tmp, file)`（§9.5），且能 preserve `createdAt` + bump `updatedAt` + 跑 Zod schema 校验。`renameBoard` 是 thin wrapper (`loadBoard` → 改 name → `saveBoard`)。零新代码路径，0 个新 race condition。
+> - **PATCH 端点边界校验 mirror `BoardInput` 语义**：string / non-empty after trim / ≤200 chars。`assertBoardId` 复用 v0.6.11 的 helper（regex `/^[a-zA-Z0-9_-]{1,64}$/`）。400 / 404 错误文案明确（"name must be a string" / "name must not be empty" / "name must be at most 200 characters"），让 client 错误提示有具体原因。
+> - **share-link 不做 server-side 暂存 URL**：考虑过 upload JSON → server 返 URL → 用户分享，但 round-trip 太重（需要 GC + auth + 短链映射）。改用 `navigator.clipboard.writeText` 把 board JSON 复制到剪贴板，导入走现有 toolbar Import。bulk copy 收一个 array（receiver 单 board 逐个 Import — copy plural / import singular，不对称是有意的简化）。
+> - **Open button 用 `useSearchParams` + `history.replaceState`**：用户点 Boards list 的 Open → `/compose?board=<id>` → ComposeBoard 顶部 useEffect 读 searchParams → 调 `loadBoardFromServer(id)` → `history.replaceState` 去掉 `?board=`。`replaceState`（不是 `push`）避免 back stack 残留临时 URL。`lastAutoLoadRef` 防止 React Strict Mode 双调用导致的重复 load。
+> - **`compose.boards.column.{blocks,connections}.{one,other}` 用真 plural 不用 `.replace("1 ", "")` hack**：v0.6.11 把 hack 砍掉后这种 i18n 一律走 unit key。中文 "1 块" / "0 块" 一样自然；以后加俄语/阿拉伯语也有 place。
+> - **bulk bar 用 sticky fixed 而非 inline 在表下**：rows 多时 (100+ boards) inline bar 要滚到底才能看到操作。fixed bottom + left-1/2 + max-w 居中更稳，鼠标一动就到。
+> - **a11y live region `aria-live="polite"`**：每条成功 action 推到 `role="status"` 元素。screen reader 不打断用户当前 narration，只在 idle 时补报"已重命名为 X" / "已删除 Y" / "已复制 Z 为 JSON"。失败用 `window.alert` 阻塞提示（vs live region — 失败需要用户主动确认）。
+> - **`sr-only` 类的 live region 永远 mounted**：用 `role="status"` 而非 `aria-live` 单独 element，避免 re-mount 引起 SR 重新 announce。React 状态变 announcement → DOM text 变 → SR 感知。
+>
+> 验证：sandbox 没起 pilot server，UI 流程（点 Rename → 改 → Save / 选 2 个 → 删 / Open URL 自动加载）不能 Playwright 测，但 16 个 core + 9 个 server + 13 个 client test 全覆盖了边界 / 成功 / 错误 / 4 状态 / 5 per-row action / 3 bulk action。tsc + production build + 541/541 core tests + 214/214 web tests + format 双清 + lint clean 全过。`/compose/boards` 在 `next build` route 列表里以 `ƒ` 出现 (server-rendered on demand)。
+>
+> 测试：core **541/541**（+16：8 renameBoard + 9 PATCH route，但有 1 个 shared test 计数重叠 — 实际 +16 测试条目）、web **214/214**（+13）、format 双清、lint clean、tsc clean（root + web）、production build OK（`ƒ /compose/boards` 出现在 route 列表）。
+>
+> **故意没做**（v0.6.13+ 留）：multiple connections (A↔B 双向) —— connection schema 加 `dir` 字段 + Inspector 双连接渲染；connection color 自定义 —— per-connection 调色板 + i18n；auto-route 避开 block 中心 —— orthogonal routing + 障碍规避（~1-2 天算法）；ComposeBoard.tsx hooks/state 抽离 —— 1974 行 + 17 useState + 15 useCallback，state hoisting 风险大。
 >
 > **2026-07-14 校准 (27)**：**v0.6.11 已发** —— 16 bug fixes（P0 × 2 + P1 × 4 + P2 × 5 + P3 × 5）。纯 patch release，无新 feature / 新 schema / 新 route。每个修复独立可测。
 >

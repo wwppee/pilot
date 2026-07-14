@@ -2,6 +2,178 @@
 
 ## Unreleased
 
+### v0.6.12 — `/compose/boards` list page (multi-board picker + rename + bulk delete + copy-as-JSON share)
+
+v0.6.10 introduced server-side board persistence and the
+toolbar Save / Load dropdowns. v0.6.12 closes the loop with a
+real "manage my boards" surface. The toolbar Save / Load
+dropdowns stay (they're the in-canvas quick save/load); the
+new `/compose/boards` page is for "I have many boards, show
+me them all at once".
+
+**New: `/compose/boards`**
+
+- **List view with 4 states** — loading / ok-empty /
+  ok-with-rows / error. The error state shows the failure
+  message + a "Retry" button that re-issues
+  `api.composeBoards()`. The empty state explains where
+  boards live (`~/.pilot/compose-boards`) and points the
+  user back to `/compose` to make one.
+- **Five columns** — checkbox (for bulk) / name + monospace
+  id / block count (with the new `compose.boards.column.blocks.{one,other}`
+  pluralised unit) / connection count (same) / updatedAt
+  in `YYYY-MM-DD HH:MM` local TZ / actions.
+- **Four per-row actions** — Open (link to
+  `/compose?board=<id>`), Rename, Copy as JSON, Delete. The
+  Open link uses `useSearchParams` + the existing
+  `loadBoardFromServer` flow, then strips `?board=` from
+  the URL with `history.replaceState` so a refresh doesn't
+  silently reload on top of any in-progress local edits.
+- **Bulk select + bulk bar** — a sticky bottom bar with
+  "N selected" + Delete / Copy as JSON / Clear. The
+  select-all checkbox at the top of the table is
+  tri-state-aware (all / some / none).
+- **Live-region announcements** — every successful
+  action (renamed, deleted, bulk-deleted, copied) is
+  pushed to a visually-hidden `aria-live="polite"` region
+  so screen readers can confirm without focus shifting.
+
+**New: PATCH `/api/compose/boards/:id`**
+
+- **Dedicated rename endpoint.** v0.6.10 had no way to
+  rename a board without re-sending the entire `BoardInput`
+  (blocks + connections). v0.6.12 adds a thin endpoint
+  that takes `{ name: string }`, validates it at the
+  boundary (string / non-empty after trim / ≤ 200 chars),
+  and routes to a new `renameBoard(id, name)` helper in
+  `core/compose-boards.ts`. The helper loads the existing
+  snapshot, mutates only `name`, and writes through the
+  same `saveBoard` path — so it gets `fs.rename`-based
+  atomic write + `createdAt` preservation + `updatedAt`
+  bump for free.
+- **Boundary validation matches `BoardInput` semantics.**
+  The server-side checks mirror the same rules that
+  `loadBoard` / `saveBoard` already enforce, so a 400
+  from PATCH always means "your input is bad", never
+  "the board is missing". 404 only fires for a missing
+  id, not for an invalid one.
+- **Three-layer error mapping** — bad input → 400 (with
+  the specific reason: "name must be a string" /
+  "name must not be empty" / "name must be at most 200
+  characters"), bad id → 400 (existing
+  `assertBoardId`), missing board → 404. The client
+  surface (delete / share / list / new rename) consumes
+  these directly with no special-casing.
+
+**New: `navigator.clipboard`-based "share" affordance**
+
+- We considered server-side share-link generation
+  (upload JSON, get a URL back) but rejected it — the
+  v0.6.10 board is already a self-contained JSON file,
+  and round-tripping through a server is friction without
+  payoff. Instead, "Copy as JSON" puts the board's full
+  payload (id / name / version / blocks / connections)
+  on the clipboard via `navigator.clipboard.writeText`,
+  ready to paste into a new board via the existing
+  toolbar Import.
+- **Bulk copy** collects the same shape across all
+  selected boards into a JSON array. The receiver pastes
+  one board at a time (the toolbar Import takes a single
+  board) — copy is plural, import is singular. We
+  considered batching the Import side but it doesn't
+  add user value over the per-board flow.
+
+**i18n**
+
+- **40 new keys** under `compose.boards.*` (page title +
+  subtitle + open button + 5 column headers + pluralised
+  block / connection units + empty state + loading +
+  error + 4 actions + 4 titles + confirm / announce
+  / bulk / dialog) and one new key under
+  `compose.boards.bulk.*` (`selectAll`).
+- **en + zh both updated.** The pluralised units use
+  `compose.boards.column.blocks.{one,other}` (count +
+  unit together, since "1 block" / "0 blocks" is the
+  standard English / 中文 display). The `compose.boards.column.connections.{one,other}`
+  pair is parallel. zh has no grammatical plural so both
+  forms map to "块" / "连接", but the key structure
+  stays parallel so a future language that DOES have
+  plurals (Russian / Arabic / Polish) can drop in without
+  a refactor.
+
+**Tests**
+
+- **root: 541 / 541 ✓** (was 525 in v0.6.11; +16
+  compose-boards rename tests + 9 server PATCH tests)
+- **web: 214 / 214 ✓** (was 201 in v0.6.11; +13
+  /compose/boards test cases — 4 state tests, 5
+  per-row action tests, 3 bulk-action tests, 1 date
+  format test)
+- **format root + web:** ✓
+- **lint (root `eslint src test --max-warnings 0`):** ✓
+- **tsc root + web:** ✓
+- **production build (`next build`):** ✓ — `/compose/boards`
+  appears in the route list as `ƒ /compose/boards`
+  (server-rendered on demand)
+
+**`/compose` toolbar**
+
+- **New `Boards` link** in the server-persistence group
+  (next to the existing Save / Load dropdowns). Visual
+  cue: `≡ Boards` with a `btn small secondary` style so
+  it reads as a navigation, not a destructive action.
+  Title / aria-label = "Browse / rename / delete saved
+  boards".
+
+**Stats**
+
+| 项目 | 数字 |
+|---|---|
+| 新增 files | `web/src/app/compose/boards/{page,BoardListView,BoardRow,RenameDialog}.tsx`, `web/tests/boards.test.tsx` |
+| 修改 files | `src/core/compose-boards.ts`, `src/core/service.ts`, `src/core/service-impl.ts`, `src/server/server.ts`, `web/src/lib/pilot-browser.ts`, `web/src/lib/i18n/{types,dict.en,dict.zh}.ts`, `web/src/app/compose/ComposeBoard.tsx`, `test/unit/compose-boards.test.ts`, `test/unit/server.test.ts` |
+| i18n keys | +40 (en + zh) |
+| root tests | 525 → 541 (+16) |
+| web tests | 201 → 214 (+13) |
+| LOC Δ | +1571 / -13 (净 +1558) |
+
+**Sandbox caveat**
+
+Same as v0.6.10 / v0.6.11: `pilot start` isn't running
+in the sandbox, so the `/compose/boards` UI flow
+(rename via dialog / bulk delete with confirm / copy to
+clipboard / open from URL param) can't be
+Playwright-verified end-to-end. The server-side PATCH +
+list + delete + get logic IS covered by the 16 new
+compose-boards + 9 new server PATCH tests. The web
+client IS covered by the 13 new boards.test.tsx cases
+against a fully-stubbed `pilot-browser` module
+(loading / ok / error / empty / rename / delete with
+confirm / delete without confirm / share / bulk select /
+bulk delete / bulk share / date format). User must
+`pilot start` + `pilot dashboard` to confirm the full
+flow visually.
+
+**Deliberately NOT done (v0.6.13+ backlog)**
+
+- **Multiple connections (A↔B 双向).** Connection is
+  the compose canvas's headline feature, but two
+  connections between the same pair of blocks still
+  have to be distinct ids — you can't yet say "this is
+  a bidirectional link" with a single UI gesture. The
+  schema + UI work here is moderate; saving it for the
+  next release.
+- **Connection color 自定义.** Easy config field, but
+  no user has asked for it yet. The default amber /
+  sage palette is enough for a single user's boards.
+- **Auto-route 避开 block 中心.** Algorithmic — we
+  need orthogonal routing with obstacle avoidance.
+  Visual win, but multi-day.
+- **ComposeBoard.tsx hooks/state 抽离.** 1974 lines
+  with 17 useState / 15 useCallback remain. Needs
+  state hoisting or context. Refactor risk, no user-
+  visible win. Lower priority than the user-facing
+  backlogs above.
+
 ### v0.6.11 — 16 bug fixes (P0 × 2 + P1 × 4 + P2 × 5 + P3 × 5)
 
 A focused patch release that closes a long backlog of small-but-real
