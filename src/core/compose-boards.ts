@@ -329,6 +329,37 @@ export async function saveBoard(
   return snapshot;
 }
 
+// ─── Rename ───────────────────────────────────────────────────
+
+/**
+ * v0.6.12: rename a board without touching its blocks or
+ * connections. Returns the new snapshot on success, or null
+ * when the id is invalid or the board doesn't exist.
+ *
+ * Implementation: load → mutate name → saveBoard. saveBoard
+ * already does the atomic rename (v0.6.11 §9.5 pattern) and
+ * preserves `createdAt` while bumping `updatedAt`, which is
+ * the correct semantic for "the user renamed this board".
+ *
+ * The name must be a non-empty, non-whitespace string; we
+ * trim before validation so " " fails the same way as "".
+ * Length cap (200) matches what the v0.6.10 save path accepts
+ * in practice (UI text input limit) and keeps the filesystem
+ * path sane on all OSes.
+ */
+export async function renameBoard(
+  id: string,
+  name: string,
+  home?: string,
+): Promise<BoardSnapshot | null> {
+  if (!isValidBoardId(id)) return null;
+  const trimmed = name.trim();
+  if (trimmed.length === 0 || trimmed.length > 200) return null;
+  const existing = await loadBoard(id, home);
+  if (!existing) return null;
+  return saveBoard({ ...existing, name: trimmed }, home);
+}
+
 // ─── Delete ───────────────────────────────────────────────────
 
 /**

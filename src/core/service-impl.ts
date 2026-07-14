@@ -205,6 +205,8 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
     getComposeBoard: (id) => getComposeBoardFromService(home, id),
     saveComposeBoard: (input) => saveComposeBoardFromService(home, input),
     deleteComposeBoard: (id) => deleteComposeBoardFromService(home, id),
+    renameComposeBoard: (id, name) =>
+      renameComposeBoardFromService(home, id, name),
 
     listPolicies: () => listPoliciesFromHome(home),
     getPolicy: (name) => tryReadPolicy(name, home),
@@ -589,6 +591,19 @@ async function deleteComposeBoardFromService(
 ): Promise<boolean> {
   const { deleteBoard } = await import("./compose-boards.js");
   return deleteBoard(id, home);
+}
+
+// v0.6.12: dedicated /compose/boards list page needs a way to
+// rename a board without resending the full state. We expose
+// the same atomic write path that `saveBoard` uses — rename is
+// load + mutate name + saveBoard under the hood.
+async function renameComposeBoardFromService(
+  home: string | undefined,
+  id: string,
+  name: string,
+): Promise<import("./compose-boards.js").BoardSnapshot | null> {
+  const { renameBoard } = await import("./compose-boards.js");
+  return renameBoard(id, name, home);
 }
 
 // ─── Policy (v0.4.3) ───────────────────────────────────────

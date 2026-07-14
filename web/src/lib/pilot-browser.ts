@@ -321,7 +321,7 @@ export const browserApi = {
   // Server-persisted /compose layouts. The localStorage
   // canonical editor calls these for "Save to server" /
   // "Load from server" — the dedicated /compose/boards
-  // list page (with multi-board delete + rename) lands in v0.6.11.
+  // list page (with multi-board delete + rename) lands in v0.6.12.
   composeBoards: () => browserFetch<BoardSummary[]>("/compose/boards"),
   composeBoard: async (id: string): Promise<ComposeState | null> => {
     try {
@@ -347,6 +347,21 @@ export const browserApi = {
       headers: { "content-type": "application/json" },
       body: JSON.stringify(input),
     }),
+  // v0.6.12: dedicated rename endpoint. Server validates the
+  // name shape (string, non-empty after trim, ≤200 chars) and
+  // returns 400 / 404 / 200 the same way as the other routes.
+  // We forward the error through `browserFetch` so the caller
+  // can distinguish "bad input" from "missing board".
+  renameComposeBoard: async (
+    id: string,
+    name: string,
+  ): Promise<BoardSummary> => {
+    return await browserFetch<BoardSummary>(`/compose/boards/${id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+  },
   deleteComposeBoard: async (id: string): Promise<boolean> => {
     try {
       await browserFetch<void>(`/compose/boards/${id}`, { method: "DELETE" });

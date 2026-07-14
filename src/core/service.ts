@@ -367,6 +367,18 @@ export interface PilotService {
    */
   deleteComposeBoard(id: string): Promise<boolean>;
 
+  /**
+   * v0.6.12: rename a board without resending blocks/connections.
+   * Returns the new snapshot on success; null on invalid id,
+   * empty/whitespace name, oversize name, or missing board.
+   * Internally goes through `saveBoard` so the file write stays
+   * atomic and `createdAt` is preserved while `updatedAt` advances.
+   */
+  renameComposeBoard(
+    id: string,
+    name: string,
+  ): Promise<import("./compose-boards.js").BoardSnapshot | null>;
+
   // ─── Tool policies (v0.4.3) ──────────────────────────
 
   /** List all tool policies in `~/.pilot/policy/`. */

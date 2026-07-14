@@ -1166,5 +1166,54 @@ const en: Dict = {
     "No matching tools. All available tools are listed under /tools.",
   "plans.suggest.noneProfiles":
     "No matching profiles. All available profiles are listed under /profiles.",
+  // v0.6.12: /compose/boards list page.
+  "compose.boards.title": "Boards",
+  "compose.boards.subtitle": "Server-persisted /compose layouts",
+  "compose.boards.open": "Open",
+  "compose.boards.openTitle": "Open this board in /compose",
+  "compose.boards.column.name": "Name",
+  "compose.boards.column.blocks.one": "block",
+  "compose.boards.column.blocks.other": "blocks",
+  "compose.boards.column.connections.one": "connection",
+  "compose.boards.column.connections.other": "connections",
+  "compose.boards.column.updated": "Updated",
+  "compose.boards.column.actions": "Actions",
+  "compose.boards.empty.title": "No boards yet",
+  "compose.boards.empty.hint":
+    "Save a board from /compose to see it listed here. Boards live in ~/.pilot/compose-boards.",
+  "compose.boards.empty.cta": "Open /compose",
+  "compose.boards.loading": "Loading boards…",
+  "compose.boards.error.title": "Couldn't load boards",
+  "compose.boards.error.hint":
+    "Check that the pilot server is running and your token is correct.",
+  "compose.boards.error.retry": "Retry",
+  "compose.boards.action.rename": "Rename",
+  "compose.boards.action.renameTitle": "Rename this board",
+  "compose.boards.action.delete": "Delete",
+  "compose.boards.action.deleteTitle": "Delete this board",
+  "compose.boards.action.share": "Copy as JSON",
+  "compose.boards.action.shareTitle":
+    "Copy this board's JSON to the clipboard (paste into a new board)",
+  "compose.boards.confirm.delete":
+    'Delete board "{name}"? This cannot be undone.',
+  "compose.boards.confirm.bulkDelete":
+    "Delete {n} board(s)? This cannot be undone.",
+  "compose.boards.announce.renamed": 'Renamed board to "{name}"',
+  "compose.boards.announce.deleted": 'Deleted board "{name}"',
+  "compose.boards.announce.bulkDeleted": "Deleted {n} board(s)",
+  "compose.boards.announce.copied": 'Copied board "{name}" as JSON',
+  "compose.boards.bulk.selected": "{n} selected",
+  "compose.boards.bulk.clear": "Clear selection",
+  "compose.boards.bulk.selectAll": "Select all",
+  "compose.boards.bulk.deleteSelected": "Delete selected",
+  "compose.boards.bulk.copySelected": "Copy selected as JSON",
+  "compose.boards.renameDialog.title": "Rename board",
+  "compose.boards.renameDialog.label": "Board name",
+  "compose.boards.renameDialog.placeholder": "e.g. Research session 2026-07-15",
+  "compose.boards.renameDialog.confirm": "Save",
+  "compose.boards.renameDialog.cancel": "Cancel",
+  "compose.boards.toolbar.openBoards": "Boards",
+  "compose.boards.toolbar.openBoardsTitle":
+    "Browse / rename / delete saved boards",
 };
 export default en;

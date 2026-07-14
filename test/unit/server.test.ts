@@ -902,6 +902,145 @@ describe("pilot server", () => {
     });
   });
 
+  // ─── Compose boards (v0.6.10) + PATCH rename (v0.6.12) ───
+
+  describe("Compose boards (v0.6.12)", () => {
+    const auth = () => ({ "x-pilot-token": handle.token });
+    const seedBoard = async (id: string, name: string) => {
+      const res = await handle.app.inject({
+        method: "PUT",
+        url: `/compose/boards/${id}`,
+        headers: auth(),
+        payload: {
+          name,
+          version: 3,
+          blocks: [
+            {
+              id: "b1",
+              kind: "session",
+              refId: "r1",
+              x: 0,
+              y: 0,
+              label: "session A",
+            },
+          ],
+          connections: [],
+        },
+      });
+      expect(res.statusCode).toBe(200);
+    };
+
+    it("PATCH /compose/boards/:id renames a board and returns the new snapshot", async () => {
+      await seedBoard("b-rename-1", "Original");
+      const res = await handle.app.inject({
+        method: "PATCH",
+        url: "/compose/boards/b-rename-1",
+        headers: auth(),
+        payload: { name: "Renamed" },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json() as { id: string; name: string };
+      expect(body.id).toBe("b-rename-1");
+      expect(body.name).toBe("Renamed");
+    });
+
+    it("PATCH /compose/boards/:id trims surrounding whitespace", async () => {
+      await seedBoard("b-rename-2", "Original");
+      const res = await handle.app.inject({
+        method: "PATCH",
+        url: "/compose/boards/b-rename-2",
+        headers: auth(),
+        payload: { name: "   Hello World   " },
+      });
+      expect(res.statusCode).toBe(200);
+      expect((res.json() as { name: string }).name).toBe("Hello World");
+    });
+
+    it("PATCH /compose/boards/:id preserves blocks and connections", async () => {
+      await seedBoard("b-rename-3", "Original");
+      const before = await handle.app.inject({
+        method: "GET",
+        url: "/compose/boards/b-rename-3",
+        headers: auth(),
+      });
+      const res = await handle.app.inject({
+        method: "PATCH",
+        url: "/compose/boards/b-rename-3",
+        headers: auth(),
+        payload: { name: "Just a rename" },
+      });
+      expect(res.statusCode).toBe(200);
+      const after = res.json() as { name: string; blocks: unknown[] };
+      expect(after.name).toBe("Just a rename");
+      // The one seed block should still be there with the same id.
+      const beforeBlocks = (before.json() as { blocks: { id: string }[] })
+        .blocks;
+      expect(after.blocks).toEqual(beforeBlocks);
+    });
+
+    it("PATCH /compose/boards/:id returns 400 on empty name", async () => {
+      await seedBoard("b-rename-4", "Original");
+      const res = await handle.app.inject({
+        method: "PATCH",
+        url: "/compose/boards/b-rename-4",
+        headers: auth(),
+        payload: { name: "   " },
+      });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it("PATCH /compose/boards/:id returns 400 on oversize name", async () => {
+      await seedBoard("b-rename-5", "Original");
+      const res = await handle.app.inject({
+        method: "PATCH",
+        url: "/compose/boards/b-rename-5",
+        headers: auth(),
+        payload: { name: "a".repeat(201) },
+      });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it("PATCH /compose/boards/:id returns 400 on non-string name", async () => {
+      await seedBoard("b-rename-6", "Original");
+      const res = await handle.app.inject({
+        method: "PATCH",
+        url: "/compose/boards/b-rename-6",
+        headers: auth(),
+        payload: { name: 42 },
+      });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it("PATCH /compose/boards/:id returns 400 on unsafe id", async () => {
+      const res = await handle.app.inject({
+        method: "PATCH",
+        url: "/compose/boards/..%2Fetc%2Fpasswd",
+        headers: auth(),
+        payload: { name: "pwned" },
+      });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it("PATCH /compose/boards/:id returns 404 for missing board", async () => {
+      const res = await handle.app.inject({
+        method: "PATCH",
+        url: "/compose/boards/never-existed",
+        headers: auth(),
+        payload: { name: "Whatever" },
+      });
+      expect(res.statusCode).toBe(404);
+    });
+
+    it("PATCH /compose/boards/:id requires auth", async () => {
+      const res = await handle.app.inject({
+        method: "PATCH",
+        url: "/compose/boards/whatever",
+        payload: { name: "x" },
+      });
+      expect(res.statusCode).toBe(401);
+    });
+  });
+
   // ─── Policy routes (v0.4.3) ───────────────────────
 
   describe("Policy endpoints", () => {

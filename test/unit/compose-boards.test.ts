@@ -27,6 +27,7 @@ import {
   loadBoard,
   saveBoard,
   deleteBoard,
+  renameBoard,
   composeBoardsDir,
   composeBoardPath,
   type BoardInput,
@@ -446,5 +447,102 @@ describe("list ↔ save ↔ delete roundtrip", () => {
     const after = await listBoards(fakeHome);
     expect(after).toHaveLength(1);
     expect(after[0]?.id).toBe(b.id);
+  });
+});
+
+// ─── renameBoard (v0.6.12) ───────────────────────────────────
+
+describe("renameBoard", () => {
+  it("updates the name and preserves blocks / connections", async () => {
+    const saved = await saveBoard(
+      {
+        name: "Original",
+        version: 3,
+        blocks: [
+          {
+            id: "b1",
+            kind: "session",
+            refId: "r1",
+            x: 10,
+            y: 20,
+            label: "session A",
+          },
+        ],
+        connections: [{ id: "c1", from: "b1", to: "b1", label: "self" }],
+      },
+      fakeHome,
+    );
+    const renamed = await renameBoard(saved.id, "New name", fakeHome);
+    expect(renamed).not.toBeNull();
+    expect(renamed?.name).toBe("New name");
+    expect(renamed?.id).toBe(saved.id);
+    expect(renamed?.blocks).toEqual(saved.blocks);
+    expect(renamed?.connections).toEqual(saved.connections);
+  });
+
+  it("preserves createdAt and bumps updatedAt", async () => {
+    const saved = await saveBoard(
+      { name: "X", version: 3, blocks: [], connections: [] },
+      fakeHome,
+    );
+    // 5ms gap so updatedAt is strictly later (Date.now() can
+    // collide under fast tests).
+    await new Promise((r) => setTimeout(r, 5));
+    const renamed = await renameBoard(saved.id, "X renamed", fakeHome);
+    expect(renamed?.createdAt).toBe(saved.createdAt);
+    expect(new Date(renamed!.updatedAt).getTime()).toBeGreaterThan(
+      new Date(saved.updatedAt).getTime(),
+    );
+  });
+
+  it("trims surrounding whitespace before persisting", async () => {
+    const saved = await saveBoard(
+      { name: "X", version: 3, blocks: [], connections: [] },
+      fakeHome,
+    );
+    const renamed = await renameBoard(saved.id, "  Hello  ", fakeHome);
+    expect(renamed?.name).toBe("Hello");
+  });
+
+  it("returns null for an empty / whitespace-only name", async () => {
+    const saved = await saveBoard(
+      { name: "X", version: 3, blocks: [], connections: [] },
+      fakeHome,
+    );
+    expect(await renameBoard(saved.id, "", fakeHome)).toBeNull();
+    expect(await renameBoard(saved.id, "   ", fakeHome)).toBeNull();
+    // The original file is untouched.
+    const reloaded = await loadBoard(saved.id, fakeHome);
+    expect(reloaded?.name).toBe("X");
+  });
+
+  it("returns null for a name longer than 200 chars", async () => {
+    const saved = await saveBoard(
+      { name: "X", version: 3, blocks: [], connections: [] },
+      fakeHome,
+    );
+    const result = await renameBoard(saved.id, "a".repeat(201), fakeHome);
+    expect(result).toBeNull();
+  });
+
+  it("returns null when the board doesn't exist", async () => {
+    const result = await renameBoard("never-existed", "Whatever", fakeHome);
+    expect(result).toBeNull();
+  });
+
+  it("returns null for an unsafe id (path traversal guard)", async () => {
+    const result = await renameBoard("../etc/passwd", "pwned", fakeHome);
+    expect(result).toBeNull();
+  });
+
+  it("rename is reflected in the next listBoards call", async () => {
+    const saved = await saveBoard(
+      { name: "Original", version: 3, blocks: [], connections: [] },
+      fakeHome,
+    );
+    await renameBoard(saved.id, "Renamed", fakeHome);
+    const list = await listBoards(fakeHome);
+    expect(list).toHaveLength(1);
+    expect(list[0]?.name).toBe("Renamed");
   });
 });

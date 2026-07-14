@@ -32,6 +32,8 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import type {
   BoardSummary,
   BoardInput,
@@ -999,6 +1001,29 @@ export default function ComposeBoard({
     [announce, t],
   );
 
+  // v0.6.12: when the user lands on /compose?board=<id> (from
+  // the Boards list page's "Open" button), auto-load that board.
+  // We only fire the load once per id — the effect tracks the
+  // last id it triggered on, so re-renders (catalog fetch, state
+  // updates) don't re-fire. After loading we strip `?board=`
+  // from the URL so a refresh doesn't silently reload on top of
+  // any in-progress local edits.
+  const searchParams = useSearchParams();
+  const requestedBoardId = searchParams.get("board");
+  const lastAutoLoadRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!requestedBoardId) return;
+    if (lastAutoLoadRef.current === requestedBoardId) return;
+    lastAutoLoadRef.current = requestedBoardId;
+    void loadBoardFromServer(requestedBoardId);
+    // Strip the param without a navigation. Using `replace`
+    // (not `push`) avoids polluting the back stack with the
+    // URL that already served its purpose.
+    const url = new URL(window.location.href);
+    url.searchParams.delete("board");
+    window.history.replaceState({}, "", url.toString());
+  }, [requestedBoardId, loadBoardFromServer]);
+
   const deleteServerBoard = useCallback(
     async (id: string) => {
       const ok = window.confirm(t("compose.board.confirmDelete"));
@@ -1364,6 +1389,19 @@ export default function ComposeBoard({
           >
             ↓ {t("compose.toolbar.loadTitle")}
           </button>
+          {/* v0.6.12: link out to the dedicated /compose/boards
+              list page (multi-board picker + rename + bulk delete
+              + copy-as-JSON share). The dropdown panel above stays
+              in scope for quick in-canvas save/load; this is the
+              "manage many boards" surface. */}
+          <Link
+            href="/compose/boards"
+            className="btn small secondary"
+            title={t("compose.boards.toolbar.openBoardsTitle")}
+            aria-label={t("compose.boards.toolbar.openBoardsTitle")}
+          >
+            ≡ {t("compose.boards.toolbar.openBoards")}
+          </Link>
         </div>
         <span className="compose-toolbar-divider" aria-hidden="true" />
         <div className="compose-toolbar-group">

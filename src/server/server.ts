@@ -583,8 +583,9 @@ export async function startServer(
   //
   // Persistence for /compose layouts. The web client treats these
   // as a "Save to server" / "Load from server" affordance on top
-  // of its localStorage canonical editor. The dedicated list page
-  // /compose/boards (multi-board picker + delete) lands in v0.6.11.
+  // of its localStorage canonical editor. v0.6.12 added the
+  // dedicated /compose/boards list page, which drives the
+  // PATCH (rename) + DELETE (single + bulk) routes below.
 
   app.get("/compose/boards", async () => service.listComposeBoards());
 
@@ -658,6 +659,41 @@ export async function startServer(
       await reply.code(204).send();
     },
   );
+
+  // v0.6.12: dedicated /compose/boards list page needs a
+  // dedicated rename endpoint. We validate the body shape at
+  // the boundary (so a 0-length or 1MB+ name is rejected
+  // before reaching the service) and map the three failure
+  // modes to 400 / 404 / 500 the same way the other board
+  // routes do.
+  app.patch<{
+    Params: { id: string };
+    Body: { name?: unknown };
+  }>("/compose/boards/:id", async (req, reply) => {
+    if (!(await assertBoardId(req.params.id, reply))) return;
+    const raw = req.body.name;
+    if (typeof raw !== "string") {
+      await reply.code(400).send({ error: "name must be a string" });
+      return;
+    }
+    const trimmed = raw.trim();
+    if (trimmed.length === 0) {
+      await reply.code(400).send({ error: "name must not be empty" });
+      return;
+    }
+    if (trimmed.length > 200) {
+      await reply
+        .code(400)
+        .send({ error: "name must be at most 200 characters" });
+      return;
+    }
+    const updated = await service.renameComposeBoard(req.params.id, trimmed);
+    if (!updated) {
+      await reply.code(404).send({ error: "board not found" });
+      return;
+    }
+    return updated;
+  });
 
   app.get("/policies", async () => service.listPolicies());
 
