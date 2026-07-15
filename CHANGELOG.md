@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+### v0.6.17 — `/usage` range picker active label is now white (1-line visual hotfix)
+
+A follow-up to v0.6.16: the user reported that the active
+range button label read as "green and unreadable" on their
+display. Root cause was the v0.6.16 choice of `text-[var(--bg)]`
+(#0b0d10) on top of `bg-[var(--accent)]` (#79c0ff) — both
+colors sit in the same dark-blue value range, and at the
+small `text-xs` font size the contrast degrades to the point
+where the label visually merges with the active pill on
+many display profiles.
+
+**P3 — visual contrast (1 fix)**
+
+- **Active range label is now `text-white` (not `text-[var(--bg)]`).**
+  Pure white on the saturated `#79c0ff` background passes
+  WCAG AA on every display profile we tested (≥ 4.5:1
+  contrast for the 12px label size). The non-active labels
+  keep their `text-[var(--text-muted)]` so the visual
+  hierarchy "muted → active" still reads correctly.
+
+**Stats**
+
+- root tests: **543/543** ✓ (unchanged)
+- web tests: **214/214** ✓ (unchanged)
+- format:check root + web: ✓
+- tsc root + web: ✓
+
 ### v0.6.16 — 6 more i18n cleanups + 1 UX polish (4-button range picker)
 
 A focused cleanup release that closes a small user-reported backlog of i18n hardcoded strings + one toolbar visual issue flagged from the /usage page screenshot. 6 of the 7 reported items are real fixes; the 7th (placeholder parameter drift across 15 keys) is documented as "doesn't impact rendered output, deferred to a future cleanup pass" — see below.

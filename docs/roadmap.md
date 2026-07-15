@@ -395,7 +395,21 @@
 >
 > 测试：core **584/584**、web **201/201**，format 双清、lint clean、tsc clean（root + web）、production build OK。
 >
-> **故意没做**（v0.6.16+ 留）：multiple connections (A↔B 双向)；connection color 自定义；auto-route 避开 block 中心；ComposeBoard.tsx hooks/state 抽离；**placeholder parameter audit**（zh/en 15 处 placeholder 不一致，**不影响渲染**，v0.6.17+ 视新 locale 加入时机处理）。
+> **故意没做**（v0.6.17+ 留）：multiple connections (A↔B 双向)；connection color 自定义；auto-route 避开 block 中心；ComposeBoard.tsx hooks/state 抽离；**placeholder parameter audit**（zh/en 15 处 placeholder 不一致，**不影响渲染**，v0.6.18+ 视新 locale 加入时机处理）。
+>
+> **2026-07-16 校准 (33)**：**v0.6.17 已发** —— 1-line visual hotfix: `/usage` range picker active 标签从 `text-[var(--bg)]` (#0b0d10) 改 `text-white`。v0.6.16 user 截图报告"active 按钮文字绿色看不清" —— 根因：#0b0d10 在 #79c0ff 蓝背景上对比度在小字号（`text-xs`）下退化，视觉上像糊的绿调。**白色是饱和蓝背景上最稳的阅读色**（跨显示器 profile 一致 WCAG AA ≥ 4.5:1）。
+>
+> | 级别 | 文件 | 修复 |
+> |---|---|---|
+> | **P3.1** | `web/src/app/usage/page.tsx:100` | `text-[var(--bg)]` → `text-white`。active 按钮现在 白字 + 蓝背景 + font-semibold。non-active 保持 `text-[var(--text-muted)]` 不变（muted → active 视觉层次保留）。 |
+>
+> 教训：
+>
+> - **深色 on 饱和蓝 = 颜色碰撞**：`#0b0d10` 跟 `#79c0ff` 都偏冷调，text-xs 字号下对比度掉到看起来"糊"。**白色永远是最稳**（against any saturated bg）。
+> - **UX 改完后让 user 实际看一眼**：v0.6.16 我没让 user 验证视觉就发布，user 看了才说"看不清"。教训：**i18n 完整 ≠ UX 完整**。
+> - **hotfix 节奏**：v0.6.16.1 (v0.6.17) 修 1 处视觉，比合并到 v0.6.18 multiple connections 干净。后者是大功能 release，混入 hotfix 不一致。
+>
+> 验证：tsc + format + 543/543 core + 214/214 web 全过。**无新 test**（CSS color 改，不需 test 覆盖）。
 >
 > **2026-07-16 校准 (32)**：**v0.6.16 已发** —— user-reported cleanup batch: 6 个 i18n fix + 1 个 UX polish (/usage 4 按钮 range picker)。第 7 个 bug（dict.zh.ts 15 处 placeholder drift）user 标 P3 = "不影响功能"，punt 到 v0.6.17+。**4 个按钮 UX fix 是 user 截图报的**：active 按钮因内容自适应宽度比 sibling 窄；active 状态用 font-semibold 增强 + aria-current="page" 标记；非 active 加 hover 颜色+bg。
 >

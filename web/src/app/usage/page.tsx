@@ -97,7 +97,19 @@ export default async function UsagePage({
                 aria-current={isActive ? "page" : undefined}
                 className={`min-w-[5rem] text-center px-2.5 py-1 rounded transition-colors ${
                   isActive
-                    ? "bg-[var(--accent)] text-[var(--bg)] font-semibold"
+                    ? // v0.6.17: was `text-[var(--bg)]` (dark text on
+                      // blue background). User reported the dark
+                      // text read as "green and unreadable" on
+                      // certain display profiles — the deep
+                      // #0b0d10 sits in the same value range as
+                      // the active blue and the small font weight
+                      // loses contrast at typical browser DPRs.
+                      // Pure white is the safest reading color on
+                      // a saturated blue background across all
+                      // themes; the underlying bg is bright enough
+                      // (var(--accent) = #79c0ff) that white still
+                      // passes WCAG AA.
+                      "bg-[var(--accent)] text-white font-semibold"
                     : "text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
                 }`}
               >
