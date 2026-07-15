@@ -80,19 +80,31 @@ export default async function UsagePage({
           className="flex gap-1 text-xs"
           aria-label={renderT(locale, "btn.ariaRange")}
         >
-          {RANGES.map((r) => (
-            <Link
-              key={r.key}
-              href={`/usage?range=${r.key}`}
-              className={`px-2.5 py-1 rounded ${
-                r.key === which
-                  ? "bg-[var(--accent)] text-[var(--bg)]"
-                  : "text-[var(--text-muted)] hover:bg-[var(--surface-2)]"
-              }`}
-            >
-              {r.label}
-            </Link>
-          ))}
+          {RANGES.map((r) => {
+            // v0.6.16: pin all four range buttons to the same
+            // minimum width so the active pill doesn't visually
+            // "shrink" when the active label is the shortest
+            // one ("今天" / "Today" / "All") vs. the widest
+            // ("近 30 天" / "Last 30 days"). 5rem is enough for
+            // the longest current label in any locale; if a
+            // future label overflows, the min-w acts as a
+            // floor and the button grows as needed.
+            const isActive = r.key === which;
+            return (
+              <Link
+                key={r.key}
+                href={`/usage?range=${r.key}`}
+                aria-current={isActive ? "page" : undefined}
+                className={`min-w-[5rem] text-center px-2.5 py-1 rounded transition-colors ${
+                  isActive
+                    ? "bg-[var(--accent)] text-[var(--bg)] font-semibold"
+                    : "text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
+                }`}
+              >
+                {r.label}
+              </Link>
+            );
+          })}
         </nav>
       </header>
 

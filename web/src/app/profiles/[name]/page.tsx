@@ -7,6 +7,7 @@ import { api } from "@/lib/pilot";
 import { saveProfileForm, deleteProfileForm } from "@/lib/actions";
 import { SubmitButton, DeleteButton } from "@/components/Buttons";
 import { T } from "@/components/I18n";
+import { RichT } from "@/components/RichT";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { Profile } from "@/lib/types";
 
@@ -58,7 +59,12 @@ export default async function ProfileDetailPage({
           className="surface rounded-lg p-3 text-sm"
           style={{ color: "var(--accent-2)" }}
         >
-          ✓ Created <code className="kbd">{decoded}</code>.
+          ✓{" "}
+          <RichT
+            locale={locale}
+            k="profiles.createdBanner"
+            values={{ name: <code className="kbd">{decoded}</code> }}
+          />
         </div>
       )}
       {sp.saved && (
@@ -80,7 +86,11 @@ export default async function ProfileDetailPage({
 
       {error === "not found" && (
         <div className="surface rounded-lg p-4 text-sm text-[var(--error)]">
-          Profile <code className="kbd">{decoded}</code> not found.
+          <RichT
+            locale={locale}
+            k="profiles.notFound"
+            values={{ name: <code className="kbd">{decoded}</code> }}
+          />
         </div>
       )}
 
@@ -192,7 +202,7 @@ export default async function ProfileDetailPage({
           {profile.env && Object.keys(profile.env).length > 0 && (
             <div className="surface rounded-lg p-4">
               <h2 className="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-3">
-                env (read-only — edit TOML directly)
+                <T k="profiles.envHeading" />
               </h2>
               <pre className="text-xs font-mono bg-[var(--bg)] border border-[var(--border)] rounded p-2 overflow-x-auto">
                 {Object.entries(profile.env)

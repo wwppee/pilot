@@ -355,6 +355,7 @@ const en: Dict = {
   "policy.newCard.errorInvalidName":
     "Policy name must be kebab-case (lowercase letters, digits, hyphens).",
   "policy.tryRule.h2": "Try a rule",
+  "policy.loadErrorTitle": "Couldn't load policies",
   "policy.tryRule.noPolicies": "No policies to test against.",
   "policy.tryRule.policyLabel": "Policy",
   "policy.tryRule.toolLabel": "Tool",
@@ -580,6 +581,12 @@ const en: Dict = {
   "compose.inspector.field.kind": "kind",
   "compose.inspector.field.refId": "refId",
   "compose.inspector.field.position": "position",
+  "compose.inspector.time.second": "{n}s ago",
+  "compose.inspector.time.minute": "{n}m ago",
+  "compose.inspector.time.hour": "{n}h ago",
+  "compose.inspector.time.day": "{n}d ago",
+  "compose.inspector.time.month": "{n}mo ago",
+  "compose.inspector.time.year": "{n}y ago",
   "compose.announce.connectionAdded": "Connected {from} → {to}",
   "compose.announce.connectionRemoved": "Disconnected {from} → {to}",
   // v0.6.8: right-edge connector handle on selected blocks. Drag
@@ -650,6 +657,9 @@ const en: Dict = {
   // Profiles [name]
   "profiles.editHeading": "Edit",
   "profiles.descriptionPlaceholder": "What is this profile for?",
+  "profiles.createdBanner": "✓ Created {name}.",
+  "profiles.notFound": "Profile {name} not found.",
+  "profiles.envHeading": "env (read-only — edit TOML directly)",
   "profiles.field.providerPlaceholder": "anthropic / openai / google",
   "profiles.field.modelPlaceholder": "e.g. claude-opus-4.6",
   "profiles.field.thinkingPlaceholder": "low / medium / high",

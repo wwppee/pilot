@@ -395,7 +395,31 @@
 >
 > 测试：core **584/584**、web **201/201**，format 双清、lint clean、tsc clean（root + web）、production build OK。
 >
-> **故意没做**（v0.6.15+ 留）：multiple connections (A↔B 双向)；connection color 自定义；auto-route 避开 block 中心；ComposeBoard.tsx hooks/state 抽离。**全站 i18n audit** v0.6.14 已完成（见校准 30）。
+> **故意没做**（v0.6.16+ 留）：multiple connections (A↔B 双向)；connection color 自定义；auto-route 避开 block 中心；ComposeBoard.tsx hooks/state 抽离；**placeholder parameter audit**（zh/en 15 处 placeholder 不一致，**不影响渲染**，v0.6.17+ 视新 locale 加入时机处理）。
+>
+> **2026-07-16 校准 (32)**：**v0.6.16 已发** —— user-reported cleanup batch: 6 个 i18n fix + 1 个 UX polish (/usage 4 按钮 range picker)。第 7 个 bug（dict.zh.ts 15 处 placeholder drift）user 标 P3 = "不影响功能"，punt 到 v0.6.17+。**4 个按钮 UX fix 是 user 截图报的**：active 按钮因内容自适应宽度比 sibling 窄；active 状态用 font-semibold 增强 + aria-current="page" 标记；非 active 加 hover 颜色+bg。
+>
+> | 级别 | 文件 | 修复 |
+> |---|---|---|
+> | **P1.1** | `web/src/app/profiles/[name]/page.tsx:61` | `✓ Created <code>{name}</code>.` → `RichT k="profiles.createdBanner"`。新 key `profiles.createdBanner` = "✓ Created {name}." / "✓ 已创建 {name}。"。`values` prop 传 `<code>` 保持样式。 |
+> | **P1.2** | `web/src/app/profiles/[name]/page.tsx:83` | `Profile <code>{name}</code> not found.` → `RichT k="profiles.notFound"`。新 key `profiles.notFound` = "Profile {name} not found." / "未找到 Profile {name}。"。 |
+> | **P1.3** | `web/src/app/profiles/[name]/page.tsx:195` | `env (read-only — edit TOML directly)` 硬编码 → `<T k="profiles.envHeading" />`。新 key `profiles.envHeading` = "env (read-only — edit TOML directly)" / "env（只读 — 直接编辑 TOML）"。 |
+> | **P1.4** | `web/src/app/policy/page.tsx:150` | `<T k="error.couldntLoad.title" />: policies` 中英混杂（`: policies` 是 raw English）→ 单 key `policy.loadErrorTitle` = "Couldn't load policies" / "加载策略失败"。把 noun 折进 i18n key。 |
+> | **P2.1** | `web/src/app/compose/Inspector.tsx:726-737` | `formatRelative()` 硬编码 `${n}s ago` / `${n}m ago` / ... → 6 个 i18n key `compose.inspector.time.{second,minute,hour,day,month,year}`。en "5s ago" / "3m ago"；zh "5 秒前" / "3 分钟前"。helper module-level 不能 `useT()`，caller 传 `t` 进去：`formatRelative(iso, t)`。 |
+> | **P3.1** | `web/src/lib/i18n/dict.zh.ts:1177` | `try.hint.forkFromHere` = "从这里分叉" → "从此处派生"（跟 `try.session.forkHere` 一致）。en 不变。 |
+> | **UX** | `web/src/app/usage/page.tsx:80-104` | 4 个按钮 (Today / 7天 / 30天 / 全部) 加 `min-w-[5rem]` 统一宽度（active 不再因内容短而显得窄）；active 加 `font-semibold` + `aria-current="page"`；非 active 加 `hover:text-[var(--text)]` + `hover:bg-[var(--surface-2)]`。 |
+> | **i18n** | `web/src/lib/i18n/{types,dict.en,dict.zh}.ts` | 11 新 key：profiles.createdBanner + profiles.notFound + profiles.envHeading + policy.loadErrorTitle + compose.inspector.time.{second,minute,hour,day,month,year} (6)。en + zh 都加。 |
+>
+> 关键设计：
+>
+> - **P2.1 module-level helper 拿 t**：formatRelative 不能用 `useT()` hook（不在 component 内），改成 `formatRelative(iso, t)` 由 caller（`<Inspector>` 用 `const t = useT()`）传 t 进去。比把 helper 改 component 更轻（一个 prop 而不是一个 refactor）。
+> - **P1.4 fold noun into i18n key**：`<T>...: policies</T>` 这种 "T 输出后半句 raw 字符串" 是经典 anti-pattern —— `<T>` 部分本地化但 raw 字符串不。**整句一个 key** 才能确保 locale 完整（"加载策略失败" vs "Couldn't load policies"）。user 看到"加载失败: policies" 是这个 bug 的症状。
+> - **4 按钮 min-w-[5rem]**：是 floor 不是 ceiling。zh 最长 "近 30 天" (4 字) ≈ 4rem + padding ≈ 5rem；en 最长 "Last 30 days" (12 chars) 远超过 5rem 但 CSS 自适应。min-w 保证 4 按钮宽度一致，content 长时按钮 grow。active 不再"比 sibling 窄"是 user 截图看到的问题。
+> - **P3 placeholder drift punt**：15 处 zh/en placeholder 不一致，但**渲染正常**（`renderT` 不替换缺失的 placeholder 就当字面量 `{name}` 留在 output —— 但实际调用方传了什么用什么，没传就不替换）。真出问题场景是**加新 locale**（fr/ru/ar）时翻译者会困惑"为什么 en 模板有 `{n}` zh 没有"。v0.6.17 触发时机 = 任何新 locale 加入。
+>
+> 验证：tsc + format + lint + 543/543 core + 214/214 web + production build OK。dict.zh.ts 1 个 key 翻译统一（fork），其他 10 个新 key 是直接加。**placeholder drift 没动 code**（P3 punt）。
+>
+> 测试：core **543/543**（无变化）、web **214/214**（无变化）、format 双清、lint clean、tsc clean（root + web）、production build OK。
 >
 > **2026-07-16 校准 (31)**：**v0.6.15 已发** —— user-reported hotfix: `pilot forge absorb` 在 macOS sandboxed shell（Cursor / VSCode devcontainer / sandboxed Terminal.app）上跑会 EPERM 拒 mkdir。根因：`~/.pilot/capabilities/` 目录**只有 `pilot init` 才创建**（init.ts:73-86 mkdir 4 个子目录：extensions/policy/profiles/capabilities），其他 command 都假设它已经存在。User 没跑过 init 直接 absorb → recursive mkdir 第一次就拒。
 >

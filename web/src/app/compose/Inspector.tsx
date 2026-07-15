@@ -528,7 +528,7 @@ function InspectorDetailFields({ detail }: { detail: ComposeEntityDetail }) {
             <>
               <dt>{t("compose.inspector.detail.firstUsed")}</dt>
               <dd className="mono small" title={detail.startedAt}>
-                {formatRelative(detail.startedAt)}
+                {formatRelative(detail.startedAt, t)}
               </dd>
             </>
           ) : null}
@@ -536,7 +536,7 @@ function InspectorDetailFields({ detail }: { detail: ComposeEntityDetail }) {
             <>
               <dt>{t("compose.inspector.detail.lastUsed")}</dt>
               <dd className="mono small" title={detail.lastUsedAt}>
-                {formatRelative(detail.lastUsedAt)}
+                {formatRelative(detail.lastUsedAt, t)}
               </dd>
             </>
           ) : null}
@@ -720,19 +720,28 @@ function formatBytes(n: number): string {
  * runtime dep on a date-fns-style library — the inspector is a
  * small surface, "3 days ago" is enough.
  */
-function formatRelative(iso: string): string {
-  const t = new Date(iso).getTime();
-  if (Number.isNaN(t)) return iso;
-  const diffMs = Date.now() - t;
+function formatRelative(
+  iso: string,
+  t: (k: string, params?: Record<string, string | number>) => string,
+): string {
+  const time = new Date(iso).getTime();
+  if (Number.isNaN(time)) return iso;
+  const diffMs = Date.now() - time;
   const sec = Math.round(diffMs / 1000);
-  if (sec < 60) return `${sec}s ago`;
+  // v0.6.16: each unit suffix is now an i18n key so non-en
+  // locales can phrase it differently (e.g. zh "5 分钟前",
+  // fr "il y a 5 min"). The en values preserve the original
+  // shorthand ("5s ago" / "3m ago" / ...). The `t` function
+  // is passed in (rather than reading it from a hook) because
+  // formatRelative is module-level and can't call useT().
+  if (sec < 60) return t("compose.inspector.time.second", { n: sec });
   const min = Math.round(sec / 60);
-  if (min < 60) return `${min}m ago`;
+  if (min < 60) return t("compose.inspector.time.minute", { n: min });
   const hr = Math.round(min / 60);
-  if (hr < 24) return `${hr}h ago`;
+  if (hr < 24) return t("compose.inspector.time.hour", { n: hr });
   const day = Math.round(hr / 24);
-  if (day < 30) return `${day}d ago`;
+  if (day < 30) return t("compose.inspector.time.day", { n: day });
   const mon = Math.round(day / 30);
-  if (mon < 12) return `${mon}mo ago`;
-  return `${Math.round(mon / 12)}y ago`;
+  if (mon < 12) return t("compose.inspector.time.month", { n: mon });
+  return t("compose.inspector.time.year", { n: Math.round(mon / 12) });
 }

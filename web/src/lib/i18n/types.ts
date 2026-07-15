@@ -319,6 +319,10 @@ export type Dict = {
   "policy.newCard.submit": string;
   "policy.newCard.errorInvalidName": string;
   "policy.tryRule.h2": string;
+  // v0.6.16: error card heading when /policy can't load. The
+  // previous text was `<T k="error.couldntLoad.title" />: policies`
+  // — a raw ": policies" suffix that was English-only.
+  "policy.loadErrorTitle": string;
   "policy.tryRule.noPolicies": string;
   "policy.tryRule.policyLabel": string;
   "policy.tryRule.toolLabel": string;
@@ -525,6 +529,18 @@ export type Dict = {
   "compose.inspector.field.kind": string;
   "compose.inspector.field.refId": string;
   "compose.inspector.field.position": string;
+  // v0.6.16: relative-time unit suffixes for formatRelative().
+  // Previously the helper hardcoded "s ago" / "m ago" / "h ago"
+  // / "d ago" / "mo ago" / "y ago" — English only. Each
+  // suffix is split into a unit + an "ago" prefix so non-en
+  // languages can phrase it as "5 分钟前" / "il y a 5 min" /
+  // "vor 5 Min" etc. without re-implementing the helper.
+  "compose.inspector.time.second": string;
+  "compose.inspector.time.minute": string;
+  "compose.inspector.time.hour": string;
+  "compose.inspector.time.day": string;
+  "compose.inspector.time.month": string;
+  "compose.inspector.time.year": string;
   "compose.announce.connectionAdded": string;
   "compose.announce.connectionRemoved": string;
   // v0.6.8: right-edge connector handle on selected blocks.
@@ -598,6 +614,16 @@ export type Dict = {
   "profiles.descriptionPlaceholder": string;
   "profiles.saved": string;
   "profiles.model": string;
+  // v0.6.16: confirmation banner ("✓ Created <name>.") shown
+  // after a new profile is saved. Was hardcoded in the page.
+  "profiles.createdBanner": string;
+  // v0.6.16: not-found error card body for /profiles/[name].
+  // Was "Profile <id> not found." hardcoded.
+  "profiles.notFound": string;
+  // v0.6.16: section heading above the env (read-only) block
+  // on /profiles/[name]. Was "env (read-only — edit TOML
+  // directly)" hardcoded.
+  "profiles.envHeading": string;
   // v0.6.14: per-field placeholders for the profile editor.
   // Previously hardcoded as raw string literals on the
   // <Field placeholder="..." /> props.

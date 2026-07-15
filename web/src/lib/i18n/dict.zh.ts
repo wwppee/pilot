@@ -344,6 +344,7 @@ const zh: Dict = {
   "policy.newCard.errorInvalidName":
     "策略名必须用 kebab-case（小写字母、数字、连字符）。",
   "policy.tryRule.h2": "试着跑一条规则",
+  "policy.loadErrorTitle": "加载策略失败",
   "policy.tryRule.noPolicies": "暂无可测试的策略。",
   "policy.tryRule.policyLabel": "策略",
   "policy.tryRule.toolLabel": "工具",
@@ -557,6 +558,12 @@ const zh: Dict = {
   "compose.inspector.field.kind": "类型",
   "compose.inspector.field.refId": "引用 ID",
   "compose.inspector.field.position": "位置",
+  "compose.inspector.time.second": "{n} 秒前",
+  "compose.inspector.time.minute": "{n} 分钟前",
+  "compose.inspector.time.hour": "{n} 小时前",
+  "compose.inspector.time.day": "{n} 天前",
+  "compose.inspector.time.month": "{n} 个月前",
+  "compose.inspector.time.year": "{n} 年前",
   "compose.announce.connectionAdded": "已连接 {from} → {to}",
   "compose.announce.connectionRemoved": "已断开 {from} → {to}",
   // v0.6.8: 选中 block 右侧 connector 把手，拖到另一 block
@@ -624,6 +631,9 @@ const zh: Dict = {
   // Profiles [name]
   "profiles.editHeading": "编辑",
   "profiles.descriptionPlaceholder": "这份配置用来做什么？",
+  "profiles.createdBanner": "✓ 已创建 {name}。",
+  "profiles.notFound": "未找到 Profile {name}。",
+  "profiles.envHeading": "env（只读 — 直接编辑 TOML）",
   "profiles.field.providerPlaceholder": "anthropic / openai / google",
   "profiles.field.modelPlaceholder": "例如：claude-opus-4.6",
   "profiles.field.thinkingPlaceholder": "low / medium / high",
@@ -1174,7 +1184,7 @@ const zh: Dict = {
     "已删除 {n} 个画板，{m} 个失败",
   "compose.boards.row.select": "选择此画板",
   "compose.boards.column.selectAria": "选择",
-  "try.hint.forkFromHere": "从这里分叉",
+  "try.hint.forkFromHere": "从此处派生",
   "compose.boards.toolbar.openBoards": "画板",
   "compose.boards.toolbar.openBoardsTitle": "浏览 / 重命名 / 删除已保存的画板",
 };

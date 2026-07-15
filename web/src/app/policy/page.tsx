@@ -147,7 +147,12 @@ async function PolicyList({
     return (
       <section className="surface rounded-lg p-4 card error">
         <h2 className="text-lg font-semibold mb-2">
-          <T k="error.couldntLoad.title" />: policies
+          {/* v0.6.16: was `<T k="error.couldntLoad.title" />:
+              policies` — a raw English ": policies" suffix that
+              made the error card title read in mixed
+              English/Chinese for zh users. Folded the noun
+              into the i18n key so the whole heading is local. */}
+          <T k="policy.loadErrorTitle" />
         </h2>
         <pre className="text-xs text-[var(--error)] whitespace-pre-wrap break-words surface-2 rounded p-2 mb-3">
           {error}
