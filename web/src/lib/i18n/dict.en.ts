@@ -603,8 +603,13 @@ const en: Dict = {
   "compose.connectionLabel.kind.depends": "depends on",
   "compose.connectionLabel.kind.produces": "produces",
   "compose.connectionLabel.kind.manual": "manual",
+  "compose.connection.dir.label": "Direction",
+  "compose.connection.dir.forward": "A → B",
+  "compose.connection.dir.backward": "B → A",
+  "compose.connection.dir.bidirectional": "A ↔ B",
   "compose.connectionLabel.tooltip": "Click to edit connection label",
   "compose.announce.connectionLabelUpdated": "Connection label updated",
+  "compose.announce.connectionDirUpdated": "Connection direction: {dir}",
   // v0.6.10: server-side board persistence.
   "compose.toolbar.saveTitle": "Save to server",
   "compose.toolbar.loadTitle": "Load from server",

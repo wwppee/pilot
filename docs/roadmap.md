@@ -395,7 +395,34 @@
 >
 > 测试：core **584/584**、web **201/201**，format 双清、lint clean、tsc clean（root + web）、production build OK。
 >
-> **故意没做**（v0.6.17+ 留）：multiple connections (A↔B 双向)；connection color 自定义；auto-route 避开 block 中心；ComposeBoard.tsx hooks/state 抽离；**placeholder parameter audit**（zh/en 15 处 placeholder 不一致，**不影响渲染**，v0.6.18+ 视新 locale 加入时机处理）。
+> **故意没做**（v0.6.18+ 留）：connection color 自定义；auto-route 避开 block 中心；ComposeBoard.tsx hooks/state 抽离；**placeholder parameter audit**（zh/en 15 处 placeholder 不一致，**不影响渲染**，v0.6.19+ 视新 locale 加入时机处理）。
+>
+> **2026-07-16 校准 (34)**：**v0.6.18 已发** —— connection direction (forward / backward / bidirectional)。`/compose` canvas 之前所有边都是单向 forward 箭头（A → B），要表示"B → A"必须加第二条边（视觉上是两条平行线 + 一眼分不清哪个是哪个）。v0.6.18 加 `dir` 字段，3 个值，inspector 加一个 dir select 改方向。
+>
+> | 类别 | 文件 | 内容 |
+> |---|---|---|
+> | **Schema** | `web/src/lib/types.ts:563-585` | `ComposeConnection.dir?: "forward" \| "backward" \| "bidirectional"`（缺省 `"forward"`），`ConnectionDirection` type export。`ComposeState.version: 3 \| 4`。 |
+> | **Schema (core)** | `src/core/compose-boards.ts:82-145` | `ConnectionDirectionSchema` zod enum（拒绝 unknown dir value）。`BoardSnapshotSchema` version `1\|2\|3\|4`，`BoardInputSchema` 同步。 |
+> | **Build logic** | `web/src/app/compose/ComposeBoard.tsx:177-200` | `buildConnectionIfValid` 加 `dir` 参数，dedupe check 改 `(from, to, dir)` 三元组（同一对可以有三个 connection 各方向一条）。 |
+> | **History** | `web/src/lib/compose-history.ts:62-79, 180-196` | 新 `updateConnectionDir` entry type（独立于 `updateConnectionLabel`，undo dir 不会同时 undo label）。`forward` 默认时 `delete next.dir`（保持 JSON 最小 + v0.6.18↔v0.6.17 round-trip 损失）。 |
+> | **History callback** | `web/src/app/compose/ComposeBoard.tsx:884-935` | 独立 `updateConnectionDir` callback（不复用 `updateConnectionLabel`）—— 一 entry 一 concern。 |
+> | **UI - SVG** | `web/src/app/compose/ConnectionPath.tsx:62-90` | `markerStart` + `markerEnd` 按 dir 渲染端头。`orient="auto-start-reverse"` 让同一个 marker id 在 start 端自动反转（无需新 marker 形状）。`data-dir` 属性暴露给 test selectors。 |
+> | **UI - Inspector** | `web/src/app/compose/Inspector.tsx:519-545` | 第三个 select（dir），选项 `A → B` / `B → A` / `A ↔ B`（arrow glyphs 跨 locale 一致，无需翻译）。header arrow 改成基于 `c.dir` 计算（forward/backward/bidirectional × incoming/outgoing 4 case）。 |
+> | **i18n** | `web/src/lib/i18n/{types,dict.en,dict.zh}.ts` | 5 新 key：compose.connection.dir.{label,forward,backward,bidirectional}（option 标签 en/zh 都用 arrow glyphs，无翻译差异）+ compose.announce.connectionDirUpdated。 |
+> | **Tests** | `test/unit/compose-boards.test.ts:462-560` | +3 v0.6.18 schema test（v4 接受、unknown dir 拒、v3 向后兼容）。 |
+> | **Tests** | `web/tests/compose-history.test.ts:339-414` | +3 updateConnectionDir test（forward→bidirectional、default drop、invertEntry round-trip）。 |
+>
+> 关键设计：
+>
+> - **dedupe 改三元组**：原来 `c.from === fromId && c.to === toId` 检查，v0.6.18 改成 `(c.dir ?? "forward") === dir`。同一对 (A, B) 可以有 3 条 connection：forward / backward / bidirectional。`bidirectional` 不是"forward + backward 两条合并"——是独立的 3rd 条，UI 故意让 user pick 一条而不是 pick 两条。
+> - **history 独立 entry type**：把 dir 跟 label/kind 混在 `updateConnectionLabel` 里会让 undo 粒度变粗。拆成独立 `updateConnectionDir` 后，user 改一个 dir 不会推倒之前的 label 编辑。
+> - **`forward` 默认时 delete 而非 set**：让 v0.6.18 → v0.6.17 round-trip 损失（v0.6.17 写 `dir: undefined` JSON；v0.6.18 写 `dir: "forward"` 的话 rollback 会 diff 出来）。`delete next.dir` 保证 4 跟 3 字节相同。
+> - **option 标签 en/zh 都用 arrow glyphs**：`A → B` / `B → A` / `A ↔ B` 在所有 locale 都是同一字符串（unicode 字符），无需 i18n 字典里翻译。但 **field 标签**（`compose.connection.dir.label = "Direction" / "方向"`）和 **announce 消息** 走 i18n。
+> - **SVG `orient="auto-start-reverse"` 复用 marker**：同一个 `<marker id="compose-arrow-default">` 同时用于 `marker-start` 和 `marker-end`，自动 180° 反转无需另写一个 left-pointing marker。
+>
+> 验证：tsc + format + lint + 546/546 core + 217/217 web + production build OK。3 个 core test + 3 个 web test 覆盖关键 invariants。**无 UI 自动化 test**（sandbox 跑不起 pilot server，UI 测试 user 本机跑）。
+>
+> 测试：core **546/546**（+3）、web **217/217**（+3）、format 双清、lint clean、tsc clean（root + web）、production build OK。
 >
 > **2026-07-16 校准 (33)**：**v0.6.17 已发** —— 1-line visual hotfix: `/usage` range picker active 标签从 `text-[var(--bg)]` (#0b0d10) 改 `text-white`。v0.6.16 user 截图报告"active 按钮文字绿色看不清" —— 根因：#0b0d10 在 #79c0ff 蓝背景上对比度在小字号（`text-xs`）下退化，视觉上像糊的绿调。**白色是饱和蓝背景上最稳的阅读色**（跨显示器 profile 一致 WCAG AA ≥ 4.5:1）。
 >

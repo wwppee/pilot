@@ -88,9 +88,28 @@ const BlockSchema = z.object({
 });
 
 /**
+ * v0.6.18: connection direction. Same (from, to) pair can
+ * have up to three connections (one per direction); a
+ * `"bidirectional"` connection is the same as having both
+ * a `"forward"` and a `"backward"` connection collapsed into
+ * one — semantically they're equivalent, but the user
+ * picked bidirectional for "this is a back-and-forth, not
+ * two separate edges" intent.
+ */
+const ConnectionDirectionSchema = z.enum([
+  "forward",
+  "backward",
+  "bidirectional",
+]);
+
+/**
  * One edge between two blocks. v0.6.7 baseline + v0.6.9 free-text
  * label and `ConnectionLabelKind` enum (the enum is verified as a
  * string here — web UI prevents anything else from being set).
+ *
+ * v0.6.18: optional `dir` field. When missing, the loader
+ * defaults to `"forward"` so v1-v3 boards load with the same
+ * single-arrow look the user is used to.
  */
 const ConnectionSchema = z.object({
   id: z.string().min(1),
@@ -100,6 +119,7 @@ const ConnectionSchema = z.object({
   kind: z
     .enum(["flows", "uses", "feeds", "depends", "produces", "manual"])
     .optional(),
+  dir: ConnectionDirectionSchema.optional(),
 });
 
 /**
@@ -107,15 +127,17 @@ const ConnectionSchema = z.object({
  * `createdAt` (never changes after first save) in addition to
  * the `ComposeState`-shaped payload.
  *
- * `version: 3` matches web's `ComposeState.version`; the loader
- * accepts 1/2/3 so old saves keep loading. See `migrateBoard`.
+ * v0.6.18: `version` is now `1 | 2 | 3 | 4`. Boards saved at v3
+ * or earlier continue to load — the loader accepts all four
+ * and `dir` defaults to `"forward"` when missing. New writes
+ * from the web client land at v4.
  */
 export const BoardSnapshotSchema = z.object({
   id: z.string().min(1),
   name: z.string().default(""),
   blocks: z.array(BlockSchema),
   connections: z.array(ConnectionSchema).default([]),
-  version: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  version: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
   updatedAt: z.string(),
   createdAt: z.string(),
 });
@@ -128,7 +150,9 @@ export const BoardInputSchema = z.object({
   name: z.string().default(""),
   blocks: z.array(BlockSchema),
   connections: z.array(ConnectionSchema).default([]),
-  version: z.union([z.literal(1), z.literal(2), z.literal(3)]).default(3),
+  version: z
+    .union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)])
+    .default(4),
 });
 
 export type BoardInput = z.infer<typeof BoardInputSchema>;

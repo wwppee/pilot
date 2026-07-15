@@ -80,6 +80,11 @@ export function BlockInspector({
   connectingFromId,
   onStartConnect,
   onCancelConnect,
+  // v0.6.18: dir edits (forward / backward / bidirectional)
+  // need a separate callback so undo/redo can keep dir history
+  // independent of label/kind history. The connection-list
+  // select calls this directly; we just pass it through.
+  onUpdateDir,
   onConnect,
   onDisconnect,
   onUpdateLabel,
@@ -101,6 +106,12 @@ export function BlockInspector({
     connectionId: string,
     label: string | undefined,
     kind: ConnectionLabelKind | undefined,
+  ) => void;
+  // v0.6.18: passed straight through to <ConnectionList> so
+  // the inline dir select can call back to the React layer.
+  onUpdateDir: (
+    connectionId: string,
+    dir: "forward" | "backward" | "bidirectional",
   ) => void;
 }) {
   const t = useT();
@@ -233,6 +244,7 @@ export function BlockInspector({
             connections={connections}
             onDisconnect={onDisconnect}
             onUpdateLabel={onUpdateLabel}
+            onUpdateDir={onUpdateDir}
           />
         )}
       </div>
@@ -377,6 +389,7 @@ export function ConnectionList({
   connections,
   onDisconnect,
   onUpdateLabel,
+  onUpdateDir,
 }: {
   block: ComposeBlock;
   allBlocks: ComposeBlock[];
@@ -386,6 +399,13 @@ export function ConnectionList({
     connectionId: string,
     label: string | undefined,
     kind: ConnectionLabelKind | undefined,
+  ) => void;
+  // v0.6.18: separate callback for direction so the React
+  // layer keeps the dir edit and the label edit on independent
+  // history stacks (see `updateConnectionDir` in ComposeBoard).
+  onUpdateDir: (
+    connectionId: string,
+    dir: "forward" | "backward" | "bidirectional",
   ) => void;
 }) {
   const t = useT();
@@ -410,83 +430,132 @@ export function ConnectionList({
   }
   return (
     <ul className="compose-connection-list">
-      {all.map(({ c, other, dir }) => (
-        <li key={c.id} className="compose-connection-item">
-          <div className="compose-connection-item-header">
-            <span className="muted small" aria-hidden="true">
-              {dir === "from" ? "→" : "←"}
-            </span>
-            <span
-              className="compose-connection-peer"
-              title={other?.label ?? "?"}
-            >
-              {other?.label ?? "?"}
-            </span>
-            <button
-              type="button"
-              className="btn small secondary compose-connection-disconnect"
-              onClick={() => onDisconnect(c.id)}
-              aria-label={t("compose.inspector.disconnect")}
-              title={t("compose.inspector.disconnect")}
-            >
-              ×
-            </button>
-          </div>
-          <div className="compose-connection-item-editor">
-            <input
-              type="text"
-              className="compose-connection-label-input"
-              value={c.label ?? ""}
-              placeholder={t("compose.inspector.connectionLabel.placeholder")}
-              aria-label={t("compose.inspector.connectionLabel")}
-              title={t("compose.connectionLabel.tooltip")}
-              onChange={(e) =>
-                onUpdateLabel(
-                  c.id,
-                  e.target.value === "" ? undefined : e.target.value,
-                  c.kind,
-                )
-              }
-            />
-            <select
-              className="compose-connection-kind-select"
-              value={c.kind ?? ""}
-              aria-label={t("compose.inspector.connectionLabel")}
-              title={t("compose.connectionLabel.tooltip")}
-              onChange={(e) => {
-                const v = e.target.value;
-                onUpdateLabel(
-                  c.id,
-                  c.label,
-                  v === "" ? undefined : (v as ConnectionLabelKind),
-                );
-              }}
-            >
-              <option value="">
-                {t("compose.inspector.connectionLabel.none")}
-              </option>
-              <option value="flows">
-                {t("compose.connectionLabel.kind.flows")}
-              </option>
-              <option value="uses">
-                {t("compose.connectionLabel.kind.uses")}
-              </option>
-              <option value="feeds">
-                {t("compose.connectionLabel.kind.feeds")}
-              </option>
-              <option value="depends">
-                {t("compose.connectionLabel.kind.depends")}
-              </option>
-              <option value="produces">
-                {t("compose.connectionLabel.kind.produces")}
-              </option>
-              <option value="manual">
-                {t("compose.connectionLabel.kind.manual")}
-              </option>
-            </select>
-          </div>
-        </li>
-      ))}
+      {all.map(({ c, other, dir }) => {
+        // v0.6.18: the visible arrow is now a function of
+        // (dir field, incoming/outgoing). `dir` is the
+        // local incoming/outgoing marker; `c.dir` is the
+        // user-set direction. Forward + outgoing = →,
+        // forward + incoming = ←, backward flips both,
+        // bidirectional = ↔ regardless of side.
+        const effDir = c.dir ?? "forward";
+        const arrow =
+          effDir === "bidirectional"
+            ? "↔"
+            : effDir === "forward"
+              ? dir === "from"
+                ? "→"
+                : "←"
+              : dir === "from"
+                ? "←"
+                : "→";
+        return (
+          <li key={c.id} className="compose-connection-item">
+            <div className="compose-connection-item-header">
+              <span className="muted small" aria-hidden="true">
+                {arrow}
+              </span>
+              <span
+                className="compose-connection-peer"
+                title={other?.label ?? "?"}
+              >
+                {other?.label ?? "?"}
+              </span>
+              <button
+                type="button"
+                className="btn small secondary compose-connection-disconnect"
+                onClick={() => onDisconnect(c.id)}
+                aria-label={t("compose.inspector.disconnect")}
+                title={t("compose.inspector.disconnect")}
+              >
+                ×
+              </button>
+            </div>
+            <div className="compose-connection-item-editor">
+              <input
+                type="text"
+                className="compose-connection-label-input"
+                value={c.label ?? ""}
+                placeholder={t("compose.inspector.connectionLabel.placeholder")}
+                aria-label={t("compose.inspector.connectionLabel")}
+                title={t("compose.connectionLabel.tooltip")}
+                onChange={(e) =>
+                  onUpdateLabel(
+                    c.id,
+                    e.target.value === "" ? undefined : e.target.value,
+                    c.kind,
+                  )
+                }
+              />
+              <select
+                className="compose-connection-kind-select"
+                value={c.kind ?? ""}
+                aria-label={t("compose.inspector.connectionLabel")}
+                title={t("compose.connectionLabel.tooltip")}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  onUpdateLabel(
+                    c.id,
+                    c.label,
+                    v === "" ? undefined : (v as ConnectionLabelKind),
+                  );
+                }}
+              >
+                <option value="">
+                  {t("compose.inspector.connectionLabel.none")}
+                </option>
+                <option value="flows">
+                  {t("compose.connectionLabel.kind.flows")}
+                </option>
+                <option value="uses">
+                  {t("compose.connectionLabel.kind.uses")}
+                </option>
+                <option value="feeds">
+                  {t("compose.connectionLabel.kind.feeds")}
+                </option>
+                <option value="depends">
+                  {t("compose.connectionLabel.kind.depends")}
+                </option>
+                <option value="produces">
+                  {t("compose.connectionLabel.kind.produces")}
+                </option>
+                <option value="manual">
+                  {t("compose.connectionLabel.kind.manual")}
+                </option>
+              </select>
+              {/* v0.6.18: direction picker. Sits next to the kind
+                select so the user can flip a connection from
+                "A → B" to "B → A" or "A ↔ B" in one click. The
+                arrow glyph in the option label matches what
+                ConnectionPath renders (single / reversed /
+                double head). Defaults to "forward" when the
+                connection is missing the field — the same
+                default the SVG renderer uses. */}
+              <select
+                className="compose-connection-dir-select"
+                value={c.dir ?? "forward"}
+                aria-label={t("compose.connection.dir.label")}
+                title={t("compose.connection.dir.label")}
+                onChange={(e) =>
+                  onUpdateDir(
+                    c.id,
+                    e.target.value as "forward" | "backward" | "bidirectional",
+                  )
+                }
+              >
+                <option value="forward">
+                  {t("compose.connection.dir.forward")}
+                </option>
+                <option value="backward">
+                  {t("compose.connection.dir.backward")}
+                </option>
+                <option value="bidirectional">
+                  {t("compose.connection.dir.bidirectional")}
+                </option>
+              </select>
+            </div>
+          </li>
+        );
+      })}
     </ul>
   );
 }

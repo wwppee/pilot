@@ -556,8 +556,20 @@ export type Dict = {
   "compose.connectionLabel.kind.depends": string;
   "compose.connectionLabel.kind.produces": string;
   "compose.connectionLabel.kind.manual": string;
+  // v0.6.18: connection direction. Same (from, to) pair can
+  // have up to three connections (one per direction) without
+  // colliding, so the "kind" enum doesn't conflict with this.
+  "compose.connection.dir.label": string;
+  "compose.connection.dir.forward": string;
+  "compose.connection.dir.backward": string;
+  "compose.connection.dir.bidirectional": string;
   "compose.connectionLabel.tooltip": string;
   "compose.announce.connectionLabelUpdated": string;
+  // v0.6.18: live-region message when the user flips a
+  // connection's direction in the inspector. The {dir}
+  // placeholder receives the translated dir label
+  // (e.g. "A → B" / "A ↔ B"), not the raw key value.
+  "compose.announce.connectionDirUpdated": string;
   // v0.6.10: server-side board persistence (Save to / Load from server).
   "compose.toolbar.saveTitle": string;
   "compose.toolbar.loadTitle": string;

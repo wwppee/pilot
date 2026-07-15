@@ -579,8 +579,13 @@ const zh: Dict = {
   "compose.connectionLabel.kind.depends": "依赖",
   "compose.connectionLabel.kind.produces": "产出",
   "compose.connectionLabel.kind.manual": "手动",
+  "compose.connection.dir.label": "方向",
+  "compose.connection.dir.forward": "A → B",
+  "compose.connection.dir.backward": "B → A",
+  "compose.connection.dir.bidirectional": "A ↔ B",
   "compose.connectionLabel.tooltip": "点击编辑连接标签",
   "compose.announce.connectionLabelUpdated": "连接标签已更新",
+  "compose.announce.connectionDirUpdated": "连接方向：{dir}",
   // v0.6.10: server-side board persistence.
   "compose.toolbar.saveTitle": "保存到服务器",
   "compose.toolbar.loadTitle": "从服务器加载",

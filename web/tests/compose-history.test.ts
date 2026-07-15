@@ -350,3 +350,77 @@ describe("updateConnectionLabel (v0.6.9)", () => {
     expect(state.connections?.[0]?.to).toBe("b");
   });
 });
+
+// ─── v0.6.18: updateConnectionDir ───────────────────────────
+
+describe("updateConnectionDir (v0.6.18)", () => {
+  // Two blocks + one connection. Reused across the three cases
+  // below so the only varying thing is the entry's toDir.
+  const a: ComposeBlock = {
+    id: "a",
+    kind: "session",
+    refId: "r-a",
+    x: 0,
+    y: 0,
+    label: "A",
+  };
+  const b: ComposeBlock = {
+    id: "b",
+    kind: "session",
+    refId: "r-b",
+    x: 100,
+    y: 0,
+    label: "B",
+  };
+  const conn = { id: "c1", from: "a", to: "b" };
+
+  it("flips forward → bidirectional, drop-pending-label semantics carry over", () => {
+    const start = { ...makeState([a, b]), connections: [conn] };
+    const { state } = applyEntry(start, {
+      type: "updateConnectionDir",
+      connectionId: "c1",
+      fromDir: "",
+      toDir: "bidirectional",
+    });
+    expect(state.connections?.[0]?.dir).toBe("bidirectional");
+  });
+
+  it("dropping dir back to forward is a no-op on the persisted JSON", () => {
+    // v0.6.18: `forward` is the default — we delete the field
+    // rather than setting `dir: "forward"`. The persisted board
+    // matches what v0.6.17 would have written for the same
+    // edge, so the v0.6.18 → v0.6.17 round-trip is lossless.
+    const start = {
+      ...makeState([a, b]),
+      connections: [{ ...conn, dir: "bidirectional" as const }],
+    };
+    const { state } = applyEntry(start, {
+      type: "updateConnectionDir",
+      connectionId: "c1",
+      fromDir: "bidirectional",
+      toDir: "forward",
+    });
+    expect(state.connections?.[0]?.dir).toBeUndefined();
+    expect("dir" in (state.connections?.[0] ?? {})).toBe(false);
+  });
+
+  it("undo round-trips: invert(updateConnectionDir(from→to)) = updateConnectionDir(to→from)", () => {
+    // The undo stack stores the entry as-is; redo re-applies it
+    // via applyEntry. To undo a dir change we need invertEntry
+    // to swap fromDir/toDir so the future entry, when applied,
+    // restores the previous direction.
+    const entry: HistoryEntry = {
+      type: "updateConnectionDir",
+      connectionId: "c1",
+      fromDir: "forward",
+      toDir: "backward",
+    };
+    const inverted = invertEntry(entry);
+    expect(inverted).toEqual({
+      type: "updateConnectionDir",
+      connectionId: "c1",
+      fromDir: "backward",
+      toDir: "forward",
+    });
+  });
+});

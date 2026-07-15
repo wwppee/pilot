@@ -49,11 +49,23 @@ export function ConnectionPath({
   // line itself.
   const midX = (x1 + x2) / 2;
   const midY = (y1 + y2) / 2 - 6;
+  // v0.6.18: dir drives which end(s) get the arrow head.
+  // Default to "forward" so v1-v3 connections (missing the
+  // field) render exactly the same as they did in v0.6.17.
+  const dir = connection.dir ?? "forward";
+  const markerId = selected
+    ? "compose-arrow-selected"
+    : "compose-arrow-default";
+  // orient="auto-start-reverse" on the marker definition makes
+  // it mirror its shape at marker-start automatically, so the
+  // same id can be used for both ends without redefining a
+  // separate "left-pointing" marker.
   return (
     <g
       data-connection-id={connection.id}
       data-selected={selected}
       data-kind={connection.kind ?? ""}
+      data-dir={dir}
       className="compose-connection-path"
       onClick={onSelect}
       style={{ cursor: "pointer" }}
@@ -64,7 +76,16 @@ export function ConnectionPath({
         stroke="currentColor"
         strokeWidth={selected ? 2.5 : 1.5}
         opacity={selected ? 1 : 0.6}
-        markerEnd={`url(#${selected ? "compose-arrow-selected" : "compose-arrow-default"})`}
+        markerStart={
+          dir === "backward" || dir === "bidirectional"
+            ? `url(#${markerId})`
+            : undefined
+        }
+        markerEnd={
+          dir === "forward" || dir === "bidirectional"
+            ? `url(#${markerId})`
+            : undefined
+        }
       />
       {connection.label ? (
         <text

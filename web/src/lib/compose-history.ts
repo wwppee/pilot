@@ -63,6 +63,25 @@ export type HistoryEntry =
       toLabel: string;
       fromKind: ConnectionLabelKind | "";
       toKind: ConnectionLabelKind | "";
+    }
+  | {
+      /**
+       * v0.6.18: flip a connection's direction (forward / backward
+       * / bidirectional). Kept as its own history entry type so
+       * undoing a direction change doesn't also undo an unrelated
+       * label edit. The entry stores BEFORE/AFTER for the same
+       * reason as `updateConnectionLabel` — undo/redo round-trips
+       * without re-fetching live state.
+       *
+       * `""` in fromDir/toDir is reserved for "this field wasn't
+       * touched" but in practice both sides are always a valid
+       * direction — we keep the `""` slot in case a future entry
+       * shape needs to mix dir with other fields.
+       */
+      type: "updateConnectionDir";
+      connectionId: string;
+      fromDir: "forward" | "backward" | "bidirectional" | "";
+      toDir: "forward" | "backward" | "bidirectional" | "";
     };
 
 export interface HistoryState {
@@ -155,6 +174,28 @@ export function applyEntry(
       });
       return { state: { ...state, connections: updated }, selectedId: null };
     }
+    case "updateConnectionDir": {
+      // v0.6.18: same shape as the label update — find the edge
+      // by id, swap its dir field. `""` toDir means "clear dir
+      // (i.e. fall back to forward)" but in practice the React
+      // layer always passes a valid direction value.
+      const conns = state.connections ?? [];
+      const updated = conns.map((c) => {
+        if (c.id !== entry.connectionId) return c;
+        const next: ComposeConnection = { ...c };
+        if (entry.toDir === "" || entry.toDir === "forward") {
+          // "forward" is the default — drop the field so the
+          // JSON stays minimal and diff-against-old-boards
+          // comparisons don't have to special-case the two
+          // representations of the same value.
+          delete next.dir;
+        } else {
+          next.dir = entry.toDir;
+        }
+        return next;
+      });
+      return { state: { ...state, connections: updated }, selectedId: null };
+    }
   }
 }
 
@@ -191,6 +232,14 @@ export function invertEntry(entry: HistoryEntry): HistoryEntry {
         toLabel: entry.fromLabel,
         fromKind: entry.toKind,
         toKind: entry.fromKind,
+      };
+    case "updateConnectionDir":
+      // Same swap pattern as the label case.
+      return {
+        type: "updateConnectionDir",
+        connectionId: entry.connectionId,
+        fromDir: entry.toDir,
+        toDir: entry.fromDir,
       };
   }
 }

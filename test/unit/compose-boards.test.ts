@@ -546,3 +546,105 @@ describe("renameBoard", () => {
     expect(list[0]?.name).toBe("Renamed");
   });
 });
+
+// ─── v0.6.18: schema v4 + connection direction ─────────────
+
+describe("v0.6.18 schema v4 + connection direction", () => {
+  it("accepts version 4 with `dir` on connections", async () => {
+    const saved = await saveBoard(
+      {
+        name: "V4",
+        version: 4,
+        blocks: [
+          {
+            id: "b1",
+            kind: "session",
+            refId: "r1",
+            x: 0,
+            y: 0,
+            label: "A",
+          },
+          {
+            id: "b2",
+            kind: "session",
+            refId: "r2",
+            x: 100,
+            y: 0,
+            label: "B",
+          },
+        ],
+        connections: [{ id: "c1", from: "b1", to: "b2", dir: "bidirectional" }],
+      },
+      fakeHome,
+    );
+    expect(saved.version).toBe(4);
+    expect(saved.connections[0]?.dir).toBe("bidirectional");
+  });
+
+  it("rejects an unknown dir value (zod enum)", async () => {
+    // v0.6.18: saveBoard runs the input through the Zod schema;
+    // an out-of-set dir must throw rather than silently
+    // round-tripping as "forward". This is the v0.6.11 §9.6
+    // pattern ("error 400 vs silent default") applied to the
+    // new enum.
+    await expect(
+      saveBoard(
+        {
+          name: "BadDir",
+          version: 4,
+          blocks: [
+            {
+              id: "b1",
+              kind: "session",
+              refId: "r1",
+              x: 0,
+              y: 0,
+              label: "A",
+            },
+          ],
+          connections: [
+            { id: "c1", from: "b1", to: "b1", dir: "sideways" as never },
+          ],
+        },
+        fakeHome,
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("loads v3 boards without dir field unchanged", async () => {
+    // v0.6.18 backward-compat: a v3 board saved before the dir
+    // field existed must still load — dir defaults to undefined
+    // in the loaded snapshot, and the caller is expected to
+    // treat that as "forward".
+    const v3 = await saveBoard(
+      {
+        name: "V3",
+        version: 3,
+        blocks: [
+          {
+            id: "b1",
+            kind: "session",
+            refId: "r1",
+            x: 0,
+            y: 0,
+            label: "A",
+          },
+          {
+            id: "b2",
+            kind: "session",
+            refId: "r2",
+            x: 100,
+            y: 0,
+            label: "B",
+          },
+        ],
+        connections: [{ id: "c1", from: "b1", to: "b2" }],
+      },
+      fakeHome,
+    );
+    const reloaded = await loadBoard(v3.id, fakeHome);
+    expect(reloaded).not.toBeNull();
+    expect(reloaded?.version).toBe(3);
+    expect(reloaded?.connections[0]?.dir).toBeUndefined();
+  });
+});

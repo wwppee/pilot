@@ -2,6 +2,89 @@
 
 ## Unreleased
 
+### v0.6.18 — Connection direction (forward / backward / bidirectional)
+
+The `/compose` canvas now distinguishes forward, backward,
+and bidirectional connections. Before v0.6.18, every edge
+was a single forward arrow (A → B); to say "B → A" the user
+had to add a second connection, which produced two parallel
+lines and an instant "which one is which" problem. v0.6.18
+adds a `dir` field to `ComposeConnection` with three values
+and a new picker in the inspector that flips the direction
+in one click.
+
+**Schema**
+
+- **`ComposeConnection.dir?: "forward" | "backward" |
+  "bidirectional"`** (default `"forward"` when missing).
+  The same `(from, to)` pair can have up to three
+  connections — one per direction — so the existing
+  `buildConnectionIfValid` dedupe check now keys on
+  `(from, to, dir)` instead of just `(from, to)`.
+- **Schema bumped to v4** on the client + server. Boards
+  saved at v1 / v2 / v3 continue to load — the loader
+  accepts all four versions and `dir` defaults to
+  `"forward"` when missing, so v0.6.18 is fully
+  backward-compatible with v0.6.17 saves.
+
+**UI**
+
+- **ConnectionPath** renders the arrow head on the
+  correct end of the edge via `markerStart` /
+  `markerEnd`. `orient="auto-start-reverse"` on the
+  existing `<marker>` definition means the same id
+  is mirrored at the start position — no new marker
+  shapes needed. `data-dir={forward|backward|bidirectional}`
+  is exposed on the `<g>` for test selectors.
+- **Inspector** gets a new direction select next to the
+  kind select. Options: `A → B` (forward, default),
+  `B → A` (backward), `A ↔ B` (bidirectional). The
+  visible header arrow updates to match — bidirectional
+  shows `↔`, forward/backward swap `→` / `←` based on
+  whether the current block is the source or the target.
+
+**History**
+
+- New history entry type `updateConnectionDir` (separate
+  from `updateConnectionLabel` so undoing a direction
+  flip doesn't also undo an unrelated label edit). Stores
+  `{ connectionId, fromDir, toDir }` so undo/redo
+  round-trips without re-fetching live state. `fromDir =
+  ""` and `toDir = "forward"` both mean "default
+  (forward)" — when restoring the default we `delete
+  next.dir` rather than `next.dir = "forward"` so the
+  persisted JSON stays minimal and v0.6.18 → v0.6.17
+  round-trip is lossless.
+
+**i18n**
+
+- **5 new keys**: `compose.connection.dir.label`,
+  `.forward`, `.backward`, `.bidirectional` (the option
+  labels are intentionally the same in en and zh — the
+  arrow glyphs `→` `←` `↔` are universal, no
+  translation needed), and `compose.announce.connectionDirUpdated`
+  for the live-region message.
+
+**Tests**
+
+- root: **546/546** ✓ (was 543; +3 in `compose-boards.test.ts` —
+  v4 schema acceptance, `dir` enum rejection, v3 backward
+  compat).
+- web: **217/217** ✓ (was 214; +3 in `compose-history.test.ts` —
+  `updateConnectionDir` forward ↔ bidirectional transition,
+  default-drop semantics on revert, invertEntry round-trip).
+- format:check root + web: ✓
+- lint (root `eslint src test --max-warnings 0`): ✓
+- tsc root + web: ✓
+- production build (`next build`): ✓
+
+**Deliberately NOT done (v0.6.19+ backlog)**
+
+- connection color 自定义
+- auto-route 避开 block 中心
+- ComposeBoard.tsx hooks/state 抽离
+- placeholder parameter audit (15 keys) — see v0.6.16
+
 ### v0.6.17 — `/usage` range picker active label is now white (1-line visual hotfix)
 
 A follow-up to v0.6.16: the user reported that the active

@@ -90,7 +90,7 @@ const VIEW_MODE_KEY = "pilot-compose-view-mode";
 function emptyState(): ComposeState {
   return {
     blocks: [],
-    version: 3,
+    version: 4 as const,
     updatedAt: new Date().toISOString(),
     name: "default",
   };
@@ -178,17 +178,27 @@ function buildConnectionIfValid(
   fromId: string,
   toId: string,
   state: ComposeState,
+  // v0.6.18: pass dir so the dedupe check considers
+  // (from, to, dir) as the unique key — the same (from, to)
+  // pair can have up to three connections (one per direction).
+  dir: "forward" | "backward" | "bidirectional" = "forward",
 ): ComposeConnection | null {
   if (fromId === toId) return null;
   const conns = state.connections ?? [];
-  if (conns.some((c) => c.from === fromId && c.to === toId)) return null;
+  if (
+    conns.some(
+      (c) => c.from === fromId && c.to === toId && (c.dir ?? "forward") === dir,
+    )
+  ) {
+    return null;
+  }
   if (
     !state.blocks.some((b) => b.id === fromId) ||
     !state.blocks.some((b) => b.id === toId)
   ) {
     return null;
   }
-  return { id: genId(), from: fromId, to: toId };
+  return { id: genId(), from: fromId, to: toId, dir };
 }
 
 /**
@@ -858,6 +868,61 @@ export default function ComposeBoard({
         },
         t("compose.announce.connectionLabelUpdated", {
           label: normLabel ?? "",
+        }),
+      );
+    },
+    [state.connections, commit, t],
+  );
+
+  // v0.6.18: edit a connection's direction (forward / backward /
+  // bidirectional). Kept separate from `updateConnectionLabel` so
+  // the history entry shape stays narrow — one entry per
+  // concern, instead of one entry that mixes label / kind / dir
+  // (the latter would mean undoing a dir change also undid an
+  // unrelated label edit, which is the wrong granularity for
+  // an undo stack).
+  const updateConnectionDir = useCallback(
+    (
+      connectionId: string,
+      nextDir: "forward" | "backward" | "bidirectional",
+    ) => {
+      const conns = state.connections ?? [];
+      const conn = conns.find((c) => c.id === connectionId);
+      if (!conn) return;
+      // Treat missing as "forward" so the no-op short-circuit
+      // works against the actual rendered value, not a literal
+      // undefined.
+      const fromDir = conn.dir ?? "forward";
+      if (fromDir === nextDir) return;
+      commit(
+        {
+          type: "updateConnectionDir",
+          connectionId,
+          fromDir,
+          toDir: nextDir,
+        },
+        () => {
+          setState((s) => ({
+            ...s,
+            connections: (s.connections ?? []).map((c) => {
+              if (c.id !== connectionId) return c;
+              const next: ComposeConnection = { ...c };
+              if (nextDir === "forward") {
+                // v0.6.18: forward is the default — drop the
+                // field so the JSON stays minimal and
+                // duplicate-against-old-boards comparisons
+                // don't have to consider both `undefined` and
+                // `"forward"` as the same value (they are).
+                delete next.dir;
+              } else {
+                next.dir = nextDir;
+              }
+              return next;
+            }),
+          }));
+        },
+        t("compose.announce.connectionDirUpdated", {
+          dir: t(`compose.connection.dir.${nextDir}`),
         }),
       );
     },
@@ -1898,6 +1963,7 @@ export default function ComposeBoard({
               onConnect={(toId) => connectBlock(selectedBlock.id, toId)}
               onDisconnect={disconnectConnection}
               onUpdateLabel={updateConnectionLabel}
+              onUpdateDir={updateConnectionDir}
             />
           ) : (
             <div className="compose-inspector-empty">

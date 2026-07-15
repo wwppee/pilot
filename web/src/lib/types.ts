@@ -560,6 +560,18 @@ export type ConnectionLabelKind =
   | "produces"
   | "manual";
 
+/**
+ * v0.6.18: direction of the arrow on the connection. The default
+ * is `"forward"` (A → B drawn as a single arrow head at B).
+ * `"backward"` flips the head to A (the visual equivalent of
+ * drawing a "B → A" connection — useful for clarifying "this
+ * block is consumed by that one" without re-declaring the
+ * underlying edge). `"bidirectional"` renders a head on both
+ * ends. The same (from, to) pair can have up to three
+ * connections — one per direction — without colliding.
+ */
+export type ConnectionDirection = "forward" | "backward" | "bidirectional";
+
 export interface ComposeConnection {
   /** Stable connection id (uuid). Keeps history entries small. */
   id: string;
@@ -571,6 +583,12 @@ export interface ComposeConnection {
   label?: string;
   /** v0.6.9: optional semantic kind (default: "flows"). */
   kind?: ConnectionLabelKind;
+  /**
+   * v0.6.18: which end(s) the arrow head renders on. Defaults
+   * to `"forward"` when missing (mirrors the v0.6.17 behaviour
+   * exactly so old boards load without UI changes).
+   */
+  dir?: ConnectionDirection;
 }
 
 /**
@@ -602,7 +620,7 @@ export interface BoardInput {
   name: string;
   blocks: ComposeBlock[];
   connections: ComposeConnection[];
-  version: 1 | 2 | 3;
+  version: 1 | 2 | 3 | 4;
 }
 
 export interface ComposeState {
@@ -618,8 +636,11 @@ export interface ComposeState {
    *  - 1: original (v0.4.4 - v0.6.6) — blocks only
    *  - 2: v0.6.7 - v0.6.8 — adds `connections: ComposeConnection[]`
    *  - 3: v0.6.9+ — connections may have `label` + `kind`
+   *  - 4: v0.6.18+ — connections may have `dir` (forward /
+   *    backward / bidirectional). Old boards load unchanged
+   *    because `dir` is optional and defaults to "forward".
    */
-  version: 3;
+  version: 3 | 4;
   /** ISO timestamp of last save. */
   updatedAt: string;
   /** Optional human-readable name for this layout. */
