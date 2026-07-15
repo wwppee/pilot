@@ -322,6 +322,10 @@ export type Dict = {
   "policy.tryRule.noPolicies": string;
   "policy.tryRule.policyLabel": string;
   "policy.tryRule.toolLabel": string;
+  "policy.tryRule.toolBash": string;
+  "policy.tryRule.toolRead": string;
+  "policy.tryRule.toolEdit": string;
+  "policy.tryRule.toolWrite": string;
   "policy.tryRule.argsLabel": string;
   "policy.tryRule.runCheck": string;
   "policy.check": string;
@@ -594,6 +598,14 @@ export type Dict = {
   "profiles.descriptionPlaceholder": string;
   "profiles.saved": string;
   "profiles.model": string;
+  // v0.6.14: per-field placeholders for the profile editor.
+  // Previously hardcoded as raw string literals on the
+  // <Field placeholder="..." /> props.
+  "profiles.field.providerPlaceholder": string;
+  "profiles.field.modelPlaceholder": string;
+  "profiles.field.thinkingPlaceholder": string;
+  "profiles.field.packagesPlaceholder": string;
+  "profiles.field.packagesLabelSuffix": string;
   "profiles.thinking": string;
   "profiles.packages": string;
   "profiles.provider": string;

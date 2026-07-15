@@ -395,7 +395,26 @@
 >
 > 测试：core **584/584**、web **201/201**，format 双清、lint clean、tsc clean（root + web）、production build OK。
 >
-> **故意没做**（v0.6.13+ 留）：multiple connections (A↔B 双向)；connection color 自定义；auto-route 避开 block 中心；ComposeBoard.tsx hooks/state 抽离；**全站 i18n audit pass**（v0.6.13 只扫了 /compose 和 /try，其他页面 — sessions / packages / forge / plans / avatars / tools / context — 各自有 v0.4.x-v0.5.x 时代遗留的硬编码英文，需要单独一次 pass）。
+> **故意没做**（v0.6.14+ 留）：multiple connections (A↔B 双向)；connection color 自定义；auto-route 避开 block 中心；ComposeBoard.tsx hooks/state 抽离。**全站 i18n audit** v0.6.14 已完成（见校准 30）。
+>
+> **2026-07-16 校准 (30)**：**v0.6.14 已发** —— site-wide i18n audit pass 完成。v0.6.13 flag 出的"全站 i18n audit"在这版做掉。实际 surface 比预期**小很多** —— 16 个 page 中 13 个已经 i18n'd，剩 3 个 page 4 处真硬编码：
+>
+> | 级别 | 文件 | 修复 |
+> |---|---|---|
+> | **P2.1** | `web/src/app/sessions/page.tsx:80` | `<th>ID</th>` → `<T k="sessions.col.id" />`。6 个 sibling column header 早 i18n'd，就 ID 漏。key 已存在（zh 也是 "ID"），修是为了 i18n 契约完整性。 |
+> | **P2.2** | `web/src/app/policy/page.tsx:339-342` | 4 个 `<option value="bash">bash</option>` 等：value 保留 raw tool name（API 契约），visible label 包 `policy.tryRule.tool{Bash,Read,Edit,Write}`。en + zh 都显示 bash/read/edit/write（术语），但 key 备好等将来 fr/ru/ar 翻译。 |
+> | **P2.3** | `web/src/app/policy/page.tsx:385` | `placeholder="safe-bash"` → `placeholder={renderT(locale, "policy.newCard.namePlaceholder")}`。key 已存在只是没用。 |
+> | **P2.4** | `web/src/app/profiles/[name]/page.tsx:135-153` | 5 个 field placeholder + 1 个 label suffix "(comma-separated)" → 6 个新 `profiles.field.*` key（en: provider/model/thinking/packages 例子 + 标签后缀；zh: "例如：claude-opus-4.6" / "（逗号分隔）"）。 |
+> | **Plumbing** | `web/src/app/policy/page.tsx:279, 293, 372` | `<DryRun>` / `<DryRunForm>` / `<NewPolicyCard>` 加 `locale: ReturnType<typeof negotiateLocale>` prop，跟 `<PolicyList>` 的 pattern 一致。`renderT` 在 child 组件里能拿同一 locale。 |
+> | **i18n** | `web/src/lib/i18n/{types,dict.en,dict.zh}.ts` | 9 新 key：`policy.tryRule.tool{Bash,Read,Edit,Write}` (4) + `profiles.field.{provider,model,thinking,packages}Placeholder` (4) + `profiles.field.packagesLabelSuffix` (1) |
+>
+> 关键观察：
+>
+> - **i18n audit 实际 surface 比预期小**：v0.6.13 我担心是 30-50 处，实际只 4 处真硬编码。原因是 pilot 从 v0.4.4 开始**每个新 feature PR 都同步 i18n**，14 个 minor version 积累下来 13/16 page 已经 i18n'd。v0.6.14 完成了 backlog 中"全站 i18n audit"项。
+> - **tool name 是 technical term**：bash / read / edit / write 在 en + zh 都显示原文（zh 用户也习惯这些英文术语）。但 i18n key 包装仍然必要 —— 让将来加 fr/ru/ar 等语言的翻译者能把 "bash" 翻成 "Bash-Befehl" / "Lectura" 等。
+> - **child component 拿 locale 的 pattern**：parent 调 `negotiateLocale` 一次，传 `locale: ReturnType<typeof negotiateLocale>` prop 给 child。比 child 各自 `await headers()` 重复 negotiate 干净（也避免 await 多次的 race condition）。`PolicyList` 早就在用这 pattern，`<DryRun>` / `<NewPolicyCard>` 跟上。
+>
+> 验证：tsc + format + lint + 541/541 core + 214/214 web + production build OK。i18n dict completeness test 自动覆盖新 9 key 存在性。
 >
 > **2026-07-15 校准 (29)**：**v0.6.13 已发** —— 8 i18n cleanup + 1 stale comment。hotfix to v0.6.12，纯 cleanup，无新 feature / 新 schema / 新 route。每项独立可测。`/compose/boards` 四个 v0.6.12 引入的英文硬编码全收掉（`<title>` / RenameDialog max-length error / BoardListView bulk partial-failure / 表头 select-all aria），加上 v0.6.11 之前就有的两处（Inspector `<dt>kind</dt>` + try page "Fork from here"）和两处 a11y polish（BoardRow checkbox aria-label 不再是 count 形状 / 表头 aria-label 走 i18n key）。外加 ComposeBoard.tsx 的 stale `handleCanvasX/Y` breadcrumb 清理（v0.6.11 P3.12 删了那个变量但 comment 漏改了）。
 >

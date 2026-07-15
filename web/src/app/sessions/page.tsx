@@ -77,7 +77,9 @@ export default async function SessionsPage() {
             <table className="w-full text-sm">
               <thead className="surface-2 text-left">
                 <tr>
-                  <th className="px-3 py-2 font-medium">ID</th>
+                  <th className="px-3 py-2 font-medium">
+                    <T k="sessions.col.id" />
+                  </th>
                   <th className="px-3 py-2 font-medium">
                     <T k="sessions.col.topic" />
                   </th>

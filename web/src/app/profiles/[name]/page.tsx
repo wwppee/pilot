@@ -132,25 +132,34 @@ export default async function ProfileDetailPage({
             <Field
               label={renderT(locale, "profiles.provider")}
               name="provider"
-              placeholder="anthropic / openai / google"
+              placeholder={renderT(
+                locale,
+                "profiles.field.providerPlaceholder",
+              )}
               defaultValue={profile.provider ?? ""}
             />
             <Field
               label={renderT(locale, "profiles.model")}
               name="model"
-              placeholder="e.g. claude-opus-4.6"
+              placeholder={renderT(locale, "profiles.field.modelPlaceholder")}
               defaultValue={profile.model ?? ""}
             />
             <Field
               label={renderT(locale, "profiles.thinking")}
               name="thinking"
-              placeholder="low / medium / high"
+              placeholder={renderT(
+                locale,
+                "profiles.field.thinkingPlaceholder",
+              )}
               defaultValue={profile.thinking ?? ""}
             />
             <Field
-              label={`${renderT(locale, "profiles.packages")} (comma-separated)`}
+              label={`${renderT(locale, "profiles.packages")}${renderT(locale, "profiles.field.packagesLabelSuffix")}`}
               name="packages"
-              placeholder="npm:pi-lens, npm:pi-subagents"
+              placeholder={renderT(
+                locale,
+                "profiles.field.packagesPlaceholder",
+              )}
               defaultValue={(profile.packages ?? []).join(", ")}
             />
             <Field

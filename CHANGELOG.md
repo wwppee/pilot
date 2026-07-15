@@ -2,6 +2,99 @@
 
 ## Unreleased
 
+### v0.6.14 — site-wide i18n audit pass (cleanup of v0.4.x-v0.6.x hardcoded English)
+
+A focused audit release that closes the v0.6.13 "deliberately
+NOT done" backlog item: full-site i18n cleanup. v0.6.13
+scanned `/compose` and `/try`; v0.6.14 sweeps the rest of
+the app (sessions / packages / forge / plans / avatars /
+tools / context / policy / profiles / capabilities /
+usage / help). The actual surface turned out to be
+**smaller than expected** — most pages already had i18n
+keys baked in from their original feature PRs. v0.6.14
+cleans up the remaining 4 missed spots.
+
+**Hardcoded English fixed (4 spots across 3 pages)**
+
+- **`sessions/page.tsx` table header `<th>ID</th>` → `<T
+  k="sessions.col.id" />`.** The 6 sibling column headers
+  (Topic / CWD / LastUsed / Entries / Size / Model) were
+  already i18n-keyed; `ID` was the only one that got
+  forgotten. The key `sessions.col.id` already existed in
+  both dicts (zh happens to render as "ID" too — the
+  technical term is the same in both languages). Net effect
+  for users: nothing visible (the rendered text is
+  identical), but the table header is now part of the
+  i18n contract so future locales can translate it
+  without grepping for raw `ID` strings.
+- **`policy/page.tsx` tool `<option>` labels (4).** The
+  try-rule form's `<select>` had `<option value="bash">bash</option>`
+  etc. — the `value` attribute is the raw tool name
+  (must match the API contract for `/api/policy-check`),
+  but the *visible label* is now wrapped through
+  `policy.tryRule.tool{Bash,Read,Edit,Write}` keys. en
+  + zh both render as "bash" / "read" / "edit" / "write"
+  (tool names are technical terms zh users also read as
+  English), but the keys are in place for future
+  languages where they might want to translate
+  ("Bash-Befehl" / "Lectura" / etc.).
+- **`policy/page.tsx` new-policy name
+  `placeholder="safe-bash"`.** The `policy.newCard.namePlaceholder`
+  key already existed with the same value — the form
+  was just calling the raw literal. Replaced with
+  `renderT(locale, "policy.newCard.namePlaceholder")`.
+- **`profiles/[name]/page.tsx` five field placeholders
+  + one label suffix.** Provider / model / thinking /
+  packages / description, plus the "(comma-separated)"
+  hint appended to the packages label. All 6 wrapped
+  through new `profiles.field.*` keys (en: technical
+  examples, zh: "例如：claude-opus-4.6" / "（逗号分隔）").
+
+**Locale plumbing**
+
+- **`policy/page.tsx` child components now accept a
+  `locale` prop.** `<NewPolicyCard>` and `<DryRun>` /
+  `<DryRunForm>` were already broken out as server
+  components for clarity, but they didn't take a locale
+  prop — the parent `<PolicyPage>` did the negotiate.
+  Adding `locale: ReturnType<typeof negotiateLocale>`
+  to all three signatures and threading it through the
+  parent call sites means `renderT` inside the children
+  can pick up the same locale the rest of the page
+  uses. This is the same pattern `<PolicyList>` was
+  already using.
+
+**i18n**
+
+- **9 new keys** under `policy.tryRule.tool*` (4) +
+  `profiles.field.*` (5). All in en + zh. The en
+  values are the same as the old hardcoded strings
+  (technical examples, term names) so no visible
+  regression; the zh values either match (tool names)
+  or add proper Chinese hints ("例如：claude-opus-4.6" /
+  "（逗号分隔）").
+- **i18n `dict completeness` test passes.** Every new
+  key exists in both dictionaries.
+- **Audit conclusion:** the v0.6.13 backlog item
+  ("full-site i18n audit pass") is now **complete**.
+  Pilot's i18n surface is clean as of v0.6.14.
+
+**Stats**
+
+- root tests: **541/541** ✓ (unchanged)
+- web tests: **214/214** ✓ (unchanged)
+- format:check root + web: ✓
+- tsc root + web: ✓
+- production build (`next build`): ✓
+- i18n dict completeness test: ✓
+
+**Deliberately NOT done (v0.6.15+ backlog)**
+
+- multiple connections (A↔B 双向)
+- connection color 自定义
+- auto-route 避开 block 中心
+- ComposeBoard.tsx hooks/state 抽离
+
 ### v0.6.13 — 8 i18n cleanups + 1 stale comment (hotfix to v0.6.12)
 
 A focused cleanup release that closes a small backlog of

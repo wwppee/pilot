@@ -130,9 +130,9 @@ export default async function PolicyPage() {
       </Suspense>
 
       <hr className="border-[var(--border)]" />
-      <NewPolicyCard />
+      <NewPolicyCard locale={locale} />
       <hr className="border-[var(--border)]" />
-      <DryRun />
+      <DryRun locale={locale} />
     </div>
   );
 }
@@ -276,7 +276,7 @@ async function PolicyList({
   );
 }
 
-function DryRun() {
+function DryRun({ locale }: { locale: ReturnType<typeof negotiateLocale> }) {
   return (
     <section className="surface rounded-lg p-4">
       <h2 className="section-h2">
@@ -285,12 +285,16 @@ function DryRun() {
       <p className="subtitle">
         <T k="policy.dryRun.subtitle" />
       </p>
-      <DryRunForm />
+      <DryRunForm locale={locale} />
     </section>
   );
 }
 
-async function DryRunForm() {
+async function DryRunForm({
+  locale,
+}: {
+  locale: ReturnType<typeof negotiateLocale>;
+}) {
   let policies: ToolPolicy[] = [];
   let error: string | null = null;
   try {
@@ -336,10 +340,24 @@ async function DryRunForm() {
           <T k="policy.tryRule.toolLabel" />
         </label>
         <select id="tool" name="tool" defaultValue="bash">
-          <option value="bash">bash</option>
-          <option value="read">read</option>
-          <option value="edit">edit</option>
-          <option value="write">write</option>
+          {/* v0.6.14: option labels wrapped through i18n keys
+              so future locales (fr / ru / ar) translate the
+              tool names. The values are still the raw tool
+              names (bash / read / edit / write) because the
+              /api/policy-check endpoint expects those exact
+              strings, but the visible label can be translated. */}
+          <option value="bash">
+            {renderT(locale, "policy.tryRule.toolBash")}
+          </option>
+          <option value="read">
+            {renderT(locale, "policy.tryRule.toolRead")}
+          </option>
+          <option value="edit">
+            {renderT(locale, "policy.tryRule.toolEdit")}
+          </option>
+          <option value="write">
+            {renderT(locale, "policy.tryRule.toolWrite")}
+          </option>
         </select>
       </div>
       <div className="form-row">
@@ -363,7 +381,11 @@ async function DryRunForm() {
 
 // ─── NewPolicyCard (v0.4.12) ──────────────────────────────────
 
-function NewPolicyCard() {
+function NewPolicyCard({
+  locale,
+}: {
+  locale: ReturnType<typeof negotiateLocale>;
+}) {
   return (
     <section className="surface rounded-lg p-4">
       <h2 className="section-h2">
@@ -382,7 +404,7 @@ function NewPolicyCard() {
             name="name"
             type="text"
             pattern="[a-z0-9]+(-[a-z0-9]+)*"
-            placeholder="safe-bash"
+            placeholder={renderT(locale, "policy.newCard.namePlaceholder")}
             required
           />
         </div>
