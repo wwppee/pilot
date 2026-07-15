@@ -23,6 +23,21 @@ import {
 } from "../../src/core/forge.js";
 import type { PackManifest } from "../../src/core/pack-manifest.js";
 
+// v0.6.15: provide a hook so the EPERM test can force
+// `ensurePilotCapabilitiesDir` to fail. The real helper
+// delegates to `node:fs/promises.mkdir` (read-only ESM module —
+// vi.spyOn doesn't work on it), so we expose a mutable reference
+// on `globalThis` for tests to swap. In production nothing
+// touches this — it's a no-op shape.
+type EnsureOverride = (home?: string) => Promise<void>;
+const ENSURE_OVERRIDE_KEY = Symbol.for("pilot.test.ensureCapabilities");
+type WithOverride = typeof globalThis & {
+  [ENSURE_OVERRIDE_KEY]?: EnsureOverride;
+};
+function setEnsureOverride(fn: EnsureOverride | undefined): void {
+  (globalThis as WithOverride)[ENSURE_OVERRIDE_KEY] = fn;
+}
+
 function freshHome(): string {
   return mkdtempSync(join(tmpdir(), "pilot-forge-"));
 }
@@ -198,5 +213,47 @@ describe("forgeAbsorb", () => {
     await expect(forgeAbsorb("pi-x", "Bad_ID", home)).rejects.toMatchObject({
       code: "invalid-id",
     });
+  });
+
+  // v0.6.15: regression — when the user (or a sandboxed shell)
+  // can't write to ~/.pilot/, surface an actionable error that
+  // tells them to run `pilot init` from a non-sandboxed terminal,
+  // instead of the bare "Failed to write X: EPERM" the previous
+  // version produced.
+  it("surfaces an actionable EPERM hint when the capabilities dir is unwritable", async () => {
+    const home = freshHome();
+    setEnsureOverride(async () => {
+      throw Object.assign(new Error("operation not permitted"), {
+        code: "EPERM",
+      }) as NodeJS.ErrnoException;
+    });
+    try {
+      await expect(forgeAbsorb("pi-x", undefined, home)).rejects.toThrow(
+        /pilot init/,
+      );
+      await expect(forgeAbsorb("pi-x", undefined, home)).rejects.toThrow(
+        /EPERM/,
+      );
+    } finally {
+      setEnsureOverride(undefined);
+    }
+  });
+
+  // v0.6.15: regression — absorb now lazy-inits
+  // ~/.pilot/capabilities/ via the helper, so users who never
+  // ran `pilot init` can still absorb. (The existing tests above
+  // already exercise this implicitly — freshHome() returns a
+  // tmpdir with no subdirectories — but this test pins the
+  // contract explicitly so a future refactor can't quietly
+  // re-introduce the dependency.)
+  it("absorbs successfully when ~/.pilot/capabilities/ does not yet exist", async () => {
+    const home = freshHome();
+    // Sanity: confirm the dir really doesn't exist yet.
+    expect(existsSync(join(home, ".pilot", "capabilities"))).toBe(false);
+    const result = await forgeAbsorb("pi-x", undefined, home);
+    // After absorb, both the parent and the id subdir should
+    // have been created.
+    expect(existsSync(join(home, ".pilot", "capabilities"))).toBe(true);
+    expect(existsSync(result.path)).toBe(true);
   });
 });

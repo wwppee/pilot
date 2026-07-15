@@ -23,7 +23,7 @@ import { join } from "node:path";
 import { readPackManifest, type PackManifest } from "./pack-manifest.js";
 import { getPack, searchPacks as searchPacksNpm } from "./npm-registry.js";
 import { CapabilitySchema, type Capability } from "./capability.js";
-import { pilotCapabilitiesDir } from "./types.js";
+import { ensurePilotCapabilitiesDir, pilotCapabilitiesDir } from "./types.js";
 import type { Pack } from "./types.js";
 
 export interface ForgeInspectResult {
@@ -117,6 +117,14 @@ export async function forgeAbsorb(
   const capDir = join(pilotCapabilitiesDir(home), id);
   const capFile = join(capDir, "capability.json");
   try {
+    // v0.6.15: lazy-init the capabilities directory. The first
+    // write to ~/.pilot/capabilities/ used to require that the
+    // user had run `pilot init` first (init.ts is the only place
+    // that mkdir'd the directory). Users on macOS sandboxed
+    // shells who skipped init hit EPERM here. The helper is
+    // idempotent — a no-op when the directory already exists,
+    // so the hot-path cost is one mkdir syscall.
+    await ensurePilotCapabilitiesDir(home);
     await mkdir(capDir, { recursive: true });
     await writeFile(
       capFile,
@@ -124,9 +132,25 @@ export async function forgeAbsorb(
       "utf-8",
     );
   } catch (e) {
+    // v0.6.15: distinguish EPERM/EACCES (shell can't write to
+    // ~/.pilot/ — usually a sandboxed Terminal.app / Cursor /
+    // VSCode devcontainer) from generic IO failures. Surface a
+    // actionable hint: try `pilot init` from a non-sandboxed
+    // shell, or open the Terminal directly.
+    const err = e as NodeJS.ErrnoException;
+    if (err.code === "EPERM" || err.code === "EACCES") {
+      throw new ForgeAbsorbError(
+        "io",
+        `Cannot write ${capFile}: ${err.message} (${err.code}). ` +
+          `Your shell is sandboxed or otherwise blocked from writing to ` +
+          `~/.pilot/. Run \`pilot init\` from a non-sandboxed Terminal, ` +
+          `or check that ${pilotCapabilitiesDir(home)} is accessible.`,
+        e,
+      );
+    }
     throw new ForgeAbsorbError(
       "io",
-      `Failed to write ${capFile}: ${(e as Error).message}`,
+      `Failed to write ${capFile}: ${err.message}`,
       e,
     );
   }

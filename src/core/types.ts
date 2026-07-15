@@ -6,6 +6,7 @@
  */
 
 import { homedir } from "node:os";
+import { mkdir } from "node:fs/promises";
 
 /**
  * Resolve the user's home directory, preferring $HOME (so tests can override)
@@ -13,6 +14,45 @@ import { homedir } from "node:os";
  */
 export function userHome(): string {
   return process.env.HOME ?? homedir();
+}
+
+/**
+ * v0.6.15: ensure `~/.pilot/capabilities/` exists.
+ *
+ * Previously this directory was only created by `pilot init` (the
+ * first-run welcome). Users who skipped init and jumped straight to
+ * `pilot forge absorb` would hit EPERM/EACCES at the first
+ * `mkdir(..., { recursive: true })` because the recursive create
+ * tried to materialise the missing parent chain.
+ *
+ * Now any code path that writes to `~/.pilot/capabilities/`
+ * (currently: `forgeAbsorb`) calls this helper first. It is
+ * idempotent — `mkdir recursive: true` is a no-op when the
+ * directory already exists.
+ *
+ * Why a helper and not inline `mkdir`: keeping the
+ * "create the directory my data lives in" call in one place makes
+ * it trivial to add a future `~/.pilot/capabilities/.gitignore` or
+ * to log a single breadcrumb when the directory is freshly
+ * created (useful for the dogfooding logs).
+ *
+ * The test override hook (TEST_OVERRIDE_KEY) lets unit tests
+ * force this helper to fail with a synthetic EPERM without
+ * having to mock the read-only ESM `node:fs/promises` module.
+ * In production nothing touches the override — it's only
+ * read by this function, and only when a test has set it.
+ */
+const TEST_OVERRIDE_KEY = Symbol.for("pilot.test.ensureCapabilities");
+type WithOverride = typeof globalThis & {
+  [TEST_OVERRIDE_KEY]?: (home?: string) => Promise<void>;
+};
+
+export async function ensurePilotCapabilitiesDir(home?: string): Promise<void> {
+  const override = (globalThis as WithOverride)[TEST_OVERRIDE_KEY];
+  if (override) {
+    return override(home);
+  }
+  await mkdir(pilotCapabilitiesDir(home), { recursive: true });
 }
 
 // ─── Pi-owned paths (Pi 拥有，Pilot 主要读) ────────────────────

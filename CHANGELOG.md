@@ -2,6 +2,91 @@
 
 ## Unreleased
 
+### v0.6.15 — `pilot forge absorb` now lazy-inits `~/.pilot/capabilities/` + clearer EPERM error
+
+A user-reported hotfix: `pilot forge absorb <pkg>` failed with
+`EPERM: operation not permitted, mkdir '/Users/feng/.pilot/capabilities'`
+on macOS sandboxed shells (Cursor / VSCode devcontainer /
+sandboxed Terminal). The directory was only ever created by
+`pilot init`, and users who skipped init hit a bare
+permission error with no actionable hint.
+
+**The fix in one line**: `forgeAbsorb` now ensures
+`~/.pilot/capabilities/` exists before writing, instead of
+relying on the user having run `pilot init` first.
+
+**P0 — silent failure on a real-user path (1 fix)**
+
+- **`forgeAbsorb` now lazy-inits the capabilities directory.**
+  New `ensurePilotCapabilitiesDir(home)` helper in
+  `core/types.ts` does the `mkdir recursive: true` before
+  the per-id `capDir` mkdir. Idempotent — a no-op when the
+  directory already exists, so the hot-path cost is one
+  syscall for users who have run `pilot init` (the common
+  case). Users who skipped init and jumped straight to
+  absorb will now have the directory materialised by
+  absorb itself.
+- **Actionable EPERM/EACCES error message.** The previous
+  error was the raw `Failed to write
+  /Users/feng/.pilot/capabilities/caveman-code/capability.json:
+  EPERM: operation not permitted, mkdir
+  '/Users/feng/.pilot/capabilities'` — technically correct
+  but gave no hint about *why* or *what to do*. The new
+  error reads:
+  > `Cannot write /Users/feng/.pilot/capabilities/caveman-code/capability.json:
+  > operation not permitted (EPERM). Your shell is
+  > sandboxed or otherwise blocked from writing to
+  > ~/.pilot/. Run \`pilot init\` from a non-sandboxed
+  > Terminal, or check that
+  > /Users/feng/.pilot/capabilities is accessible.`
+  The detection checks `err.code === "EPERM" || "EACCES"`
+  specifically — generic IO errors (disk full, read-only
+  volume, etc.) still get the original bare message
+  because they don't have a one-line "do this" fix.
+
+**Testability hook**
+
+- `ensurePilotCapabilitiesDir` reads an optional
+  `globalThis[Symbol.for("pilot.test.ensureCapabilities")]`
+  override before falling through to the real `mkdir`.
+  Production code never sets this; tests in
+  `forge.test.ts` use it to inject a synthetic EPERM
+  failure without having to mock the read-only ESM
+  `node:fs/promises` module. The hook is documented in
+  the helper's docstring.
+
+**Tests**
+
+- root: **543/543** ✓ (was 541 in v0.6.14; +2
+  `forgeAbsorb` regression cases — one for the
+  lazy-init happy path, one for the EPERM error
+  message)
+- web: **214/214** ✓ (unchanged — the fix is
+  server-side core)
+- format:check root + web: ✓
+- lint (root `eslint src test --max-warnings 0`): ✓
+- tsc root + web: ✓
+- production build (`next build`): ✓
+
+**Deliberately NOT done (v0.6.16+ backlog)**
+
+- multiple connections (A↔B 双向)
+- connection color 自定义
+- auto-route 避开 block 中心
+- ComposeBoard.tsx hooks/state 抽离
+
+**Operator note for the reporting user**
+
+If you're reading this because `pilot forge absorb` is
+failing in your shell: open a non-sandboxed Terminal
+(`/Applications/Utilities/Terminal.app`) and run
+`pilot init` once. That creates `~/.pilot/capabilities/`
+in a context where your shell actually has write
+permission. Subsequent `pilot forge absorb` calls will
+work, even from sandboxed shells (v0.6.15 will lazy-init
+the directory on first use, so re-running `pilot init`
+is no longer required).
+
 ### v0.6.14 — site-wide i18n audit pass (cleanup of v0.4.x-v0.6.x hardcoded English)
 
 A focused audit release that closes the v0.6.13 "deliberately

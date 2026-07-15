@@ -395,7 +395,25 @@
 >
 > 测试：core **584/584**、web **201/201**，format 双清、lint clean、tsc clean（root + web）、production build OK。
 >
-> **故意没做**（v0.6.14+ 留）：multiple connections (A↔B 双向)；connection color 自定义；auto-route 避开 block 中心；ComposeBoard.tsx hooks/state 抽离。**全站 i18n audit** v0.6.14 已完成（见校准 30）。
+> **故意没做**（v0.6.15+ 留）：multiple connections (A↔B 双向)；connection color 自定义；auto-route 避开 block 中心；ComposeBoard.tsx hooks/state 抽离。**全站 i18n audit** v0.6.14 已完成（见校准 30）。
+>
+> **2026-07-16 校准 (31)**：**v0.6.15 已发** —— user-reported hotfix: `pilot forge absorb` 在 macOS sandboxed shell（Cursor / VSCode devcontainer / sandboxed Terminal.app）上跑会 EPERM 拒 mkdir。根因：`~/.pilot/capabilities/` 目录**只有 `pilot init` 才创建**（init.ts:73-86 mkdir 4 个子目录：extensions/policy/profiles/capabilities），其他 command 都假设它已经存在。User 没跑过 init 直接 absorb → recursive mkdir 第一次就拒。
+>
+> | 级别 | 文件 | 修复 |
+> |---|---|---|
+> | **P0.1** | `src/core/types.ts:30-50` | 新增 `ensurePilotCapabilitiesDir(home)` helper —— `mkdir recursive: true` 幂等。`forgeAbsorb` 入口调它，不依赖 user 先跑 init。test override hook 走 `globalThis[Symbol.for(...)]`（不在 production 路径触发）。 |
+> | **P0.2** | `src/core/forge.ts:124-148` | EPERM/EACCES 错误信息带 actionable hint：建议 `pilot init` 或检查 sandbox。generic IO 错误保留原 bare 信息。 |
+> | **Tests** | `test/unit/forge.test.ts:195-230` | +2 regression test：(1) absorb 在 `~/.pilot/capabilities/` 不存在时仍能成功（lazy init happy path）；(2) EPERM 错误信息含 "pilot init" 提示。 |
+>
+> 关键设计：
+>
+> - **抽 helper 而非 inline mkdir**：core/forge.ts 调 `ensurePilotCapabilitiesDir(home)` 一行，比 inline `mkdir recursive` 干净。将来加 `.gitignore` / log breadcrumb / 别的子目录创建都集中改一个地方。
+> - **test override 用 globalThis Symbol.for**：ESM module export 不可重定义（`vi.spyOn` 不灵），`node:fs/promises.mkdir` 也是 read-only。helper 内部查 `globalThis[Symbol.for("pilot.test.ensureCapabilities")]` —— test 注入 synthetic EPERM 时调，production 永远不设。比 `vi.mock` 改整个 module 轻量，scope 精准。
+> - **operator note for reporter user**：macOS sandboxed Terminal.app / Cursor / VSCode devcontainer 这类 sandbox 阻断 mkdir。**immediate 绕路**：在非 sandboxed Terminal 跑 `pilot init` 一次创建目录。**permanent fix**：v0.6.15 之后任何路径都会 lazy init，不再需要 init。
+>
+> 验证：tsc + format + lint + 543/543 core + 214/214 web + production build OK。2 个新 test 覆盖 lazy init happy path + EPERM error message。
+>
+> 测试：core **543/543**（+2）、web **214/214**（无变化）、format 双清、lint clean、tsc clean（root + web）、production build OK。
 >
 > **2026-07-16 校准 (30)**：**v0.6.14 已发** —— site-wide i18n audit pass 完成。v0.6.13 flag 出的"全站 i18n audit"在这版做掉。实际 surface 比预期**小很多** —— 16 个 page 中 13 个已经 i18n'd，剩 3 个 page 4 处真硬编码：
 >
