@@ -2,6 +2,107 @@
 
 ## Unreleased
 
+### v0.6.21 — Cleanup batch (AGENTS.md + empty state dedup + placeholder audit)
+
+A small user-flagged cleanup release that closes three
+leftover P2/P3 items that didn't fit cleanly into a
+feature release. No new features, no schema bump; this is
+a hotfix-shaped release that nudges a few long-standing
+paper cuts and adds a regression test so the placeholder
+audit doesn't drift again.
+
+**P2 — AGENTS.md version drift (1 fix)**
+
+- **`AGENTS.md` was last touched at v0.6.14** but the
+  project is now at v0.6.20. Two places (the "30 秒
+  判断题" header and the "Last updated" footer) still
+  said `v0.6.14`. Bumped to `v0.6.20` and re-dated the
+  "Last updated" line to the cleanup itself.
+  Future version bumps should remember to update both
+  spots — this is a recurring maintenance task and not
+  enforced by any test.
+
+**P2 — `/usage` empty state duplicated its actionable hint (1 fix)**
+
+- **`usage.empty` (en + zh) re-stated the same "run pi
+  with a real model" message that `usage.empty.hint`
+  already said.** Because `EmptyState` renders both
+  `title` and `hint` paragraphs, the user saw the
+  actionable message twice — once in bold (title) and
+  once muted (hint). The fix makes the title a short
+  descriptive label ("No usage data yet." / "暂无用量数据。")
+  and lets the hint carry the actionable next step
+  alone. Net: the page now reads like the rest of the
+  empty states in the app.
+
+**P3 — Placeholder parameter audit (7 fixes)**
+
+- v0.6.16 closed 8 of 15 placeholder-parameter drifts
+  between en and zh but punted the rest with "doesn't
+  impact rendered output". v0.6.21 finishes the job:
+  - **2 hardcoded-`"1"` in en** (`compose.inspector.blockCount.one`,
+    `profiles.packageCount.one`) — en was using `"1 block"` /
+    `"1 package"` literally while zh used `{n}`. Both now
+    use `{n}` so a future locale (fr / ru / etc.) sees a
+    consistent template and can pass `n=1` from the
+    same call site.
+  - **5 en-only plural-suffix placeholders** (`{s}` /
+    `{es}`) — en had custom plural-suffix slots for
+    "1 profile / 2 profiles", "1 session / 2 sessions",
+    "1 tool / 2 tools", "1 match / 2 matches", "1 tool".
+    Chinese doesn't need plural suffixes; English is
+    fine with always-plural forms. Dropped the suffix
+    and made en always plural ("{n} profiles", "{n} matches",
+    etc.). The call sites that pass `s: ...` still do so
+    — unused params are silently ignored, so the dead
+    code is harmless and removing it is a follow-up
+    cleanup, not a v0.6.21 concern.
+  - **1 zh missing `{n}`** (`tools.subtitle`) — en was
+    showing "{n} tools ... built-in ({builtin}) ... npm
+    extensions ({npm})" while zh was just "内置 {builtin}
+    个，npm 扩展 {npm} 个" (no total count). Aligned both
+    to show the total + the two breakdown counts.
+  - Net result: 0 placeholder mismatches across 975
+    shared keys. Verified with a new regression test
+    (see Tests below).
+
+**P3 — Regression test (1 add)**
+
+- **`tests/i18n.test.ts` now has a `placeholder
+  consistency across locales` block.** It walks every
+  key present in both `dict.en` and `dict.zh`, computes
+  the set of placeholders each value uses, and asserts
+  the sets are equal. On failure it dumps the full list
+  of offenders so a single test run shows every
+  mismatch (not just the first one to trip). This is
+  the "make the v0.6.16 P3 decision permanent" test:
+  any future translator adding a new locale will see a
+  clean baseline to extend from, and any future feature
+  work that introduces a new placeholder will surface
+  the inconsistency in CI rather than in production.
+
+**Stats**
+
+- root: **551/551** ✓ (unchanged — no core changes)
+- web: **226/226** ✓ (was 225; +1 in `i18n.test.ts` —
+  placeholder consistency check)
+- format:check root + web: ✓
+- lint (root `eslint src test --max-warnings 0`): ✓
+- tsc root + web: ✓
+- production build: not run (i18n string changes +
+  AGENTS.md doc; no production-affecting logic)
+
+**Deliberately NOT done (v0.6.22+ backlog)**
+
+- block-center avoidance for orthogonal routes (real A*
+  grid router on top of the v0.6.20 `route` enum) — this
+  was originally planned for v0.6.21 but the cleanup
+  batch bumped that slot
+- ComposeBoard.tsx hooks/state 抽离
+- per-direction palette (e.g. "all forward connections
+  get this color") — deferred; per-edge is the v0.6.19
+  minimum
+
 ### v0.6.20 — Per-edge routing style (curve / orthogonal)
 
 The `/compose` inspector now lets each connection choose between
@@ -83,13 +184,12 @@ can mix both: a "main flow" line curves smoothly while a
   variant, no production-affecting logic; same precedent
   as v0.6.19).
 
-**Deliberately NOT done (v0.6.21+ backlog)**
+**Deliberately NOT done (v0.6.22+ backlog — placeholder audit closed in v0.6.21)**
 
 - block-center avoidance for orthogonal routes (real A*
   grid router or visibility-graph on top of the v0.6.20
   enum)
 - ComposeBoard.tsx hooks/state 抽离
-- placeholder parameter audit (15 keys) — see v0.6.16
 - per-direction palette (e.g. "all forward connections get
   this color") — deferred; per-edge is the v0.6.19 minimum
   and the schema's `color?: string` field already supports

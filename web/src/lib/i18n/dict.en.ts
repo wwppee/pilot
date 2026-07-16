@@ -487,7 +487,7 @@ const en: Dict = {
   "compose.inspector.stale":
     "Not in current catalog — entity may have been deleted. Block is preserved with cached label.",
   "compose.aria.selected": ", selected",
-  "compose.inspector.blockCount.one": "1 block",
+  "compose.inspector.blockCount.one": "{n} block",
   "compose.inspector.blockCount.other": "{n} blocks",
   "compose.inspector.openDetail": "Open detail page →",
   "compose.inspector.remove": "Remove",
@@ -702,7 +702,7 @@ const en: Dict = {
   "profiles.empty.hint":
     "A profile bundles a model + thinking level + provider + package list. Use the Create profile form above to make one, then activate it from a profile card. Activated profiles are written to ~/.pi/agent/settings.json and picked up by Pi on next launch.",
   "profiles.openForm": "Open the profile form",
-  "profiles.packageCount.one": "1 package",
+  "profiles.packageCount.one": "{n} package",
   "profiles.packageCount.other": "{n} packages",
 
   // Context
@@ -772,7 +772,7 @@ const en: Dict = {
 
   // Sessions
   "sessions.h1": "Sessions",
-  "sessions.subtitle": "{n} session{s} under {home} · most recent first.",
+  "sessions.subtitle": "{n} sessions under {home} · most recent first.",
   "sessions.empty": "No sessions yet. Run pi to create one.",
   "sessions.empty.hint":
     "Pilot reads Pi's session JSONL from {dir}. Run {cmd} in any project to create your first session — it'll show up here on the next page refresh.",
@@ -818,8 +818,7 @@ const en: Dict = {
   "usage.col.cacheW": "Cache W",
   "usage.col.total": "Total",
   "usage.col.cost": "Cost",
-  "usage.empty":
-    "No usage data yet. Run pi with a real model to record tokens and cost.",
+  "usage.empty": "No usage data yet.",
   "usage.empty.model": "No model data.",
   "usage.empty.day": "No daily data.",
   "usage.empty.hint": "Run {cmd} with a real model to record tokens + cost.",
@@ -829,7 +828,7 @@ const en: Dict = {
   // Tools
   "tools.h1": "Tool inventory",
   "tools.subtitle":
-    "{n} tool{s} available to pi — built-in ({builtin}), npm extensions ({npm}).",
+    "{n} tools available to pi — built-in ({builtin}), npm extensions ({npm}).",
   "tools.empty.hint":
     "Run {cmd} in any project to populate its {dir} directory.",
   "tools.empty":
@@ -886,7 +885,7 @@ const en: Dict = {
 
   // Profiles
   "profiles.h1": "Profiles",
-  "profiles.subtitle": "{n} profile{s} · stored under ~/.pilot/profiles/",
+  "profiles.subtitle": "{n} profiles · stored under ~/.pilot/profiles/",
   "profiles.newNameLabel": "New profile name (kebab-case)",
   "profiles.newNamePlaceholder": "my-work",
   "profiles.empty": "No profiles yet. Use the form above to create one.",
@@ -894,7 +893,7 @@ const en: Dict = {
 
   // Profile pre-fill from session (v0.4.13+)
   "profiles.fromSession.banner":
-    "Pre-filled from session {sessionId}: model + {nTool} tool{s} detected.",
+    "Pre-filled from session {sessionId}: model + {nTool} tools detected.",
   "profiles.fromSession.modelLabel": "Detected model",
   "profiles.fromSession.toolsLabel": "Tools used in this session",
   "profiles.fromSession.noTools": "(no tool calls recorded)",
@@ -921,7 +920,7 @@ const en: Dict = {
   "sessions.tree.filterLabel": "Filter by node type",
   "sessions.tree.expandAll": "expand all",
   "sessions.tree.collapseAll": "collapse all",
-  "sessions.tree.matchCount": "{n} match{es}",
+  "sessions.tree.matchCount": "{n} matches",
   // v0.5.8+: filter chip labels per node type (see types.ts).
   "sessions.tree.types.user": "User",
   "sessions.tree.types.assistant": "Assistant",

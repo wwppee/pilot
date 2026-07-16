@@ -785,7 +785,7 @@ const zh: Dict = {
   "usage.col.cacheW": "缓存写",
   "usage.col.total": "合计",
   "usage.col.cost": "成本",
-  "usage.empty": "暂无用量数据。运行 pi（带真实模型）以记录 token 与成本。",
+  "usage.empty": "暂无用量数据。",
   "usage.empty.model": "暂无模型数据。",
   "usage.empty.day": "暂无每日数据。",
   "usage.empty.hint": "运行 {cmd}（带真实模型）以记录 token 与成本。",
@@ -795,7 +795,7 @@ const zh: Dict = {
   // Tools
   "tools.h1": "工具清单",
   "tools.subtitle":
-    "当前配置下 pi 可用的工具 — 内置 {builtin} 个，npm 扩展 {npm} 个。",
+    "共 {n} 个工具可被 pi 使用 — 内置 {builtin} 个，npm 扩展 {npm} 个。",
   "tools.empty.hint": "在任意项目里运行 {cmd} 以初始化其 {dir} 目录。",
   "tools.empty": "暂未发现工具。运行 pi 一次以初始化目录。",
   "tools.section.builtin.title": "内置",

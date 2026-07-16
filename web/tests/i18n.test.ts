@@ -156,3 +156,55 @@ describe("i18n: LOCALES tuple", () => {
     expect(new Set(LOCALES)).toEqual(new Set(["en", "zh"]));
   });
 });
+
+// v0.6.21: placeholder audit. v0.6.16 cleaned 8 of 15
+// historical placeholder mismatches but punted the rest with
+// "doesn't impact rendered output". v0.6.21 finishes the
+// job by dropping the en-only plural-suffix placeholders
+// ({s}, {es}) — Chinese doesn't need them, and English is
+// fine with always-plural forms. This test guards the
+// invariant: every shared key in en + zh must use the same
+// placeholder set, so a future translator adding a new
+// locale (e.g. fr, ru) sees a consistent template and
+// doesn't get surprised by a stray `{s}` or `{es}`.
+describe("i18n: placeholder consistency across locales", () => {
+  const placeholderRe = /\{(\w+)\}/g;
+
+  function placeholdersOf(value: string): Set<string> {
+    const out = new Set<string>();
+    for (const m of value.matchAll(placeholderRe)) {
+      out.add(m[1]!);
+    }
+    return out;
+  }
+
+  it("every shared key in en and zh uses the same placeholder set", () => {
+    const sharedKeys = Object.keys(enDict).filter((k) => k in zhDict);
+    const mismatches: Array<{
+      key: string;
+      enOnly: string[];
+      zhOnly: string[];
+    }> = [];
+    for (const key of sharedKeys) {
+      const enPh = placeholdersOf(enDict[key]!);
+      const zhPh = placeholdersOf(zhDict[key]!);
+      const enOnly = [...enPh].filter((p) => !zhPh.has(p)).sort();
+      const zhOnly = [...zhPh].filter((p) => !enPh.has(p)).sort();
+      if (enOnly.length > 0 || zhOnly.length > 0) {
+        mismatches.push({ key, enOnly, zhOnly });
+      }
+    }
+    // Surface all mismatches in the failure message so a
+    // single test run shows every offender, not just the
+    // first one to trip expect().
+    const summary = mismatches
+      .map((m) => {
+        const parts: string[] = [];
+        if (m.enOnly.length > 0) parts.push(`en-only: ${m.enOnly.join(", ")}`);
+        if (m.zhOnly.length > 0) parts.push(`zh-only: ${m.zhOnly.join(", ")}`);
+        return `  ${m.key} (${parts.join("; ")})`;
+      })
+      .join("\n");
+    expect(mismatches, `placeholder mismatches:\n${summary}`).toEqual([]);
+  });
+});
