@@ -648,3 +648,134 @@ describe("v0.6.18 schema v4 + connection direction", () => {
     expect(reloaded?.connections[0]?.dir).toBeUndefined();
   });
 });
+
+// ─── v0.6.19: schema v5 + connection color ─────────────
+
+describe("v0.6.19 schema v5 + connection color", () => {
+  it("accepts version 5 with a hex `color` on a connection", async () => {
+    // v0.6.19: the server's zod schema accepts #rgb / #rgba /
+    // #rrggbb / #rrggbbaa. The native <input type="color">
+    // always emits #rrggbb, so that's the format the picker
+    // round-trips, but the regex is wider to leave room for
+    // future palette presets that want alpha.
+    const saved = await saveBoard(
+      {
+        name: "V5",
+        version: 5,
+        blocks: [
+          {
+            id: "b1",
+            kind: "session",
+            refId: "r1",
+            x: 0,
+            y: 0,
+            label: "A",
+          },
+          {
+            id: "b2",
+            kind: "session",
+            refId: "r2",
+            x: 100,
+            y: 0,
+            label: "B",
+          },
+        ],
+        connections: [{ id: "c1", from: "b1", to: "b2", color: "#ff8800" }],
+      },
+      fakeHome,
+    );
+    expect(saved.version).toBe(5);
+    expect(saved.connections[0]?.color).toBe("#ff8800");
+  });
+
+  it("accepts v5 connections without `color` (theme default)", async () => {
+    // v0.6.19: missing `color` is the default — the rendered
+    // SVG falls back to currentColor, so a v5 save without
+    // any color override must round-trip cleanly.
+    const saved = await saveBoard(
+      {
+        name: "V5NoColor",
+        version: 5,
+        blocks: [
+          {
+            id: "b1",
+            kind: "session",
+            refId: "r1",
+            x: 0,
+            y: 0,
+            label: "A",
+          },
+        ],
+        connections: [{ id: "c1", from: "b1", to: "b1" }],
+      },
+      fakeHome,
+    );
+    const reloaded = await loadBoard(saved.id, fakeHome);
+    expect(reloaded?.connections[0]?.color).toBeUndefined();
+  });
+
+  it("rejects a non-hex `color` value (zod regex)", async () => {
+    // v0.6.19: named colors and rgb()/hsl() are deliberately
+    // rejected — the picker emits hex and the renderer needs
+    // a stable format for the `style.color` cascade. If the
+    // user wants a theme color they leave the field empty.
+    await expect(
+      saveBoard(
+        {
+          name: "BadColor",
+          version: 5,
+          blocks: [
+            {
+              id: "b1",
+              kind: "session",
+              refId: "r1",
+              x: 0,
+              y: 0,
+              label: "A",
+            },
+          ],
+          connections: [
+            { id: "c1", from: "b1", to: "b1", color: "crimson" as never },
+          ],
+        },
+        fakeHome,
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("loads v4 boards without `color` unchanged", async () => {
+    // v0.6.19 backward-compat: v4 boards saved before the
+    // color field existed must still load — color is
+    // undefined on the loaded connection, and the renderer
+    // treats that as "use theme accent" (no `style.color`).
+    const v4 = await saveBoard(
+      {
+        name: "V4NoColor",
+        version: 4,
+        blocks: [
+          {
+            id: "b1",
+            kind: "session",
+            refId: "r1",
+            x: 0,
+            y: 0,
+            label: "A",
+          },
+          {
+            id: "b2",
+            kind: "session",
+            refId: "r2",
+            x: 100,
+            y: 0,
+            label: "B",
+          },
+        ],
+        connections: [{ id: "c1", from: "b1", to: "b2", dir: "forward" }],
+      },
+      fakeHome,
+    );
+    const reloaded = await loadBoard(v4.id, fakeHome);
+    expect(reloaded?.version).toBe(4);
+    expect(reloaded?.connections[0]?.color).toBeUndefined();
+  });
+});

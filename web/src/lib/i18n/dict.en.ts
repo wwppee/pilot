@@ -607,6 +607,12 @@ const en: Dict = {
   "compose.connection.dir.forward": "A → B",
   "compose.connection.dir.backward": "B → A",
   "compose.connection.dir.bidirectional": "A ↔ B",
+  "compose.connection.color.label": "Color",
+  "compose.connection.color.tooltip":
+    "Pick a per-edge color (default: theme accent)",
+  "compose.connection.color.default": "Theme default",
+  "compose.connection.color.reset": "Reset to theme",
+  "compose.announce.connectionColorUpdated": "Connection color: {color}",
   "compose.connectionLabel.tooltip": "Click to edit connection label",
   "compose.announce.connectionLabelUpdated": "Connection label updated",
   "compose.announce.connectionDirUpdated": "Connection direction: {dir}",

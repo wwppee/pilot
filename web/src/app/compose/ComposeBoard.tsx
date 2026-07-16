@@ -90,7 +90,7 @@ const VIEW_MODE_KEY = "pilot-compose-view-mode";
 function emptyState(): ComposeState {
   return {
     blocks: [],
-    version: 4 as const,
+    version: 5 as const,
     updatedAt: new Date().toISOString(),
     name: "default",
   };
@@ -105,13 +105,15 @@ function loadState(): ComposeState {
       version?: number;
     };
     // v0.6.9: accept v1 (blocks only), v2 (blocks + connections),
-    // v3 (connections may carry `label` + `kind`). v1 + v2 saves
-    // load fine — `connections` is treated as `[]` until the user
-    // adds an edge, and `label`/`kind` stay undefined. Unknown
-    // future versions drop to empty state (we'd rather lose the
-    // board than silently mis-parse).
+    // v3 (connections may carry `label` + `kind`). v0.6.18 adds
+    // v4 with `dir`, v0.6.19 adds v5 with `color`. All five
+    // load fine because the new fields are optional — the
+    // schema validates on save but the in-memory shape is
+    // backward-compatible. Unknown future versions drop to
+    // empty state (we'd rather lose the board than silently
+    // mis-parse).
     const v = parsed.version as number | undefined;
-    if (v !== 1 && v !== 2 && v !== 3) {
+    if (v !== 1 && v !== 2 && v !== 3 && v !== 4 && v !== 5) {
       return emptyState();
     }
     if (!Array.isArray(parsed.blocks)) return emptyState();
@@ -923,6 +925,57 @@ export default function ComposeBoard({
         },
         t("compose.announce.connectionDirUpdated", {
           dir: t(`compose.connection.dir.${nextDir}`),
+        }),
+      );
+    },
+    [state.connections, commit, t],
+  );
+
+  // v0.6.19: per-edge color override. Same history pattern as
+  // `updateConnectionDir` — separate entry type so undoing a
+  // color change doesn't undo a label or dir change. Empty /
+  // undefined color means "use theme accent", which we encode
+  // by deleting the `color` key on the connection object.
+  //
+  // The shape is intentionally symmetric to `updateConnectionDir`:
+  // one concern, one entry, before/after values. That makes the
+  // undo stack predictable — each Cmd-Z steps one logical
+  // change, not a multi-field bundle.
+  const updateConnectionColor = useCallback(
+    (connectionId: string, nextColor: string | undefined) => {
+      const conns = state.connections ?? [];
+      const conn = conns.find((c) => c.id === connectionId);
+      if (!conn) return;
+      const fromColor = conn.color ?? "";
+      const toColor = nextColor ?? "";
+      if (fromColor === toColor) return;
+      commit(
+        {
+          type: "updateConnectionColor",
+          connectionId,
+          fromColor,
+          toColor,
+        },
+        () => {
+          setState((s) => ({
+            ...s,
+            connections: (s.connections ?? []).map((c) => {
+              if (c.id !== connectionId) return c;
+              const next: ComposeConnection = { ...c };
+              if (toColor === "") {
+                // No override → drop the field. The renderer
+                // falls back to the theme accent. Same pattern
+                // as `updateConnectionDir` for `forward`.
+                delete next.color;
+              } else {
+                next.color = toColor;
+              }
+              return next;
+            }),
+          }));
+        },
+        t("compose.announce.connectionColorUpdated", {
+          color: toColor || t("compose.connection.color.default"),
         }),
       );
     },
@@ -1964,6 +2017,7 @@ export default function ComposeBoard({
               onDisconnect={disconnectConnection}
               onUpdateLabel={updateConnectionLabel}
               onUpdateDir={updateConnectionDir}
+              onUpdateColor={updateConnectionColor}
             />
           ) : (
             <div className="compose-inspector-empty">

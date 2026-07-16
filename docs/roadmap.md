@@ -395,7 +395,7 @@
 >
 > 测试：core **584/584**、web **201/201**，format 双清、lint clean、tsc clean（root + web）、production build OK。
 >
-> **故意没做**（v0.6.18+ 留）：connection color 自定义；auto-route 避开 block 中心；ComposeBoard.tsx hooks/state 抽离；**placeholder parameter audit**（zh/en 15 处 placeholder 不一致，**不影响渲染**，v0.6.19+ 视新 locale 加入时机处理）。
+> **故意没做**（v0.6.18+ 留）：auto-route 避开 block 中心；ComposeBoard.tsx hooks/state 抽离；**placeholder parameter audit**（zh/en 15 处 placeholder 不一致，**不影响渲染**，v0.6.19+ 视新 locale 加入时机处理）。**v0.6.19 已收 connection color**（per-edge hex picker，schema v5）。
 >
 > **2026-07-16 校准 (34)**：**v0.6.18 已发** —— connection direction (forward / backward / bidirectional)。`/compose` canvas 之前所有边都是单向 forward 箭头（A → B），要表示"B → A"必须加第二条边（视觉上是两条平行线 + 一眼分不清哪个是哪个）。v0.6.18 加 `dir` 字段，3 个值，inspector 加一个 dir select 改方向。
 >
@@ -423,6 +423,33 @@
 > 验证：tsc + format + lint + 546/546 core + 217/217 web + production build OK。3 个 core test + 3 个 web test 覆盖关键 invariants。**无 UI 自动化 test**（sandbox 跑不起 pilot server，UI 测试 user 本机跑）。
 >
 > 测试：core **546/546**（+3）、web **217/217**（+3）、format 双清、lint clean、tsc clean（root + web）、production build OK。
+>
+> **2026-07-16 校准 (35)**：**v0.6.19 已发** —— per-edge connection color (hex picker)。v0.6.18 之后 user 想让不同 connection 用不同颜色（flow 用蓝、control 用红、critical path 用橙），v0.6.19 加 `color` 字段到 `ComposeConnection`，inspector 加 native `<input type="color">` 4th control + reset 按钮，SVG 通过 `style.color` cascade 让 line + arrow head 一起变色。`forward`/`color` 默认都是"不写"（`dir` 缺省、`color` 缺省），保证 v0.6.18↔v0.6.19 round-trip 字节相同。
+>
+> | 类别 | 文件 | 内容 |
+> |---|---|---|
+> | **Schema (web)** | `web/src/lib/types.ts:573-602` | `ConnectionColor` type export；`ComposeConnection.color?: ConnectionColor`（缺省 undefined，渲染 fall back 到 `currentColor`）。`ComposeState.version: 3\|4\|5`，`BoardInput.version: 1\|2\|3\|4\|5`。 |
+> | **Schema (core)** | `src/core/compose-boards.ts:99-108, 124-148, 168-176` | `ConnectionColorSchema` zod regex `^#[0-9a-fA-F]{3,8}$`（接受 #rgb / #rgba / #rrggbb / #rrggbbaa；拒绝 named colors 和 rgb()/hsl() —— picker 是 hex-only，命名色会让"theme 默认"语义不清）。`BoardSnapshotSchema` / `BoardInputSchema` version `1\|2\|3\|4\|5`。 |
+> | **History** | `web/src/lib/compose-history.ts:81-99, 200-225, 260-272` | 新 `updateConnectionColor` entry type（独立于 `updateConnectionDir` 和 `updateConnectionLabel` —— 3 个 concern 3 个 entry，undo 粒度保持窄）。`toColor = ""` 时 `delete next.color`（跟 v0.6.18 dir drop 同模式）。 |
+> | **History callback** | `web/src/app/compose/ComposeBoard.tsx:933-987` | 独立 `updateConnectionColor` callback，shape 对称于 `updateConnectionDir`（一 entry 一 concern）。commit 出去时 announce 走 `compose.announce.connectionColorUpdated` 占位 `{color}` 传 user-picked hex 或 translated "Theme default"。 |
+> | **UI - SVG** | `web/src/app/compose/ConnectionPath.tsx:60-90` | `style.color = connection.color`（无色时省略 style 让 parent `<svg>` 接管）。`stroke="currentColor"` + `fill="currentColor"`（marker 内部）同一个 currentColor cascade 一起染色，无需新 marker 形状或 per-color clone。`data-has-color="1\|0"` 属性暴露给 test selectors。 |
+> | **UI - Inspector** | `web/src/app/compose/Inspector.tsx:556-590` | 4th control：`<input type="color">` 渲染 hex swatch + small `↺` reset 按钮（仅在 `c.color` 非空时显示）。reset 时 `onUpdateColor(c.id, undefined)` → `delete next.color` 走 theme fallback。 |
+> | **i18n** | `web/src/lib/i18n/{types,dict.en,dict.zh}.ts` | 5 新 key：compose.connection.color.{label,tooltip,default,reset} + compose.announce.connectionColorUpdated。{color} placeholder 接 user-picked hex（picker 是 hex-by-construction）或 "Theme default" translated string。 |
+> | **Tests** | `test/unit/compose-boards.test.ts:651-756` | +2 v0.6.19 schema test（v5 hex 接受、non-hex 拒；2 backward-compat test：v4-without-color load unchanged、v5-without-color load unchanged）。 |
+> | **Tests** | `web/tests/compose-history.test.ts:421-510` | +4 updateConnectionColor test（set new color、clear color (delete key)、replace one→another、invertEntry round-trip）。 |
+>
+> 关键设计：
+>
+> - **`color` 缺省时 `delete` 不 set**：跟 v0.6.18 dir 同样的 "omit the default" 模式。v0.6.18 board 经过 v0.6.19 写出来 JSON 字节相同（无 migration script）。`#000000` 在 zod 合法但语义上 = "黑" 不是 "无色"，所以"clear color" 走 separate path（`onUpdateColor(id, undefined)` → 删字段），不是 set `#000000`。
+> - **hex-only 拒绝 named colors**：zod regex 严格 `^#[0-9a-fA-F]{3,8}$`。red/crimson/`rgb(255,0,0)` 都拒。理由：(1) picker 是 hex-only，让 server schema 跟 UI 一致；(2) "Theme 默认" 跟 named color 是两个 concept —— user 想 "主题色" 应该 omit 而不是 set "red" 假装跟主题巧合一样。
+> - **currentColor cascade 一处变处处变**：line `stroke="currentColor"` + marker 内部 `fill="currentColor"` 都从 `<g style="color: …">` 拿值。换颜色 = 改一个 `style.color` 字符串，无需重新生成 marker。
+> - **reset 按钮只在有 color 时显示**：`c.color ? <button/> : null` —— UI 上"无操作可用"时不该显示 affordance。`↺` 字符是 unicode（locale-stable），无 i18n。
+> - **不 dedupe 改四元组**：dedupe key 仍是 `(from, to, dir)`。`color` 是 edge property 不是 edge identity —— 同对 (A, B) forward 还是只能一条边，color 改是 mutation 不是 add/remove。buildConnectionIfValid 不需要改。
+> - **per-direction palette 没做**（v0.6.20+ 留）：user 提到过 "per-direction palette"（所有 forward 一种色、backward 另一种），但 v0.6.19 只做了 per-edge minimum —— schema 的 `color?: string` 已经支持未来 palette 扩展不需要 v6 bump。
+>
+> 验证：tsc + format + lint + 548/548 core + 221/221 web + production build 跳过（同 v0.6.17 precedent，CSS-only feature 不需 fresh build）。**无 UI 自动化 test**（sandbox 跑不起 pilot server）。
+>
+> 测试：core **548/548**（+2 + 2 backward-compat）、web **221/221**（+4）、format 双清、lint clean、tsc clean（root + web）、production build 跳过（CSS-only feature）。
 >
 > **2026-07-16 校准 (33)**：**v0.6.17 已发** —— 1-line visual hotfix: `/usage` range picker active 标签从 `text-[var(--bg)]` (#0b0d10) 改 `text-white`。v0.6.16 user 截图报告"active 按钮文字绿色看不清" —— 根因：#0b0d10 在 #79c0ff 蓝背景上对比度在小字号（`text-xs`）下退化，视觉上像糊的绿调。**白色是饱和蓝背景上最稳的阅读色**（跨显示器 profile 一致 WCAG AA ≥ 4.5:1）。
 >

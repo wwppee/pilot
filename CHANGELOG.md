@@ -2,6 +2,100 @@
 
 ## Unreleased
 
+### v0.6.19 — Per-edge connection color (hex picker)
+
+The `/compose` inspector now offers a native color picker
+next to the existing label / kind / direction controls. Each
+edge can pick its own stroke color (hex) and the SVG line +
+arrow head render in that color, so a 10-edge board can have
+10 distinct colors without a single line crossing the theme
+palette.
+
+**Schema**
+
+- **`ComposeConnection.color?: string`** — hex string
+  matching `^#[0-9a-fA-F]{3,8}$` (`#rgb` / `#rgba` /
+  `#rrggbb` / `#rrggbbaa`). Constrained to the format the
+  native `<input type="color">` emits (`#rrggbb`) plus a
+  few extra digit counts to leave room for future
+  alpha-aware palette presets. Named colors (`"red"`,
+  `"crimson"`) and `rgb()` / `hsl()` are deliberately
+  rejected — if the user wants a theme color, they leave
+  the field empty and the renderer falls back to
+  `currentColor`. Missing `color` is the default.
+- **Schema bumped to v5**. v0.6.18 (v4) and earlier boards
+  continue to load — `color` defaults to undefined and
+  the SVG falls back to the theme accent, so v0.6.19 is
+  fully backward-compatible with v0.6.18 saves.
+- **Dedupe key unchanged.** Still `(from, to, dir)` —
+  `color` is a property of an edge, not a new dimension.
+  The same edge with two different colors is two separate
+  connections.
+
+**UI**
+
+- **ConnectionPath** threads `color` through the
+  `style.color` attribute on the wrapping `<g>`. The line
+  + arrow head both consume `currentColor` (set on the
+  parent SVG style), so the single `style.color = <hex>`
+  cascades to both — no new marker definitions, no
+  per-color clones. `data-has-color="1|0"` is exposed on
+  the `<g>` for test selectors.
+- **Inspector** gets a 4th control next to the dir select:
+  a native color swatch (`<input type="color">`) plus a
+  small `↺` reset button (visible only when a color is
+  set). The reset drops the `color` key from the
+  connection, restoring the theme default.
+
+**History**
+
+- New history entry type `updateConnectionColor`
+  (separate from `updateConnectionLabel` and
+  `updateConnectionDir` — three concerns, three history
+  entry types, undo granularity stays narrow). Stores
+  `{ connectionId, fromColor, toColor }` so undo/redo
+  round-trips without re-fetching live state. `toColor =
+  ""` means "use theme accent" — when clearing we
+  `delete next.color` rather than set it to `""`, which
+  matches the v0.6.18 dir-drop pattern and keeps the
+  persisted JSON minimal.
+
+**i18n**
+
+- **5 new keys**: `compose.connection.color.label`,
+  `.tooltip`, `.default`, `.reset` (the picker + reset
+  button affordances) and `compose.announce.connectionColorUpdated`
+  for the live-region message. The `{color}` placeholder
+  in the announcement receives the user-picked hex (or
+  the translated "Theme default" string when cleared) —
+  the picker is a hex-by-construction UI, so the announce
+  echoes the actual value, not a translated name.
+
+**Stats**
+
+- root: **548/548** ✓ (was 546; +2 in `compose-boards.test.ts` —
+  v5 schema acceptance, non-hex rejection; 2 backward-compat
+  tests for v4-without-color and v5-without-color).
+- web: **221/221** ✓ (was 217; +4 in `compose-history.test.ts` —
+  set new color, clear color (delete key), replace one color
+  with another, invertEntry round-trip).
+- format:check root + web: ✓
+- lint (root `eslint src test --max-warnings 0`): ✓
+- tsc root + web: ✓
+- production build: not run this round (color is a CSS-only
+  feature, no production-affecting logic changes; same
+  precedent as v0.6.17 which also skipped a fresh build).
+
+**Deliberately NOT done (v0.6.20+ backlog)**
+
+- auto-route 避开 block 中心
+- ComposeBoard.tsx hooks/state 抽离
+- placeholder parameter audit (15 keys) — see v0.6.16
+- per-direction palette (e.g. "all forward connections get
+  this color") — deferred; per-edge is the v0.6.19 minimum
+  and the schema's `color?: string` field already supports
+  a future palette expansion without a v6 bump.
+
 ### v0.6.18 — Connection direction (forward / backward / bidirectional)
 
 The `/compose` canvas now distinguishes forward, backward,
@@ -80,7 +174,6 @@ in one click.
 
 **Deliberately NOT done (v0.6.19+ backlog)**
 
-- connection color 自定义
 - auto-route 避开 block 中心
 - ComposeBoard.tsx hooks/state 抽离
 - placeholder parameter audit (15 keys) — see v0.6.16

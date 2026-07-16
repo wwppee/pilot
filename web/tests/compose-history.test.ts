@@ -424,3 +424,94 @@ describe("updateConnectionDir (v0.6.18)", () => {
     });
   });
 });
+
+// ─── v0.6.19: updateConnectionColor ─────────────────────
+
+describe("updateConnectionColor (v0.6.19)", () => {
+  // Two blocks + one connection. Reused across the four cases
+  // below so the only varying thing is the entry's toColor /
+  // fromColor values.
+  const a: ComposeBlock = {
+    id: "a",
+    kind: "session",
+    refId: "r-a",
+    x: 0,
+    y: 0,
+    label: "A",
+  };
+  const b: ComposeBlock = {
+    id: "b",
+    kind: "session",
+    refId: "r-b",
+    x: 100,
+    y: 0,
+    label: "B",
+  };
+  const conn = { id: "c1", from: "a", to: "b" };
+
+  it("sets a hex color on a connection that didn't have one", () => {
+    const start = { ...makeState([a, b]), connections: [conn] };
+    const { state } = applyEntry(start, {
+      type: "updateConnectionColor",
+      connectionId: "c1",
+      fromColor: "",
+      toColor: "#ff8800",
+    });
+    expect(state.connections?.[0]?.color).toBe("#ff8800");
+  });
+
+  it('clearing a color drops the key (no `color: ""` left behind)', () => {
+    // v0.6.19: empty-string toColor means "use the theme
+    // accent" — we delete the field rather than set it to "".
+    // That keeps the persisted JSON minimal and avoids
+    // a `color: ""` value that the server's zod regex would
+    // reject anyway (the regex requires `#`-prefixed hex).
+    const start = {
+      ...makeState([a, b]),
+      connections: [{ ...conn, color: "#00ff00" }],
+    };
+    const { state } = applyEntry(start, {
+      type: "updateConnectionColor",
+      connectionId: "c1",
+      fromColor: "#00ff00",
+      toColor: "",
+    });
+    expect(state.connections?.[0]?.color).toBeUndefined();
+    expect("color" in (state.connections?.[0] ?? {})).toBe(false);
+  });
+
+  it("changing one color to another replaces the value", () => {
+    const start = {
+      ...makeState([a, b]),
+      connections: [{ ...conn, color: "#00ff00" }],
+    };
+    const { state } = applyEntry(start, {
+      type: "updateConnectionColor",
+      connectionId: "c1",
+      fromColor: "#00ff00",
+      toColor: "#0000ff",
+    });
+    expect(state.connections?.[0]?.color).toBe("#0000ff");
+  });
+
+  it("undo round-trips: invert(updateConnectionColor(from→to)) = updateConnectionColor(to→from)", () => {
+    // Symmetric to the dir test above. The undo stack stores
+    // the entry as-is; redo re-applies it via applyEntry. To
+    // undo a color change we need invertEntry to swap
+    // fromColor/toColor so the future entry, when applied,
+    // restores the previous color.
+    const entry: HistoryEntry = {
+      type: "updateConnectionColor",
+      connectionId: "c1",
+      fromColor: "#ff0000",
+      toColor: "#0000ff",
+    };
+    const inverted = invertEntry(entry);
+    expect(inverted).toEqual({
+      type: "updateConnectionColor",
+      connectionId: "c1",
+      fromColor: "#0000ff",
+      toColor: "#ff0000",
+    });
+  });
+});

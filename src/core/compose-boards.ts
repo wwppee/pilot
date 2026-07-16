@@ -103,6 +103,24 @@ const ConnectionDirectionSchema = z.enum([
 ]);
 
 /**
+ * v0.6.19: per-edge color override. Constrained to `#`-prefixed
+ * 3/4/6/8-digit hex (`#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`)
+ * because that's the exact format the native `<input type="color">`
+ * produces, so the picker → save → load → render round-trip is
+ * byte-stable. Named colors (`"red"`, `"crimson"`, ...) and
+ * `rgb()`/`hsl()` are deliberately rejected — if the user wants
+ * a theme color, they leave the field empty and the renderer
+ * falls back to the theme's `currentColor`.
+ */
+const ConnectionColorSchema = z
+  .string()
+  .regex(
+    /^#[0-9a-fA-F]{3,8}$/,
+    "color must be #rgb / #rgba / #rrggbb / #rrggbbaa hex",
+  )
+  .optional();
+
+/**
  * One edge between two blocks. v0.6.7 baseline + v0.6.9 free-text
  * label and `ConnectionLabelKind` enum (the enum is verified as a
  * string here — web UI prevents anything else from being set).
@@ -110,6 +128,9 @@ const ConnectionDirectionSchema = z.enum([
  * v0.6.18: optional `dir` field. When missing, the loader
  * defaults to `"forward"` so v1-v3 boards load with the same
  * single-arrow look the user is used to.
+ *
+ * v0.6.19: optional `color` field. Hex CSS color used as the SVG
+ * stroke; missing falls back to the theme accent (currentColor).
  */
 const ConnectionSchema = z.object({
   id: z.string().min(1),
@@ -120,6 +141,7 @@ const ConnectionSchema = z.object({
     .enum(["flows", "uses", "feeds", "depends", "produces", "manual"])
     .optional(),
   dir: ConnectionDirectionSchema.optional(),
+  color: ConnectionColorSchema,
 });
 
 /**
@@ -127,17 +149,23 @@ const ConnectionSchema = z.object({
  * `createdAt` (never changes after first save) in addition to
  * the `ComposeState`-shaped payload.
  *
- * v0.6.18: `version` is now `1 | 2 | 3 | 4`. Boards saved at v3
- * or earlier continue to load — the loader accepts all four
- * and `dir` defaults to `"forward"` when missing. New writes
- * from the web client land at v4.
+ * v0.6.19: `version` is now `1 | 2 | 3 | 4 | 5`. Boards saved at v4
+ * or earlier continue to load — the loader accepts all five and
+ * `color` defaults to "use theme accent" when missing. New writes
+ * from the web client land at v5.
  */
 export const BoardSnapshotSchema = z.object({
   id: z.string().min(1),
   name: z.string().default(""),
   blocks: z.array(BlockSchema),
   connections: z.array(ConnectionSchema).default([]),
-  version: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+  version: z.union([
+    z.literal(1),
+    z.literal(2),
+    z.literal(3),
+    z.literal(4),
+    z.literal(5),
+  ]),
   updatedAt: z.string(),
   createdAt: z.string(),
 });
@@ -151,8 +179,14 @@ export const BoardInputSchema = z.object({
   blocks: z.array(BlockSchema),
   connections: z.array(ConnectionSchema).default([]),
   version: z
-    .union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)])
-    .default(4),
+    .union([
+      z.literal(1),
+      z.literal(2),
+      z.literal(3),
+      z.literal(4),
+      z.literal(5),
+    ])
+    .default(5),
 });
 
 export type BoardInput = z.infer<typeof BoardInputSchema>;

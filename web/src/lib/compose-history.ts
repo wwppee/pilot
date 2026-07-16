@@ -82,6 +82,24 @@ export type HistoryEntry =
       connectionId: string;
       fromDir: "forward" | "backward" | "bidirectional" | "";
       toDir: "forward" | "backward" | "bidirectional" | "";
+    }
+  | {
+      /**
+       * v0.6.19: change a connection's color. Hex CSS string
+       * (`#rrggbb` from the native `<input type="color">`).
+       * `""` (empty string) on either side means "use the theme
+       * accent" — that's the default the SVG renderer falls back
+       * to when the connection object doesn't have a `color` key.
+       *
+       * Same omit-the-default pattern as `updateConnectionDir`:
+       * undoing a color change doesn't undo a dir change. Each
+       * concern lives in its own history entry, so the user can
+       * step back one change at a time.
+       */
+      type: "updateConnectionColor";
+      connectionId: string;
+      fromColor: string;
+      toColor: string;
     };
 
 export interface HistoryState {
@@ -196,6 +214,27 @@ export function applyEntry(
       });
       return { state: { ...state, connections: updated }, selectedId: null };
     }
+    case "updateConnectionColor": {
+      // v0.6.19: same omit-the-default pattern as the dir case.
+      // `""` (empty string) on the toColor side means "use the
+      // theme accent" — we drop the `color` key on the
+      // connection object so the saved JSON doesn't carry a
+      // useless `color: ""` that the server-side regex would
+      // reject. The zod schema treats `undefined` and the
+      // missing key identically, so this is safe.
+      const conns = state.connections ?? [];
+      const updated = conns.map((c) => {
+        if (c.id !== entry.connectionId) return c;
+        const next: ComposeConnection = { ...c };
+        if (entry.toColor === "") {
+          delete next.color;
+        } else {
+          next.color = entry.toColor;
+        }
+        return next;
+      });
+      return { state: { ...state, connections: updated }, selectedId: null };
+    }
   }
 }
 
@@ -240,6 +279,14 @@ export function invertEntry(entry: HistoryEntry): HistoryEntry {
         connectionId: entry.connectionId,
         fromDir: entry.toDir,
         toDir: entry.fromDir,
+      };
+    case "updateConnectionColor":
+      // Same swap pattern as the label case.
+      return {
+        type: "updateConnectionColor",
+        connectionId: entry.connectionId,
+        fromColor: entry.toColor,
+        toColor: entry.fromColor,
       };
   }
 }

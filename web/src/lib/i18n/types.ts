@@ -563,6 +563,16 @@ export type Dict = {
   "compose.connection.dir.forward": string;
   "compose.connection.dir.backward": string;
   "compose.connection.dir.bidirectional": string;
+  // v0.6.19: per-edge color override. The {color} placeholder
+  // receives the user-picked hex (e.g. "#ff8800") for the
+  // announcement, not a translated name — the picker is a
+  // hex-by-construction UI, so the announce echoes the
+  // actual value.
+  "compose.connection.color.label": string;
+  "compose.connection.color.tooltip": string;
+  "compose.connection.color.default": string;
+  "compose.connection.color.reset": string;
+  "compose.announce.connectionColorUpdated": string;
   "compose.connectionLabel.tooltip": string;
   "compose.announce.connectionLabelUpdated": string;
   // v0.6.18: live-region message when the user flips a

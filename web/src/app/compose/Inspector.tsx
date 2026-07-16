@@ -85,6 +85,11 @@ export function BlockInspector({
   // independent of label/kind history. The connection-list
   // select calls this directly; we just pass it through.
   onUpdateDir,
+  // v0.6.19: per-edge color picker. Pass-through to
+  // <ConnectionList> for the same reason as `onUpdateDir` —
+  // we don't synthesise the color edit here, we just hand
+  // the connection id + new color down.
+  onUpdateColor,
   onConnect,
   onDisconnect,
   onUpdateLabel,
@@ -113,6 +118,8 @@ export function BlockInspector({
     connectionId: string,
     dir: "forward" | "backward" | "bidirectional",
   ) => void;
+  // v0.6.19: per-edge color. `undefined` clears the override.
+  onUpdateColor: (connectionId: string, color: string | undefined) => void;
 }) {
   const t = useT();
   const meta = KIND_META[block.kind](t);
@@ -245,6 +252,7 @@ export function BlockInspector({
             onDisconnect={onDisconnect}
             onUpdateLabel={onUpdateLabel}
             onUpdateDir={onUpdateDir}
+            onUpdateColor={onUpdateColor}
           />
         )}
       </div>
@@ -390,6 +398,7 @@ export function ConnectionList({
   onDisconnect,
   onUpdateLabel,
   onUpdateDir,
+  onUpdateColor,
 }: {
   block: ComposeBlock;
   allBlocks: ComposeBlock[];
@@ -407,6 +416,12 @@ export function ConnectionList({
     connectionId: string,
     dir: "forward" | "backward" | "bidirectional",
   ) => void;
+  // v0.6.19: per-edge color. `undefined` clears the override
+  // (drops the `color` key on the connection, falling back to
+  // the theme accent — same omit-the-default pattern as the
+  // dir case). A non-empty string is a hex color, validated
+  // on save by the zod regex in `core/compose-boards.ts`.
+  onUpdateColor: (connectionId: string, color: string | undefined) => void;
 }) {
   const t = useT();
   const outgoing = connections.filter((c) => c.from === block.id);
@@ -552,6 +567,37 @@ export function ConnectionList({
                   {t("compose.connection.dir.bidirectional")}
                 </option>
               </select>
+              {/* v0.6.19: per-edge color picker. The native
+                <input type="color"> always emits a 6-digit
+                hex (`#rrggbb`) and we keep that contract end
+                to end — the zod schema accepts 3/4/6/8-digit
+                hex but the picker can only produce 6-digit,
+                so the saved file format is uniform. The
+                "reset" button next to it clears the override
+                and falls back to the theme accent (the same
+                no-`color`-key render that v0.6.18 boards use
+                today). */}
+              <input
+                type="color"
+                className="compose-connection-color-input"
+                value={c.color ?? "#000000"}
+                aria-label={t("compose.connection.color.label")}
+                title={t("compose.connection.color.tooltip")}
+                onChange={(e) =>
+                  onUpdateColor(c.id, e.target.value || undefined)
+                }
+              />
+              {c.color ? (
+                <button
+                  type="button"
+                  className="btn small secondary compose-connection-color-reset"
+                  aria-label={t("compose.connection.color.reset")}
+                  title={t("compose.connection.color.reset")}
+                  onClick={() => onUpdateColor(c.id, undefined)}
+                >
+                  ↺
+                </button>
+              ) : null}
             </div>
           </li>
         );

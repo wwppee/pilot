@@ -60,15 +60,28 @@ export function ConnectionPath({
   // it mirror its shape at marker-start automatically, so the
   // same id can be used for both ends without redefining a
   // separate "left-pointing" marker.
+  //
+  // v0.6.19: per-edge color override. The line + arrow head
+  // both consume `currentColor` (set on this `<g>`), so we
+  // thread the user-picked color through `style.color` rather
+  // than touching the stroke attribute. That way the same
+  // marker definition is reused without per-color cloning.
+  // Missing `color` → `currentColor` (no inline style) → the
+  // parent <svg> style takes over, which is the theme accent.
+  const style: React.CSSProperties = { cursor: "pointer" };
+  if (connection.color) {
+    style.color = connection.color;
+  }
   return (
     <g
       data-connection-id={connection.id}
       data-selected={selected}
       data-kind={connection.kind ?? ""}
       data-dir={dir}
+      data-has-color={connection.color ? "1" : "0"}
       className="compose-connection-path"
       onClick={onSelect}
-      style={{ cursor: "pointer" }}
+      style={style}
     >
       <path
         d={path}

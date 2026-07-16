@@ -572,6 +572,23 @@ export type ConnectionLabelKind =
  */
 export type ConnectionDirection = "forward" | "backward" | "bidirectional";
 
+/**
+ * v0.6.19: a CSS color string for the connection line stroke.
+ * When set, the SVG line + arrow head render in this color
+ * instead of the theme's `currentColor`. When missing (the
+ * default), the line falls back to the theme color, so boards
+ * saved before v0.6.19 render exactly the same.
+ *
+ * We constrain the accepted format on the server side (see
+ * `src/core/compose-boards.ts`) to a 3/4/6/8-digit hex starting
+ * with `#` — that's the format `<input type="color">` always
+ * emits, so the picker ↔ persisted state ↔ SVG stroke round-trip
+ * is byte-stable. Named colors (`"red"`, `"crimson"`) are
+ * deliberately not accepted; if the user wants a theme color,
+ * they leave the field empty.
+ */
+export type ConnectionColor = string;
+
 export interface ComposeConnection {
   /** Stable connection id (uuid). Keeps history entries small. */
   id: string;
@@ -589,6 +606,13 @@ export interface ComposeConnection {
    * exactly so old boards load without UI changes).
    */
   dir?: ConnectionDirection;
+  /**
+   * v0.6.19: per-edge color override. Missing means "use the
+   * theme's accent color" (i.e. `currentColor` in the SVG).
+   * Same omit-the-default pattern as `dir` so a v0.6.18 board
+   * round-trips through v0.6.19 byte-identical.
+   */
+  color?: ConnectionColor;
 }
 
 /**
@@ -620,7 +644,7 @@ export interface BoardInput {
   name: string;
   blocks: ComposeBlock[];
   connections: ComposeConnection[];
-  version: 1 | 2 | 3 | 4;
+  version: 1 | 2 | 3 | 4 | 5;
 }
 
 export interface ComposeState {
@@ -639,8 +663,11 @@ export interface ComposeState {
    *  - 4: v0.6.18+ — connections may have `dir` (forward /
    *    backward / bidirectional). Old boards load unchanged
    *    because `dir` is optional and defaults to "forward".
+   *  - 5: v0.6.19+ — connections may have `color` (hex CSS
+   *    color string). Missing `color` falls back to the theme
+   *    accent, so v0.6.18 boards render unchanged.
    */
-  version: 3 | 4;
+  version: 3 | 4 | 5;
   /** ISO timestamp of last save. */
   updatedAt: string;
   /** Optional human-readable name for this layout. */
