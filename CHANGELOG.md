@@ -2,6 +2,60 @@
 
 ## Unreleased
 
+### v0.6.23 — `/compose` mobile layout hotfix (P1 bug from user testing)
+
+User reported (with screenshot at `~/Desktop/pilot-bug-compose-layout-collapse.png`)
+that the `/compose` page becomes unusable at viewport widths < 1024px:
+the sidebar expanded to fill the entire viewport, the canvas was
+pushed off-screen, and the only visible content was the sidebar's
+session list.
+
+**Root cause** — the mobile layout at <1024px used
+`grid-template-columns: 1fr` (single column), which let the sidebar's
+natural content height (search + filter + sections + session items,
+often 600-800px) push the canvas + inspector rows off the visible
+viewport. The sidebar's body had `max-height: 360px` but that was
+being overridden by `flex: 1` in the unconstrained parent, so the
+cap didn't take effect.
+
+**Fix** — at <1024px, switch `.compose-grid` from `display: grid` to
+`display: flex; flex-direction: column; height: calc(100vh - 200px)`,
+with explicit size constraints per child:
+- Sidebar: `flex: 0 1 auto; max-height: 35vh` — a search bar + filter +
+  a scrollable items list, capped at 35% of viewport height.
+- Canvas: `flex: 1 1 auto; min-height: 0` — fills the remaining
+  space. `min-height: 0` is the critical override that lets the
+  canvas shrink to fit instead of overflowing.
+- Inspector: unchanged (`position: fixed` was already set on mobile
+  at v0.6.2, so it's automatically removed from the flex flow and
+  doesn't compete for space).
+
+Desktop (≥1024px) layout is **unchanged** — the original 3-column
+grid is preserved.
+
+**Stats**
+
+- root: **551/551** ✓ (unchanged — CSS only)
+- web: **238/238** ✓ (unchanged — CSS only)
+- format:check root + web: ✓
+- lint: ✓
+- tsc: ✓
+- user-tested: bug confirmed, fix in this release
+
+**Lesson**
+
+- Unit tests + `tsc` + `lint` are not enough. They verify the code
+  path works, not that the user can actually see what they need
+  to see. The bug only surfaces in the **rendered** layout, which
+  a headless test environment doesn't exercise.
+- **"Tests pass ≠ UI works."** Add a smoke checklist for any page
+  that takes a viewport-sized container: render at 800x600, 1024x768,
+  and 1440x900 and verify the three primary panels are all visible.
+- The grid → flex switch at <1024px is the right structural
+  decision: at desktop the 3-column grid is correct, at mobile
+  the layout is fundamentally a "stacked with constrained heights"
+  problem that flex handles more naturally than grid.
+
 ### v0.6.22 — `useHistoryStack` hook extracted from `ComposeBoard.tsx`
 
 The first slice of the long-deferred "ComposeBoard.tsx hooks/state

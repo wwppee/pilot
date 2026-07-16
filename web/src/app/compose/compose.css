@@ -243,6 +243,54 @@
   }
 }
 
+/* v0.6.23: mobile (<1024px) layout — switch from grid to
+   flex column with explicit height constraints.
+   Background: the original "1fr" grid let the sidebar's
+   natural content height push the canvas + inspector off
+   the visible viewport. Sidebar has many sections (search,
+   filter, sessions, packages, etc.) and at desktop widths
+   it doesn't matter because the grid is 3-column; at mobile
+   widths with `1fr` the sidebar's content sized the row to
+   "as tall as the items need" and the canvas/inspector rows
+   ended up off-screen.
+
+   Fix: at <1024px, make the grid a flex column that fills
+   the viewport. Sidebar is capped at 35vh (a search bar + a
+   scrollable body that shows ~5-6 items, more on scroll).
+   Canvas gets the remaining space with `flex: 1; min-height: 0`
+   so it shrinks to fit instead of overflowing. The inspector
+   is already `position: fixed` at this breakpoint, so it's
+   removed from the flex flow (no height to compete for). */
+@media (max-width: 1023px) {
+  .compose-grid {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 200px);
+    min-height: 400px;
+  }
+  .compose-sidebar {
+    flex: 0 1 auto;
+    max-height: 35vh;
+  }
+  .compose-sidebar-body {
+    /* Within the capped sidebar, body can scroll if needed.
+       `max-height: 360px` was set globally but it was
+       being overridden by the sidebar's own content height
+       at the desktop-default breakpoint. Now that the
+       sidebar is itself capped at 35vh, the body just
+       fills the available space. */
+    max-height: none;
+  }
+  .compose-canvas {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  /* The inspector is already `position: fixed` on mobile
+     (see the .compose-inspector media query below), so it's
+     removed from the flex flow automatically. No additional
+     styling needed here. */
+}
+
 /* ─── Sidebar ───────────────────────────────────────────── */
 
 .compose-sidebar {
