@@ -179,15 +179,17 @@ describe("i18n: placeholder consistency across locales", () => {
   }
 
   it("every shared key in en and zh uses the same placeholder set", () => {
-    const sharedKeys = Object.keys(enDict).filter((k) => k in zhDict);
+    const sharedKeys = Object.keys(enDict).filter(
+      (k) => k in zhDict,
+    ) as (keyof typeof enDict)[];
     const mismatches: Array<{
       key: string;
       enOnly: string[];
       zhOnly: string[];
     }> = [];
     for (const key of sharedKeys) {
-      const enPh = placeholdersOf(enDict[key]!);
-      const zhPh = placeholdersOf(zhDict[key]!);
+      const enPh = placeholdersOf(enDict[key]);
+      const zhPh = placeholdersOf(zhDict[key as keyof typeof zhDict]);
       const enOnly = [...enPh].filter((p) => !zhPh.has(p)).sort();
       const zhOnly = [...zhPh].filter((p) => !enPh.has(p)).sort();
       if (enOnly.length > 0 || zhOnly.length > 0) {

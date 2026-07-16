@@ -2,6 +2,87 @@
 
 ## Unreleased
 
+### v0.6.22 — `useHistoryStack` hook extracted from `ComposeBoard.tsx`
+
+The first slice of the long-deferred "ComposeBoard.tsx hooks/state
+抽离" backlog item. The undo/redo stack is the most self-contained
+piece of ComposeBoard state — it only reads `state` (passed in),
+writes to `setState` / `setSelectedId` / `announce` (all passed in),
+and consumes the pure `applyEntry` / `invertEntry` functions that
+already live in `lib/compose-history.ts`. So it's the lowest-risk
+extraction: the behaviour is unchanged, the public surface is
+mechanical, and any regression is caught by a new dedicated test
+suite.
+
+**What got extracted**
+
+- The `{ past, future }` state.
+- The `commit` callback (apply + push entry + announce label).
+- The `undo` / `redo` callbacks (apply inverted / forward entry,
+  push onto the other stack, announce).
+- The "coalesce arrow-key moves" logic from `moveBlock` — the
+  single thing the lib version didn't know about.
+- The "clear history on wholesale canvas replacement" path
+  (load board / import JSON / reset canvas).
+
+**What stayed in ComposeBoard**
+
+- 16 other useState calls + ~22 other useCallback definitions.
+  Those are the next candidates for v0.6.23+ extractions
+  (drag/drop, server persistence, keyboard shortcuts, view
+  state, etc.) but each carries more coupling than the history
+  stack did, so they need separate, smaller releases.
+
+**New hook surface**
+
+```ts
+const { history, commit, pushEntry, pushOrMergeMoveEntry,
+        clearHistory, undo, redo, canUndo, canRedo }
+  = useHistoryStack({ state, setState, setSelectedId, announce, t });
+```
+
+The 5 entry-point methods map to 5 distinct use cases the
+callers had:
+
+| Method | Used by | Why a separate method |
+|--------|---------|------------------------|
+| `commit` | 20+ callbacks (connection label / kind / dir / color / route edits, addBlock, connect, disconnect, ...) | Standard "I have a before/after transition to record" path. The `apply` callback does the setState, the hook does the history bookkeeping + announce. |
+| `pushEntry` | `endBlockDrag` | The state was already mutated during pointermove; we only want to record the final delta. `commit` would re-apply and double the position. |
+| `pushOrMergeMoveEntry` | `moveBlock` (arrow-key handler) | Holding an arrow key fires many `moveBlock` calls; we want ONE undo step covering the whole run, not N. The hook merges with the previous move entry on the same block. |
+| `clearHistory` | `loadBoardFromServer`, `importJson`, `resetCanvas` | Wholesale canvas replacement — the user can't undo their way back into a board they just threw away. |
+| `undo` / `redo` | keyboard handler (Cmd-Z / Shift-Cmd-Z), toolbar buttons | Apply inverted / forward entry, push onto the other stack, announce. |
+
+**Stats**
+
+- root: **551/551** ✓ (unchanged — no core changes)
+- web: **238/238** ✓ (was 226; +12 in `use-history-stack.test.tsx` —
+  commit / pushEntry / pushOrMergeMoveEntry / clearHistory / undo /
+  redo / MAX_HISTORY cap)
+- format:check root + web: ✓
+- lint (root `eslint src test --max-warnings 0`): ✓
+- tsc root + web: ✓
+- production build: not run (refactor only, no production-affecting
+  logic; same precedent as v0.6.19 / v0.6.20 / v0.6.21)
+
+**File size**
+
+- `ComposeBoard.tsx`: 2184 → 2144 lines (-40). The drop is
+  smaller than the extracted code because the useHistoryStack
+  call site + explanatory comments take ~30 lines. The
+  *cognitive* drop is bigger — the commit / undo / redo
+  triplet is now testable in isolation.
+
+**Deliberately NOT done (v0.6.23+ backlog)**
+
+- More `ComposeBoard.tsx` extractions: drag/drop, server
+  persistence, keyboard shortcuts, view state. The pattern
+  established here (custom hook that owns the slice of state
+  and exposes a small public surface) should make the next
+  4-5 extractions mechanical, but each is its own release.
+- block-center avoidance for orthogonal routes (real A* grid
+  router) — still the v0.6.20 followup, never started
+- per-direction palette — still the v0.6.19 followup, never started
+
 ### v0.6.21 — Cleanup batch (AGENTS.md + empty state dedup + placeholder audit)
 
 A small user-flagged cleanup release that closes three

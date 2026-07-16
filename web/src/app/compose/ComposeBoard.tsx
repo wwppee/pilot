@@ -46,15 +46,17 @@ import type {
   ConnectionLabelKind,
 } from "../../lib/types";
 import {
-  applyEntry,
-  invertEntry,
-  MAX_HISTORY,
+  // v0.6.22: only the HistoryEntry type is still used here;
+  // applyEntry / invertEntry / MAX_HISTORY now live in
+  // `use-history-stack.ts` (they're the hook's internal
+  // dependencies, not the caller's).
   type HistoryEntry,
 } from "../../lib/compose-history";
 import { api } from "../../lib/pilot-browser";
 import { useT } from "@/components/I18n";
 import { BlockInspector, KIND_META } from "./Inspector";
 import { BLOCK_H, BLOCK_W, ConnectionPath } from "./ConnectionPath";
+import { useHistoryStack } from "./use-history-stack";
 
 /**
  * Visual style of the compose canvas.
@@ -239,10 +241,6 @@ export default function ComposeBoard({
   const [pendingDrop, setPendingDrop] = useState<PendingDrop | null>(null);
   const [filter, setFilter] = useState<"all" | ComposeEntityKind>("all");
   const [search, setSearch] = useState("");
-  const [history, setHistory] = useState<{
-    past: HistoryEntry[];
-    future: HistoryEntry[];
-  }>({ past: [], future: [] });
   const [inspectorOpen, setInspectorOpen] = useState(false);
   // v0.6.7: when non-null, the inspector shows a "Connect to..."
   // target picker for this block id. Cleared on dismiss or
@@ -347,68 +345,38 @@ export default function ComposeBoard({
     return map;
   }, [initialCatalog]);
 
-  /**
-   * Push a history entry and clear the redo stack. Wraps the state
-   * update so the user always sees an undoable operation paired with
-   * the state change. `entry` must describe a state transition that
-   * the caller has *just* applied (or is about to apply).
-   */
-  const commit = useCallback(
-    (entry: HistoryEntry, apply: () => void, label?: string) => {
-      apply();
-      setHistory((h) => ({
-        past: [...h.past, entry].slice(-MAX_HISTORY),
-        future: [],
-      }));
-      if (label) announce(label);
-    },
-    [announce],
-  );
-
-  const undo = useCallback(() => {
-    setHistory((h) => {
-      if (h.past.length === 0) {
-        announce(t("compose.announce.historyEmpty"));
-        return h;
-      }
-      const last = h.past[h.past.length - 1];
-      if (!last) return h;
-      const inverted = invertEntry(last);
-      const { state: nextState, selectedId: nextSelected } = applyEntry(
-        state,
-        inverted,
-      );
-      setState(nextState);
-      setSelectedId(nextSelected);
-      announce(t("compose.announce.undone"));
-      return {
-        past: h.past.slice(0, -1),
-        future: [last, ...h.future],
-      };
-    });
-  }, [state, announce, t]);
-
-  const redo = useCallback(() => {
-    setHistory((h) => {
-      if (h.future.length === 0) {
-        announce(t("compose.announce.historyEmpty"));
-        return h;
-      }
-      const [next, ...rest] = h.future;
-      if (!next) return h;
-      const { state: nextState, selectedId: nextSelected } = applyEntry(
-        state,
-        next,
-      );
-      setState(nextState);
-      setSelectedId(nextSelected);
-      announce(t("compose.announce.redone"));
-      return {
-        past: [...h.past, next].slice(-MAX_HISTORY),
-        future: rest,
-      };
-    });
-  }, [state, announce, t]);
+  // v0.6.22: undo/redo stack extracted to a dedicated hook.
+  // The hook owns the { past, future } state and exposes the
+  // `commit` / `pushEntry` / `pushOrMergeMoveEntry` /
+  // `clearHistory` / `undo` / `redo` / `canUndo` / `canRedo`
+  // API. `commit` is the "I have a before/after transition
+  // to record" path used by 20+ callbacks below;
+  // `pushEntry` is the "state already mutated, just record
+  // the transition" path used by `endBlockDrag` (the move
+  // was streamed on every pointermove and only the final
+  // position delta belongs in history);
+  // `pushOrMergeMoveEntry` is the "coalesce rapid arrow-key
+  // moves" path used by `moveBlock` so a held arrow key
+  // produces ONE undo step, not N;
+  // `clearHistory` is the "canvas wholesale replaced" path
+  // (load saved board / import JSON / reset canvas) so the
+  // user can't undo their way back into a state they
+  // explicitly threw away.
+  const {
+    history,
+    commit,
+    pushEntry,
+    pushOrMergeMoveEntry,
+    clearHistory,
+    undo,
+    redo,
+  } = useHistoryStack({
+    state,
+    setState,
+    setSelectedId,
+    announce,
+    t,
+  });
 
   // ─── Drop from sidebar ───────────────────────────────────
   const onCanvasPointerUp = useCallback(
@@ -626,14 +594,15 @@ export default function ComposeBoard({
           toX: final.x,
           toY: final.y,
         };
-        setHistory((h) => ({
-          past: [...h.past, entry].slice(-MAX_HISTORY),
-          future: [],
-        }));
+        // v0.6.22: use `pushEntry` because the move was
+        // streamed on every pointermove (state already
+        // updated). `commit` would re-apply the move and
+        // double the position.
+        pushEntry(entry);
       }
       setDrag(null);
     },
-    [drag, state.blocks],
+    [drag, state.blocks, pushEntry],
   );
 
   // ─── Keyboard ────────────────────────────────────────────
@@ -1159,7 +1128,11 @@ export default function ComposeBoard({
         setState(next);
         setLastSavedId(id);
         setSelectedId(null);
-        setHistory({ past: [], future: [] });
+        // v0.6.22: `clearHistory` replaces manual setHistory
+        // reset. The new board is unrelated to whatever was
+        // on the canvas before, so the user can't undo back
+        // into a state they explicitly replaced.
+        clearHistory();
         setServerPanel(null);
         setBoardStatus({ kind: "idle" });
         announce(t("compose.board.loaded"));
@@ -1246,69 +1219,56 @@ export default function ComposeBoard({
         ...(entity.sublabel !== undefined ? { sublabel: entity.sublabel } : {}),
         ...(entity.href !== undefined ? { href: entity.href } : {}),
       };
-      setState((s) => ({ ...s, blocks: [...s.blocks, block] }));
-      setHistory((h) => ({
-        past: [...h.past, { type: "add" as const, block }].slice(-MAX_HISTORY),
-        future: [],
-      }));
+      // v0.6.22: convert manual setState + setHistory to a
+      // single `commit` call. The apply callback runs the
+      // setState; the history push + announce are handled by
+      // the hook. This shrinks the function and matches the
+      // shape of the 20+ other mutations in the file.
+      commit(
+        { type: "add" as const, block },
+        () => setState((s) => ({ ...s, blocks: [...s.blocks, block] })),
+        t("compose.announce.addedBlock", { label: entity.label }),
+      );
       setSelectedId(block.id);
       flashBlockAdded(block.id);
-      announce(t("compose.announce.addedBlock", { label: entity.label }));
     },
-    [state.blocks, announce, t, flashBlockAdded],
+    [state.blocks, commit, t, flashBlockAdded],
   );
 
   /**
    * Move a block by (dx, dy) pixels. Used by arrow-key keyboard
    * navigation in the inspector and on focused blocks.
    */
-  const moveBlock = useCallback((id: string, dx: number, dy: number) => {
-    setState((s) => {
-      const target = s.blocks.find((b) => b.id === id);
-      if (!target) return s;
+  const moveBlock = useCallback(
+    (id: string, dx: number, dy: number) => {
+      // Read the current position from state. `pushOrMergeMoveEntry`
+      // needs the pre-move `from` for the first move in a run, and
+      // the post-move `to` for every frame. The hook handles the
+      // "merge with previous move entry" logic that keeps a held
+      // arrow key from spamming the undo stack.
+      const target = state.blocks.find((b) => b.id === id);
+      if (!target) return;
       const next = {
         ...target,
         x: Math.max(0, target.x + dx),
         y: Math.max(0, target.y + dy),
       };
-      if (next.x === target.x && next.y === target.y) return s;
-      // Arrow-key move is also a history entry, but coalesce
-      // rapid presses: if the last entry is a move for the same
-      // block, merge by extending its `to` instead of pushing
-      // another. The `from` stays pinned to the pre-arrow-key
-      // position so undo lands correctly.
-      setHistory((h) => {
-        const last = h.past[h.past.length - 1];
-        if (last && last.type === "move" && last.blockId === id) {
-          const merged: HistoryEntry = {
-            ...last,
-            toX: next.x,
-            toY: next.y,
-          };
-          return {
-            past: [...h.past.slice(0, -1), merged],
-            future: [],
-          };
-        }
-        const entry: HistoryEntry = {
-          type: "move",
-          blockId: id,
-          fromX: target.x,
-          fromY: target.y,
-          toX: next.x,
-          toY: next.y,
-        };
-        return {
-          past: [...h.past, entry].slice(-MAX_HISTORY),
-          future: [],
-        };
-      });
-      return {
+      if (next.x === target.x && next.y === target.y) return;
+      setState((s) => ({
         ...s,
         blocks: s.blocks.map((b) => (b.id === id ? next : b)),
-      };
-    });
-  }, []);
+      }));
+      pushOrMergeMoveEntry({
+        type: "move",
+        blockId: id,
+        fromX: target.x,
+        fromY: target.y,
+        toX: next.x,
+        toY: next.y,
+      });
+    },
+    [state.blocks, pushOrMergeMoveEntry],
+  );
 
   /**
    * Handle keyboard on a focused block: arrow keys move, Delete removes.
@@ -1395,7 +1355,7 @@ export default function ComposeBoard({
           // Imported state replaces history; the user can still
           // undo the import itself, but subsequent operations
           // start fresh.
-          setHistory({ past: [], future: [] });
+          clearHistory();
           setSelectedId(null);
         } catch (e) {
           alert(
@@ -1415,8 +1375,8 @@ export default function ComposeBoard({
     if (!confirm(t("compose.confirm.removeAll"))) return;
     setState(emptyState());
     setSelectedId(null);
-    setHistory({ past: [], future: [] });
-  }, [state.blocks.length, t]);
+    clearHistory();
+  }, [state.blocks.length, t, clearHistory]);
 
   const selectedBlock = selectedId
     ? (state.blocks.find((b) => b.id === selectedId) ?? null)
