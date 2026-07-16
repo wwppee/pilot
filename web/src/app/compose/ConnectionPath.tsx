@@ -41,12 +41,34 @@ export function ConnectionPath({
   const y1 = from.y + BLOCK_H / 2;
   const x2 = to.x;
   const y2 = to.y + BLOCK_H / 2;
-  const dx = Math.max(Math.abs(x2 - x1) / 2, 60);
-  const path = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+  // v0.6.20: routing style. "curve" (the v0.6.19 default) draws
+  // a smooth cubic bezier; "orthogonal" draws a 3-segment
+  // right-angle polyline (right → up/down → right). Both are
+  // expressed as a single SVG `<path>` so the v0.6.18 marker
+  // logic (markerStart / markerEnd) keeps working — the
+  // orthogonal case's last segment is still horizontal, so the
+  // `orient="auto-start-reverse"` marker on `markerEnd` lands
+  // pointing right (toward `to`) exactly like the curve case.
+  //
+  // For degenerate cases (y1 === y2) the orthogonal path is
+  // just a single horizontal line — we skip the vertical
+  // segment so the SVG stays clean.
+  const route = connection.route ?? "curve";
+  const path =
+    route === "orthogonal"
+      ? y1 === y2
+        ? `M ${x1} ${y1} L ${x2} ${y2}`
+        : `M ${x1} ${y1} L ${(x1 + x2) / 2} ${y1} L ${(x1 + x2) / 2} ${y2} L ${x2} ${y2}`
+      : (() => {
+          const dx = Math.max(Math.abs(x2 - x1) / 2, 60);
+          return `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+        })();
   // v0.6.9: the cubic bezier collapses to a straight-line midpoint
   // because the two control points share Y with their endpoints.
-  // We nudge the text up a few pixels so it doesn't overlap the
-  // line itself.
+  // v0.6.20: orthogonal routing puts the elbow at the same (midX,
+  // midY) point, so the label position is unchanged across the two
+  // routing styles — the user sees the label in the same place
+  // whether the line curves through the midpoint or elbows at it.
   const midX = (x1 + x2) / 2;
   const midY = (y1 + y2) / 2 - 6;
   // v0.6.18: dir drives which end(s) get the arrow head.
@@ -78,6 +100,7 @@ export function ConnectionPath({
       data-selected={selected}
       data-kind={connection.kind ?? ""}
       data-dir={dir}
+      data-route={route}
       data-has-color={connection.color ? "1" : "0"}
       className="compose-connection-path"
       onClick={onSelect}

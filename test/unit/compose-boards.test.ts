@@ -779,3 +779,114 @@ describe("v0.6.19 schema v5 + connection color", () => {
     expect(reloaded?.connections[0]?.color).toBeUndefined();
   });
 });
+
+// ─── v0.6.20: schema v6 + connection route ─────────────
+
+describe("v0.6.20 schema v6 + connection route", () => {
+  it("accepts version 6 with `route` on a connection", async () => {
+    // v0.6.20: `route` is a 2-value enum. "curve" stays the
+    // default when missing, "orthogonal" opts the renderer
+    // into a 3-segment right-angle polyline instead of the
+    // original cubic bezier. Block-center avoidance is out of
+    // scope for v0.6.20 — a real A* grid router is a separate
+    // future concern.
+    const saved = await saveBoard(
+      {
+        name: "V6",
+        version: 6,
+        blocks: [
+          {
+            id: "b1",
+            kind: "session",
+            refId: "r1",
+            x: 0,
+            y: 0,
+            label: "A",
+          },
+          {
+            id: "b2",
+            kind: "session",
+            refId: "r2",
+            x: 100,
+            y: 100,
+            label: "B",
+          },
+        ],
+        connections: [{ id: "c1", from: "b1", to: "b2", route: "orthogonal" }],
+      },
+      fakeHome,
+    );
+    expect(saved.version).toBe(6);
+    expect(saved.connections[0]?.route).toBe("orthogonal");
+  });
+
+  it("rejects an unknown route value (zod enum)", async () => {
+    // v0.6.20: the server-side zod enum only accepts
+    // "curve" | "orthogonal" — anything else is rejected at
+    // save time so the persisted JSON never carries an
+    // unrenderable value.
+    await expect(
+      saveBoard(
+        {
+          name: "BadRoute",
+          version: 6,
+          blocks: [
+            {
+              id: "b1",
+              kind: "session",
+              refId: "r1",
+              x: 0,
+              y: 0,
+              label: "A",
+            },
+          ],
+          connections: [
+            {
+              id: "c1",
+              from: "b1",
+              to: "b1",
+              route: "diagonal" as never,
+            },
+          ],
+        },
+        fakeHome,
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("loads v5 boards without `route` unchanged", async () => {
+    // v0.6.20 backward-compat: a v5 board saved before the
+    // route field existed must still load — `route` is
+    // undefined on the loaded connection, and the renderer
+    // treats that as "use the original cubic bezier".
+    const v5 = await saveBoard(
+      {
+        name: "V5NoRoute",
+        version: 5,
+        blocks: [
+          {
+            id: "b1",
+            kind: "session",
+            refId: "r1",
+            x: 0,
+            y: 0,
+            label: "A",
+          },
+          {
+            id: "b2",
+            kind: "session",
+            refId: "r2",
+            x: 100,
+            y: 100,
+            label: "B",
+          },
+        ],
+        connections: [{ id: "c1", from: "b1", to: "b2", color: "#ff8800" }],
+      },
+      fakeHome,
+    );
+    const reloaded = await loadBoard(v5.id, fakeHome);
+    expect(reloaded?.version).toBe(5);
+    expect(reloaded?.connections[0]?.route).toBeUndefined();
+  });
+});

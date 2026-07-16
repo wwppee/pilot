@@ -90,7 +90,7 @@ const VIEW_MODE_KEY = "pilot-compose-view-mode";
 function emptyState(): ComposeState {
   return {
     blocks: [],
-    version: 5 as const,
+    version: 6 as const,
     updatedAt: new Date().toISOString(),
     name: "default",
   };
@@ -106,14 +106,14 @@ function loadState(): ComposeState {
     };
     // v0.6.9: accept v1 (blocks only), v2 (blocks + connections),
     // v3 (connections may carry `label` + `kind`). v0.6.18 adds
-    // v4 with `dir`, v0.6.19 adds v5 with `color`. All five
-    // load fine because the new fields are optional — the
-    // schema validates on save but the in-memory shape is
-    // backward-compatible. Unknown future versions drop to
-    // empty state (we'd rather lose the board than silently
-    // mis-parse).
+    // v4 with `dir`, v0.6.19 adds v5 with `color`, v0.6.20 adds
+    // v6 with `route`. All six load fine because the new fields
+    // are optional — the schema validates on save but the
+    // in-memory shape is backward-compatible. Unknown future
+    // versions drop to empty state (we'd rather lose the board
+    // than silently mis-parse).
     const v = parsed.version as number | undefined;
-    if (v !== 1 && v !== 2 && v !== 3 && v !== 4 && v !== 5) {
+    if (v !== 1 && v !== 2 && v !== 3 && v !== 4 && v !== 5 && v !== 6) {
       return emptyState();
     }
     if (!Array.isArray(parsed.blocks)) return emptyState();
@@ -976,6 +976,53 @@ export default function ComposeBoard({
         },
         t("compose.announce.connectionColorUpdated", {
           color: toColor || t("compose.connection.color.default"),
+        }),
+      );
+    },
+    [state.connections, commit, t],
+  );
+
+  // v0.6.20: change a connection's routing style. Same
+  // pattern as `updateConnectionDir` / `updateConnectionColor`:
+  // separate history entry type, omit-the-default semantics,
+  // one concern per entry. `curve` is the default — when the
+  // user picks "curve" we drop the `route` key from the
+  // connection so the saved JSON stays minimal and a v0.6.19
+  // board round-trips through v0.6.20 byte-identical.
+  const updateConnectionRoute = useCallback(
+    (connectionId: string, nextRoute: "curve" | "orthogonal") => {
+      const conns = state.connections ?? [];
+      const conn = conns.find((c) => c.id === connectionId);
+      if (!conn) return;
+      const fromRoute = conn.route ?? "";
+      if (fromRoute === nextRoute) return;
+      commit(
+        {
+          type: "updateConnectionRoute",
+          connectionId,
+          fromRoute,
+          toRoute: nextRoute,
+        },
+        () => {
+          setState((s) => ({
+            ...s,
+            connections: (s.connections ?? []).map((c) => {
+              if (c.id !== connectionId) return c;
+              const next: ComposeConnection = { ...c };
+              if (nextRoute === "curve") {
+                // Default — drop the field. Same pattern
+                // as `updateConnectionDir` for `forward` and
+                // `updateConnectionColor` for empty-string.
+                delete next.route;
+              } else {
+                next.route = nextRoute;
+              }
+              return next;
+            }),
+          }));
+        },
+        t("compose.announce.connectionRouteUpdated", {
+          route: t(`compose.connection.route.${nextRoute}`),
         }),
       );
     },
@@ -2018,6 +2065,7 @@ export default function ComposeBoard({
               onUpdateLabel={updateConnectionLabel}
               onUpdateDir={updateConnectionDir}
               onUpdateColor={updateConnectionColor}
+              onUpdateRoute={updateConnectionRoute}
             />
           ) : (
             <div className="compose-inspector-empty">

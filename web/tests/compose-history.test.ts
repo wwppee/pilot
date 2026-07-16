@@ -515,3 +515,100 @@ describe("updateConnectionColor (v0.6.19)", () => {
     });
   });
 });
+
+// ─── v0.6.20: updateConnectionRoute ─────────────────────
+
+describe("updateConnectionRoute (v0.6.20)", () => {
+  // Two blocks + one connection. Reused across the four cases
+  // below so the only varying thing is the entry's toRoute /
+  // fromRoute values.
+  const a: ComposeBlock = {
+    id: "a",
+    kind: "session",
+    refId: "r-a",
+    x: 0,
+    y: 0,
+    label: "A",
+  };
+  const b: ComposeBlock = {
+    id: "b",
+    kind: "session",
+    refId: "r-b",
+    x: 100,
+    y: 0,
+    label: "B",
+  };
+  const conn = { id: "c1", from: "a", to: "b" };
+
+  it("sets route='orthogonal' on a connection that defaulted to 'curve'", () => {
+    const start = { ...makeState([a, b]), connections: [conn] };
+    const { state } = applyEntry(start, {
+      type: "updateConnectionRoute",
+      connectionId: "c1",
+      fromRoute: "",
+      toRoute: "orthogonal",
+    });
+    expect(state.connections?.[0]?.route).toBe("orthogonal");
+  });
+
+  it("dropping route back to 'curve' is a no-op on the persisted JSON", () => {
+    // v0.6.20: `curve` is the default — we delete the field
+    // rather than setting `route: "curve"`. The persisted
+    // board matches what v0.6.19 would have written for the
+    // same edge, so the v0.6.20 → v0.6.19 round-trip is
+    // lossless. Same omit-the-default pattern as the dir
+    // and color cases.
+    const start = {
+      ...makeState([a, b]),
+      connections: [{ ...conn, route: "orthogonal" as const }],
+    };
+    const { state } = applyEntry(start, {
+      type: "updateConnectionRoute",
+      connectionId: "c1",
+      fromRoute: "orthogonal",
+      toRoute: "curve",
+    });
+    expect(state.connections?.[0]?.route).toBeUndefined();
+    expect("route" in (state.connections?.[0] ?? {})).toBe(false);
+  });
+
+  it("changing one route to another replaces the value", () => {
+    // Symmetric round-trip case: orthogonal → curve (covered
+    // above) and curve → orthogonal (above) both work, but
+    // this is the no-default-endpoint case — both sides are
+    // explicit values, no omit-the-default shenanigans.
+    const start = {
+      ...makeState([a, b]),
+      connections: [{ ...conn, route: "orthogonal" as const }],
+    };
+    const { state } = applyEntry(start, {
+      type: "updateConnectionRoute",
+      connectionId: "c1",
+      fromRoute: "orthogonal",
+      toRoute: "curve",
+    });
+    // After "curve" we drop the key — see the case above.
+    expect(state.connections?.[0]?.route).toBeUndefined();
+  });
+
+  it("undo round-trips: invert(updateConnectionRoute(from→to)) = updateConnectionRoute(to→from)", () => {
+    // Same swap pattern as the dir / color tests. The undo
+    // stack stores the entry as-is; redo re-applies it via
+    // applyEntry. To undo a route change we need invertEntry
+    // to swap fromRoute/toRoute so the future entry, when
+    // applied, restores the previous routing.
+    const entry: HistoryEntry = {
+      type: "updateConnectionRoute",
+      connectionId: "c1",
+      fromRoute: "curve",
+      toRoute: "orthogonal",
+    };
+    const inverted = invertEntry(entry);
+    expect(inverted).toEqual({
+      type: "updateConnectionRoute",
+      connectionId: "c1",
+      fromRoute: "orthogonal",
+      toRoute: "curve",
+    });
+  });
+});

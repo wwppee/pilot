@@ -90,6 +90,9 @@ export function BlockInspector({
   // we don't synthesise the color edit here, we just hand
   // the connection id + new color down.
   onUpdateColor,
+  // v0.6.20: routing style. Pass-through to <ConnectionList>
+  // for the same reason as `onUpdateDir` / `onUpdateColor`.
+  onUpdateRoute,
   onConnect,
   onDisconnect,
   onUpdateLabel,
@@ -120,6 +123,11 @@ export function BlockInspector({
   ) => void;
   // v0.6.19: per-edge color. `undefined` clears the override.
   onUpdateColor: (connectionId: string, color: string | undefined) => void;
+  // v0.6.20: routing style. Forwarded to the inline route
+  // select so the user can flip between curve / orthogonal
+  // in one click. Same shape as `onUpdateDir` (always a
+  // valid value, never undefined).
+  onUpdateRoute: (connectionId: string, route: "curve" | "orthogonal") => void;
 }) {
   const t = useT();
   const meta = KIND_META[block.kind](t);
@@ -253,6 +261,7 @@ export function BlockInspector({
             onUpdateLabel={onUpdateLabel}
             onUpdateDir={onUpdateDir}
             onUpdateColor={onUpdateColor}
+            onUpdateRoute={onUpdateRoute}
           />
         )}
       </div>
@@ -399,6 +408,7 @@ export function ConnectionList({
   onUpdateLabel,
   onUpdateDir,
   onUpdateColor,
+  onUpdateRoute,
 }: {
   block: ComposeBlock;
   allBlocks: ComposeBlock[];
@@ -422,6 +432,10 @@ export function ConnectionList({
   // dir case). A non-empty string is a hex color, validated
   // on save by the zod regex in `core/compose-boards.ts`.
   onUpdateColor: (connectionId: string, color: string | undefined) => void;
+  // v0.6.20: routing style. The React layer calls this with
+  // the next route value (`"curve"` or `"orthogonal"`); the
+  // connection-list select invokes it directly.
+  onUpdateRoute: (connectionId: string, route: "curve" | "orthogonal") => void;
 }) {
   const t = useT();
   const outgoing = connections.filter((c) => c.from === block.id);
@@ -598,6 +612,30 @@ export function ConnectionList({
                   ↺
                 </button>
               ) : null}
+              {/* v0.6.20: routing style. Sits next to the color
+                picker so the user can flip a connection from
+                the original cubic bezier ("curve") to a
+                3-segment right-angle polyline ("orthogonal")
+                in one click. Same omit-the-default semantics
+                as `dir` — `c.route` is undefined for v0.6.19
+                boards and the select reads "curve" because
+                that's what the renderer falls back to. */}
+              <select
+                className="compose-connection-route-select"
+                value={c.route ?? "curve"}
+                aria-label={t("compose.connection.route.label")}
+                title={t("compose.connection.route.label")}
+                onChange={(e) =>
+                  onUpdateRoute(c.id, e.target.value as "curve" | "orthogonal")
+                }
+              >
+                <option value="curve">
+                  {t("compose.connection.route.curve")}
+                </option>
+                <option value="orthogonal">
+                  {t("compose.connection.route.orthogonal")}
+                </option>
+              </select>
             </div>
           </li>
         );

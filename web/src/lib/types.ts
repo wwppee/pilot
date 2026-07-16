@@ -589,6 +589,29 @@ export type ConnectionDirection = "forward" | "backward" | "bidirectional";
  */
 export type ConnectionColor = string;
 
+/**
+ * v0.6.20: routing style of the connection line.
+ *
+ * - `"curve"` (default when missing) — the original cubic
+ *   bezier: smooth horizontal curve from source right edge
+ *   to target left edge, with control points at half the
+ *   distance. The arrow head points along the tangent at
+ *   the end. Best for the "flowing diagram" look.
+ * - `"orthogonal"` — a 3-segment right-angle path: right
+ *   from source to midX, up/down to target's Y, right to
+ *   target. The arrow head still sits at the end of the
+ *   last horizontal segment so the existing marker logic
+ *   (orient="auto-start-reverse") keeps working unchanged.
+ *   Best when the user wants a Visio / Lucidchart look or
+ *   is connecting blocks on a strict grid.
+ *
+ * Block-center avoidance (lifting the route above a blocking
+ * block) is a separate concern — the v0.6.20 minimum is just
+ * the curve vs orthogonal toggle. A future version can add
+ * an A* grid router on top without changing this enum.
+ */
+export type ConnectionRoute = "curve" | "orthogonal";
+
 export interface ComposeConnection {
   /** Stable connection id (uuid). Keeps history entries small. */
   id: string;
@@ -613,6 +636,14 @@ export interface ComposeConnection {
    * round-trips through v0.6.19 byte-identical.
    */
   color?: ConnectionColor;
+  /**
+   * v0.6.20: routing style. Missing means "curve" (the
+   * v0.6.19 default — original cubic bezier). Setting it to
+   * "orthogonal" switches the renderer to a 3-segment
+   * right-angle path. Same omit-the-default pattern so a
+   * v0.6.19 board round-trips through v0.6.20 byte-identical.
+   */
+  route?: ConnectionRoute;
 }
 
 /**
@@ -644,7 +675,7 @@ export interface BoardInput {
   name: string;
   blocks: ComposeBlock[];
   connections: ComposeConnection[];
-  version: 1 | 2 | 3 | 4 | 5;
+  version: 1 | 2 | 3 | 4 | 5 | 6;
 }
 
 export interface ComposeState {
@@ -666,8 +697,12 @@ export interface ComposeState {
    *  - 5: v0.6.19+ — connections may have `color` (hex CSS
    *    color string). Missing `color` falls back to the theme
    *    accent, so v0.6.18 boards render unchanged.
+   *  - 6: v0.6.20+ — connections may have `route` ("curve"
+   *    or "orthogonal"). Missing `route` falls back to the
+   *    original cubic bezier ("curve"), so v0.6.19 boards
+   *    render unchanged.
    */
-  version: 3 | 4 | 5;
+  version: 3 | 4 | 5 | 6;
   /** ISO timestamp of last save. */
   updatedAt: string;
   /** Optional human-readable name for this layout. */

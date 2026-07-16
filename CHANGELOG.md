@@ -2,6 +2,99 @@
 
 ## Unreleased
 
+### v0.6.20 — Per-edge routing style (curve / orthogonal)
+
+The `/compose` inspector now lets each connection choose between
+the original cubic bezier (`"curve"`, the v0.6.19 look) and a
+3-segment right-angle polyline (`"orthogonal"`, Visio /
+Lucidchart style). The choice is per-edge, so a single board
+can mix both: a "main flow" line curves smoothly while a
+"control plane" line goes through right angles.
+
+**Scope of v0.6.20 (deliberately minimal)**
+
+- The two routing styles are the v0.6.20 surface — pick
+  one, the renderer takes care of the rest.
+- **Block-center avoidance is out of scope.** A connection
+  that goes through other blocks in the middle will still
+  do so with `"orthogonal"`. A real A* grid router (or
+  visibility-graph) on top of this enum is a separate
+  concern and would need its own release.
+
+**Schema**
+
+- **`ComposeConnection.route?: "curve" | "orthogonal"`**
+  (default `"curve"` when missing). Same omit-the-default
+  pattern as `dir` (v0.6.18) and `color` (v0.6.19): a
+  v0.6.19 board round-trips through v0.6.20 byte-identical.
+- **Schema bumped to v6**. v1 / v2 / v3 / v4 / v5 boards
+  continue to load — `route` defaults to `"curve"` when
+  missing, so v0.6.20 is fully backward-compatible with
+  v0.6.19 saves.
+
+**UI**
+
+- **ConnectionPath** uses a single SVG `<path>` for both
+  styles. The `curve` case is the original `C ...` cubic
+  bezier; the `orthogonal` case is a 3-segment `M ... L
+  ... L ... L ...` polyline (right → up/down → right).
+  Both end with a horizontal segment, so the v0.6.18
+  marker logic (`markerStart` / `markerEnd` with
+  `orient="auto-start-reverse"`) keeps working without any
+  marker changes. The `data-route` attribute is exposed
+  on the `<g>` for test selectors.
+- **Inspector** gets a 5th control next to the color
+  picker: a `<select>` with the two options. The label
+  ("Routing" / "路径") and option labels ("Curve" / "曲线"
+  and "Orthogonal" / "直角") are i18n'd.
+
+**History**
+
+- New history entry type `updateConnectionRoute` (one
+  concern per entry, same pattern as the four other
+  connection-level history types). Stores `{ connectionId,
+  fromRoute, toRoute }` so undo/redo round-trips without
+  re-fetching live state. `toRoute = ""` and `toRoute =
+  "curve"` both mean "default" — when restoring the
+  default we `delete next.route` rather than set it to
+  `"curve"`, so the persisted JSON stays minimal and
+  v0.6.20 ↔ v0.6.19 round-trip is lossless.
+
+**i18n**
+
+- **4 new keys**: `compose.connection.route.label`,
+  `.curve`, `.orthogonal` (the option labels, both
+  translated) and `compose.announce.connectionRouteUpdated`
+  for the live-region message. The `{route}` placeholder
+  receives the translated label, not the raw enum value.
+
+**Stats**
+
+- root: **551/551** ✓ (was 548; +3 in `compose-boards.test.ts` —
+  v6 schema acceptance, non-enum rejection, v5 backward
+  compat).
+- web: **225/225** ✓ (was 221; +4 in `compose-history.test.ts` —
+  set orthogonal, drop back to curve (delete key),
+  explicit value swap, invertEntry round-trip).
+- format:check root + web: ✓
+- lint (root `eslint src test --max-warnings 0`): ✓
+- tsc root + web: ✓
+- production build: not run this round (pure SVG-path
+  variant, no production-affecting logic; same precedent
+  as v0.6.19).
+
+**Deliberately NOT done (v0.6.21+ backlog)**
+
+- block-center avoidance for orthogonal routes (real A*
+  grid router or visibility-graph on top of the v0.6.20
+  enum)
+- ComposeBoard.tsx hooks/state 抽离
+- placeholder parameter audit (15 keys) — see v0.6.16
+- per-direction palette (e.g. "all forward connections get
+  this color") — deferred; per-edge is the v0.6.19 minimum
+  and the schema's `color?: string` field already supports
+  a future palette expansion without a v6 bump.
+
 ### v0.6.19 — Per-edge connection color (hex picker)
 
 The `/compose` inspector now offers a native color picker
@@ -88,7 +181,8 @@ palette.
 
 **Deliberately NOT done (v0.6.20+ backlog)**
 
-- auto-route 避开 block 中心
+- block-center avoidance for orthogonal routes (real A*
+  grid router on top of the v0.6.20 enum)
 - ComposeBoard.tsx hooks/state 抽离
 - placeholder parameter audit (15 keys) — see v0.6.16
 - per-direction palette (e.g. "all forward connections get

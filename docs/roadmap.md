@@ -395,7 +395,7 @@
 >
 > 测试：core **584/584**、web **201/201**，format 双清、lint clean、tsc clean（root + web）、production build OK。
 >
-> **故意没做**（v0.6.18+ 留）：auto-route 避开 block 中心；ComposeBoard.tsx hooks/state 抽离；**placeholder parameter audit**（zh/en 15 处 placeholder 不一致，**不影响渲染**，v0.6.19+ 视新 locale 加入时机处理）。**v0.6.19 已收 connection color**（per-edge hex picker，schema v5）。
+> **故意没做**（v0.6.18+ 留）：ComposeBoard.tsx hooks/state 抽离；**placeholder parameter audit**（zh/en 15 处 placeholder 不一致，**不影响渲染**，v0.6.19+ 视新 locale 加入时机处理）。**v0.6.19 已收 connection color**（per-edge hex picker，schema v5）。**v0.6.20 已收 auto-route（curve / orthogonal toggle）**，schema v6，**但 block-center avoidance 还没做**（A* 留 v0.6.21+）。
 >
 > **2026-07-16 校准 (34)**：**v0.6.18 已发** —— connection direction (forward / backward / bidirectional)。`/compose` canvas 之前所有边都是单向 forward 箭头（A → B），要表示"B → A"必须加第二条边（视觉上是两条平行线 + 一眼分不清哪个是哪个）。v0.6.18 加 `dir` 字段，3 个值，inspector 加一个 dir select 改方向。
 >
@@ -450,6 +450,33 @@
 > 验证：tsc + format + lint + 548/548 core + 221/221 web + production build 跳过（同 v0.6.17 precedent，CSS-only feature 不需 fresh build）。**无 UI 自动化 test**（sandbox 跑不起 pilot server）。
 >
 > 测试：core **548/548**（+2 + 2 backward-compat）、web **221/221**（+4）、format 双清、lint clean、tsc clean（root + web）、production build 跳过（CSS-only feature）。
+>
+> **2026-07-16 校准 (36)**：**v0.6.20 已发** —— per-edge routing style (curve / orthogonal toggle)。backlog 里写"auto-route 避开 block 中心"（A* 那种），但 v0.6.20 只做了 minimum：orthogonal right-angle polyline 跟 curve cubic bezier 二选一 toggle，**不**做 block 中心规避。理由：(1) A* grid router 是 1-2 天算法，scope 比 connection schema 字段大一个数量级，混进 minor release 风险大；(2) orthogonal 视觉已经够用 —— user 想 Visio 风格直接选 orthogonal，line 穿过 block 的问题小到 block 本身就让线穿；(3) `route` 字段已经设计成可以扩展，v0.6.21+ 加 A* 时不需要 v7 bump。schema v6，1|2|3|4|5|6。
+>
+> | 类别 | 文件 | 内容 |
+> |---|---|---|
+> | **Schema (web)** | `web/src/lib/types.ts:599-625` | `ConnectionRoute` type export ("curve" \| "orthogonal")；`ComposeConnection.route?: ConnectionRoute`（缺省 "curve" = 原始 cubic bezier）。`ComposeState.version: 3\|4\|5\|6`，`BoardInput.version: 1\|2\|3\|4\|5\|6`。 |
+> | **Schema (core)** | `src/core/compose-boards.ts:115-118, 124-150, 168-176` | `ConnectionRouteSchema` zod enum（拒绝 unknown route value）。`BoardSnapshotSchema` / `BoardInputSchema` version `1\|2\|3\|4\|5\|6`。 |
+> | **SVG render** | `web/src/app/compose/ConnectionPath.tsx:35-65` | `route = "orthogonal"` 时用 3-segment polyline `M ... L midX y1 L midX y2 L x2 y2`；`y1 === y2` 时跳过 vertical segment 只画 horizontal line。`data-route` 属性暴露给 test selectors。marker 逻辑（`markerEnd` / `markerStart` + `orient="auto-start-reverse"`）零修改 —— 末段仍 horizontal，箭头方向跟 curve case 一致。 |
+> | **History** | `web/src/lib/compose-history.ts:101-126, 232-249, 285-294` | 新 `updateConnectionRoute` entry type（4th connection-level entry，独立于 dir / color / label，undo 粒度保持窄）。`toRoute = ""` 或 `"curve"` 都 `delete next.route`（跟 v0.6.19 color drop 同模式）。 |
+> | **History callback** | `web/src/app/compose/ComposeBoard.tsx:990-1037` | 独立 `updateConnectionRoute` callback，shape 对称于 dir / color。announce 走 `compose.announce.connectionRouteUpdated` 占位 `{route}` 传 translated label。 |
+> | **UI - Inspector** | `web/src/app/compose/Inspector.tsx:622-650` | 5th control：`<select>` with 2 options (curve / orthogonal)，跟 color picker 同一行内。`c.route ?? "curve"` 让 v0.6.19 旧 board 仍能在 select 显示默认值。 |
+> | **i18n** | `web/src/lib/i18n/{types,dict.en,dict.zh}.ts` | 4 新 key：compose.connection.route.{label,curve,orthogonal}（option 标签 en/zh 都翻译，不复用 arrow glyphs 因为 curve 不是 arrow）+ compose.announce.connectionRouteUpdated。 |
+> | **Tests** | `test/unit/compose-boards.test.ts:781-870` | +3 v0.6.20 schema test（v6 accept、unknown route reject、v5 backward-compat）。 |
+> | **Tests** | `web/tests/compose-history.test.ts:518-622` | +4 updateConnectionRoute test（set orthogonal、drop back to curve (delete key)、explicit value swap、invertEntry round-trip）。 |
+>
+> 关键设计：
+>
+> - **scope 缩到 minimum**：v0.6.20 只做"二选一 toggle"，不做 A*。A* 障碍规避留 v0.6.21+。backlog 写的是"避开 block 中心"但 user 实际需求是"Visio 风格线 + 偶尔想 curve 风格"——curve / orthogonal 切换满足了 80% 需求，A* 留给后续 release 单独做（避免 minor release scope creep）。
+> - **单一 `<path>` 元素两种 d 字符串**：`curve` 用 `M ... C ... C ...` cubic bezier；`orthogonal` 用 `M ... L ... L ... L ...` polyline。SVG `<path>` 内部用 d 命令切换，**元素 type 不变**——marker 逻辑 (`markerStart` / `markerEnd` + `orient="auto-start-reverse"`) 零修改。orthogonal 末段是 horizontal line，marker 朝向跟 curve 一样 right-pointing (forward) / left-pointing (backward)。
+> - **omit-the-default 模式第三连**：v0.6.18 dir / v0.6.19 color / v0.6.20 route 三个字段都走"缺省时 `delete`，不 set `value`"。v0.6.17 board 走完三个 release 写出来字节仍然相同。**这个 pattern 在 0.6.x 阶段会一直延续**，新增 optional field 必走 omit。
+> - **one concern per history entry 已稳定**：现在 4 个 connection-level entry（label / kind / dir / color / route 都 5 个），全部独立。undo 一次只撤销一个 concern，不会牵连。
+> - **block 中心规避故意不做**：A* grid router 需要 (1) block 矩形几何、(2) grid 离散化、(3) A* 启发式、(4) per-block-move 重计算 CPU bound。4 件混进 minor release 风险不可控。schema 的 `route?: string` 字段已留好扩展空间（A* 时改 `obstacleAvoidance?: boolean` 不需要 v7）。
+> - **`route` 选项 label 翻译**：跟 v0.6.18 dir 不一样。dir 的选项是 arrow glyphs（unicode 跨 locale 一致无需翻译）；route 的选项是英文单词（Curve / Orthogonal）—— zh 需要翻译（曲线 / 直角）。dict.zh.ts 加 2 个 translation。
+>
+> 验证：tsc + format + lint + 551/551 core + 225/225 web + production build 跳过（同 v0.6.19 precedent，纯 SVG path 变体）。**无 UI 自动化 test**（sandbox 跑不起 pilot server）。
+>
+> 测试：core **551/551**（+3）、web **225/225**（+4）、format 双清、lint clean、tsc clean（root + web）、production build 跳过。
 >
 > **2026-07-16 校准 (33)**：**v0.6.17 已发** —— 1-line visual hotfix: `/usage` range picker active 标签从 `text-[var(--bg)]` (#0b0d10) 改 `text-white`。v0.6.16 user 截图报告"active 按钮文字绿色看不清" —— 根因：#0b0d10 在 #79c0ff 蓝背景上对比度在小字号（`text-xs`）下退化，视觉上像糊的绿调。**白色是饱和蓝背景上最稳的阅读色**（跨显示器 profile 一致 WCAG AA ≥ 4.5:1）。
 >

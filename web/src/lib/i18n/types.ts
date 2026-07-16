@@ -573,6 +573,16 @@ export type Dict = {
   "compose.connection.color.default": string;
   "compose.connection.color.reset": string;
   "compose.announce.connectionColorUpdated": string;
+  // v0.6.20: routing style. Same omit-the-default pattern as
+  // `dir` and `color` — missing `route` means "curve" (the
+  // v0.6.19 look). "orthogonal" is a 3-segment right-angle
+  // polyline (Visio / Lucidchart style). The {route} placeholder
+  // in the announcement receives the translated label, not
+  // the raw enum value.
+  "compose.connection.route.label": string;
+  "compose.connection.route.curve": string;
+  "compose.connection.route.orthogonal": string;
+  "compose.announce.connectionRouteUpdated": string;
   "compose.connectionLabel.tooltip": string;
   "compose.announce.connectionLabelUpdated": string;
   // v0.6.18: live-region message when the user flips a

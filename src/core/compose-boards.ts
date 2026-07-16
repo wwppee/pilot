@@ -121,6 +121,25 @@ const ConnectionColorSchema = z
   .optional();
 
 /**
+ * v0.6.20: routing style of the connection line.
+ *
+ * - `"curve"` (default when missing) — cubic bezier, the
+ *   v0.6.19 look.
+ * - `"orthogonal"` — 3-segment right-angle polyline (the
+ *   same `<path>` element with multiple `L` commands; the
+ *   marker-end / marker-start logic from v0.6.18 keeps
+ *   working because the last segment is still horizontal).
+ *
+ * Block-center avoidance is out of scope for v0.6.20 —
+ * adding a real A* grid router on top is a separate
+ * concern. This enum gives us the rendering styles; a
+ * future version can add a `routeHints?: { waypoints }`
+ * field or a sibling `obstacleAvoidance?: boolean` without
+ * a v7 bump.
+ */
+const ConnectionRouteSchema = z.enum(["curve", "orthogonal"]);
+
+/**
  * One edge between two blocks. v0.6.7 baseline + v0.6.9 free-text
  * label and `ConnectionLabelKind` enum (the enum is verified as a
  * string here — web UI prevents anything else from being set).
@@ -131,6 +150,10 @@ const ConnectionColorSchema = z
  *
  * v0.6.19: optional `color` field. Hex CSS color used as the SVG
  * stroke; missing falls back to the theme accent (currentColor).
+ *
+ * v0.6.20: optional `route` field. "curve" (default) or
+ * "orthogonal". Missing falls back to "curve", so v0.6.19
+ * boards render unchanged.
  */
 const ConnectionSchema = z.object({
   id: z.string().min(1),
@@ -142,6 +165,7 @@ const ConnectionSchema = z.object({
     .optional(),
   dir: ConnectionDirectionSchema.optional(),
   color: ConnectionColorSchema,
+  route: ConnectionRouteSchema.optional(),
 });
 
 /**
@@ -149,10 +173,10 @@ const ConnectionSchema = z.object({
  * `createdAt` (never changes after first save) in addition to
  * the `ComposeState`-shaped payload.
  *
- * v0.6.19: `version` is now `1 | 2 | 3 | 4 | 5`. Boards saved at v4
- * or earlier continue to load — the loader accepts all five and
- * `color` defaults to "use theme accent" when missing. New writes
- * from the web client land at v5.
+ * v0.6.20: `version` is now `1 | 2 | 3 | 4 | 5 | 6`. Boards
+ * saved at v5 or earlier continue to load — the loader accepts
+ * all six and `route` defaults to `"curve"` when missing. New
+ * writes from the web client land at v6.
  */
 export const BoardSnapshotSchema = z.object({
   id: z.string().min(1),
@@ -165,6 +189,7 @@ export const BoardSnapshotSchema = z.object({
     z.literal(3),
     z.literal(4),
     z.literal(5),
+    z.literal(6),
   ]),
   updatedAt: z.string(),
   createdAt: z.string(),
@@ -185,8 +210,9 @@ export const BoardInputSchema = z.object({
       z.literal(3),
       z.literal(4),
       z.literal(5),
+      z.literal(6),
     ])
-    .default(5),
+    .default(6),
 });
 
 export type BoardInput = z.infer<typeof BoardInputSchema>;

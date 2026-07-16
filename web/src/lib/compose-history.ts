@@ -100,6 +100,26 @@ export type HistoryEntry =
       connectionId: string;
       fromColor: string;
       toColor: string;
+    }
+  | {
+      /**
+       * v0.6.20: flip a connection's routing style between
+       * "curve" (the v0.6.19 cubic bezier) and "orthogonal"
+       * (a 3-segment right-angle polyline). The same omit-the-
+       * default pattern as `dir` and `color`: `""` (empty
+       * string) on either side means "curve" — we drop the
+       * `route` key on the connection rather than set it to
+       * `"curve"`, so the persisted JSON stays minimal and
+       * v0.6.20 ↔ v0.6.19 round-trip is byte-identical.
+       *
+       * One concern per entry, same as the other three
+       * connection-level history types: undoing a route
+       * change doesn't undo a dir / color / label change.
+       */
+      type: "updateConnectionRoute";
+      connectionId: string;
+      fromRoute: "curve" | "orthogonal" | "";
+      toRoute: "curve" | "orthogonal" | "";
     };
 
 export interface HistoryState {
@@ -235,6 +255,25 @@ export function applyEntry(
       });
       return { state: { ...state, connections: updated }, selectedId: null };
     }
+    case "updateConnectionRoute": {
+      // v0.6.20: same omit-the-default pattern. `""` toRoute
+      // (or the literal string "curve") means "use the original
+      // cubic bezier" — we drop the `route` key on the
+      // connection object so the persisted JSON stays minimal
+      // and v0.6.20 ↔ v0.6.19 round-trip is lossless.
+      const conns = state.connections ?? [];
+      const updated = conns.map((c) => {
+        if (c.id !== entry.connectionId) return c;
+        const next: ComposeConnection = { ...c };
+        if (entry.toRoute === "" || entry.toRoute === "curve") {
+          delete next.route;
+        } else {
+          next.route = entry.toRoute;
+        }
+        return next;
+      });
+      return { state: { ...state, connections: updated }, selectedId: null };
+    }
   }
 }
 
@@ -287,6 +326,14 @@ export function invertEntry(entry: HistoryEntry): HistoryEntry {
         connectionId: entry.connectionId,
         fromColor: entry.toColor,
         toColor: entry.fromColor,
+      };
+    case "updateConnectionRoute":
+      // Same swap pattern as the dir / color cases.
+      return {
+        type: "updateConnectionRoute",
+        connectionId: entry.connectionId,
+        fromRoute: entry.toRoute,
+        toRoute: entry.fromRoute,
       };
   }
 }
