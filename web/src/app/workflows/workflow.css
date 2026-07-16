@@ -1,0 +1,55 @@
+/**
+ * v0.7.0: workflow editor styles.
+ *
+ * Same lesson as /compose's mobile fix (v0.6.23): at <1024px
+ * the body is a single flex column so all panels stack and
+ * the page never overflows. At ≥1024px the body is a 2-column
+ * grid: steps on the left (forms the user is editing) +
+ * preview on the right (the SVG the user is reading).
+ *
+ * The mobile-first default is intentional — the desktop
+ * editor is a "nice to have" (you can also edit on a wide
+ * screen), the mobile editor is a "must have" (people do
+ * real work on phones).
+ */
+
+.workflow-editor-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+@media (min-width: 1024px) {
+  .workflow-editor-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.workflow-steps {
+  /* v0.7.0: cap the steps panel so a 50-step workflow
+     doesn't push the preview off the viewport. The panel
+     scrolls internally; the editor body itself stays
+     within the viewport. */
+  max-height: calc(100vh - 360px);
+  overflow-y: auto;
+}
+
+.workflow-preview {
+  /* v0.7.0: sticky-ish on desktop so the preview stays
+     visible while the user scrolls through long step
+     lists. We don't actually use position: sticky because
+     the parent (.workflow-editor-body) is a CSS grid and
+     sticky inside a grid is unreliable across browsers
+     — instead the user can scroll within the panel. */
+  max-height: calc(100vh - 360px);
+  overflow-y: auto;
+}
+
+.workflow-step {
+  border: 1px solid var(--border);
+}
+
+.workflow-step[data-selected="true"] {
+  border-color: var(--accent);
+}

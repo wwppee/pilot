@@ -52,6 +52,9 @@ import type {
   BoardSummary,
   Plan,
   PlanToolSuggestion,
+  Workflow,
+  WorkflowInput,
+  WorkflowSummary,
 } from "./types.js";
 
 /** All browser requests go through this Next.js rewrite. */
@@ -390,6 +393,39 @@ export const browserApi = {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ goal }),
     }),
+
+  // ─── Workflows (v0.7.0) ─────────────────────────────────
+  // Reusable agent workflows — list of LLM-powered steps
+  // that the user can compose in the visual editor and (in a
+  // future release) run. v0.7.0 ships CRUD only.
+  workflows: () => browserFetch<WorkflowSummary[]>("/workflows"),
+  workflow: async (id: string): Promise<Workflow | null> => {
+    try {
+      return await browserFetch<Workflow>(`/workflows/${id}`);
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (status === 404) return null;
+      throw e;
+    }
+  },
+  saveWorkflow: (id: string, input: WorkflowInput) =>
+    browserFetch<Workflow>(`/workflows/${id}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    }),
+  deleteWorkflow: async (id: string): Promise<boolean> => {
+    try {
+      await browserFetch<{ removed: boolean }>(`/workflows/${id}`, {
+        method: "DELETE",
+      });
+      return true;
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (status === 404) return false;
+      throw e;
+    }
+  },
 };
 
 /** Convenience alias: most client code can do `import { api as ... }`. */

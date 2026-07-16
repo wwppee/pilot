@@ -601,6 +601,15 @@ export async function startServer(
     return true;
   };
 
+  // v0.7.0: same boundary check for workflow ids, but the
+  // regex is stricter (kebab-case only, no underscores / uppercase)
+  // because the workflow id is also a command-line identifier
+  // (`pilot workflow show <id>` is planned for v0.7.3+).
+  // Mirrors `isValidWorkflowId` in core/workflow.ts.
+  const isValidWorkflowId = (id: string): boolean => {
+    return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id) && id.length <= 64;
+  };
+
   app.get<{ Params: { id: string } }>(
     "/compose/boards/:id",
     async (req, reply) => {
@@ -717,6 +726,65 @@ export async function startServer(
     const removed = await service.deletePolicy(req.params.name);
     return { removed };
   });
+
+  // ─── Workflows (v0.7.0) ──────────────────────────────
+  //
+  // v0.7.0 only ships the persistence + CRUD endpoints. The
+  // runtime ("Run workflow") lands in a later release; for
+  // now the editor can save / load / delete / list. The web
+  // client does "duplicate" by load + modify-id + save, so
+  // there's no /duplicate endpoint here.
+
+  app.get("/workflows", async () => service.listWorkflows());
+
+  app.get<{ Params: { id: string } }>("/workflows/:id", async (req, reply) => {
+    if (!isValidWorkflowId(req.params.id)) {
+      await reply.code(400).send({ error: "invalid workflow id" });
+      return;
+    }
+    const wf = await service.getWorkflow(req.params.id);
+    if (!wf) {
+      await reply.code(404).send({ error: "workflow not found" });
+      return;
+    }
+    return wf;
+  });
+
+  app.put<{
+    Params: { id: string };
+    Body: import("../core/workflow.js").WorkflowInput;
+  }>("/workflows/:id", async (req, reply) => {
+    if (!isValidWorkflowId(req.params.id)) {
+      await reply.code(400).send({ error: "invalid workflow id" });
+      return;
+    }
+    // Path id wins over body id — it's the canonical file
+    // location; the body's id is ignored so the URL is
+    // always the source of truth.
+    try {
+      const saved = await service.saveWorkflow({
+        ...req.body,
+        id: req.params.id,
+      });
+      return saved;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "save failed";
+      await reply.code(400).send({ error: msg });
+      return;
+    }
+  });
+
+  app.delete<{ Params: { id: string } }>(
+    "/workflows/:id",
+    async (req, reply) => {
+      if (!isValidWorkflowId(req.params.id)) {
+        await reply.code(400).send({ error: "invalid workflow id" });
+        return;
+      }
+      const removed = await service.deleteWorkflow(req.params.id);
+      return { removed };
+    },
+  );
 
   app.post<{ Params: { name: string } }>("/policies/:name/apply", async (req) =>
     service.applyPolicy(req.params.name),

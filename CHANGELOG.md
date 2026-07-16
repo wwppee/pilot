@@ -2,6 +2,155 @@
 
 ## Unreleased
 
+### v0.7.0 — `/workflows` MVP (reusable agent workflow templates)
+
+This is the first release of the "workflow" concept that
+replaces the v0.4-era L1/L2/L3/L4 capability layers. The
+biggest product pivot since v0.4: instead of "absorb a npm
+package and file it under L1 or L2", the user now composes
+**sequences of LLM-powered steps** in a visual editor.
+Each step holds its own model configuration (provider +
+model + key ref + system prompt + tools), edges describe
+the data flow, and the user can save the result as a
+reusable template. The runtime (actually driving a pi
+session through the steps) lands in v0.7.3+.
+
+**This is a major version bump** because the product
+position changed, even though no field on a /compose
+connection changed. The /compose page itself is
+unchanged.
+
+**Schema**
+
+- **`Workflow`**: `{ id, name, description, version: 1,
+  nodes[], edges[], metadata: { createdAt, updatedAt } }`.
+  Persisted as JSON at `~/.pilot/workflows/<id>/workflow.json`
+  (same one-file-per-record pattern as /compose/boards).
+- **`WorkflowNode`**: `{ id, name, kind: "step", model:
+  { provider, model, apiKeyRef? }, systemPrompt, inputTemplate,
+  outputVar, tools[], onFailure: "stop"|"skip"|"retry"|"escalate",
+  retryCount?, escalateToModel?, position: {x, y} }`. Each
+  step is one LLM call with its own model config — the user
+  can mix-and-match providers per step.
+- **`WorkflowEdge`**: `{ id, from, to }`. Simple directed edge
+  describing "the to-step's input depends on the from-step's
+  output". v0.7.1+ will add optional `mapping` for field-level
+  data transforms; the data model is shaped for it.
+- **`WorkflowInput`** (separate type, no `metadata` field):
+  what the web client sends to the server. The server fills
+  in `createdAt` / `updatedAt` and ignores any client values
+  to prevent timestamp forgery. This is the same
+  "input vs persisted" split that `BoardInput` /
+  `BoardSnapshot` use.
+
+**UI**
+
+- **`/workflows`** (new): the list page. Server component
+  shell (static title + subtitle) + `WorkflowListView` client
+  island for the interactive parts. Shows every saved
+  workflow as a card with [Open] [Duplicate] [Delete]. The
+  "New workflow" button opens a small dialog asking for a
+  kebab-case id — validation regex matches the server's
+  zod schema, so the contract is one definition not two.
+  Duplicate = load + new id + save (3 lines, no server
+  endpoint needed). Nav entry added next to /profiles.
+- **`/workflows/[id]`** (new): the editor. Single client
+  island (the whole thing is interactive, no benefit to
+  splitting). Top bar has the workflow name + description
+  + Save (disabled when not dirty) / Duplicate / Delete /
+  Auto-layout. Body has two panels at ≥1024px (steps on
+  the left, SVG preview on the right) and a single column
+  at <1024px (applying the v0.6.23 mobile-layout lesson
+  — `flex` column with explicit height constraints).
+- **Step form cards**: each step is a card with editable
+  fields (name, provider, model, system prompt, input
+  template, output var, tools, on-failure strategy +
+  retry count or escalation model). The form is the
+  primary interaction for v0.7.0; drag-and-drop in the
+  preview is a v0.7.1 concern.
+- **SVG preview**: read-only BFS layout (sources at top,
+  depth = max predecessor depth + 1) that draws each
+  step as a box and each edge as a bezier curve. The
+  "Auto-layout" button writes the BFS-computed positions
+  back to each node's `position` field so the layout
+  survives reload.
+- **Live-region announcements** on every save / delete /
+  duplicate action so screen readers can confirm the
+  outcome without focus shifting.
+
+**History**
+
+- This release is the v0.4 L1-L4 capability layers' replacement
+  (per the §11 product reframe in pilot.md). The old
+  `Capability` JSON shape (with `sources: [{ mode: "L1" |
+  "L2" | "L3" | "L4" }]`) is **not** part of v0.7.0. v0.7.0
+  capability = a workflow; a workflow = a sequence of
+  LLM-powered steps. v0.4's "L1-referenced" was a dead
+  abstraction and v0.7.0 deletes it.
+
+**i18n**
+
+- **~40 new keys** under the `workflows.*` namespace. Every
+  field label, every on-failure option, every provider
+  name has a translation. The placeholder consistency test
+  (v0.6.21) confirms 0 mismatches across 975 → 1015 shared
+  keys.
+- **2 new nav keys** (`nav.workflows`, `nav.hint.workflows`)
+  for the new sidebar entry.
+
+**Stats**
+
+- root: **622/622** ✓ (was 551; +9 in `workflow.test.ts` —
+  kebab-case validation, empty list, save→load round-trip,
+  createdAt preservation, list summaries, malformed-dir
+  skip, idempotent delete, invalid id rejection at both
+  save and load)
+- web: **245/245** ✓ (was 226; +7 in `workflow-layout.test.ts` —
+  empty workflow, single node, linear A→B→C, fan-out,
+  cycle handling, autoLayout integer positions, identity
+  preservation; +1 nav update for the new entry, +11
+  existing tests updated to handle the 16th nav item)
+- format:check root + web: ✓
+- lint (root `eslint src test --max-warnings 0`): ✓
+- tsc root + web: ✓
+- production build: not run (UI / CRUD only; no production-
+  affecting logic)
+
+**Files**
+
+| Area | Files |
+|------|-------|
+| Data model | `web/src/lib/types.ts` (+5 types: Workflow, WorkflowNode, WorkflowEdge, WorkflowInput, WorkflowSummary) |
+| Server core | `src/core/workflow.ts` (new, 250 lines — zod schemas + persistence helpers, mirroring `compose-boards.ts`) |
+| Service | `src/core/service.ts`, `src/core/service-impl.ts` (4 new methods: list / get / save / delete) |
+| API routes | `src/server/server.ts` (4 new endpoints under `/workflows`) |
+| Browser API | `web/src/lib/pilot-browser.ts`, `web/src/lib/pilot.ts` (matching browser-safe wrappers) |
+| List page | `web/src/app/workflows/page.tsx`, `WorkflowListView.tsx` |
+| Editor | `web/src/app/workflows/[id]/page.tsx`, `WorkflowEditor.tsx` (~800 lines — the editor + the BFS layout module) |
+| Styles | `web/src/app/workflows/workflow.css` |
+| i18n | `web/src/lib/i18n/types.ts` (+~40 keys), `dict.en.ts`, `dict.zh.ts` |
+| Nav | `web/src/components/NavLinks.tsx` (1 new entry) |
+| Tests | `test/unit/workflow.test.ts` (9 tests), `web/tests/workflow-layout.test.ts` (7 tests) |
+| Docs | `CHANGELOG.md`, `AGENTS.md` |
+| Versions | `package.json`, `web/package.json` (both → 0.7.0) |
+
+**Deliberately NOT done (v0.7.1+ backlog)**
+
+- Drag-and-drop on the SVG preview (rearrange steps visually,
+  not via the form).
+- Field-level data mapping on edges (today the whole
+  `outputVar` is bound; v0.7.1 may let the user pick a
+  subset).
+- **Run** — actually drive a pi session through the node
+  sequence. The infrastructure is there: `outputVar` is
+  in the model, `inputTemplate` references it via
+  `{{steps.<id>.<outputVar>}}`. v0.7.3 will add the runtime.
+- Cycle handling in the BFS layout (currently seeds
+  from the lex-first node; a v0.7.1+ visual indicator
+  would surface the cycle to the user).
+- The 4-button UX polish on /usage (range buttons can be
+  pressed unintentionally on touch). Carried from v0.6.16.
+
 ### v0.6.23 — `/compose` mobile layout hotfix (P1 bug from user testing)
 
 User reported (with screenshot at `~/Desktop/pilot-bug-compose-layout-collapse.png`)

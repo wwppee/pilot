@@ -19,6 +19,8 @@ const en: Dict = {
   "nav.context": "Context",
   "nav.policy": "Policy",
   "nav.compose": "Compose",
+  // v0.7.0
+  "nav.workflows": "Workflows",
   "nav.profiles": "Profiles",
   "nav.forge": "Forge",
   "nav.capabilities": "Capabilities",
@@ -38,6 +40,7 @@ const en: Dict = {
   "nav.hint.forge": "Create / package your own extension",
   "nav.hint.policy": "Tool safety rules + confirm/block lists",
   "nav.hint.compose": "Try composable Box Garden prototypes",
+  "nav.hint.workflows": "Reusable agent workflow templates",
   "nav.hint.profiles": "Saved capability bundles (model + tools)",
   "nav.hint.help": "Glossary + how-tos for beginners",
   // v0.5.21: welcome banner content.
@@ -1254,5 +1257,70 @@ const en: Dict = {
   "compose.boards.toolbar.openBoards": "Boards",
   "compose.boards.toolbar.openBoardsTitle":
     "Browse / rename / delete saved boards",
+
+  // v0.7.0: workflows — reusable agent workflow templates.
+  // See `core/workflow.ts` for the persistence model and
+  // `/workflows` for the editor UI. The keys are kept small
+  // (one key per string, not per node / edge / etc.) so the
+  // translator's job is bounded.
+  "workflows.h1": "Workflows",
+  "workflows.subtitle":
+    "Reusable agent workflows — capture a proven pattern, change the variables, repeat.",
+  "workflows.empty": "No workflows yet.",
+  "workflows.empty.hint": "Create one to capture a proven pattern.",
+  "workflows.create": "New workflow",
+  "workflows.duplicate": "Duplicate",
+  "workflows.delete": "Delete",
+  "workflows.confirmDelete": "Delete this workflow? This can't be undone.",
+  "workflows.nodeCount": "{n} steps",
+  "workflows.edgeCount": "{n} connections",
+  "workflows.updatedAt": "Updated {when}",
+  "workflows.notFound": "Workflow not found.",
+  "workflows.newIdPrompt": "Workflow id",
+  "workflows.newIdHint": 'kebab-case identifier, e.g. "research-and-test"',
+  "workflows.invalidId":
+    "id must be kebab-case (lowercase letters, digits, and dashes)",
+  "workflows.field.name": "Name",
+  "workflows.field.description": "Description",
+  "workflows.field.id": "Id",
+  "workflows.field.provider": "Provider",
+  "workflows.field.model": "Model",
+  "workflows.field.apiKeyRef": "API key ref",
+  "workflows.field.systemPrompt": "System prompt",
+  "workflows.field.inputTemplate": "Input template",
+  "workflows.field.outputVar": "Output variable",
+  "workflows.field.tools": "Tools",
+  "workflows.field.onFailure": "On failure",
+  "workflows.field.position": "Position",
+  "workflows.field.retryCount": "Retry count",
+  "workflows.field.escalateToModel": "Escalate to model",
+  "workflows.onFailure.stop": "Stop the workflow",
+  "workflows.onFailure.skip": "Skip this step, continue",
+  "workflows.onFailure.retry": "Retry the same model",
+  "workflows.onFailure.escalate": "Retry with a stronger model",
+  "workflows.provider.anthropic": "Anthropic",
+  "workflows.provider.openai": "OpenAI",
+  "workflows.provider.google": "Google",
+  "workflows.provider.ollama": "Ollama (local)",
+  "workflows.provider.custom": "Custom endpoint",
+  "workflows.editor.addNode": "Add step",
+  "workflows.editor.removeNode": "Remove",
+  "workflows.editor.addEdge": "Connect to…",
+  "workflows.editor.removeEdge": "Disconnect",
+  "workflows.editor.noNodes": 'No steps yet. Click "Add step" to begin.',
+  "workflows.editor.noEdges":
+    "No connections yet. Steps run in the order you connect them.",
+  "workflows.editor.preview": "Preview",
+  "workflows.editor.save": "Save",
+  "workflows.editor.saved": "Saved.",
+  "workflows.editor.saveFailed": "Save failed. Check the id is kebab-case.",
+  "workflows.editor.duplicate": "Duplicate",
+  "workflows.editor.delete": "Delete",
+  "workflows.editor.layoutHint":
+    'Tip: the preview reflects the data model, not the order you added nodes in. Click "Auto-layout" to clean it up.',
+  "workflows.layoutBtn": "Auto-layout",
+  "workflows.savedAt": "Saved at {when}",
+  "workflows.editor.cancel": "Cancel",
+  "workflows.editor.open": "Open",
 };
 export default en;

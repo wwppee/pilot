@@ -177,6 +177,9 @@ import type {
   Plan,
   PlanEvent,
   PlanToolSuggestion,
+  Workflow,
+  WorkflowInput,
+  WorkflowSummary,
 } from "./types.js";
 
 export const api = {
@@ -432,6 +435,36 @@ export const api = {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ goal }),
     }),
+
+  // v0.7.0: workflows. CRUD only — runtime is a later release.
+  workflows: () => pilot<WorkflowSummary[]>("/workflows"),
+  workflow: async (id: string): Promise<Workflow | null> => {
+    try {
+      return await pilot<Workflow>(`/workflows/${id}`);
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (status === 404) return null;
+      throw e;
+    }
+  },
+  saveWorkflow: (id: string, input: WorkflowInput) =>
+    pilot<Workflow>(`/workflows/${id}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    }),
+  deleteWorkflow: async (id: string): Promise<boolean> => {
+    try {
+      await pilot<{ removed: boolean }>(`/workflows/${id}`, {
+        method: "DELETE",
+      });
+      return true;
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      if (status === 404) return false;
+      throw e;
+    }
+  },
 };
 
 function encodeName(name: string): string {

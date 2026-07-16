@@ -572,6 +572,158 @@ export type ConnectionLabelKind =
  */
 export type ConnectionDirection = "forward" | "backward" | "bidirectional";
 
+// ─── Workflows (v0.7.0) ──────────────────────────────────
+//
+// A Workflow is a reusable sequence of LLM-powered steps. Each
+// step (WorkflowNode) holds its own model configuration
+// (provider + model + key ref), so the user can mix-and-match
+// providers per step — e.g. a cheap Haiku for "extract the
+// function signatures" followed by a strong Sonnet for "write
+// the type-safe wrapper". The current step's `outputVar` can
+// be referenced in any subsequent step's `inputTemplate` as
+// `{{steps.<id>.outputVar}}`, so the data flow is explicit
+// rather than implicit.
+//
+// v0.7.0 ships a form-based editor (no visual canvas yet).
+// The data model is already shaped for a future visual
+// editor: each node has a `position` so the editor can render
+// them on a 2D plane, and the edges are simple id pairs so
+// they can be drawn as SVG lines without further translation.
+
+export type WorkflowNodeKind = "step";
+
+/**
+ * LLM provider. Free-form string (not a closed enum) so users
+ * can add custom OpenAI-compatible endpoints (e.g. self-hosted
+ * LiteLLM proxy, vLLM, etc.) without a schema bump. The known
+ * providers get a nicer UX in the editor (preset dropdown) but
+ * any string is accepted.
+ */
+export type WorkflowProvider =
+  | "anthropic"
+  | "openai"
+  | "google"
+  | "ollama"
+  | "custom";
+
+/**
+ * v0.7.0: per-node LLM config. The `apiKeyRef` is a logical
+ * reference, not a secret — actual keys live in `~/.pilot/secrets/`
+ * (managed by `pilot secrets` once that lands; for v0.7.0 we
+ * fall back to the env-var convention the rest of pilot uses).
+ */
+export interface WorkflowNodeModel {
+  provider: WorkflowProvider | string;
+  model: string;
+  apiKeyRef?: string;
+}
+
+/**
+ * v0.7.0: what to do when a step's LLM call fails. `retry` and
+ * `escalate` need the corresponding `retryCount` / `escalateToModel`
+ * fields set; `stop` and `skip` ignore them.
+ *
+ * - `stop`      — abort the whole workflow, surface the error
+ * - `skip`      — mark the step as failed, continue with the
+ *                 next step (the output var becomes `null` for
+ *                 any consumer)
+ * - `retry`     — re-run the same step up to `retryCount` times
+ *                 with the same model before falling through to
+ *                 the failure strategy (retry, skip, or stop)
+ * - `escalate`  — on the final retry failure, re-run once with
+ *                 `escalateToModel` (a stronger model) and use
+ *                 its output
+ */
+export type WorkflowNodeOnFailure = "stop" | "skip" | "retry" | "escalate";
+
+export interface WorkflowNode {
+  id: string;
+  name: string;
+  kind: WorkflowNodeKind;
+  model: WorkflowNodeModel;
+  systemPrompt: string;
+  /** v0.7.0: a free-form template. v0.7.1+ parses
+   *  `{{steps.<id>.<outputVar>}}` and the editor shows a
+   *  visual "depends on" arrow. For now, raw string. */
+  inputTemplate: string;
+  /** Identifier the step's result is bound to. Any later step
+   *  can reference `{{steps.<id>.<outputVar>}}`. Must be a
+   *  valid JS identifier (the v0.7.0 editor validates). */
+  outputVar: string;
+  tools: string[];
+  onFailure: WorkflowNodeOnFailure;
+  /** Required when `onFailure === "retry"` or `"escalate"`. */
+  retryCount?: number;
+  /** Required when `onFailure === "escalate"`. The model id of
+   *  a previously-defined model the editor can suggest, or a
+   *  free-form model string for the rare case where the
+   *  escalation target is unique to this step. */
+  escalateToModel?: string;
+  /** 2D position for the future visual canvas. v0.7.0 doesn't
+   *  render this — the editor uses a form layout — but it's
+   *  in the data model so the v0.7.1 SVG preview "just works"
+   *  without a migration. */
+  position: { x: number; y: number };
+}
+
+/**
+ * v0.7.0: a directed edge from one node to another. The
+ * semantic is "the `to` step's input depends on the `from`
+ * step's output". v0.7.0 stores only the id pair; v0.7.1 may
+ * add an optional `mapping` string for field-level data
+ * transforms.
+ */
+export interface WorkflowEdge {
+  id: string;
+  from: string;
+  to: string;
+}
+
+export interface Workflow {
+  id: string;
+  name: string;
+  description: string;
+  version: 1;
+  nodes: WorkflowNode[];
+  edges: WorkflowEdge[];
+  metadata: {
+    createdAt: string;
+    updatedAt: string;
+  };
+}
+
+/**
+ * v0.7.0: input shape for `saveWorkflow`. Same as `Workflow`
+ * but without `metadata` (the server fills in `createdAt` /
+ * `updatedAt` and ignores any client-supplied values to
+ * prevent timestamp forgery). Exists as a separate type so
+ * the wire contract is "what the client sends" vs "what
+ * the server stores".
+ */
+export interface WorkflowInput {
+  id: string;
+  name: string;
+  description: string;
+  version: 1;
+  nodes: WorkflowNode[];
+  edges: WorkflowEdge[];
+}
+
+/**
+ * v0.7.0: lightweight summary returned by `GET /api/workflows`
+ * for the list page. No nodes / edges — the editor fetches
+ * the full workflow on click.
+ */
+export interface WorkflowSummary {
+  id: string;
+  name: string;
+  description: string;
+  nodeCount: number;
+  edgeCount: number;
+  updatedAt: string;
+  createdAt: string;
+}
+
 /**
  * v0.6.19: a CSS color string for the connection line stroke.
  * When set, the SVG line + arrow head render in this color

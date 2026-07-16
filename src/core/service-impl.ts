@@ -208,6 +208,12 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
     renameComposeBoard: (id, name) =>
       renameComposeBoardFromService(home, id, name),
 
+    // v0.7.0: workflows. Same pattern as compose-boards.
+    listWorkflows: () => listWorkflowsFromService(home),
+    getWorkflow: (id) => getWorkflowFromService(home, id),
+    saveWorkflow: (input) => saveWorkflowFromService(home, input),
+    deleteWorkflow: (id) => deleteWorkflowFromService(home, id),
+
     listPolicies: () => listPoliciesFromHome(home),
     getPolicy: (name) => tryReadPolicy(name, home),
     setPolicy: (name, input) => writePolicyWithHome(name, input, home),
@@ -591,6 +597,44 @@ async function deleteComposeBoardFromService(
 ): Promise<boolean> {
   const { deleteBoard } = await import("./compose-boards.js");
   return deleteBoard(id, home);
+}
+
+// ─── Workflows (v0.7.0) ──────────────────────────────────
+
+/**
+ * v0.7.0: thin wrappers over `core/workflow.ts`, same
+ * pattern as the compose-boards helpers above. Lazy-import
+ * keeps fs/zod out of callers that don't need workflow I/O.
+ */
+async function listWorkflowsFromService(
+  home?: string,
+): Promise<import("./workflow.js").WorkflowSummary[]> {
+  const { listWorkflows } = await import("./workflow.js");
+  return listWorkflows(home);
+}
+
+async function getWorkflowFromService(
+  home: string | undefined,
+  id: string,
+): Promise<import("./workflow.js").Workflow | null> {
+  const { loadWorkflow } = await import("./workflow.js");
+  return loadWorkflow(id, home);
+}
+
+async function saveWorkflowFromService(
+  home: string | undefined,
+  input: import("./workflow.js").WorkflowInput,
+): Promise<import("./workflow.js").Workflow> {
+  const { saveWorkflow } = await import("./workflow.js");
+  return saveWorkflow(input, home);
+}
+
+async function deleteWorkflowFromService(
+  home: string | undefined,
+  id: string,
+): Promise<boolean> {
+  const { deleteWorkflow } = await import("./workflow.js");
+  return deleteWorkflow(id, home);
 }
 
 // v0.6.12: dedicated /compose/boards list page needs a way to

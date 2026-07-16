@@ -379,6 +379,41 @@ export interface PilotService {
     name: string,
   ): Promise<import("./compose-boards.js").BoardSnapshot | null>;
 
+  // ─── Workflows (v0.7.0) ──────────────────────────────
+
+  /**
+   * v0.7.0: list every workflow summary. Newest-first.
+   * Returns [] when the directory doesn't exist yet.
+   * Pattern: same as listComposeBoards — JSON.parse each
+   * file for counts but skip per-field Zod validation.
+   */
+  listWorkflows(): Promise<import("./workflow.js").WorkflowSummary[]>;
+
+  /**
+   * v0.7.0: load a full workflow. Returns null on missing
+   * file, invalid id, or schema failure. HTTP maps null to
+   * 404; Zod errors are caught higher in the call chain.
+   */
+  getWorkflow(id: string): Promise<import("./workflow.js").Workflow | null>;
+
+  /**
+   * v0.7.0: create or update a workflow. Preserves
+   * createdAt on update; updatedAt always reflects the
+   * current call. Returns the persisted Workflow with
+   * timestamps filled in. Throws on invalid id, empty
+   * nodes, or schema failure.
+   */
+  saveWorkflow(
+    input: import("./workflow.js").WorkflowInput,
+  ): Promise<import("./workflow.js").Workflow>;
+
+  /**
+   * v0.7.0: delete a workflow's directory. Idempotent —
+   * returns true if anything was deleted, false if the
+   * workflow didn't exist.
+   */
+  deleteWorkflow(id: string): Promise<boolean>;
+
   // ─── Tool policies (v0.4.3) ──────────────────────────
 
   /** List all tool policies in `~/.pilot/policy/`. */

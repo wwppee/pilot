@@ -38,6 +38,7 @@ type LabelKey =
   | "nav.context"
   | "nav.policy"
   | "nav.compose"
+  | "nav.workflows"
   | "nav.profiles"
   | "nav.capabilities"
   | "nav.forge"
@@ -60,6 +61,7 @@ type HintKey =
   | "nav.hint.forge"
   | "nav.hint.policy"
   | "nav.hint.compose"
+  | "nav.hint.workflows"
   | "nav.hint.profiles"
   | "nav.hint.help";
 
@@ -173,6 +175,18 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         labelKey: "nav.profiles",
         icon: "👤",
         hintKey: "nav.hint.profiles",
+      },
+      // v0.7.0: workflows nav entry. Lives next to /profiles
+      // because both are "user-curated" content (vs. /compose
+      // which is "live canvas state"). The icon is a flow
+      // symbol — distinct from /compose (test tube) and
+      // /profiles (person) so the three are easy to tell apart
+      // at a glance in the nav.
+      {
+        href: "/workflows",
+        labelKey: "nav.workflows",
+        icon: "🌀",
+        hintKey: "nav.hint.workflows",
       },
     ],
   },

@@ -39,6 +39,8 @@ export type Dict = {
   "nav.context": string;
   "nav.policy": string;
   "nav.compose": string;
+  // v0.7.0: workflows nav entry.
+  "nav.workflows": string;
   "nav.profiles": string;
   "nav.forge": string;
   "nav.capabilities": string;
@@ -111,6 +113,8 @@ export type Dict = {
   "nav.hint.forge": string;
   "nav.hint.policy": string;
   "nav.hint.compose": string;
+  // v0.7.0: workflows nav hint.
+  "nav.hint.workflows": string;
   "nav.hint.profiles": string;
   "nav.hint.help": string;
   "home.welcome.title": string;
@@ -1194,4 +1198,64 @@ export type Dict = {
   "try.hint.forkFromHere": string;
   "compose.boards.toolbar.openBoards": string;
   "compose.boards.toolbar.openBoardsTitle": string;
+
+  // ─── Workflows (v0.7.0) ────────────────────────────────
+  // Reusable agent workflows — list of LLM-powered steps
+  // that the user can compose in the visual editor and (in
+  // a future release) run.
+  "workflows.h1": string;
+  "workflows.subtitle": string;
+  "workflows.empty": string;
+  "workflows.empty.hint": string;
+  "workflows.create": string;
+  "workflows.duplicate": string;
+  "workflows.delete": string;
+  "workflows.confirmDelete": string;
+  "workflows.nodeCount": string;
+  "workflows.edgeCount": string;
+  "workflows.updatedAt": string;
+  "workflows.notFound": string;
+  "workflows.newIdPrompt": string;
+  "workflows.newIdHint": string;
+  "workflows.invalidId": string;
+  "workflows.field.name": string;
+  "workflows.field.description": string;
+  "workflows.field.id": string;
+  "workflows.field.provider": string;
+  "workflows.field.model": string;
+  "workflows.field.apiKeyRef": string;
+  "workflows.field.systemPrompt": string;
+  "workflows.field.inputTemplate": string;
+  "workflows.field.outputVar": string;
+  "workflows.field.tools": string;
+  "workflows.field.onFailure": string;
+  "workflows.field.position": string;
+  "workflows.field.retryCount": string;
+  "workflows.field.escalateToModel": string;
+  "workflows.onFailure.stop": string;
+  "workflows.onFailure.skip": string;
+  "workflows.onFailure.retry": string;
+  "workflows.onFailure.escalate": string;
+  "workflows.provider.anthropic": string;
+  "workflows.provider.openai": string;
+  "workflows.provider.google": string;
+  "workflows.provider.ollama": string;
+  "workflows.provider.custom": string;
+  "workflows.editor.addNode": string;
+  "workflows.editor.removeNode": string;
+  "workflows.editor.addEdge": string;
+  "workflows.editor.removeEdge": string;
+  "workflows.editor.noNodes": string;
+  "workflows.editor.noEdges": string;
+  "workflows.editor.preview": string;
+  "workflows.editor.save": string;
+  "workflows.editor.saved": string;
+  "workflows.editor.saveFailed": string;
+  "workflows.editor.duplicate": string;
+  "workflows.editor.delete": string;
+  "workflows.editor.layoutHint": string;
+  "workflows.layoutBtn": string;
+  "workflows.savedAt": string;
+  "workflows.editor.cancel": string;
+  "workflows.editor.open": string;
 };
