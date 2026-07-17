@@ -33,6 +33,24 @@ import { z } from "zod";
 
 const MAX_ID_LENGTH = 64;
 const VALID_ID_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+// v0.7.2 (P3 #9 closeout): the audit suggested aligning
+// this with `compose-boards.SAFE_ID_PATTERN` for
+// "consistency", but on closer inspection the two regexes
+// are *intentionally different*:
+//   - workflow id: kebab-case URL slug, lowercase + dash,
+//     validated at the client (input field + NewWorkflowDialog)
+//     and the server (Zod). Used in URL paths
+//     (`/workflows/<id>`), so the URL-safe lowercase is
+//     the right call.
+//   - board id (compose-boards): "safe filename"
+//     character set, allows upper case + underscore,
+//     because boards were originally just `mktemp`-style
+//     auto-generated names that occasionally got renamed
+//     by users who like `My_Board_1` style.
+// Forcing one to match the other would either break
+// existing workflow URLs or weaken the workflow id
+// contract. The two are documented as different on
+// purpose; closing this P3 as "won't fix, by design".
 
 /** v0.7.0: per-node LLM configuration. */
 const WorkflowNodeModelSchema = z.object({
@@ -174,27 +192,65 @@ export async function listWorkflows(home?: string): Promise<WorkflowSummary[]> {
   return out;
 }
 
-async function readWorkflowSummary(
+// ─── v0.7.2 (P3 #8): shared read+JSON.parse ─────────────
+//
+// Before v0.7.2 both `readWorkflowSummary` and `loadWorkflow`
+// did the same two steps: read the file, JSON.parse it, with
+// the same try/catch shape. The only difference was whether
+// they `console.warn` on JSON parse failure (loadWorkflow
+// did, because the warn is a UX feature for the user-facing
+// load path; readWorkflowSummary didn't, because it's
+// called from a list loop and would spam the log).
+//
+// This helper makes the read+parse one place. Callers
+// decide what to do with each outcome (missing → return
+// null; corrupt → return null; ok → validate / extract).
+// The `warn` opt-in matches the v0.7.1.1 self-audit
+// observation: saveWorkflow shouldn't warn, loadWorkflow
+// should.
+
+type ReadJsonResult =
+  | { kind: "ok"; parsed: unknown }
+  | { kind: "missing" }
+  | { kind: "corrupt"; error: Error };
+
+async function readWorkflowJson(
   id: string,
-  home?: string,
-): Promise<WorkflowSummary | null> {
+  home: string | undefined,
+  opts: { warn?: boolean } = {},
+): Promise<ReadJsonResult> {
   const file = workflowFile(id, home);
   let raw: string;
   try {
     raw = await readFile(file, "utf-8");
   } catch {
-    return null;
+    return { kind: "missing" };
   }
-  let parsed: unknown;
   try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return null;
+    return { kind: "ok", parsed: JSON.parse(raw) };
+  } catch (e) {
+    const error = e instanceof Error ? e : new Error(String(e));
+    if (opts.warn) {
+      console.warn(
+        `[workflow] ${file} exists but is not valid JSON — returning 404. ` +
+          `Delete the file or fix the JSON to recover. (${error.message})`,
+      );
+    }
+    return { kind: "corrupt", error };
   }
+}
+
+async function readWorkflowSummary(
+  id: string,
+  home?: string,
+): Promise<WorkflowSummary | null> {
+  const r = await readWorkflowJson(id, home);
+  if (r.kind !== "ok") return null;
   // Loose shape check — we trust the per-field validation
   // to `loadWorkflow` instead of doing it on every list.
   // If the shape is wildly wrong, skip the file rather
   // than crash the whole list.
+  const parsed = r.parsed;
   if (!parsed || typeof parsed !== "object") return null;
   const p = parsed as Record<string, unknown>;
   if (typeof p.id !== "string" || typeof p.metadata !== "object") return null;
@@ -243,27 +299,16 @@ export async function loadWorkflow(
   home?: string,
 ): Promise<Workflow | null> {
   if (!isValidWorkflowId(id)) return null;
-  const file = workflowFile(id, home);
-  let raw: string;
+  // v0.7.2 (P3 #8): the read + JSON.parse step moved to
+  // `readWorkflowJson` so listWorkflows, saveWorkflow, and
+  // loadWorkflow all share one parser. `warn: true` keeps
+  // the v0.7.1 console.warn on the user-facing load path
+  // (the warn is what tells the user their hand-edited
+  // file is broken — see the v0.7.1 self-audit).
+  const r = await readWorkflowJson(id, home, { warn: true });
+  if (r.kind === "missing" || r.kind === "corrupt") return null;
   try {
-    raw = await readFile(file, "utf-8");
-  } catch {
-    return null;
-  }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (e) {
-    console.warn(
-      `[workflow] ${file} exists but is not valid JSON — returning 404. ` +
-        `Delete the file or fix the JSON to recover. (${
-          e instanceof Error ? e.message : String(e)
-        })`,
-    );
-    return null;
-  }
-  try {
-    return WorkflowSchema.parse(parsed);
+    return WorkflowSchema.parse(r.parsed);
   } catch (e) {
     // Throw with a friendlier message so the API layer can
     // surface a 400 with the Zod issue list, not a raw

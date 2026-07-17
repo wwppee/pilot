@@ -1,5 +1,190 @@
 # Changelog
 
+### v0.7.2 — `/workflows` tech-debt cleanup (4 P1/P3 backlog items closed)
+
+A pure refactor + test-coverage release. No new features,
+no behavior changes the user can see — just code quality,
+RTL coverage, and one correctness hardening (busy prop
+became required). The motivation: v0.7.3 will be either
+drag-and-drop on the SVG preview or the "Run workflow"
+runtime, both of which would be irresponsible to land on
+top of a 950-line `WorkflowEditor.tsx` that no test
+covered at the component level.
+
+**P1 #4 — `WorkflowEditor.tsx` file split (950 → 824 lines)**
+
+The editor already had 4 internal sub-components
+(`StepsPanel`, `NodeCard`, `PreviewPanel`, layout
+helpers) — it wasn't a true monolithic file, but it
+*was* over the "should be split" threshold and had
+3 distinct concerns sharing one file: the form
+fields, the connection picker, and the BFS layout.
+v0.7.2 extracts:
+
+- **`./layout.ts`** (143 lines) — pure functions only.
+  `computeLayout` / `autoLayout` / `truncate` + the
+  `Layout` and `Positioned` interfaces. The web test
+  `workflow-layout.test.ts` now imports from `./layout`
+  directly instead of reaching into `WorkflowEditor`
+  (which was a code smell — tests of pure functions
+  shouldn't depend on a JSX module).
+- **`./NodeFields.tsx`** (171 lines) — the form fields
+  block (provider / model / system prompt / input
+  template / output var / on-failure strategy +
+  retry/escalate). The `name` input deliberately
+  stays in `NodeCard`'s header row, where it shares a
+  flex row with the `#index` badge and the `×` remove
+  button. Pulling it into `NodeFields` would either
+  duplicate markup or split a fragment mid-render, both
+  worse than the current "one field in parent, rest in
+  child" split.
+- **`./node-constants.ts`** (39 lines) — the
+  `PROVIDERS` and `FAILURE_STRATEGIES` arrays, typed
+  as the Zod-derived `WorkflowProvider[]` and
+  `WorkflowNodeOnFailure[]` unions so a future type
+  addition surfaces as a TypeScript error here (same
+  failure-mode hardening as the v0.6.18 connection
+  direction).
+
+`WorkflowEditor.tsx` itself is now 824 lines (was 950,
+-13%). It still has `StepsPanel` and `PreviewPanel` as
+internal helpers — pulling those into their own files
+is mechanical but doesn't help testability (they need
+the parent's `t` function and a bunch of mutations),
+so they're deferred to a future split if the file
+keeps growing.
+
+**P1 #5 — RTL coverage for the new files**
+
+- **`tests/NodeFields.test.tsx`** (6 tests) — covers
+  the form fields block. Renders `NodeFields` with a
+  minimal `WorkflowNode` + `onUpdate` spy, asserts each
+  `onChange` patches the right key (`model.model`,
+  `outputVar`, `onFailure`, etc.), and confirms the
+  `retryCount` / `escalateToModel` conditional field
+  appears/disappears as `onFailure` toggles.
+- **`tests/ConfirmDialog.test.tsx`** (14 tests) — locks
+  in the v0.7.1.1 self-audit fixes: real `cancelRef`
+  focus (bug #5), Esc and backdrop click are no-ops
+  when `busy` (bug #6), confirm button disabled when
+  `busy` (bug #7), and the busy → "…" label swap
+  polish. Also covers the destructive variant styling
+  (`--error` color + border).
+
+`WorkflowListView` and `WorkflowEditor` mount tests are
+deferred — they need a full state scaffold (api mock,
+load + error + saving states) and would have pushed
+v0.7.2 past its 3-4h budget. v0.7.3's drag-and-drop or
+Run will pull in `WorkflowListView` test as part of the
+feature work.
+
+**P3 #8 — `parseWorkflowFile` dedup**
+
+Both `readWorkflowSummary` (list path) and `loadWorkflow`
+(user path) did the same two steps: `readFile` +
+`JSON.parse` with `try/catch`. The only difference was
+whether `JSON.parse` failure `console.warn`'d (load
+warned, summary didn't, because the list loops over
+many files and would spam the log). v0.7.2 extracts a
+shared `readWorkflowJson(id, home, { warn? })` helper
+with a tagged-union return (`{kind: "ok"}` /
+`{kind: "missing"}` / `{kind: "corrupt"}`) and points
+both callers at it. The `warn: true` opt-in matches
+the v0.7.1.1 self-audit observation: `saveWorkflow`
+shouldn't warn, `loadWorkflow` should.
+
+**P3 #9 — `SAFE_ID` regex "alignment" — won't fix, by design**
+
+The v0.7.0 audit suggested aligning
+`workflow.ts:VALID_ID_RE` (`^[a-z0-9]+(?:-[a-z0-9]+)*$`,
+kebab-case) with `compose-boards:SAFE_ID_PATTERN`
+(`^[a-zA-Z0-9_-]{1,64}$`, safe filename) for
+"consistency". On closer inspection the two regexes are
+*intentionally different*:
+
+- workflow id is a kebab-case URL slug, used in
+  `/workflows/<id>` paths and validated at both the
+  client (input field + NewWorkflowDialog) and the
+  server (Zod). URL-safe lowercase is the right call.
+- board id is "safe filename" character set, allows
+  upper case + underscore, because boards were
+  originally `mktemp`-style auto-generated names that
+  occasionally got renamed by users who like
+  `My_Board_1` style.
+
+Forcing one to match the other would either break
+existing workflow URLs or weaken the workflow id
+contract. v0.7.2 adds an inline comment explaining
+"intentionally different" so a future reader doesn't
+re-suggest this alignment.
+
+**Correctness hardening — `<ConfirmDialog busy>` is now required**
+
+`busy?: boolean` (optional) became `busy: boolean`
+(required). The v0.7.1.1 audit added `busy` as opt-in
+but the whole reason it existed was to prevent
+double-click → duplicate destructive request, which
+silently came back any time a new caller forgot to
+pass it. TypeScript's `?:` syntax doesn't force the
+caller to think about "am I busy right now?"; making
+it required does. Both current callers (WorkflowListView
++ WorkflowEditor) already pass it; no production code
+change, just a stricter contract. **This is the v0.7.2
+recommendation for any future "lockable UI control"
+component** — `busy` / `pending` / `disabled-while-
+in-flight` should be required, not optional, when the
+locked state is a correctness requirement (not just a
+visual nicety).
+
+**Stats**
+
+- root: **631/631** ✓ (unchanged — no new core tests;
+  P3 #8 dedup is covered by the existing 12 `workflow`
+  + 58 `server` tests; the readWorkflowJson helper
+  passes the corrupt-JSON / missing / Zod-fail / happy
+  path coverage unchanged)
+- web: **265/265** ✓ (was 245; +20 in two new files:
+  `NodeFields.test.tsx` 6 + `ConfirmDialog.test.tsx`
+  14). The 14 `ConfirmDialog` tests now lock in the
+  v0.7.1.1 fixes so a future refactor of the dialog's
+  internals can't silently regress them.
+- i18n: 0 placeholder mismatches across 1018 shared
+  keys (unchanged)
+- format:check root + web: ✓
+- lint (root `eslint src test --max-warnings 0`): ✓
+- tsc (web `npx tsc --noEmit`): ✓ — `tsc` caught one
+  collateral issue from the file split (two unused
+  type imports in `WorkflowEditor.tsx` that were
+  moved to `NodeFields.tsx`); fixed as part of this
+  release.
+- production build: not run (refactor only, no
+  production-affecting logic; same precedent as
+  v0.6.19 / v0.6.20 / v0.6.21)
+
+**File inventory**
+
+- `src/core/workflow.ts` — `readWorkflowJson` extracted
+  (P3 #8); `VALID_ID_RE` gets an "intentionally
+  different from compose-boards" comment (P3 #9
+  closeout)
+- `web/src/app/workflows/[id]/layout.ts` (new, 143
+  lines) — pure BFS layout helpers
+- `web/src/app/workflows/[id]/NodeFields.tsx` (new,
+  171 lines) — node form fields
+- `web/src/app/workflows/[id]/node-constants.ts` (new,
+  39 lines) — `PROVIDERS` + `FAILURE_STRATEGIES`
+- `web/src/app/workflows/[id]/WorkflowEditor.tsx`
+  (824 lines, was 950) — removed the moved code,
+  imports the new files
+- `web/src/app/workflows/ConfirmDialog.tsx` — `busy`
+  prop upgraded from `?` to required
+- `web/tests/NodeFields.test.tsx` (new, 6 tests)
+- `web/tests/ConfirmDialog.test.tsx` (new, 14 tests)
+- `web/tests/workflow-layout.test.ts` — import path
+  updated from `WorkflowEditor` to `./layout`
+- `package.json` + `web/package.json` (0.7.1.1 → 0.7.2),
+  `AGENTS.md`, `CHANGELOG.md`
+
 ### v0.7.1.1 — `/workflows` self-audit hotfix (7 latent bugs closed)
 
 v0.7.1 shipped with a 5-item audit closure, but a second

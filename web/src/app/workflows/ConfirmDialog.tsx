@@ -31,7 +31,19 @@ interface Props {
   confirmLabel: string;
   cancelLabel: string;
   destructive?: boolean;
-  busy?: boolean;
+  // v0.7.2: `busy` is now required (was `busy?` in
+  // v0.7.1 / v0.7.1.1). The v0.7.1.1 self-audit
+  // hotfix added `busy` as an opt-in prop, but the
+  // failure mode it was supposed to prevent (double-
+  // click on a destructive button firing a duplicate
+  // request) silently came back any time a new caller
+  // forgot to pass it. TypeScript's `?:` syntax
+  // doesn't force the caller to think about the
+  // "am I busy right now?" question — making it
+  // required does. Both current callers (WorkflowListView
+  // + WorkflowEditor) already pass it; no production
+  // code change needed, just a stricter contract.
+  busy: boolean;
   onConfirm: () => void;
   onCancel: () => void;
   "data-testid"?: string;
@@ -44,7 +56,13 @@ export function ConfirmDialog({
   confirmLabel,
   cancelLabel,
   destructive = false,
-  busy = false,
+  // v0.7.2: no default — the prop is required, so
+  // callers must pass an explicit boolean. Defaulting
+  // to `false` here would defeat the point of the
+  // required-prop upgrade (the whole reason it became
+  // required is that "default to not-busy" is exactly
+  // the silent footgun that bit us in v0.7.1.1).
+  busy,
   onConfirm,
   onCancel,
   "data-testid": testId,

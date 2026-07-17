@@ -34,13 +34,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/pilot-browser";
 import { useT } from "@/components/I18n";
 import { ConfirmDialog } from "../ConfirmDialog";
-import type {
-  Workflow,
-  WorkflowNode,
-  WorkflowNodeOnFailure,
-  WorkflowEdge,
-  WorkflowProvider,
-} from "@/lib/types";
+import { autoLayout, computeLayout, truncate } from "./layout";
+import { NodeFields } from "./NodeFields";
+import type { Workflow, WorkflowNode, WorkflowEdge } from "@/lib/types";
 
 type LoadState =
   | { kind: "loading" }
@@ -48,20 +44,13 @@ type LoadState =
   | { kind: "notFound" }
   | { kind: "error"; message: string };
 
-const PROVIDERS: WorkflowProvider[] = [
-  "anthropic",
-  "openai",
-  "google",
-  "ollama",
-  "custom",
-];
-
-const FAILURE_STRATEGIES: WorkflowNodeOnFailure[] = [
-  "stop",
-  "skip",
-  "retry",
-  "escalate",
-];
+// v0.7.2 (P1 #4): PROVIDERS and FAILURE_STRATEGIES
+// moved to `./node-constants` so `NodeFields.tsx` can
+// import them without reaching back into the editor
+// file. The arrays are still typed as the Zod-derived
+// `WorkflowProvider[]` / `WorkflowNodeOnFailure[]`
+// unions so a future type addition would surface as a
+// TypeScript error in the constants file.
 
 export function WorkflowEditor({ workflowId }: { workflowId: string }) {
   const t = useT();
@@ -642,131 +631,18 @@ function NodeCard({
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <label className="text-xs space-y-1">
-          <span className="text-[var(--text-muted)]">
-            {t("workflows.field.provider")}
-          </span>
-          <select
-            value={node.model.provider}
-            onChange={(e) =>
-              onUpdate({ model: { ...node.model, provider: e.target.value } })
-            }
-            className="block w-full px-2 py-1 text-xs bg-[var(--bg)] border border-[var(--border)] rounded"
-          >
-            {PROVIDERS.map((p) => (
-              <option key={p} value={p}>
-                {t(`workflows.provider.${p}`)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs space-y-1">
-          <span className="text-[var(--text-muted)]">
-            {t("workflows.field.model")}
-          </span>
-          <input
-            type="text"
-            value={node.model.model}
-            placeholder="claude-haiku-4-5"
-            onChange={(e) =>
-              onUpdate({ model: { ...node.model, model: e.target.value } })
-            }
-            className="block w-full px-2 py-1 text-xs bg-[var(--bg)] border border-[var(--border)] rounded font-mono"
-            data-testid="step-model"
-          />
-        </label>
-      </div>
-
-      <label className="text-xs space-y-1 block">
-        <span className="text-[var(--text-muted)]">
-          {t("workflows.field.systemPrompt")}
-        </span>
-        <textarea
-          value={node.systemPrompt}
-          rows={3}
-          onChange={(e) => onUpdate({ systemPrompt: e.target.value })}
-          className="block w-full px-2 py-1 text-xs bg-[var(--bg)] border border-[var(--border)] rounded font-mono"
-          placeholder="You are a code reviewer. Given the following input, ..."
-        />
-      </label>
-
-      <div className="grid grid-cols-2 gap-2">
-        <label className="text-xs space-y-1">
-          <span className="text-[var(--text-muted)]">
-            {t("workflows.field.inputTemplate")}
-          </span>
-          <input
-            type="text"
-            value={node.inputTemplate}
-            placeholder="{{steps.n1.output}}"
-            onChange={(e) => onUpdate({ inputTemplate: e.target.value })}
-            className="block w-full px-2 py-1 text-xs bg-[var(--bg)] border border-[var(--border)] rounded font-mono"
-          />
-        </label>
-        <label className="text-xs space-y-1">
-          <span className="text-[var(--text-muted)]">
-            {t("workflows.field.outputVar")}
-          </span>
-          <input
-            type="text"
-            value={node.outputVar}
-            onChange={(e) => onUpdate({ outputVar: e.target.value })}
-            className="block w-full px-2 py-1 text-xs bg-[var(--bg)] border border-[var(--border)] rounded font-mono"
-            data-testid="step-output-var"
-          />
-        </label>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        <label className="text-xs space-y-1">
-          <span className="text-[var(--text-muted)]">
-            {t("workflows.field.onFailure")}
-          </span>
-          <select
-            value={node.onFailure}
-            onChange={(e) =>
-              onUpdate({
-                onFailure: e.target.value as WorkflowNodeOnFailure,
-              })
-            }
-            className="block w-full px-2 py-1 text-xs bg-[var(--bg)] border border-[var(--border)] rounded"
-          >
-            {FAILURE_STRATEGIES.map((s) => (
-              <option key={s} value={s}>
-                {t(`workflows.onFailure.${s}`)}
-              </option>
-            ))}
-          </select>
-        </label>
-        {node.onFailure === "retry" || node.onFailure === "escalate" ? (
-          <label className="text-xs space-y-1">
-            <span className="text-[var(--text-muted)]">
-              {node.onFailure === "retry"
-                ? t("workflows.field.retryCount")
-                : t("workflows.field.escalateToModel")}
-            </span>
-            <input
-              type={node.onFailure === "retry" ? "number" : "text"}
-              value={
-                node.onFailure === "retry"
-                  ? String(node.retryCount ?? 0)
-                  : (node.escalateToModel ?? "")
-              }
-              onChange={(e) =>
-                onUpdate(
-                  node.onFailure === "retry"
-                    ? { retryCount: Number(e.target.value) }
-                    : { escalateToModel: e.target.value },
-                )
-              }
-              className="block w-full px-2 py-1 text-xs bg-[var(--bg)] border border-[var(--border)] rounded font-mono"
-            />
-          </label>
-        ) : (
-          <div /> /* spacer to keep the grid even */
-        )}
-      </div>
+      {/* v0.7.2 (P1 #4): the form fields block (provider
+          / model / system prompt / input template / output
+          var / on-failure strategy + retry/escalate) moved
+          to `./NodeFields`. The `name` input above stays
+          here because it shares the row with the `#index`
+          badge and the `×` remove button — pulling it
+          into `NodeFields` would either duplicate markup
+          or split a fragment mid-render, both worse than
+          the current one-field-in-parent, rest-in-child
+          split. The `t` function is passed through so
+          `NodeFields` doesn't need its own `useT()`. */}
+      <NodeFields node={node} onUpdate={onUpdate} t={t} />
 
       <div className="flex items-center gap-2 pt-1">
         <span className="text-xs text-[var(--text-muted)]">
@@ -932,122 +808,11 @@ function PreviewPanel({
   );
 }
 
-function truncate(s: string, n: number): string {
-  return s.length <= n ? s : s.slice(0, n - 1) + "…";
-}
-
-// ─── Layout helpers ─────────────────────────────────────
-
-interface Positioned {
-  id: string;
-  col: number;
-  depth: number;
-}
-
-interface Layout {
-  positions: Record<string, Positioned>;
-  cols: number;
-  depth: number;
-}
-
-/**
- * v0.7.0: BFS from the source-most nodes. Each "level"
- * (no incoming edge from the same level or earlier) gets
- * its own column. The resulting (col, depth) is what the
- * SVG preview places the node at. v0.7.0 calls this
- * function on render for the preview; the same function
- * is reused by the "Auto-layout" button to write back
- * to `node.position` so the data is consistent across
- * page reloads.
- */
-export function computeLayout(workflow: Workflow): Layout {
-  const nodes = workflow.nodes;
-  const edges = workflow.edges;
-  if (nodes.length === 0) return { positions: {}, cols: 0, depth: 0 };
-
-  // Build indegree + adjacency.
-  const inDeg: Record<string, number> = {};
-  const outAdj: Record<string, string[]> = {};
-  for (const n of nodes) {
-    inDeg[n.id] = 0;
-    outAdj[n.id] = [];
-  }
-  for (const e of edges) {
-    inDeg[e.to] = (inDeg[e.to] ?? 0) + 1;
-    const out = outAdj[e.from];
-    if (out) out.push(e.to);
-  }
-
-  // Sources: nodes with no incoming edge. If the graph has a
-  // cycle, every node has at least one incoming edge, so we
-  // pick the alphabetically-first node as a "seed" to break
-  // the cycle. v0.7.1+ may surface the cycle visually.
-  const sources = nodes.filter((n) => inDeg[n.id] === 0).map((n) => n.id);
-  if (sources.length === 0) {
-    sources.push(nodes.map((n) => n.id).sort()[0]!);
-  }
-
-  // BFS layering: each step's depth = max(depth of predecessors) + 1.
-  const depth: Record<string, number> = {};
-  const queue: Array<{ id: string; d: number }> = sources.map((s) => ({
-    id: s,
-    d: 0,
-  }));
-  // Track visited so cycles don't infinite-loop. v0.7.0 cycles
-  // are a known limitation: the cycle stays at the depth of
-  // the first visit. Same as any topological-sort on a cycle.
-  const visited = new Set<string>();
-  let maxDepth = 0;
-  while (queue.length > 0) {
-    const { id, d } = queue.shift()!;
-    if (visited.has(id)) continue;
-    visited.add(id);
-    depth[id] = d;
-    if (d > maxDepth) maxDepth = d;
-    for (const next of outAdj[id] ?? []) {
-      if (!visited.has(next)) {
-        queue.push({ id: next, d: d + 1 });
-      }
-    }
-  }
-  // Any unvisited (cycle tail) lands at the maximum depth.
-  for (const n of nodes) {
-    if (!(n.id in depth)) depth[n.id] = maxDepth;
-  }
-
-  // Within each depth, group nodes into columns. The number
-  // of columns is the widest row.
-  const byDepth: Record<number, string[]> = {};
-  for (const n of nodes) {
-    const d = depth[n.id]!;
-    if (!byDepth[d]) byDepth[d] = [];
-    byDepth[d].push(n.id);
-  }
-  const positions: Record<string, Positioned> = {};
-  let cols = 0;
-  for (const d of Object.keys(byDepth).map(Number)) {
-    const row = byDepth[d]!;
-    row.forEach((id, i) => {
-      positions[id] = { id, col: i, depth: d };
-    });
-    if (row.length > cols) cols = row.length;
-  }
-  return { positions, cols: Math.max(1, cols), depth: maxDepth + 1 };
-}
-
-/**
- * v0.7.0: write back the auto-computed layout to each
- * node's `position` field. The SVG preview's coordinates
- * are derived from this field, so this is also what makes
- * the preview stable across reloads. We round to ints so
- * the JSON is human-readable; the SVG doesn't care about
- * sub-pixel precision at this scale.
- */
-export function autoLayout(workflow: Workflow): WorkflowNode[] {
-  const layout = computeLayout(workflow);
-  return workflow.nodes.map((n) => {
-    const pos = layout.positions[n.id];
-    if (!pos) return n;
-    return { ...n, position: { x: pos.col * 240, y: pos.depth * 80 } };
-  });
-}
+// v0.7.2 (P1 #4): the layout helpers (`truncate`,
+// `computeLayout`, `autoLayout`) and their supporting
+// `Positioned` / `Layout` interfaces moved to `./layout`.
+// The editor no longer needs to know how the BFS works —
+// it just imports the pre-laid-out positions and renders.
+// The web test `workflow-layout.test.ts` now imports
+// from `./layout` directly (which is what a test of a
+// pure function should be doing).

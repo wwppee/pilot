@@ -12,10 +12,12 @@
  */
 
 import { describe, expect, it } from "vitest";
-import {
-  autoLayout,
-  computeLayout,
-} from "../src/app/workflows/[id]/WorkflowEditor";
+// v0.7.2 (P1 #4): the BFS layout helpers moved to their
+// own file. The test used to import from the editor file,
+// which was a code smell — tests of pure functions
+// shouldn't depend on a JSX module. They now import
+// from `./layout` directly.
+import { autoLayout, computeLayout } from "../src/app/workflows/[id]/layout";
 import type { Workflow, WorkflowNode, WorkflowEdge } from "../src/lib/types";
 
 function makeNode(id: string, name: string = id): WorkflowNode {
