@@ -33,6 +33,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/pilot-browser";
 import { useT } from "@/components/I18n";
 import type { Workflow, WorkflowSummary } from "@/lib/types";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 const ID_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -45,6 +46,14 @@ export function WorkflowListView() {
   const t = useT();
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [creating, setCreating] = useState(false);
+  // v0.7.1 (audit fix): the delete confirmation is now a
+  // styled dialog (ConfirmDialog) instead of `window.confirm`.
+  // The previous OS-native dialog didn't match the rest of
+  // Pilot's UI and froze the main thread on Chromium. We
+  // track which workflow is pending deletion so the dialog
+  // can show its name; clicking confirm calls the API,
+  // clicking cancel / Esc / backdrop just clears the state.
+  const [deleting, setDeleting] = useState<WorkflowSummary | null>(null);
   const [announcement, setAnnouncement] = useState("");
   const reloadRef = useRef<() => Promise<void>>(async () => {});
 
@@ -73,24 +82,33 @@ export function WorkflowListView() {
     setAnnouncement(msg);
   }, []);
 
-  const onDelete = useCallback(
-    async (wf: WorkflowSummary) => {
-      const ok = window.confirm(t("workflows.confirmDelete"));
-      if (!ok) return;
-      const removed = await api.deleteWorkflow(wf.id);
-      if (removed) {
-        announce(t("workflows.delete") + ": " + wf.id);
-        await reloadRef.current();
-      }
-    },
-    [announce, t],
-  );
+  const onDelete = useCallback(async (wf: WorkflowSummary) => {
+    // v0.7.1 (audit fix): set the pending delete target,
+    // the dialog opens and the actual API call happens
+    // when the user clicks the confirm button. We do
+    // this in two steps so the dialog is dismissable —
+    // a single-step version (call API directly) would
+    // make the dialog an "are you sure?" with no
+    // take-back.
+    setDeleting(wf);
+  }, []);
+
+  const onDeleteConfirm = useCallback(async () => {
+    if (!deleting) return;
+    const wf = deleting;
+    setDeleting(null);
+    const removed = await api.deleteWorkflow(wf.id);
+    if (removed) {
+      announce(t("workflows.delete") + ": " + wf.id);
+      await reloadRef.current();
+    }
+  }, [deleting, announce, t]);
 
   const onDuplicate = useCallback(
     async (wf: WorkflowSummary) => {
       const full = await api.workflow(wf.id);
       if (!full) {
-        announce("Could not load " + wf.id);
+        announce(t("workflows.editor.error.loadFailed", { id: wf.id }));
         return;
       }
       // Generate a copy id by appending "-copy" / "-copy-N" until
@@ -121,7 +139,9 @@ export function WorkflowListView() {
         await reloadRef.current();
       } catch (e) {
         announce(
-          "Duplicate failed: " + (e instanceof Error ? e.message : String(e)),
+          t("workflows.editor.error.duplicateFailed", {
+            error: e instanceof Error ? e.message : String(e),
+          }),
         );
       }
     },
@@ -231,6 +251,20 @@ export function WorkflowListView() {
               window.location.href = `/workflows/${encodeURIComponent(newId)}`;
             }
           }}
+        />
+      ) : null}
+
+      {deleting ? (
+        <ConfirmDialog
+          open={!!deleting}
+          title={t("workflows.delete")}
+          description={t("workflows.confirmDelete")}
+          confirmLabel={t("workflows.delete")}
+          cancelLabel={t("workflows.editor.cancel")}
+          destructive
+          onConfirm={() => void onDeleteConfirm()}
+          onCancel={() => setDeleting(null)}
+          data-testid="workflows-delete-dialog"
         />
       ) : null}
 

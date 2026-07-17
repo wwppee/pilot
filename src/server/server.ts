@@ -774,11 +774,24 @@ export async function startServer(
     }
   });
 
+  // v0.7.1 (audit fix): distinguish "deleted" from "didn't
+  // exist". Previously we always returned 200, which made
+  // the UI's "row is gone, the list reloaded" path run
+  // even on a stale id (e.g. user opens the list in two
+  // tabs, deletes in one, refreshes in the other). Now
+  // we check first and 404 if the workflow doesn't exist
+  // — the same semantic as `/compose/boards/:id` DELETE
+  // and the rest of the v0.7.x API surface.
   app.delete<{ Params: { id: string } }>(
     "/workflows/:id",
     async (req, reply) => {
       if (!isValidWorkflowId(req.params.id)) {
         await reply.code(400).send({ error: "invalid workflow id" });
+        return;
+      }
+      const existing = await service.getWorkflow(req.params.id);
+      if (!existing) {
+        await reply.code(404).send({ error: "workflow not found" });
         return;
       }
       const removed = await service.deleteWorkflow(req.params.id);

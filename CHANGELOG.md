@@ -1,6 +1,141 @@
 # Changelog
 
-## Unreleased
+### v0.7.1 — `/workflows` audit fixes (5 issues closed in one hotfix)
+
+User did real browser testing on v0.7.0 (`/workflows` MVP) and
+came back with a 7-item audit (3 P0/P1 bugs + 1 P1 refactor +
+1 P1 test gap + 2 P2 UX inconsistencies). This release closes
+5 of the 7 in a single hotfix; the remaining 2 (P1 #4
+`WorkflowEditor.tsx` 931-line split, P1 #5 full test coverage)
+are deferred to v0.7.2 alongside the next visual feature.
+
+**P0 #1 — `loadWorkflow` no longer throws on corrupt JSON**
+
+`src/core/workflow.ts`: `JSON.parse` and `WorkflowSchema.parse`
+are now both wrapped in `try/catch`. A user who hand-edits
+`~/.pilot/workflows/<id>/workflow.json` and breaks the JSON
+used to get a 500 from a raw `SyntaxError` bubbling past
+the route boundary. With the try/catch the load degrades
+to `null` (→ 404) and the file path is logged so the user
+can find + fix or delete it. Schema-valid-JSON-but-wrong-shape
+still throws — the thrown `Error` carries the Zod issue list
+so the API route surfaces it as a 400 (same pattern as
+`compose-boards.saveBoard`).
+
+- New tests: `loadWorkflow returns null (not throws) for a
+  corrupted JSON file` + `loadWorkflow returns null for
+  completely non-JSON content` + `loadWorkflow throws a
+  friendly Error for valid JSON that fails schema validation`.
+
+**P0 #2 — `DELETE /workflows/:id` 404s when the workflow doesn't exist**
+
+`src/server/server.ts`: previously the route always returned
+`{ removed: false }` (200) for missing ids. The UI's "row is
+gone, list reloaded" path then fired even on stale ids
+(e.g. user opens the list in two tabs, deletes in one,
+refreshes in the other) — masking the real state. Now we
+check first via `service.getWorkflow` and 404 if missing,
+matching the semantics of `/compose/boards/:id` DELETE and
+the rest of the v0.7.x API surface.
+
+- New tests: `DELETE /workflows/:id 404s when the workflow
+  doesn't exist` + `GET /workflows/:id 404s for an unknown
+  id` + `PUT /workflows/:id 400s for an invalid id` (in
+  `test/unit/server.test.ts` under the new `Workflow
+  endpoints (v0.7.0)` describe).
+
+**P1 #3 — Connect-candidate filter now uses real edge data**
+
+`web/.../WorkflowEditor.tsx`: the "connect to" picker used
+to filter candidates by `outputVar.startsWith(n.outputVar)`,
+which had nothing to do with whether two nodes were already
+connected — it was a leftover from an earlier design that
+used `outputVar` as a way to express "depends on" before
+edges existed. With a real `connectedToIds: Set<string>`
+prop (computed from `workflow.edges` in `StepsPanel` and
+passed down to `NodeCard`), the picker now correctly hides
+nodes that already have an edge from this one. Without
+this fix, the picker would let the user create duplicate
+edges — silently deduped by `addEdge` as a no-op, which is
+a confusing UX where "click Connect" appears to do nothing.
+
+**P2 #6 — 4 hardcoded English strings extracted to i18n**
+
+`web/.../WorkflowListView.tsx` and `WorkflowEditor.tsx`:
+previously the "Could not load {id}" and "Duplicate failed:
+{error}" announcements were hardcoded English. Extracted
+to two new i18n keys (`workflows.editor.error.duplicateFailed`
++ `workflows.editor.error.loadFailed`) synced across
+types.ts + dict.en.ts + dict.zh.ts. The error string is
+still appended after the i18n'd prefix so the underlying
+cause stays identifiable.
+
+**P2 #7 — Custom `ConfirmDialog` replaces `window.confirm`**
+
+`window.confirm` is a native OS dialog that doesn't match
+the rest of Pilot's UI (e.g. `NewWorkflowDialog` in the
+same file, `RenameDialog` in `/compose/boards`) and freezes
+the main thread on Chromium-based browsers. New
+`web/src/app/workflows/ConfirmDialog.tsx` follows the
+"fixed inset-0 overlay + surface card" pattern of the
+existing dialogs. Features: Esc-to-cancel, backdrop-click
+cancel, destructive variant (the confirm button loses the
+`.primary` class so it doesn't look like a positive action;
+the red-ish tint comes from `--error` CSS var), `busy` prop
+to disable + show "…" while the API call is in flight, and
+`data-testid` for future UI tests. Both the list view and
+the editor now use it for delete confirmation (the editor
+also splits the action into "open dialog" + "do the actual
+delete" so cancel is a no-op, not a mid-flight abort).
+
+**Deliberately NOT done (v0.7.2 backlog)**
+
+- **P1 #4** `WorkflowEditor.tsx` 931-line split (NodeEditor /
+  ConnectionManager / VariablePanel). Same file-size pressure
+  that motivated the v0.6.22 `useHistoryStack` extraction —
+  the editor is now over the 800-line "should be split"
+  threshold.
+- **P1 #5** `WorkflowEditor.tsx` + API route full test
+  coverage (component tests + e2e). v0.7.1 added 4 server
+  integration tests but no React Testing Library tests
+  for the editor itself.
+- **P3 #8** `readWorkflowSummary` + `loadWorkflow` parse
+  logic duplication (extract a shared `parseWorkflowFile`).
+- **P3 #9** `SAFE_ID` regex should match `compose-boards`
+  (`^[a-zA-Z][a-zA-Z0-9_-]{0,63}$`) for consistency.
+
+**Stats**
+
+- root: **630/630** ✓ (was 622; +8 in workflow + server tests)
+- web: **245/245** ✓ (unchanged — no logic change that
+  needs new component tests; the dialog and connect-filter
+  fixes are surface-level)
+- format:check root + web: ✓
+- lint (root `eslint src test --max-warnings 0`): ✓
+- tsc root + web: ✓
+- production build: not run (audit hotfix, no production-
+  affecting logic; same precedent as v0.6.19 / v0.6.20 /
+  v0.6.21)
+
+**File / new file inventory**
+
+- `src/core/workflow.ts` — try/catch on `JSON.parse` +
+  `WorkflowSchema.parse` (P0 #1)
+- `src/server/server.ts` — `loadWorkflow` check + 404 before
+  delete (P0 #2)
+- `web/src/app/workflows/ConfirmDialog.tsx` — new file
+  (P2 #7)
+- `web/src/app/workflows/WorkflowListView.tsx` — use
+  `ConfirmDialog` + i18n for 2 error strings (P2 #6, P2 #7)
+- `web/src/app/workflows/[id]/WorkflowEditor.tsx` — use
+  `ConfirmDialog` + i18n + `connectedToIds` prop (P2 #6,
+  P2 #7, P1 #3)
+- `web/src/lib/i18n/{types,dict.en,dict.zh}.ts` — 2 new
+  error keys (P2 #6)
+- `test/unit/workflow.test.ts` — 3 new tests (P0 #1)
+- `test/unit/server.test.ts` — new `Workflow endpoints
+  (v0.7.0)` describe block with 4 tests (P0 #2 + minimal
+  lifecycle coverage)
 
 ### v0.7.0 — `/workflows` MVP (reusable agent workflow templates)
 

@@ -1258,4 +1258,12 @@ export type Dict = {
   "workflows.savedAt": string;
   "workflows.editor.cancel": string;
   "workflows.editor.open": string;
+  // v0.7.1 (audit fix): error messages. Previously these
+  // were hardcoded English strings ("Duplicate failed: ...",
+  // "Could not load ...") — fine in dev, but jarring when
+  // a zh user hits the error path. The error is appended
+  // after the i18n'd prefix so the underlying cause stays
+  // identifiable.
+  "workflows.editor.error.duplicateFailed": string;
+  "workflows.editor.error.loadFailed": string;
 };

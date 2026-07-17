@@ -1158,4 +1158,136 @@ describe("pilot server", () => {
       expect(after.json()).toEqual([]);
     });
   });
+
+  // ─── Workflow endpoints (v0.7.0 + v0.7.1 audit) ─────
+
+  describe("Workflow endpoints (v0.7.0)", () => {
+    const auth = () => ({ "x-pilot-token": handle.token });
+
+    // Minimal valid WorkflowInput — same shape the editor
+    // sends over the wire. We keep the nodes/edges arrays
+    // short so the test stays focused on the route, not
+    // the schema (schema coverage lives in workflow.test.ts).
+    function sampleBody() {
+      return {
+        name: "Sample",
+        description: "",
+        version: 1,
+        nodes: [
+          {
+            id: "n1",
+            name: "Step 1",
+            kind: "step",
+            model: { provider: "anthropic", model: "claude-haiku-4-5" },
+            systemPrompt: "do thing",
+            inputTemplate: "",
+            outputVar: "out1",
+            tools: [],
+            onFailure: "stop",
+            position: { x: 0, y: 0 },
+          },
+        ],
+        edges: [],
+      };
+    }
+
+    it("GET /workflows is empty when nothing has been saved", async () => {
+      const res = await handle.app.inject({
+        method: "GET",
+        url: "/workflows",
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual([]);
+    });
+
+    it("PUT → GET → DELETE lifecycle for a single workflow", async () => {
+      // PUT
+      const put = await handle.app.inject({
+        method: "PUT",
+        url: "/workflows/sample-flow",
+        headers: { ...auth(), "content-type": "application/json" },
+        payload: sampleBody(),
+      });
+      expect(put.statusCode).toBe(200);
+      const putBody = put.json() as { id: string; metadata: unknown };
+      expect(putBody.id).toBe("sample-flow");
+      expect(putBody.metadata).toBeTruthy();
+
+      // GET round-trips
+      const get = await handle.app.inject({
+        method: "GET",
+        url: "/workflows/sample-flow",
+        headers: auth(),
+      });
+      expect(get.statusCode).toBe(200);
+      expect((get.json() as { id: string }).id).toBe("sample-flow");
+
+      // List shows it
+      const list = await handle.app.inject({
+        method: "GET",
+        url: "/workflows",
+        headers: auth(),
+      });
+      const summaries = list.json() as Array<{ id: string }>;
+      expect(summaries.map((s) => s.id)).toEqual(["sample-flow"]);
+
+      // DELETE existing
+      const del = await handle.app.inject({
+        method: "DELETE",
+        url: "/workflows/sample-flow",
+        headers: auth(),
+      });
+      expect(del.statusCode).toBe(200);
+      expect((del.json() as { removed: boolean }).removed).toBe(true);
+
+      // GET after delete → 404
+      const after = await handle.app.inject({
+        method: "GET",
+        url: "/workflows/sample-flow",
+        headers: auth(),
+      });
+      expect(after.statusCode).toBe(404);
+    });
+
+    // v0.7.1 (audit fix P0 #2): DELETE previously always
+    // returned 200 with `{ removed: false }` for missing
+    // ids. The UI's "row is gone, list reloaded" path then
+    // fired anyway on stale ids (e.g. user opens the list
+    // in two tabs, deletes in one, refreshes in the other),
+    // masking the real state. Now we 404 first so the API
+    // tells the truth.
+
+    it("DELETE /workflows/:id 404s when the workflow doesn't exist (v0.7.1 audit)", async () => {
+      const res = await handle.app.inject({
+        method: "DELETE",
+        url: "/workflows/never-existed",
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(404);
+      expect((res.json() as { error: string }).error).toMatch(/not found/i);
+    });
+
+    it("GET /workflows/:id 404s for an unknown id (sanity)", async () => {
+      const res = await handle.app.inject({
+        method: "GET",
+        url: "/workflows/never-existed",
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(404);
+    });
+
+    it("PUT /workflows/:id 400s for an invalid id", async () => {
+      // "Bad_Id" contains an underscore which isn't
+      // kebab-case — the schema rejects it at the
+      // boundary so we never write to disk.
+      const res = await handle.app.inject({
+        method: "PUT",
+        url: "/workflows/Bad_Id",
+        headers: { ...auth(), "content-type": "application/json" },
+        payload: sampleBody(),
+      });
+      expect(res.statusCode).toBe(400);
+    });
+  });
 });

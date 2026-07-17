@@ -17,7 +17,7 @@
 
 - pilot 是什么：pi-coding-agent 的 management plane（CLI + Web UI）—— **不拦截 pi runtime**
 - 仓库：`github.com/wwppee/pilot`（npm 名 `pilot`）
-- 当前版本：v0.7.0
+- 当前版本：v0.7.1
 - 沙盒限制：可能不能 `git push` / `npm publish` / 起 `pilot start`（见 §9）
 
 ---
@@ -641,6 +641,6 @@ sed -i '' 's/"version": "0.6.X"/"version": "0.6.Y"/' package.json web/package.js
 
 ---
 
-**Last updated**: 2026-07-17 (v0.7.0 /workflows MVP)
+**Last updated**: 2026-07-17 (v0.7.1 /workflows audit fixes)
 
 **Maintainer**: 每次新 release 后回写新教训到对应章节。

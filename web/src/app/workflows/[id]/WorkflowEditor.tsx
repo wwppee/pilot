@@ -67,6 +67,12 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  // v0.7.1 (audit fix): the delete confirmation is now
+  // a styled dialog (ConfirmDialog) instead of `window.confirm`.
+  // Tracks whether the dialog is open; the actual API call
+  // happens in `confirmDelete` so the user can cancel
+  // without us touching the server.
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [announcement, setAnnouncement] = useState("");
 
   // Load on mount / id change.
@@ -138,19 +144,29 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
       window.location.href = `/workflows/${encodeURIComponent(newId)}`;
     } catch (e) {
       setAnnouncement(
-        "Duplicate failed: " + (e instanceof Error ? e.message : String(e)),
+        t("workflows.editor.error.duplicateFailed", {
+          error: e instanceof Error ? e.message : String(e),
+        }),
       );
     }
+  }, [state, t]);
+
+  // Delete + navigate back to the list. v0.7.1 splits
+  // this into "open the dialog" + "do the actual delete"
+  // so the user can cancel; previously the API call fired
+  // immediately on the same tick as the confirm click.
+  const remove = useCallback(() => {
+    if (state.kind !== "ok") return;
+    setConfirmingDelete(true);
   }, [state]);
 
-  // Delete + navigate back to the list.
-  const remove = useCallback(async () => {
+  const confirmDelete = useCallback(async () => {
     if (state.kind !== "ok") return;
-    const ok = window.confirm(t("workflows.confirmDelete"));
-    if (!ok) return;
-    await api.deleteWorkflow(state.workflow.id);
+    const id = state.workflow.id;
+    setConfirmingDelete(false);
+    await api.deleteWorkflow(id);
     window.location.href = "/workflows";
-  }, [state, t]);
+  }, [state]);
 
   // ─── Render ────────────────────────────────────────
 
@@ -410,6 +426,22 @@ function StepsPanel({
               index={i + 1}
               node={node}
               allNodes={workflow.nodes}
+              // v0.7.1 (audit fix): pass the *actual* set of
+              // node ids this node is already connected to,
+              // derived from `workflow.edges`. The previous
+              // version filtered by `outputVar.startsWith`,
+              // which was a typo / leftover from a different
+              // design and had nothing to do with whether two
+              // nodes were already connected. With the real
+              // data the picker now correctly hides nodes that
+              // already have an edge from this one.
+              connectedToIds={
+                new Set(
+                  workflow.edges
+                    .filter((e) => e.from === node.id)
+                    .map((e) => e.to),
+                )
+              }
               onUpdate={(patch) => updateNode(node.id, patch)}
               onRemove={() => removeNode(node.id)}
               onAddEdge={(to) => addEdge(node.id, to)}
@@ -475,6 +507,7 @@ function NodeCard({
   index,
   node,
   allNodes,
+  connectedToIds,
   onUpdate,
   onRemove,
   onAddEdge,
@@ -483,16 +516,33 @@ function NodeCard({
   index: number;
   node: WorkflowNode;
   allNodes: WorkflowNode[];
+  /**
+   * v0.7.1 (audit fix): the set of node ids this node is
+   * already connected to (i.e. the `to` side of an edge
+   * originating from `node.id`). Computed once in the
+   * parent so the candidate picker can hide already-
+   * connected nodes. Without this, the picker would let
+   * the user create duplicate edges (silently deduped by
+   * `addEdge`, but only as a no-op — a confusing UX where
+   * "click Connect" appears to do nothing).
+   */
+  connectedToIds: Set<string>;
   onUpdate: (patch: Partial<WorkflowNode>) => void;
   onRemove: () => void;
   onAddEdge: (to: string) => void;
   t: (k: string, p?: Record<string, unknown>) => string;
 }) {
   const [connectOpen, setConnectOpen] = useState(false);
-  // Filter the "connect to" list to nodes we haven't already
-  // connected to AND exclude self.
+  // v0.7.1 (audit fix): the "connect to" picker must show
+  // (a) every other node, (b) minus nodes we're already
+  // connected to, (c) minus ourselves. The previous code
+  // filtered by `outputVar.startsWith(...)` which had
+  // nothing to do with whether two nodes were connected —
+  // it was a leftover from an earlier design that used
+  // `outputVar` as a way to express "depends on" before
+  // edges existed.
   const candidates = allNodes.filter(
-    (n) => n.id !== node.id && !node.outputVar.startsWith(n.outputVar),
+    (n) => n.id !== node.id && !connectedToIds.has(n.id),
   );
   return (
     <li

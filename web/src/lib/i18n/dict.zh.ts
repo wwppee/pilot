@@ -1263,5 +1263,7 @@ const zh: Dict = {
   "workflows.savedAt": "保存于 {when}",
   "workflows.editor.cancel": "取消",
   "workflows.editor.open": "打开",
+  "workflows.editor.error.duplicateFailed": "复制失败：{error}",
+  "workflows.editor.error.loadFailed": "无法加载 {id}",
 };
 export default zh;

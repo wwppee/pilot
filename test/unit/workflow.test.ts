@@ -156,4 +156,52 @@ describe("v0.7.0: workflow persistence", () => {
   it("loadWorkflow returns null on an invalid id without throwing", async () => {
     expect(await loadWorkflow("../escape", fakeHome)).toBeNull();
   });
+
+  // ─── v0.7.1 audit fixes ────────────────────────────
+  // P0 #1: a hand-edited (or otherwise corrupted) workflow.json
+  // used to bubble a raw `SyntaxError` past the API route and
+  // turn into a 500. With the try/catch the load degrades to
+  // `null` (→ 404) and the file path is logged so the user
+  // can find + fix or delete it. We assert on the return value
+  // + that the file is left untouched (we don't auto-rewrite
+  // corrupted files — that's the user's call).
+
+  it("loadWorkflow returns null (not throws) for a corrupted JSON file", async () => {
+    const { mkdir, writeFile } = await import("node:fs/promises");
+    const dir = join(fakeHome, "workflows", "broken-json");
+    await mkdir(dir, { recursive: true });
+    const file = join(dir, "workflow.json");
+    // Truncated mid-object — valid JSON would close the braces.
+    await writeFile(file, '{"id": "broken-json", "nodes": [');
+    // No throw, just null.
+    expect(await loadWorkflow("broken-json", fakeHome)).toBeNull();
+    // File is left alone for the user to fix or delete.
+    const { readFile } = await import("node:fs/promises");
+    expect(await readFile(file, "utf8")).toContain("nodes");
+  });
+
+  it("loadWorkflow returns null for completely non-JSON content", async () => {
+    const { mkdir, writeFile } = await import("node:fs/promises");
+    const dir = join(fakeHome, "workflows", "garbage");
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, "workflow.json"), "this is not json at all");
+    expect(await loadWorkflow("garbage", fakeHome)).toBeNull();
+  });
+
+  it("loadWorkflow throws a friendly Error for valid JSON that fails schema validation", async () => {
+    // The JSON parses fine but the shape is wrong (e.g. missing
+    // required fields). The API route turns this thrown Error
+    // into a 400 with the Zod issue list, not a 500 from a
+    // raw ZodError.
+    const { mkdir, writeFile } = await import("node:fs/promises");
+    const dir = join(fakeHome, "workflows", "wrong-shape");
+    await mkdir(dir, { recursive: true });
+    await writeFile(
+      join(dir, "workflow.json"),
+      JSON.stringify({ id: "wrong-shape", nodes: "not-an-array" }),
+    );
+    await expect(loadWorkflow("wrong-shape", fakeHome)).rejects.toThrow(
+      /failed schema validation/,
+    );
+  });
 });

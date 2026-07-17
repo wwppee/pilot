@@ -224,6 +224,19 @@ async function readWorkflowSummary(
  * 400 with the Zod error details). Returns `null` when
  * the file doesn't exist — the API route turns this into
  * a 404.
+ *
+ * v0.7.1 (audit fix): `JSON.parse` and `WorkflowSchema.parse`
+ * are both wrapped in try/catch. A user who hand-edits
+ * `~/.pilot/workflows/<id>/workflow.json` and breaks the
+ * JSON or the schema would otherwise get a 500 from a raw
+ * `SyntaxError` or `ZodError` thrown past the route
+ * boundary. With the try/catch we degrade gracefully:
+ * `null` (→ 404) for missing, `null` (→ 404) for
+ * unparseable, and a thrown `Error` with the Zod issue
+ * list for "found but invalid" so the API route can
+ * surface it as a 400. The `console.warn` gives the
+ * developer (or the user, if they look at the dashboard
+ * log) a hint about where the broken file is.
  */
 export async function loadWorkflow(
   id: string,
@@ -237,8 +250,30 @@ export async function loadWorkflow(
   } catch {
     return null;
   }
-  const parsed = JSON.parse(raw);
-  return WorkflowSchema.parse(parsed);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (e) {
+    console.warn(
+      `[workflow] ${file} exists but is not valid JSON — returning 404. ` +
+        `Delete the file or fix the JSON to recover. (${
+          e instanceof Error ? e.message : String(e)
+        })`,
+    );
+    return null;
+  }
+  try {
+    return WorkflowSchema.parse(parsed);
+  } catch (e) {
+    // Throw with a friendlier message so the API layer can
+    // surface a 400 with the Zod issue list, not a raw
+    // ZodError which the default error handler turns into
+    // a 500. Same pattern as `compose-boards.saveBoard`.
+    if (e instanceof Error) {
+      throw new Error(`workflow ${id} failed schema validation: ${e.message}`);
+    }
+    throw e;
+  }
 }
 
 // ─── Save ───────────────────────────────────────────────

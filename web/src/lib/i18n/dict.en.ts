@@ -1322,5 +1322,7 @@ const en: Dict = {
   "workflows.savedAt": "Saved at {when}",
   "workflows.editor.cancel": "Cancel",
   "workflows.editor.open": "Open",
+  "workflows.editor.error.duplicateFailed": "Duplicate failed: {error}",
+  "workflows.editor.error.loadFailed": "Could not load {id}",
 };
 export default en;
