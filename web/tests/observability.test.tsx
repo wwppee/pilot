@@ -56,7 +56,17 @@ describe("v0.7.3: <ObservabilityView>", () => {
       fail: 2,
       denied: 1,
       worstTool: "bash",
-      byTool: [{ tool: "bash", total: 5, success: 3, fail: 1, denied: 1, recentError: "denied: rm", lastSeen: "2026-07-18T00:00:00Z" }],
+      byTool: [
+        {
+          tool: "bash",
+          total: 5,
+          success: 3,
+          fail: 1,
+          denied: 1,
+          recentError: "denied: rm",
+          lastSeen: "2026-07-18T00:00:00Z",
+        },
+      ],
     });
     renderView();
     await waitFor(() => {
@@ -75,16 +85,36 @@ describe("v0.7.3: <ObservabilityView>", () => {
       denied: 1,
       worstTool: "bash",
       byTool: [
-        { tool: "bash", total: 3, success: 0, fail: 2, denied: 1, recentError: "EACCES", lastSeen: "2026-07-18T00:00:00Z" },
-        { tool: "write", total: 3, success: 3, fail: 0, denied: 0, recentError: "", lastSeen: "2026-07-18T00:00:00Z" },
+        {
+          tool: "bash",
+          total: 3,
+          success: 0,
+          fail: 2,
+          denied: 1,
+          recentError: "EACCES",
+          lastSeen: "2026-07-18T00:00:00Z",
+        },
+        {
+          tool: "write",
+          total: 3,
+          success: 3,
+          fail: 0,
+          denied: 0,
+          recentError: "",
+          lastSeen: "2026-07-18T00:00:00Z",
+        },
       ],
     });
     renderView();
     await waitFor(() => {
       const rows = screen.getAllByTestId(/^observability-row-/);
       // Worst tool first.
-      expect(rows[0]?.getAttribute("data-testid")).toBe("observability-row-bash");
-      expect(rows[1]?.getAttribute("data-testid")).toBe("observability-row-write");
+      expect(rows[0]?.getAttribute("data-testid")).toBe(
+        "observability-row-bash",
+      );
+      expect(rows[1]?.getAttribute("data-testid")).toBe(
+        "observability-row-write",
+      );
     });
   });
 
@@ -96,7 +126,15 @@ describe("v0.7.3: <ObservabilityView>", () => {
       denied: 1,
       worstTool: "bash",
       byTool: [
-        { tool: "bash", total: 1, success: 0, fail: 0, denied: 1, recentError: "rm -rf", lastSeen: "2026-07-18T00:00:00Z" },
+        {
+          tool: "bash",
+          total: 1,
+          success: 0,
+          fail: 0,
+          denied: 1,
+          recentError: "rm -rf",
+          lastSeen: "2026-07-18T00:00:00Z",
+        },
       ],
     });
     mockCalls.mockResolvedValue([
@@ -112,7 +150,9 @@ describe("v0.7.3: <ObservabilityView>", () => {
     const row = await screen.findByTestId("observability-row-bash");
     fireEvent.click(row);
     await waitFor(() => {
-      expect(screen.getByTestId("observability-card-bash-2026-07-18T00:00:00Z")).toBeTruthy();
+      expect(
+        screen.getByTestId("observability-card-bash-2026-07-18T00:00:00Z"),
+      ).toBeTruthy();
     });
     expect(mockCalls).toHaveBeenCalledWith({ toolName: "bash", limit: 20 });
   });
@@ -142,9 +182,21 @@ describe("v0.7.3: <ObservabilityView>", () => {
 
   it("reloads the summary when the Refresh button is clicked", async () => {
     mockSummary.mockResolvedValue({
-      total: 1, success: 1, fail: 0, denied: 0, worstTool: null,
+      total: 1,
+      success: 1,
+      fail: 0,
+      denied: 0,
+      worstTool: null,
       byTool: [
-        { tool: "write", total: 1, success: 1, fail: 0, denied: 0, recentError: "", lastSeen: "2026-07-18T00:00:00Z" },
+        {
+          tool: "write",
+          total: 1,
+          success: 1,
+          fail: 0,
+          denied: 0,
+          recentError: "",
+          lastSeen: "2026-07-18T00:00:00Z",
+        },
       ],
     });
     renderView();
@@ -155,9 +207,21 @@ describe("v0.7.3: <ObservabilityView>", () => {
 
   it("toggles a row off when clicked twice", async () => {
     mockSummary.mockResolvedValue({
-      total: 1, success: 0, fail: 0, denied: 1, worstTool: "bash",
+      total: 1,
+      success: 0,
+      fail: 0,
+      denied: 1,
+      worstTool: "bash",
       byTool: [
-        { tool: "bash", total: 1, success: 0, fail: 0, denied: 1, recentError: "x", lastSeen: "2026-07-18T00:00:00Z" },
+        {
+          tool: "bash",
+          total: 1,
+          success: 0,
+          fail: 0,
+          denied: 1,
+          recentError: "x",
+          lastSeen: "2026-07-18T00:00:00Z",
+        },
       ],
     });
     mockCalls.mockResolvedValue([]);

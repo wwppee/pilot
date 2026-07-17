@@ -20,7 +20,11 @@ import { describe, expect, it } from "vitest";
 import { autoLayout, computeLayout } from "../src/app/workflows/[id]/layout";
 import type { Workflow, WorkflowNode, WorkflowEdge } from "../src/lib/types";
 
-function makeNode(id: string, name: string = id): WorkflowNode {
+function makeNode(
+  id: string,
+  name: string = id,
+  overrides: Partial<WorkflowNode> = {},
+): WorkflowNode {
   return {
     id,
     name,
@@ -32,6 +36,7 @@ function makeNode(id: string, name: string = id): WorkflowNode {
     tools: [],
     onFailure: "stop",
     position: { x: 0, y: 0 },
+    ...overrides,
   };
 }
 
@@ -136,5 +141,56 @@ describe("v0.7.0: autoLayout", () => {
     const out = autoLayout(wf);
     expect(out.find((n) => n.id === "a")?.name).toBe("Read");
     expect(out.find((n) => n.id === "b")?.name).toBe("Write");
+  });
+});
+
+describe("v0.7.4: hand-placed position overrides BFS layout", () => {
+  it("uses node.position when a node has been hand-placed (drag-and-drop)", () => {
+    // A node with {x: 480, y: 160} sits at column 2 row 2
+    // of the 240×80 grid — i.e. 2 cells over and 2 down
+    // from the BFS-default position. The layout helper
+    // should honor that hand-placed coordinate instead of
+    // assigning it whatever BFS thinks the depth should be.
+    const wf = makeWorkflow(
+      [
+        makeNode("a", "a", { position: { x: 0, y: 0 } }),
+        makeNode("b", "b", { position: { x: 480, y: 160 } }),
+      ],
+      [{ id: "e1", from: "a", to: "b" }],
+    );
+    const layout = computeLayout(wf);
+    const b = layout.positions.b!;
+    expect(b.col).toBe(2);
+    expect(b.depth).toBe(2);
+  });
+
+  it("treats {0, 0} as 'not placed' so the BFS fallback runs", () => {
+    // {0, 0} is the BFS starting corner. A node whose
+    // position is {0, 0} (default for a fresh workflow
+    // that has never been auto-laid-out) must NOT be
+    // treated as 'pinned' — otherwise an auto-layout
+    // would never move it.
+    const wf = makeWorkflow(
+      [makeNode("a", "a", { position: { x: 0, y: 0 } })],
+      [],
+    );
+    const layout = computeLayout(wf);
+    const a = layout.positions.a!;
+    expect(a.col).toBe(0);
+    expect(a.depth).toBe(0);
+  });
+
+  it("uses integer grid coordinates for hand-placed positions", () => {
+    // v0.7.4: the PreviewPanel drag handler rounds to
+    // integers, so positions are always clean multiples
+    // of (240, 80). This pins that contract — if a future
+    // change starts storing floats, the test surfaces it.
+    const wf = makeWorkflow(
+      [makeNode("a", "a", { position: { x: 240, y: 80 } })],
+      [],
+    );
+    const layout = computeLayout(wf);
+    expect(layout.positions.a!.col).toBe(1);
+    expect(layout.positions.a!.depth).toBe(1);
   });
 });

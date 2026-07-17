@@ -64,9 +64,24 @@ describe("v0.7.3: observability recorder + summarizer", () => {
 
   it("summarizes by tool with counts and recentError", async () => {
     for (const ev of [
-      { tool: "bash", outcome: "denied" as const, reason: "deny", errorSample: "rm -rf" },
-      { tool: "bash", outcome: "denied" as const, reason: "deny", errorSample: "chmod 777" },
-      { tool: "read", outcome: "denied" as const, reason: "denyPaths", errorSample: "/etc/shadow" },
+      {
+        tool: "bash",
+        outcome: "denied" as const,
+        reason: "deny",
+        errorSample: "rm -rf",
+      },
+      {
+        tool: "bash",
+        outcome: "denied" as const,
+        reason: "deny",
+        errorSample: "chmod 777",
+      },
+      {
+        tool: "read",
+        outcome: "denied" as const,
+        reason: "denyPaths",
+        errorSample: "/etc/shadow",
+      },
     ]) {
       await recordToolCall(
         {

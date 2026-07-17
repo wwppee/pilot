@@ -30,7 +30,7 @@
  */
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/pilot-browser";
 import { useT } from "@/components/I18n";
 import { ConfirmDialog } from "../ConfirmDialog";
@@ -326,6 +326,22 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
         <PreviewPanel
           workflow={wf}
           t={t as (k: string, p?: Record<string, unknown>) => string}
+          // v0.7.4: drag-and-drop callback. The preview is
+          // a pure view component; it reports the new
+          // position up and the editor mutates the node.
+          // We mark dirty so the next Save persists the
+          // drag, and we update via the same `mutate`
+          // helper used by the form fields — same path,
+          // same React state model.
+          onNodeMove={(nodeId, position) => {
+            mutate((w) => ({
+              ...w,
+              nodes: w.nodes.map((n) =>
+                n.id === nodeId ? { ...n, position } : n,
+              ),
+            }));
+            setDirty(true);
+          }}
         />
       </div>
 
@@ -688,15 +704,63 @@ function NodeCard({
 function PreviewPanel({
   workflow,
   t,
+  onNodeMove,
 }: {
   workflow: Workflow;
   t: (k: string, p?: Record<string, unknown>) => string;
+  // v0.7.4: drag-and-drop callback. The preview is a
+  // pure view component; it doesn't own the workflow
+  // state. When the user drops a node, we report the
+  // new (x, y) up so the editor can mutate + mark dirty.
+  onNodeMove: (nodeId: string, position: { x: number; y: number }) => void;
 }) {
   // v0.7.0: BFS from the source-most nodes (no incoming
   // edge) and lay out top-to-bottom by depth. The output is
   // the same data the SVG renders; we memoize so re-renders
   // that don't change the topology skip the layout work.
   const layout = useMemo(() => computeLayout(workflow), [workflow]);
+
+  // v0.7.4: drag state. `dragging` holds the node id being
+  // dragged plus the offset between the mouse and the
+  // node's top-left corner (so a click in the middle of a
+  // node doesn't jump the corner to the cursor). `svgRef`
+  // is used to convert client coordinates to SVG viewBox
+  // coordinates via the CTM (current transformation matrix).
+  const [dragging, setDragging] = useState<{
+    nodeId: string;
+    offsetX: number;
+    offsetY: number;
+  } | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  // v0.7.4: pointer move + up are bound at the document
+  // level (not the SVG level) so the drag continues even
+  // when the cursor leaves the SVG bounds. The handlers
+  // do nothing when `dragging` is null so the global
+  // listeners are inert in the common case.
+  useEffect(() => {
+    if (!dragging) return;
+    const onMove = (e: PointerEvent) => {
+      if (!svgRef.current) return;
+      const ctm = svgRef.current.getScreenCTM();
+      if (!ctm) return;
+      // Convert screen coords to SVG viewBox coords.
+      const pt = svgRef.current.createSVGPoint();
+      pt.x = e.clientX;
+      pt.y = e.clientY;
+      const local = pt.matrixTransform(ctm.inverse());
+      const newX = Math.max(0, Math.round(local.x - dragging.offsetX));
+      const newY = Math.max(0, Math.round(local.y - dragging.offsetY));
+      onNodeMove(dragging.nodeId, { x: newX, y: newY });
+    };
+    const onUp = () => setDragging(null);
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    return () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+    };
+  }, [dragging, onNodeMove]);
 
   if (workflow.nodes.length === 0) {
     return (
@@ -727,6 +791,7 @@ function PreviewPanel({
         {t("workflows.editor.layoutHint")}
       </p>
       <svg
+        ref={svgRef}
         viewBox={`0 0 ${layout.cols * colWidth} ${Math.max(1, layout.depth) * rowHeight}`}
         width="100%"
         style={{ minHeight: "320px" }}
@@ -759,11 +824,38 @@ function PreviewPanel({
         {workflow.nodes.map((n) => {
           const pos = layout.positions[n.id];
           if (!pos) return null;
+          const isDragging = dragging?.nodeId === n.id;
           return (
             <g
               key={n.id}
               transform={`translate(${pos.col * colWidth}, ${pos.depth * rowHeight})`}
               data-node-id={n.id}
+              data-testid={`workflow-preview-node-${n.id}`}
+              style={{
+                cursor: isDragging ? "grabbing" : "grab",
+                opacity: isDragging ? 0.8 : 1,
+              }}
+              onPointerDown={(e) => {
+                // v0.7.4: start a drag. The offset is the
+                // distance from the cursor to the node's
+                // top-left corner so the node doesn't jump
+                // on the first move. SVG createSVGPoint +
+                // matrixTransform is the standard way to
+                // convert client coords to viewBox coords.
+                if (!svgRef.current) return;
+                e.preventDefault();
+                const ctm = svgRef.current.getScreenCTM();
+                if (!ctm) return;
+                const pt = svgRef.current.createSVGPoint();
+                pt.x = e.clientX;
+                pt.y = e.clientY;
+                const local = pt.matrixTransform(ctm.inverse());
+                setDragging({
+                  nodeId: n.id,
+                  offsetX: local.x - pos.col * colWidth,
+                  offsetY: local.y - pos.depth * rowHeight,
+                });
+              }}
             >
               <rect
                 width={nodeWidth}

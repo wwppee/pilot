@@ -23,7 +23,13 @@ describe("v0.7.3: <ToolCallCard>", () => {
   it("renders the tool name + a denied badge for a denied call", () => {
     render(
       <ToolCallCard
-        call={{ ...baseCall, tool: "bash", outcome: "denied", reason: "denyCommands", errorSample: "rm -rf" }}
+        call={{
+          ...baseCall,
+          tool: "bash",
+          outcome: "denied",
+          reason: "denyCommands",
+          errorSample: "rm -rf",
+        }}
         t={t}
       />,
     );
@@ -34,7 +40,13 @@ describe("v0.7.3: <ToolCallCard>", () => {
   it("renders a fail badge for a failed call", () => {
     render(
       <ToolCallCard
-        call={{ ...baseCall, tool: "read", outcome: "fail", reason: "", errorSample: "ENOENT" }}
+        call={{
+          ...baseCall,
+          tool: "read",
+          outcome: "fail",
+          reason: "",
+          errorSample: "ENOENT",
+        }}
         t={t}
       />,
     );
@@ -44,7 +56,13 @@ describe("v0.7.3: <ToolCallCard>", () => {
   it("renders a success badge for a successful call", () => {
     render(
       <ToolCallCard
-        call={{ ...baseCall, tool: "write", outcome: "success", reason: "", errorSample: "" }}
+        call={{
+          ...baseCall,
+          tool: "write",
+          outcome: "success",
+          reason: "",
+          errorSample: "",
+        }}
         t={t}
       />,
     );
@@ -72,7 +90,13 @@ describe("v0.7.3: <ToolCallCard>", () => {
   it("shows the reason via t('observability.reason', {reason}) when present", () => {
     render(
       <ToolCallCard
-        call={{ ...baseCall, tool: "bash", outcome: "denied", reason: "denyPaths", errorSample: "/etc" }}
+        call={{
+          ...baseCall,
+          tool: "bash",
+          outcome: "denied",
+          reason: "denyPaths",
+          errorSample: "/etc",
+        }}
         t={t}
       />,
     );
@@ -82,7 +106,13 @@ describe("v0.7.3: <ToolCallCard>", () => {
   it("does not render the reason block when reason is empty", () => {
     render(
       <ToolCallCard
-        call={{ ...baseCall, tool: "bash", outcome: "success", reason: "", errorSample: "" }}
+        call={{
+          ...baseCall,
+          tool: "bash",
+          outcome: "success",
+          reason: "",
+          errorSample: "",
+        }}
         t={t}
       />,
     );

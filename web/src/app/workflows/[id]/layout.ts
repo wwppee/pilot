@@ -40,14 +40,17 @@ export function truncate(s: string, n: number): string {
 }
 
 /**
- * v0.7.0: BFS from the source-most nodes. Each "level"
- * (no incoming edge from the same level or earlier) gets
- * its own column. The resulting (col, depth) is what the
- * SVG preview places the node at. v0.7.0 calls this
- * function on render for the preview; the same function
- * is reused by the "Auto-layout" button to write back
- * to `node.position` so the data is consistent across
- * page reloads.
+ * v0.7.0 + v0.7.4: BFS from the source-most nodes. Each "level"
+ * (no incoming edge from the same level or earlier) gets its
+ * own column. The resulting (col, depth) is what the SVG
+ * preview places the node at — UNLESS the user has hand-placed
+ * a node via drag-and-drop (v0.7.4), in which case we honor
+ * `node.position` so the dragged location survives reload.
+ *
+ * v0.7.0 calls this function on render for the preview; the
+ * same function is reused by the "Auto-layout" button to
+ * write back to `node.position` so the data is consistent
+ * across page reloads.
  */
 export function computeLayout(workflow: Workflow): Layout {
   const nodes = workflow.nodes;
@@ -117,7 +120,26 @@ export function computeLayout(workflow: Workflow): Layout {
   for (const d of Object.keys(byDepth).map(Number)) {
     const row = byDepth[d]!;
     row.forEach((id, i) => {
-      positions[id] = { id, col: i, depth: d };
+      // v0.7.4: if the node was hand-placed via drag-and-drop,
+      // honor that position (so drag survives reload). Otherwise
+      // fall back to the BFS col/depth assignment.
+      const node = nodes.find((n) => n.id === id);
+      const handPlaced =
+        node &&
+        node.position &&
+        // Treat {0,0} as "not placed" (BFS starting corner) so
+        // an auto-layouted workflow that happens to land a node
+        // at the origin isn't accidentally treated as pinned.
+        (node.position.x !== 0 || node.position.y !== 0);
+      if (handPlaced && node?.position) {
+        positions[id] = {
+          id,
+          col: node.position.x / 240,
+          depth: node.position.y / 80,
+        };
+      } else {
+        positions[id] = { id, col: i, depth: d };
+      }
     });
     if (row.length > cols) cols = row.length;
   }
