@@ -91,6 +91,43 @@ export const ToolPolicySchema = z.object({
    */
   requireApproval: z.array(z.string()).default([]),
 
+  // v0.8.0 (B1 — tool-level policy): per-tool rules
+  // that override the global fields above. When a tool
+  // name has an entry here, those rules are checked
+  // INSTEAD of the global ones (deny/denyPaths/
+  // denyCommands/requireApproval) for that tool. A
+  // tool without an entry here still uses the globals.
+  //
+  // Why per-tool at all? The global allow/deny/paths
+  // are coarse — they apply to every call. The
+  // observability layer (v0.7.3 B2) made it obvious
+  // that the user wants fine-grained control: "bash
+  // must always require approval, but read should
+  // not" or "write to .env is denied but write to
+  // other paths is fine". Per-tool rules give the
+  // user the lever without exploding the global
+  // schema.
+  //
+  // The schema is intentionally minimal: only the
+  // fields that genuinely vary per tool. The
+  // generated extension consults the matching
+  // `toolRules[<name>]` BEFORE the globals.
+  toolRules: z
+    .record(
+      z.string(),
+      z.object({
+        /** Override global deny for this tool. */
+        deny: z.array(z.string()).default([]),
+        /** Override global requireApproval for this tool. */
+        requireApproval: z.array(z.string()).default([]),
+        /** Per-tool denyPaths (in addition to the globals). */
+        denyPaths: z.array(z.string()).default([]),
+        /** Per-tool denyCommands (in addition to the globals). */
+        denyCommands: z.array(z.string()).default([]),
+      }),
+    )
+    .default({}),
+
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
