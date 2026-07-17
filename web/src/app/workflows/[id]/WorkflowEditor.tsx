@@ -57,6 +57,13 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  // v0.7.5: Run button lock. Same pattern as `saving`
+  // — disable the button + show "…" while the POST to
+  // /workflows/:id/run is in flight. Without this the
+  // user could double-click and fire two runs (the
+  // v0.7.1.1 ConfirmDialog busy-lock lesson applied
+  // preemptively here).
+  const [running, setRunning] = useState(false);
   // v0.7.1 (audit fix): the delete confirmation is now
   // a styled dialog (ConfirmDialog) instead of `window.confirm`.
   // Tracks whether the dialog is open; the actual API call
@@ -154,6 +161,29 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
     if (state.kind !== "ok") return;
     setConfirmingDelete(true);
   }, [state]);
+
+  // v0.7.5: Run workflow. POST /workflows/:id/run and
+  // surface the server's `message` in the live region
+  // so the user can see what the runtime said. The
+  // button is disabled while `running` is true; the
+  // server contract is stable across v0.7.5 → v0.7.6
+  // so the editor doesn't need to change when the
+  // real runtime lands.
+  const run = useCallback(async () => {
+    if (state.kind !== "ok") return;
+    setRunning(true);
+    try {
+      const res = await api.runWorkflow(state.workflow.id);
+      setAnnouncement(res.message);
+    } catch (e) {
+      setAnnouncement(
+        t("workflows.editor.runFailed") +
+          (e instanceof Error ? e.message : String(e)),
+      );
+    } finally {
+      setRunning(false);
+    }
+  }, [state, t]);
 
   const confirmDelete = useCallback(async () => {
     if (state.kind !== "ok") return;
@@ -265,6 +295,23 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
             data-testid="workflow-save"
           >
             {saving ? "…" : t("workflows.editor.save")}
+          </button>
+          <button
+            type="button"
+            // v0.7.5: Run button. The actual runtime is
+            // behind the contract — for now the server
+            // returns a "queued" stub. We disable while
+            // running, show "…" while busy, and surface
+            // the server's `message` in the live region
+            // so the user can see what the runtime said
+            // (even when it's the stub message).
+            className="btn small primary"
+            onClick={() => void run()}
+            disabled={running || !dirty}
+            data-testid="workflow-run"
+            title={t("workflows.editor.runHint")}
+          >
+            {running ? "…" : t("workflows.editor.run")}
           </button>
           <button
             type="button"

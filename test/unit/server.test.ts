@@ -1289,5 +1289,45 @@ describe("pilot server", () => {
       });
       expect(res.statusCode).toBe(400);
     });
+
+    // v0.7.5: Run workflow endpoint. The runtime is
+    // stubbed (the real pi-session driver lands in
+    // v0.7.6+) but the contract is stable: a queued
+    // status + the workflow id. We assert the contract
+    // here so a future refactor can't quietly change
+    // what the editor receives.
+    it("POST /workflows/:id/run queues a run for an existing workflow", async () => {
+      const put = await handle.app.inject({
+        method: "PUT",
+        url: "/workflows/sample-flow",
+        headers: { ...auth(), "content-type": "application/json" },
+        payload: sampleBody(),
+      });
+      expect(put.statusCode).toBe(200);
+
+      const run = await handle.app.inject({
+        method: "POST",
+        url: "/workflows/sample-flow/run",
+        headers: auth(),
+      });
+      expect(run.statusCode).toBe(200);
+      const body = run.json() as {
+        status: string;
+        workflowId: string;
+        message: string;
+      };
+      expect(body.status).toBe("queued");
+      expect(body.workflowId).toBe("sample-flow");
+      expect(typeof body.message).toBe("string");
+    });
+
+    it("POST /workflows/:id/run 404s for a missing workflow", async () => {
+      const res = await handle.app.inject({
+        method: "POST",
+        url: "/workflows/never-existed/run",
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(404);
+    });
   });
 });

@@ -799,6 +799,48 @@ export async function startServer(
     },
   );
 
+  // v0.7.5: Run workflow — minimum-viable endpoint that
+  // validates the workflow exists and returns a stub
+  // response. The real runtime (driving a pi session
+  // through the node sequence with onFailure fallback)
+  // lives behind this same contract in v0.7.6+; the
+  // editor's Run button just calls this and renders
+  // whatever comes back. Keeping the contract stable
+  // now means we can ship the UI without waiting for
+  // the runtime to be ready.
+  app.post<{ Params: { id: string } }>(
+    "/workflows/:id/run",
+    async (req, reply) => {
+      if (!isValidWorkflowId(req.params.id)) {
+        await reply.code(400).send({ error: "invalid workflow id" });
+        return;
+      }
+      const wf = await service.getWorkflow(req.params.id);
+      if (!wf) {
+        await reply.code(404).send({ error: "workflow not found" });
+        return;
+      }
+      // The v0.7.0 MVP allows zero-node workflows ("the
+      // editor's no-nodes empty state is nicer to start
+      // from than a stub node" — see WorkflowListView
+      // comment), so we don't reject those. A workflow
+      // with nodes but no edges is also valid (a single
+      // step that runs and produces output).
+      return {
+        status: "queued" as const,
+        workflowId: wf.id,
+        // Stub: the real runtime will start a pi session,
+        // follow the edges in topological order, and
+        // apply each node's onFailure strategy. For now
+        // we just acknowledge the request and return.
+        // The editor's Run button transitions to a
+        // "queued" state and shows a hint that runtime
+        // is coming.
+        message: "Run is queued. Runtime lands in v0.7.6+.",
+      };
+    },
+  );
+
   app.post<{ Params: { name: string } }>("/policies/:name/apply", async (req) =>
     service.applyPolicy(req.params.name),
   );

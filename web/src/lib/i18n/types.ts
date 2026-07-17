@@ -1267,6 +1267,9 @@ export type Dict = {
   "workflows.editor.error.duplicateFailed": string;
   "workflows.editor.error.loadFailed": string;
   "workflows.editor.error.deleteFailed": string;
+  "workflows.editor.run": string;
+  "workflows.editor.runHint": string;
+  "workflows.editor.runFailed": string;
   // v0.7.3 (B2): observability dashboard keys. No storage
   // path, no JSONL, no Zod field names — see user memory
   // "storage is a blind box".

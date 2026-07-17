@@ -1325,6 +1325,14 @@ const en: Dict = {
   "workflows.editor.error.duplicateFailed": "Duplicate failed: {error}",
   "workflows.editor.error.loadFailed": "Could not load {id}",
   "workflows.editor.error.deleteFailed": "Delete failed: {error}",
+  // v0.7.5: Run button labels. The server returns the
+  // "what the runtime said" string in the live region
+  // announcement, so the button label just needs to be
+  // short + the hint explains that runtime is staged.
+  "workflows.editor.run": "Run",
+  "workflows.editor.runHint":
+    "Run this workflow. Runtime lands in v0.7.6+.",
+  "workflows.editor.runFailed": "Run failed: ",
   // v0.7.3 (B2): observability dashboard i18n. Note we don't
   // mention the storage path, JSONL, or any implementation
   // detail — the user just sees "tool calls" + "policy

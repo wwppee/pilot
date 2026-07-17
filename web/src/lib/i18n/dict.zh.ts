@@ -1266,6 +1266,9 @@ const zh: Dict = {
   "workflows.editor.error.duplicateFailed": "复制失败：{error}",
   "workflows.editor.error.loadFailed": "无法加载 {id}",
   "workflows.editor.error.deleteFailed": "删除失败：{error}",
+  "workflows.editor.run": "运行",
+  "workflows.editor.runHint": "运行此工作流。Runtime 在 v0.7.6+ 上线。",
+  "workflows.editor.runFailed": "运行失败：",
   // v0.7.3 (B2): observability dashboard i18n. 不提存储路径
   // / JSONL / 实现细节——user 只看到"工具调用"和"策略拦截"。
   // 按 user memory: 存储是盲盒。

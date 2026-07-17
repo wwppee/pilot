@@ -426,6 +426,21 @@ export const browserApi = {
       throw e;
     }
   },
+  // v0.7.5: run a workflow. Returns a stub response from
+  // the server today; the real runtime (pi session
+  // driving the node sequence) lands in v0.7.6+. The
+  // contract is stable, so the editor's Run button is
+  // already useful: it acknowledges the request and
+  // shows a hint about what comes next.
+  runWorkflow: async (
+    id: string,
+  ): Promise<{ status: "queued"; workflowId: string; message: string }> => {
+    return browserFetch<{
+      status: "queued";
+      workflowId: string;
+      message: string;
+    }>(`/workflows/${id}/run`, { method: "POST" });
+  },
 
   // ─── Observability (v0.7.3 B2) ────────────────────
   // The dashboard's data layer. The browser code never knows
