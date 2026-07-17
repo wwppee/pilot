@@ -1288,6 +1288,11 @@ const en: Dict = {
   "workflows.field.apiKeyRef": "API key ref",
   "workflows.field.systemPrompt": "System prompt",
   "workflows.field.inputTemplate": "Input template",
+  // v0.8.3: when the inputTemplate field is rendered as
+  // a dropdown (because upstream variables are
+  // available), this is the empty-default option that
+  // lets the user keep a custom literal.
+  "workflows.field.inputCustom": "— custom —",
   "workflows.field.outputVar": "Output variable",
   "workflows.field.tools": "Tools",
   "workflows.field.onFailure": "On failure",

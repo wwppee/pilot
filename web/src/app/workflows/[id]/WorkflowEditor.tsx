@@ -566,6 +566,18 @@ function StepsPanel({
                     .map((e) => e.to),
                 )
               }
+              // v0.8.3: pre-compute the list of available
+              // variables (other nodes' outputVar values)
+              // so NodeFields can offer them as a dropdown
+              // for inputTemplate. We exclude the current
+              // node's own outputVar (a node can't feed
+              // itself). This is the "necessary abstraction
+              // = don't make the user type a string that
+              // has to match another node's value" part of
+              // the v0.8.x series.
+              availableVars={workflow.nodes
+                .filter((n) => n.id !== node.id && n.outputVar)
+                .map((n) => n.outputVar)}
               onUpdate={(patch) => updateNode(node.id, patch)}
               onRemove={() => removeNode(node.id)}
               onAddEdge={(to) => addEdge(node.id, to)}
@@ -632,6 +644,7 @@ function NodeCard({
   node,
   allNodes,
   connectedToIds,
+  availableVars,
   onUpdate,
   onRemove,
   onAddEdge,
@@ -651,6 +664,14 @@ function NodeCard({
    * "click Connect" appears to do nothing).
    */
   connectedToIds: Set<string>;
+  /**
+   * v0.8.3: the list of variable names (other nodes'
+   * outputVar values) the inputTemplate dropdown can
+   * offer. Computed in the parent so a node can never
+   * feed itself. If empty, the field falls back to the
+   * free-form text input (no available variables yet).
+   */
+  availableVars: string[];
   onUpdate: (patch: Partial<WorkflowNode>) => void;
   onRemove: () => void;
   onAddEdge: (to: string) => void;
@@ -705,7 +726,7 @@ function NodeCard({
           the current one-field-in-parent, rest-in-child
           split. The `t` function is passed through so
           `NodeFields` doesn't need its own `useT()`. */}
-      <NodeFields node={node} onUpdate={onUpdate} t={t} />
+      <NodeFields node={node} onUpdate={onUpdate} t={t} availableVars={availableVars} />
 
       <div className="flex items-center gap-2 pt-1">
         <span className="text-xs text-[var(--text-muted)]">

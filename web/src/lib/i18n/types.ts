@@ -1226,6 +1226,7 @@ export type Dict = {
   "workflows.field.apiKeyRef": string;
   "workflows.field.systemPrompt": string;
   "workflows.field.inputTemplate": string;
+  "workflows.field.inputCustom": string;
   "workflows.field.outputVar": string;
   "workflows.field.tools": string;
   "workflows.field.onFailure": string;

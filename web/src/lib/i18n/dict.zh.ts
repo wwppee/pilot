@@ -1230,6 +1230,7 @@ const zh: Dict = {
   "workflows.field.apiKeyRef": "API key 引用",
   "workflows.field.systemPrompt": "系统提示词",
   "workflows.field.inputTemplate": "输入模板",
+  "workflows.field.inputCustom": "— 自定义 —",
   "workflows.field.outputVar": "输出变量",
   "workflows.field.tools": "工具",
   "workflows.field.onFailure": "失败时",

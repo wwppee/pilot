@@ -35,10 +35,21 @@ import { PROVIDERS, FAILURE_STRATEGIES } from "./node-constants";
 export interface NodeFieldsProps {
   node: WorkflowNode;
   onUpdate: (patch: Partial<WorkflowNode>) => void;
-  t: (k: string, p?: Record<string, unknown>) => string;
+  t: (k: string, p?: Record<string, string | number>) => string;
+  /**
+   * v0.8.3: the list of variable names (other nodes'
+   * outputVar values) the inputTemplate dropdown can
+   * offer. If empty, the field falls back to the
+   * free-form text input (no upstream variables yet).
+   * The free-form input is never removed — there are
+   * legitimate cases for hardcoded inputs (e.g.
+   * system prompts) that don't reference any other
+   * node's output.
+   */
+  availableVars: string[];
 }
 
-export function NodeFields({ node, onUpdate, t }: NodeFieldsProps) {
+export function NodeFields({ node, onUpdate, t, availableVars }: NodeFieldsProps) {
   return (
     <>
       <div className="grid grid-cols-2 gap-2">
@@ -95,13 +106,28 @@ export function NodeFields({ node, onUpdate, t }: NodeFieldsProps) {
           <span className="text-[var(--text-muted)]">
             {t("workflows.field.inputTemplate")}
           </span>
-          <input
-            type="text"
-            value={node.inputTemplate}
-            placeholder="{{steps.n1.output}}"
-            onChange={(e) => onUpdate({ inputTemplate: e.target.value })}
-            className="block w-full px-2 py-1 text-xs bg-[var(--bg)] border border-[var(--border)] rounded font-mono"
-          />
+          {availableVars.length > 0 ? (
+            <select
+              value={node.inputTemplate}
+              onChange={(e) => onUpdate({ inputTemplate: e.target.value })}
+              className="block w-full px-2 py-1 text-xs bg-[var(--bg)] border border-[var(--border)] rounded font-mono"
+            >
+              <option value="">{t("workflows.field.inputCustom")}</option>
+              {availableVars.map((v) => (
+                <option key={v} value={`{{steps.${v}}}`}>
+                  {`{{steps.${v}}}`}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="text"
+              value={node.inputTemplate}
+              placeholder="{{steps.n1.output}}"
+              onChange={(e) => onUpdate({ inputTemplate: e.target.value })}
+              className="block w-full px-2 py-1 text-xs bg-[var(--bg)] border border-[var(--border)] rounded font-mono"
+            />
+          )}
         </label>
         <label className="text-xs space-y-1">
           <span className="text-[var(--text-muted)]">
