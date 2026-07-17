@@ -1294,4 +1294,7 @@ export type Dict = {
   "observability.outcome.denied": string;
   "observability.reason": string;
   "observability.managePolicy": string;
+  "observability.chat.hint": string;
+  "observability.chat.placeholder": string;
+  "observability.chat.ask": string;
 };

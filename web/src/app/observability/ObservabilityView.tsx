@@ -116,6 +116,7 @@ export function ObservabilityView({ locale: _locale }: { locale: string }) {
 
   return (
     <div className="space-y-6">
+      <ChatBox t={t} />
       <header className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-semibold">{t("observability.title")}</h1>
         <button
@@ -213,6 +214,79 @@ function AggregateCard({
     <div className="surface rounded-lg p-3">
       <p className="text-xs text-[var(--text-muted)]">{label}</p>
       <p className={`text-2xl font-semibold ${color}`}>{value}</p>
+    </div>
+  );
+}
+
+// v0.7.7: chat-to-dashboard input. The user types a
+// natural-language question; the server's keyword
+// matcher (v0.7.7) returns a structured reply. v0.8+
+// will swap the matcher for an LLM dispatcher; the
+// component shape is stable.
+//
+// We keep the box small + the placeholder friendly
+// enough that a user can see what kinds of questions
+// work today. The answer renders below the input as a
+// one-line "hero" reply — the dashboard's table stays
+// as the deep-dive surface.
+function ChatBox({ t }: { t: (k: string, p?: Record<string, string | number>) => string }) {
+  const [message, setMessage] = useState("");
+  const [reply, setReply] = useState<{ intent: string; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const submit = useCallback(async () => {
+    if (!message.trim() || busy) return;
+    setBusy(true);
+    try {
+      const r = await api.observabilityChat(message);
+      setReply(r as { intent: string; text: string });
+    } catch (e) {
+      setReply({
+        intent: "error",
+        text: e instanceof Error ? e.message : String(e),
+      });
+    } finally {
+      setBusy(false);
+    }
+  }, [message, busy]);
+  return (
+    <div className="surface rounded-lg p-3 space-y-2">
+      <p className="text-xs text-[var(--text-muted)]">
+        {t("observability.chat.hint")}
+      </p>
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") void submit();
+          }}
+          placeholder={t("observability.chat.placeholder")}
+          disabled={busy}
+          className="flex-1 px-2 py-1 text-sm bg-[var(--bg)] border border-[var(--border)] rounded"
+          data-testid="observability-chat-input"
+        />
+        <button
+          type="button"
+          className="btn small primary"
+          onClick={() => void submit()}
+          disabled={busy || !message.trim()}
+          data-testid="observability-chat-submit"
+        >
+          {busy ? "…" : t("observability.chat.ask")}
+        </button>
+      </div>
+      {reply ? (
+        <p
+          className="text-sm text-[var(--text)]"
+          data-testid="observability-chat-reply"
+        >
+          <span className="text-xs text-[var(--text-muted)] mr-1">
+            [{reply.intent}]
+          </span>
+          {reply.text}
+        </p>
+      ) : null}
     </div>
   );
 }

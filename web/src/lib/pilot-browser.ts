@@ -466,6 +466,21 @@ export const browserApi = {
     const suffix = qs.toString() ? `?${qs.toString()}` : "";
     return browserFetch<unknown[]>(`/observability/calls${suffix}`);
   },
+  // v0.7.7: chat-to-dashboard. Send a natural-language
+  // message; get back an intent + a short text reply
+  // rendered as the dashboard's hero answer. v0.7.7 is
+  // a keyword matcher; v0.8+ will plug in an LLM
+  // dispatcher. The contract is stable: the reply
+  // shape is the same, only the intelligence changes.
+  observabilityChat: (message: string) =>
+    browserFetch<{ intent: "errors" | "denied" | "summary"; text: string }>(
+      "/observability/chat",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ message }),
+      },
+    ),
 };
 
 /** Convenience alias: most client code can do `import { api as ... }`. */

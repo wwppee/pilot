@@ -888,6 +888,62 @@ export async function startServer(
     return service.getToolCalls(filter);
   });
 
+  // v0.7.7: chat-to-dashboard stub. Accepts a natural-
+  // language query and returns the relevant data slice
+  // from the observability layer. The real LLM-driven
+  // dispatcher lands in v0.8+; v0.7.7 is a keyword
+  // matcher that turns "最近错误" / "recent errors" /
+  // "policy 拦截" into a structured response the
+  // dashboard can render. The point of v0.7.7 is the
+  // API surface + the UI affordance, not the intelligence.
+  app.post<{ Body: { message?: string } }>(
+    "/observability/chat",
+    async (req, reply) => {
+      const message = (req.body?.message ?? "").trim();
+      if (!message) {
+        await reply.code(400).send({ error: "empty message" });
+        return;
+      }
+      const lower = message.toLowerCase();
+      const summary = await service.getObservabilitySummary();
+      // Three intents today: "errors/fail" — the
+      // by-tool table sorted by fail-rate; "denied/
+      // policy" — the denied breakdown; "summary" —
+      // the top aggregate. Anything else returns the
+      // summary + a hint about what the user can ask.
+      const intent: "errors" | "denied" | "summary" =
+        /fail|error|错误|失败/.test(lower)
+          ? "errors"
+          : /deni|拦截|policy|策略|block/.test(lower)
+            ? "denied"
+            : "summary";
+      const reply2 =
+        intent === "errors"
+          ? {
+              intent,
+              text: summary.byTool
+                .filter((r) => r.fail > 0)
+                .slice(0, 5)
+                .map((r) => `${r.tool}: ${r.fail} failure(s)`)
+                .join("; ") || "No failures recorded.",
+            }
+          : intent === "denied"
+            ? {
+                intent,
+                text: summary.byTool
+                  .filter((r) => r.denied > 0)
+                  .slice(0, 5)
+                  .map((r) => `${r.tool}: ${r.denied} block(s)`)
+                  .join("; ") || "No policy blocks recorded.",
+              }
+            : {
+                intent,
+                text: `${summary.total} call(s); ${summary.success} success, ${summary.fail} fail, ${summary.denied} denied. Worst tool: ${summary.worstTool ?? "none"}.`,
+              };
+      return reply2;
+    },
+  );
+
   // ─── Plans (v0.6.0 — Agent capability layer) ────
 
   app.get("/plans", async () => service.listPlans());

@@ -1293,5 +1293,9 @@ const zh: Dict = {
   "observability.outcome.denied": "拦截",
   "observability.reason": "规则：{reason}",
   "observability.managePolicy": "管理策略 →",
+  "observability.chat.hint":
+    "用自然语言提问。目前支持：'最近错误'、'策略拦截'，或自由形式摘要。",
+  "observability.chat.placeholder": "最近哪些失败了？",
+  "observability.chat.ask": "提问",
 };
 export default zh;

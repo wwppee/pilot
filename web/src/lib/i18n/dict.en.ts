@@ -1359,5 +1359,15 @@ const en: Dict = {
   "observability.outcome.denied": "denied",
   "observability.reason": "rule: {reason}",
   "observability.managePolicy": "Manage policies →",
+  // v0.7.7: chat-to-dashboard. Per user memory
+  // §Engineering Philosophy, the chat input's
+  // placeholder should hint at the kinds of questions
+  // that work — the LLM is v0.8+, so today it's a
+  // keyword matcher. Telling the user "what works
+  // today" is more useful than promising general chat.
+  "observability.chat.hint":
+    "Ask in plain English. Today: 'recent errors', 'policy blocks', or a free-form summary.",
+  "observability.chat.placeholder": "What failed recently?",
+  "observability.chat.ask": "Ask",
 };
 export default en;
