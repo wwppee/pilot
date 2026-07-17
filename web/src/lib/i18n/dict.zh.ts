@@ -361,6 +361,8 @@ const zh: Dict = {
   "policy.denyBadge": "拒绝",
   "policy.warnBadge": "警告",
   "policy.hitlBadge": "需确认",
+  "policy.toolRuleLabel": "按工具（{tool}）：",
+  "policy.toolRuleEmpty": "（空覆盖）",
   "policy.hitlDesc": "会话暂停，通过 `ctx.ui.confirm()` 询问用户后再执行。",
   "policy.applyFailed": "应用失败：{msg}",
   "policy.unapplyFailed": "取消应用失败：{msg}",

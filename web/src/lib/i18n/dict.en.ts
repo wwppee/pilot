@@ -373,6 +373,13 @@ const en: Dict = {
   "policy.denyBadge": "deny",
   "policy.warnBadge": "warn",
   "policy.hitlBadge": "HITL",
+  // v0.8.4: per-tool rule label on the policy card.
+  // The dashboard is read-only today; this is just
+  // surfacing what the saved policy contains so the
+  // user can see "bash has a custom deny list" at
+  // a glance. Editing lives in v0.8.5+.
+  "policy.toolRuleLabel": "per-tool ({tool}):",
+  "policy.toolRuleEmpty": "(empty override)",
   "policy.hitlDesc":
     "Pauses the session and asks the user via `ctx.ui.confirm()` before the tool runs.",
   "policy.applyFailed": "Apply failed: {msg}",

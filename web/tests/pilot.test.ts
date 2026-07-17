@@ -205,6 +205,7 @@ describe("browserApi (v0.4.7)", () => {
       denyCommands: [],
       sensitivePatterns: [],
       requireApproval: [],
+      toolRules: {},
     });
     expect(result.name).toBe("test");
     expect(JSON.parse(capturedBody!)).toEqual({
@@ -214,6 +215,7 @@ describe("browserApi (v0.4.7)", () => {
       denyCommands: [],
       sensitivePatterns: [],
       requireApproval: [],
+      toolRules: {},
     });
   });
 

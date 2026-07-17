@@ -421,6 +421,21 @@ export interface ProjectContextRef {
  * for pi. Stored in `~/.pilot/policy/<name>.toml`. Mirrors
  * `core/policy.ts`.
  */
+/**
+ * v0.8.0 (B1): per-tool rule override. Each key is
+ * a tool name (e.g. "bash", "write", "read") and
+ * the value is the rule set that overrides the
+ * globals for that tool. Same shape as the
+ * corresponding Zod schema in `core/policy.ts` —
+ * keep these two in sync.
+ */
+export interface PerToolRule {
+  deny: string[];
+  requireApproval: string[];
+  denyPaths: string[];
+  denyCommands: string[];
+}
+
 export interface ToolPolicy {
   name: string;
   description?: string;
@@ -430,6 +445,10 @@ export interface ToolPolicy {
   denyCommands: string[];
   sensitivePatterns: string[];
   requireApproval: string[];
+  // v0.8.0: per-tool rules. Defaulted to {} on the
+  // server so older policies (v0.4-0.7) load
+  // cleanly.
+  toolRules: Record<string, PerToolRule>;
   createdAt: string;
   updatedAt: string;
 }

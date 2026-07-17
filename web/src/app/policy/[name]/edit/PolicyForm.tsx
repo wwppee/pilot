@@ -130,6 +130,12 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
       allow: parseLines(arrays.allow ?? ""),
       deny: parseLines(arrays.deny ?? ""),
       denyPaths: parseLines(arrays.denyPaths ?? ""),
+      // v0.8.4: per-tool rules. The edit form doesn't
+      // surface this yet (a future v0.8.5+ adds a
+      // per-tool editor); we always send {} today.
+      // Including the field keeps the type happy
+      // until the editor grows.
+      toolRules: {},
       denyCommands: parseLines(arrays.denyCommands ?? ""),
       sensitivePatterns: parseLines(arrays.sensitivePatterns ?? ""),
       requireApproval: parseLines(arrays.requireApproval ?? ""),

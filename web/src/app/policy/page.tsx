@@ -259,6 +259,34 @@ async function PolicyList({
                     <code>{p.requireApproval.join(", ")}</code>
                   </li>
                 )}
+                {/* v0.8.4: per-tool rule summary. The
+                    v0.8.0 schema added `toolRules: { [tool]:
+                    { deny, requireApproval, denyPaths,
+                    denyCommands } }`. We surface what's set
+                    on each tool — editing the rules is a
+                    v0.8.5+ feature (the dashboard is read-
+                    only today; CLI / API edits are the
+                    supported path for v0.8.4). */}
+                {Object.entries(p.toolRules).map(([tool, rules]: [string, { deny: string[]; requireApproval: string[]; denyPaths: string[]; denyCommands: string[] }]) => (
+                  <li key={tool} data-testid={`policy-tool-rule-${tool}`}>
+                    <span className="rule-name">
+                      {renderT(locale, "policy.toolRuleLabel", { tool })}
+                    </span>{" "}
+                    <code>
+                      {[
+                        rules.deny.length > 0 && `deny=${rules.deny.join(",")}`,
+                        rules.requireApproval.length > 0 &&
+                          `requireApproval=${rules.requireApproval.join(",")}`,
+                        rules.denyPaths.length > 0 &&
+                          `denyPaths=${rules.denyPaths.length}`,
+                        rules.denyCommands.length > 0 &&
+                          `denyCommands=${rules.denyCommands.length}`,
+                      ]
+                        .filter(Boolean)
+                        .join("; ") || renderT(locale, "policy.toolRuleEmpty")}
+                    </code>
+                  </li>
+                ))}
               </ul>
               <footer className="policy-card-footer text-xs text-[var(--text-muted)] font-mono">
                 <span>

@@ -341,6 +341,8 @@ export type Dict = {
   "policy.denyBadge": string;
   "policy.warnBadge": string;
   "policy.hitlBadge": string;
+  "policy.toolRuleLabel": string;
+  "policy.toolRuleEmpty": string;
   "policy.hitlDesc": string;
   "policy.applyFailed": string;
   "policy.unapplyFailed": string;
