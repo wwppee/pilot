@@ -224,9 +224,13 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
     // v0.7.3 (B2): observability accessors. The service is the
     // single thing the dashboard talks to for these — the web
     // layer never imports `core/observability.js` directly.
-    getObservabilitySummary: async () => {
+    // v0.8.2: optional `since` argument so the chat
+    // endpoint can answer time-windowed questions
+    // ("最近 24h") without the caller having to know
+    // about observability internals.
+    getObservabilitySummary: async (since?: string) => {
       const { summarizeRecordedToolCalls } = await import("./observability.js");
-      return summarizeRecordedToolCalls(home);
+      return summarizeRecordedToolCalls(home, since);
     },
     getToolCalls: async (filter) => {
       const { collectRecordedToolCalls } = await import("./observability.js");

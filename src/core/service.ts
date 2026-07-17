@@ -452,7 +452,7 @@ export interface PilotService {
   // service owns the home directory so the dashboard never has
   // to know where the JSONL log lives (storage is a blind box
   // to the UI — see user memory §Engineering Philosophy).
-  getObservabilitySummary(): Promise<
+  getObservabilitySummary(since?: string): Promise<
     import("./observability.js").ObservabilitySummary
   >;
   getToolCalls(

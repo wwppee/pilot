@@ -186,8 +186,9 @@ export async function collectRecordedToolCalls(
  */
 export async function summarizeRecordedToolCalls(
   home?: string,
+  since?: string,
 ): Promise<ObservabilitySummary> {
-  const all = await collectRecordedToolCalls(home);
+  const all = await collectRecordedToolCalls(home, since ? { since } : {});
   const byTool = new Map<string, ToolCallSummary>();
   for (const c of all) {
     let s = byTool.get(c.tool);

@@ -905,7 +905,24 @@ export async function startServer(
         return;
       }
       const lower = message.toLowerCase();
-      const summary = await service.getObservabilitySummary();
+      // v0.8.2: time-window keywords. The v0.7.7
+      // matcher had no concept of "when" — a user
+      // asking "recent errors" got the same answer
+      // as "all-time errors". The dashboard's time
+      // range filter (v0.8.1) operates on the same
+      // `since` field, so we thread it through here.
+      // Default: 24h. The keywords "today" / "今天"
+      // also map to 24h.
+      const sinceMs =
+        /(7\s*d|七\s*天|7\s*day|7d)/i.test(lower)
+          ? Date.now() - 7 * 24 * 60 * 60 * 1000
+          : /(24\s*h|今天|today|recent|最近|24h)/i.test(lower)
+            ? Date.now() - 24 * 60 * 60 * 1000
+            : /(all|全部|ever)/i.test(lower)
+              ? 0
+              : Date.now() - 24 * 60 * 60 * 1000;
+      const since = sinceMs > 0 ? new Date(sinceMs).toISOString() : undefined;
+      const summary = await service.getObservabilitySummary(since);
       // Three intents today: "errors/fail" — the
       // by-tool table sorted by fail-rate; "denied/
       // policy" — the denied breakdown; "summary" —
@@ -917,24 +934,31 @@ export async function startServer(
           : /deni|拦截|policy|策略|block/.test(lower)
             ? "denied"
             : "summary";
+      const windowLabel = sinceMs === 0
+        ? "all time"
+        : sinceMs > Date.now() - 25 * 60 * 60 * 1000
+          ? "last 24h"
+          : "last 7d";
       const reply2 =
         intent === "errors"
           ? {
               intent,
+              window: windowLabel,
               text: summary.byTool
                 .filter((r) => r.fail > 0)
                 .slice(0, 5)
                 .map((r) => `${r.tool}: ${r.fail} failure(s)`)
-                .join("; ") || "No failures recorded.",
+                .join("; ") || `No failures in ${windowLabel}.`,
             }
           : intent === "denied"
             ? {
                 intent,
+                window: windowLabel,
                 text: summary.byTool
                   .filter((r) => r.denied > 0)
                   .slice(0, 5)
                   .map((r) => `${r.tool}: ${r.denied} block(s)`)
-                  .join("; ") || "No policy blocks recorded.",
+                  .join("; ") || `No policy blocks in ${windowLabel}.`,
               }
             : {
                 intent,
