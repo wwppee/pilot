@@ -1,5 +1,169 @@
 # Changelog
 
+### v0.7.1.1 — `/workflows` self-audit hotfix (7 latent bugs closed)
+
+v0.7.1 shipped with a 5-item audit closure, but a second
+self-audit pass on the freshly-modified code surfaced **7
+additional bugs** the original audit didn't catch — most
+of them the kind of "obvious in hindsight" mistakes that
+come from trusting a feature works because the diff looks
+right without exercising the actual code path. This release
+closes all 7; the most embarrassing one is bug #3 below.
+
+**The big find (bug #3):** v0.7.1's editor P2 #7 fix
+(introducing `ConfirmDialog` to replace `window.confirm`)
+wired up the state plumbing (`setConfirmingDelete`,
+`remove` + `confirmDelete` split) but **never actually
+imported or rendered the `ConfirmDialog` component**.
+So clicking "Delete" in the editor header was a dead
+click — nothing happened. The list view worked (it did
+import + render); the editor silently didn't. v0.7.1.1
+imports `<ConfirmDialog>` in `WorkflowEditor.tsx` and
+adds the missing render block. The user-visible
+behavior change is "Delete in the editor now actually
+asks for confirmation" (which is the whole point of
+the P2 #7 fix, just ... previously absent).
+
+**Bug #1 (P1 — server log pollution):** `saveWorkflow`
+used to call `loadWorkflow` to read the previous
+`createdAt` for the "preserve createdAt across saves"
+invariant. But v0.7.1's `loadWorkflow` wraps
+`JSON.parse` in `try/catch + console.warn` for corrupt
+files. The warn is correct for the user-facing "load
+this workflow" path (it tells the user their hand-
+edited file is broken), but `saveWorkflow` is a *write*
+operation — we're about to atomically overwrite the
+file anyway, so the warning only pollutes the server
+log on every save of a previously-corrupted workflow.
+Fixed by switching to `readWorkflowSummary`, which
+parses leniently and never warns.
+
+**Bug #2 (P2 — list view 404 silent):** `onDeleteConfirm`
+in `WorkflowListView` did
+`if (removed) { announce(); reload() }`. The new
+server-side 404 path makes `api.deleteWorkflow` return
+`false` for missing ids, so the `if` branch never ran
+— dialog vanished, list never reloaded, no error
+shown. Fixed by always reloading (404 = "already gone
+by another tab, list is correct as-is") and surfacing
+real 5xx via the new `workflows.editor.error.deleteFailed`
+i18n key.
+
+**Bug #4 (P2 — `confirmDelete` in editor didn't catch):**
+the v0.7.1 `confirmDelete` did
+`await api.deleteWorkflow(id); window.location.href = ...`
+without a try/catch. A 5xx during the delete would
+reject the awaited promise and skip the navigation —
+the user was stranded on the editor with whatever
+error the browser surfaced. v0.7.1.1 wraps it: 404 is
+treated like 200 (navigate, the row is gone either way),
+5xx is announced via the same `deleteFailed` key but
+we still navigate so the user isn't stranded.
+
+**Bug #5 (P2 — `ConfirmDialog` focus comment was a lie):**
+v0.7.1's `ConfirmDialog` comment said "Focus the
+cancel button on open so Enter doesn't accidentally
+fire the destructive action" but the code did
+`cardRef.current?.focus()` — which focuses the *card*
+div (tabIndex=-1), not the cancel button. Enter on a
+non-button is a no-op, so the behavior was safe, but
+the comment was wrong. v0.7.1.1 adds a real
+`cancelRef = useRef<HTMLButtonElement>` and focuses
+the cancel button, matching the comment.
+
+**Bug #6 (P2 — Esc during in-flight request):** v0.7.1's
+Esc handler ran `onCancel()` regardless of `busy`. If
+the user pressed Esc while the DELETE round-trip was
+in flight, the dialog unmounted but the awaited
+promise later resolved against a gone component.
+v0.7.1.1 ignores Esc when `busy` is true (same guard
+on backdrop click for symmetry). The user has to wait
+for the request to land.
+
+**Bug #7 (P2 — no busy lock on the confirm button):**
+v0.7.1's `ConfirmDialog` accepted a `busy` prop but
+neither the list view nor the editor passed it. The
+user could double-click the destructive button and
+fire a duplicate DELETE. v0.7.1.1 adds `deletingBusy`
+state in both views and threads it through.
+
+**Polish (no functional change):**
+
+- **Header layout in editor:** the destructive Delete
+  button used to sit right next to the primary Save
+  button, visually inviting a fat-finger mistake.
+  v0.7.1.1 pushes Delete to the right edge with
+  `ml-auto` (and gives it a red `--error` tint to
+  match `ConfirmDialog`'s destructive variant), so
+  positive and destructive actions are physically
+  separated.
+- **ConfirmDialog description now shows the id:** v0.7.1
+  used a generic "Delete this workflow? This can't be
+  undone."; v0.7.1.1 templates it as
+  `Delete "{id}"? This can't be undone.` so the user
+  sees *which* workflow they're about to nuke.
+
+**i18n**
+
+- `workflows.confirmDelete`: was
+  `"Delete this workflow? This can't be undone."`,
+  now `'Delete "{id}"? This can\'t be undone.'`.
+  zh: was `"确定删除这个工作流？删除后无法撤销。"`,
+  now `'删除 "{id}"？删除后无法撤销。'`.
+- `workflows.editor.error.deleteFailed`: new key.
+  en: `"Delete failed: {error}"`, zh: `"删除失败：{error}"`.
+
+**Stats**
+
+- root: **631/631** ✓ (was 630; +1 in `workflow.test.ts`
+  for the `saveWorkflow`-over-corrupt-JSON regression
+  — asserts `console.warn` is NOT called during the
+  save, locking in bug #1's fix)
+- web: **245/245** ✓ (unchanged — no new component
+  tests; the dialog / list / editor UX changes are
+  surface-level and the existing workflow-layout /
+  nav-links / onboarding tests don't cover them.
+  v0.7.2 backlog has "RTL test setup" for the editor
+  + dialog.)
+- i18n: 0 placeholder mismatches across 1018 shared
+  keys (was 1017; +1 new `deleteFailed` key, the
+  `confirmDelete` template change still parses in
+  both locales)
+- format:check root + web: ✓
+- lint (root `eslint src test --max-warnings 0`): ✓
+- tsc root + web: ✓
+- production build: not run (audit hotfix, no
+  production-affecting logic)
+
+**File / new file inventory**
+
+- `src/core/workflow.ts` — `saveWorkflow` now uses
+  `readWorkflowSummary` instead of `loadWorkflow`
+  (bug #1)
+- `web/src/app/workflows/ConfirmDialog.tsx` — real
+  `cancelRef` focus, Esc + backdrop `busy` guards
+  (bugs #5, #6)
+- `web/src/app/workflows/WorkflowListView.tsx` —
+  `deletingBusy` state, try/catch + 404-silent
+  reload in `onDeleteConfirm`, `busy` + `wf.id`-
+  templated description on the dialog (bugs #2, #7,
+  polish)
+- `web/src/app/workflows/[id]/WorkflowEditor.tsx` —
+  imports + renders `<ConfirmDialog>` (bug #3),
+  `deletingBusy` state, try/catch in `confirmDelete`
+  (bug #4), `busy` on the dialog (bug #7), Delete
+  button `ml-auto` + `--error` tint (polish)
+- `web/src/lib/i18n/{types,dict.en,dict.zh}.ts` —
+  `confirmDelete` retemplated, `error.deleteFailed`
+  added
+- `test/unit/workflow.test.ts` — 1 new test
+  (`saveWorkflow` over corrupt JSON does NOT emit
+  `console.warn`) + 10ms sleep in the existing
+  "listWorkflows returns summaries" test to make it
+  deterministic now that `saveWorkflow` is faster
+- `package.json` + `web/package.json` (0.7.1 → 0.7.1.1),
+  `AGENTS.md` (version + last-updated), `CHANGELOG.md`
+
 ### v0.7.1 — `/workflows` audit fixes (5 issues closed in one hotfix)
 
 User did real browser testing on v0.7.0 (`/workflows` MVP) and

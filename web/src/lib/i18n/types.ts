@@ -1266,4 +1266,5 @@ export type Dict = {
   // identifiable.
   "workflows.editor.error.duplicateFailed": string;
   "workflows.editor.error.loadFailed": string;
+  "workflows.editor.error.deleteFailed": string;
 };

@@ -54,6 +54,14 @@ export function WorkflowListView() {
   // can show its name; clicking confirm calls the API,
   // clicking cancel / Esc / backdrop just clears the state.
   const [deleting, setDeleting] = useState<WorkflowSummary | null>(null);
+  // v0.7.1.1 (self-audit): `deletingBusy` guards the
+  // confirm button so a second click (or an Esc-while-
+  // in-flight scenario, see ConfirmDialog.tsx) doesn't
+  // fire a duplicate DELETE. We optimistically set it
+  // to `true` in `onDeleteConfirm` *before* awaiting the
+  // API call so the button is disabled for the full
+  // round-trip — same pattern as `creating` above.
+  const [deletingBusy, setDeletingBusy] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const reloadRef = useRef<() => Promise<void>>(async () => {});
 
@@ -96,10 +104,36 @@ export function WorkflowListView() {
   const onDeleteConfirm = useCallback(async () => {
     if (!deleting) return;
     const wf = deleting;
-    setDeleting(null);
-    const removed = await api.deleteWorkflow(wf.id);
-    if (removed) {
+    // v0.7.1.1 (self-audit): the dialog already closed
+    // optimistically (so the user gets instant feedback
+    // that the click registered), but we keep the
+    // "deleting this row" state in `deletingBusy` so
+    // the dialog's confirm button can't fire twice
+    // (see also `deletingBusy` in the JSX).
+    setDeletingBusy(true);
+    try {
+      // `api.deleteWorkflow` swallows 404s (returns
+      // `false` instead of throwing) — that's the
+      // stale-tab-refresh case where some other tab
+      // already deleted the row. We treat both "deleted
+      // by us" (200) and "already gone" (404) as
+      // success: the list reloads, the row vanishes,
+      // and the user sees the right outcome either way.
+      // Only true 5xx errors get the announce.
+      await api.deleteWorkflow(wf.id);
       announce(t("workflows.delete") + ": " + wf.id);
+    } catch (e) {
+      announce(
+        t("workflows.editor.error.deleteFailed", {
+          error: e instanceof Error ? e.message : String(e),
+        }),
+      );
+    } finally {
+      setDeleting(null);
+      setDeletingBusy(false);
+      // Always reload so a successful 200 or 404 (row
+      // already gone) both end with the list reflecting
+      // the current server state.
       await reloadRef.current();
     }
   }, [deleting, announce, t]);
@@ -258,10 +292,11 @@ export function WorkflowListView() {
         <ConfirmDialog
           open={!!deleting}
           title={t("workflows.delete")}
-          description={t("workflows.confirmDelete")}
+          description={t("workflows.confirmDelete", { id: deleting.id })}
           confirmLabel={t("workflows.delete")}
           cancelLabel={t("workflows.editor.cancel")}
           destructive
+          busy={deletingBusy}
           onConfirm={() => void onDeleteConfirm()}
           onCancel={() => setDeleting(null)}
           data-testid="workflows-delete-dialog"

@@ -296,8 +296,27 @@ export async function saveWorkflow(
   }
   const now = new Date().toISOString();
   // Preserve createdAt if the workflow already exists.
-  const existing = await loadWorkflow(input.id, home);
-  const createdAt = existing?.metadata.createdAt ?? now;
+  //
+  // v0.7.1.1 (self-audit): we used to call `loadWorkflow`
+  // here, but `loadWorkflow` v0.7.1 wraps `JSON.parse` in
+  // `try/catch + console.warn` for corrupt files. That's
+  // correct behavior for the user-facing "load this
+  // workflow" path (the warning is what tells the user
+  // their hand-edited file is broken), but `saveWorkflow`
+  // is a *write* operation: we're about to overwrite the
+  // file atomically anyway, so the warning would only
+  // pollute the server log on every save of a previously-
+  // corrupted workflow (a self-inflicted log spam from
+  // fixing the very bug the warning is meant to surface).
+  //
+  // `readWorkflowSummary` is the right tool: it parses
+  // the file leniently (no Zod validation, no warning,
+  // just the `createdAt` / `updatedAt` / counts), and
+  // returns `null` for missing-or-corrupt — which the
+  // caller then treats as "no prior createdAt, use now",
+  // i.e. the same fallback as a brand-new file.
+  const existing = await readWorkflowSummary(input.id, home);
+  const createdAt = existing?.createdAt ?? now;
   const full: Workflow = WorkflowSchema.parse({
     ...input,
     version: 1,

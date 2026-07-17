@@ -1214,7 +1214,7 @@ const zh: Dict = {
   "workflows.create": "新建工作流",
   "workflows.duplicate": "复制",
   "workflows.delete": "删除",
-  "workflows.confirmDelete": "确定删除这个工作流？删除后无法撤销。",
+  "workflows.confirmDelete": '删除 "{id}"？删除后无法撤销。',
   "workflows.nodeCount": "{n} 个步骤",
   "workflows.edgeCount": "{n} 条连接",
   "workflows.updatedAt": "更新于 {when}",
@@ -1265,5 +1265,6 @@ const zh: Dict = {
   "workflows.editor.open": "打开",
   "workflows.editor.error.duplicateFailed": "复制失败：{error}",
   "workflows.editor.error.loadFailed": "无法加载 {id}",
+  "workflows.editor.error.deleteFailed": "删除失败：{error}",
 };
 export default zh;

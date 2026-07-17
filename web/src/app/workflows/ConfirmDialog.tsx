@@ -54,29 +54,52 @@ export function ConfirmDialog({
   // trap library); the buttons are at the bottom of a
   // small card so tabbing reaches them quickly. v0.7.1+ UI
   // polish can add a proper focus trap.
-  const cardRef = useRef<HTMLDivElement>(null);
+  //
+  // v0.7.1.1 (self-audit): Esc is *ignored* when `busy`
+  // is true. The whole point of `busy` is "an async
+  // action is in flight, please wait" — letting the user
+  // dismiss the dialog while the API call is still
+  // resolving is exactly the race that produced the
+  // v0.7.1.1 self-audit: parent unmounts the dialog, but
+  // the awaited promise resolves later and writes to
+  // unmounted component state. With the guard, Esc does
+  // nothing during a request and the user has to wait
+  // for the success/failure to land.
+  const cancelRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCancel();
+      if (e.key === "Escape" && !busy) onCancel();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [open, onCancel]);
-  // Focus the cancel button on open so Enter doesn't
-  // accidentally fire the destructive action.
+  }, [open, onCancel, busy]);
+  // v0.7.1.1 (self-audit): focus the *cancel* button on
+  // open, not the card. v0.7.1's comment said
+  // "Focus the cancel button on open so Enter doesn't
+  // accidentally fire the destructive action" but the
+  // actual code did `cardRef.current?.focus()` which
+  // focuses the card div (tabIndex=-1) — Enter on a
+  // non-button doesn't do anything, but it also doesn't
+  // match the stated intent. With `cancelRef` we
+  // actually focus the cancel button, so Enter on
+  // the focused element does fire cancel (safe default
+  // for a destructive confirm).
   useEffect(() => {
-    if (open) cardRef.current?.focus();
+    if (open) cancelRef.current?.focus();
   }, [open]);
 
   const handleBackdrop = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       // Only close if the click is on the backdrop itself,
       // not on the card (the card's children would also
-      // bubble up).
-      if (e.target === e.currentTarget) onCancel();
+      // bubble up). v0.7.1.1 (self-audit): same `busy`
+      // guard as Esc — dismissing during an in-flight
+      // request races the awaited promise against an
+      // unmounted parent.
+      if (e.target === e.currentTarget && !busy) onCancel();
     },
-    [onCancel],
+    [onCancel, busy],
   );
 
   if (!open) return null;
@@ -89,7 +112,6 @@ export function ConfirmDialog({
       onClick={handleBackdrop}
     >
       <div
-        ref={cardRef}
         tabIndex={-1}
         className="surface rounded-lg p-5 w-full max-w-md space-y-3 outline-none"
       >
@@ -99,6 +121,7 @@ export function ConfirmDialog({
         ) : null}
         <div className="flex items-center justify-end gap-2 pt-1">
           <button
+            ref={cancelRef}
             type="button"
             className="btn small secondary"
             onClick={onCancel}

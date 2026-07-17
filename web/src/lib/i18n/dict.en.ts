@@ -1271,7 +1271,7 @@ const en: Dict = {
   "workflows.create": "New workflow",
   "workflows.duplicate": "Duplicate",
   "workflows.delete": "Delete",
-  "workflows.confirmDelete": "Delete this workflow? This can't be undone.",
+  "workflows.confirmDelete": 'Delete "{id}"? This can\'t be undone.',
   "workflows.nodeCount": "{n} steps",
   "workflows.edgeCount": "{n} connections",
   "workflows.updatedAt": "Updated {when}",
@@ -1324,5 +1324,6 @@ const en: Dict = {
   "workflows.editor.open": "Open",
   "workflows.editor.error.duplicateFailed": "Duplicate failed: {error}",
   "workflows.editor.error.loadFailed": "Could not load {id}",
+  "workflows.editor.error.deleteFailed": "Delete failed: {error}",
 };
 export default en;

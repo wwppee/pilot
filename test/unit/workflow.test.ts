@@ -116,6 +116,21 @@ describe("v0.7.0: workflow persistence", () => {
 
   it("listWorkflows returns summaries with the right counts", async () => {
     await saveWorkflow(sampleInput("a-flow"), fakeHome);
+    // v0.7.1.1 (self-audit): the two saves used to
+    // happen to land in different millisecond buckets
+    // because `saveWorkflow` called `loadWorkflow` (a
+    // full Zod-validated read) to read the old
+    // `createdAt`. With v0.7.1.1 switching that to
+    // the much cheaper `readWorkflowSummary`, both
+    // saves can land in the same millisecond and the
+    // `b.updatedAt.localeCompare(a.updatedAt)` sort
+    // would be a stable tie — keeping the insertion
+    // order ("a-flow" first) instead of the asserted
+    // "b-flow first" newest-first ordering. Force a
+    // monotonic `updatedAt` with a 10ms gap so the
+    // test is deterministic regardless of which
+    // helper `saveWorkflow` uses internally.
+    await new Promise((r) => setTimeout(r, 10));
     await saveWorkflow(sampleInput("b-flow"), fakeHome);
     const summaries = await listWorkflows(fakeHome);
     expect(summaries).toHaveLength(2);
@@ -203,5 +218,55 @@ describe("v0.7.0: workflow persistence", () => {
     await expect(loadWorkflow("wrong-shape", fakeHome)).rejects.toThrow(
       /failed schema validation/,
     );
+  });
+
+  // ─── v0.7.1.1 self-audit regression ─────────────────
+
+  it("saveWorkflow over a corrupt JSON file does NOT emit console.warn (v0.7.1.1 fix A)", async () => {
+    // Pre-v0.7.1.1, `saveWorkflow` would call `loadWorkflow`
+    // to read the old `createdAt` for the "preserve createdAt
+    // across saves" invariant. But `loadWorkflow` was (in
+    // v0.7.1) wrapping `JSON.parse` in `try/catch +
+    // console.warn` so the user would see a warning every
+    // time they saved a workflow whose previous file was
+    // hand-edited into an invalid state. The save would
+    // succeed (the atomic write overwrites the broken file),
+    // but the log would be polluted with a misleading
+    // "exists but is not valid JSON — returning 404" line
+    // on every save.
+    //
+    // v0.7.1.1 switches the read to `readWorkflowSummary`,
+    // which parses leniently and never warns. This test
+    // asserts the silence — if a future refactor
+    // reintroduces a warning, this test catches it.
+    const { mkdir, writeFile } = await import("node:fs/promises");
+    const dir = join(fakeHome, "workflows", "recover-after-corrupt");
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, "workflow.json"), '{"id": "oops"'); // truncated
+
+    const warnings: string[] = [];
+    const originalWarn = console.warn;
+    console.warn = (msg: string) => {
+      warnings.push(msg);
+    };
+    try {
+      const saved = await saveWorkflow(
+        sampleInput("recover-after-corrupt"),
+        fakeHome,
+      );
+      // Save succeeded and the result is well-formed.
+      expect(saved.id).toBe("recover-after-corrupt");
+      expect(saved.nodes).toHaveLength(2);
+      // The save's atomic write replaced the broken file.
+      const reloaded = await loadWorkflow("recover-after-corrupt", fakeHome);
+      expect(reloaded).toEqual(saved);
+    } finally {
+      console.warn = originalWarn;
+    }
+    // The whole point: no warn during the save itself.
+    // (We don't assert *zero* warns because other code in
+    // the test setup may emit them — we assert that the
+    // specific v0.7.1 warn pattern didn't fire.)
+    expect(warnings.some((w) => /not valid JSON/.test(w))).toBe(false);
   });
 });

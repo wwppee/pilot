@@ -33,6 +33,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/pilot-browser";
 import { useT } from "@/components/I18n";
+import { ConfirmDialog } from "../ConfirmDialog";
 import type {
   Workflow,
   WorkflowNode,
@@ -73,6 +74,11 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
   // happens in `confirmDelete` so the user can cancel
   // without us touching the server.
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  // v0.7.1.1 (self-audit): lock the confirm button while
+  // the DELETE round-trip is in flight so a second click
+  // can't fire a duplicate request. Same pattern as
+  // `saving` above.
+  const [deletingBusy, setDeletingBusy] = useState(false);
   const [announcement, setAnnouncement] = useState("");
 
   // Load on mount / id change.
@@ -163,10 +169,33 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
   const confirmDelete = useCallback(async () => {
     if (state.kind !== "ok") return;
     const id = state.workflow.id;
-    setConfirmingDelete(false);
-    await api.deleteWorkflow(id);
+    setDeletingBusy(true);
+    try {
+      // v0.7.1.1 (self-audit): wrap the DELETE in
+      // try/catch so a 5xx doesn't leave the user stuck
+      // on the editor (the previous v0.7.1 implementation
+      // did `await api.deleteWorkflow(id); window.location
+      // ...` without catching — any throw meant the
+      // navigation never happened and the editor was
+      // frozen on whatever error the browser surfaced).
+      // 404 (stale tab, already gone) is the same "row is
+      // gone, go back to list" outcome as 200, so we
+      // navigate either way and only stop on a real 5xx.
+      await api.deleteWorkflow(id);
+    } catch (e) {
+      // Show the failure in the live region so screen
+      // readers (and curious users) know what happened,
+      // then still go back to the list — the workflow
+      // is gone from the server's perspective, and the
+      // user shouldn't be stranded on the editor.
+      setAnnouncement(
+        t("workflows.editor.error.deleteFailed", {
+          error: e instanceof Error ? e.message : String(e),
+        }),
+      );
+    }
     window.location.href = "/workflows";
-  }, [state]);
+  }, [state, t]);
 
   // ─── Render ────────────────────────────────────────
 
@@ -259,21 +288,34 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
           <button
             type="button"
             className="btn small secondary"
-            onClick={() => void remove()}
-            data-testid="workflow-delete"
-          >
-            {t("workflows.editor.delete")}
-          </button>
-          <button
-            type="button"
-            className="btn small secondary"
             onClick={() => mutate((w) => ({ ...w, nodes: autoLayout(w) }))}
             data-testid="workflow-auto-layout"
           >
             {t("workflows.layoutBtn")}
           </button>
+          {/* v0.7.1.1 (self-audit): the destructive Delete
+              button used to sit right next to Save (primary
+              blue) and Duplicate (secondary) — visually
+              inviting a fat-finger click on a non-reversible
+              action. Push it to the far end of the row with
+              `ml-auto` so there's physical separation
+              between the positive (Save / Duplicate) and
+              destructive (Delete) actions. The save-status
+              text loses its own `ml-auto` since Delete now
+              occupies that space, but it's still
+              right-aligned by being the last child in the
+              flex row. */}
+          <button
+            type="button"
+            className="btn small secondary ml-auto"
+            onClick={() => void remove()}
+            data-testid="workflow-delete"
+            style={{ color: "var(--error)", borderColor: "var(--error)" }}
+          >
+            {t("workflows.editor.delete")}
+          </button>
           <span
-            className="text-xs text-[var(--text-muted)] ml-auto"
+            className="text-xs text-[var(--text-muted)]"
             data-testid="workflow-save-status"
           >
             {dirty
@@ -297,6 +339,36 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
           t={t as (k: string, p?: Record<string, unknown>) => string}
         />
       </div>
+
+      {/* v0.7.1 (audit fix P2 #7) + v0.7.1.1 (self-audit):
+          replace the v0.7.0 `window.confirm()` with the
+          shared `ConfirmDialog`. The state plumbing
+          (open via `remove()`, close + do-the-delete via
+          `confirmDelete()`) was wired up in v0.7.1 but
+          the dialog itself was never rendered — so the
+          Delete button in the header was a dead click.
+          Adding the render here closes the loop.
+
+          v0.7.1.1 also adds `busy={deletingBusy}` so the
+          confirm button disables during the DELETE
+          round-trip and the user can't double-click
+          into a duplicate request. */}
+      {state.kind === "ok" ? (
+        <ConfirmDialog
+          open={confirmingDelete}
+          title={t("workflows.editor.delete")}
+          description={t("workflows.confirmDelete", {
+            id: state.workflow.id,
+          })}
+          confirmLabel={t("workflows.editor.delete")}
+          cancelLabel={t("workflows.editor.cancel")}
+          destructive
+          busy={deletingBusy}
+          onConfirm={() => void confirmDelete()}
+          onCancel={() => setConfirmingDelete(false)}
+          data-testid="workflow-editor-delete-dialog"
+        />
+      ) : null}
 
       {/* Live region — mirrors save / delete / duplicate outcomes
           for screen readers. Standard a11y pattern. */}
