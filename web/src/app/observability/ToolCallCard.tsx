@@ -26,9 +26,17 @@ export interface ToolCallCardData {
 export function ToolCallCard({
   call,
   t,
+  onClick,
 }: {
   call: ToolCallCardData;
   t: (k: string, p?: Record<string, string | number>) => string;
+  // v0.8.5: optional click handler. The card is
+  // keyboard-activatable too (button role + Enter /
+  // Space) so the detail modal is accessible without
+  // a mouse. We only attach the handler + the role when
+  // the parent actually wires one up — otherwise the
+  // card stays a passive display element.
+  onClick?: () => void;
 }) {
   const outcomeTone =
     call.outcome === "denied"
@@ -36,9 +44,24 @@ export function ToolCallCard({
       : call.outcome === "fail"
         ? "bg-[var(--error)]/5 text-[var(--error)]"
         : "bg-[var(--text-muted)]/10 text-[var(--text-muted)]";
+  // v0.8.5: when an onClick handler is provided, the
+  // card becomes a button (clickable + keyboard-
+  // activatable). We pick <button> over a div with role
+  // because the screen-reader experience of a real
+  // button is much better (announces "button" + the
+  // label we provide).
+  const interactive = !!onClick;
+  const className = `surface-2 rounded p-2 text-xs space-y-1 ${
+    interactive
+      ? "cursor-pointer hover:ring-1 hover:ring-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]"
+      : ""
+  }`;
+  const Tag = interactive ? "button" : "div";
   return (
-    <div
-      className="surface-2 rounded p-2 text-xs space-y-1"
+    <Tag
+      type={interactive ? "button" : undefined}
+      onClick={onClick}
+      className={className}
       data-testid={`observability-card-${call.tool}-${call.context.timestamp}`}
     >
       <div className="flex items-center gap-2 flex-wrap">
@@ -66,6 +89,6 @@ export function ToolCallCard({
           {call.errorSample}
         </pre>
       ) : null}
-    </div>
+    </Tag>
   );
 }

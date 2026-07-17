@@ -48,6 +48,18 @@ export function ObservabilityView({ locale: _locale }: { locale: string }) {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [calls, setCalls] = useState<ToolCallCardData[]>([]);
+  // v0.8.5: detail modal. Clicking a record opens a
+  // modal showing the full raw JSON. Per user memory
+  // §Engineering Philosophy 'storage is a blind box',
+  // the dashboard does NOT surface the storage path
+  // or schema field names by default — but a user
+  // who explicitly clicks a record to see more is
+  // making a deliberate choice, and showing them the
+  // raw record is more useful than hiding it behind
+  // another abstract UI. (The default card already
+  // shows the actionable fields; the modal is the
+  // 'tell me more' affordance.)
+  const [detail, setDetail] = useState<ToolCallCardData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   // v0.8.1: time-range filter. v0.7.3 only ever queried
@@ -131,6 +143,7 @@ export function ObservabilityView({ locale: _locale }: { locale: string }) {
   return (
     <div className="space-y-6">
       <ChatBox t={t} />
+      <DetailModal detail={detail} onClose={() => setDetail(null)} />
       <header className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-semibold">{t("observability.title")}</h1>
         <div className="flex items-center gap-2">
@@ -208,6 +221,7 @@ export function ObservabilityView({ locale: _locale }: { locale: string }) {
                 expanded={expanded === row.tool}
                 calls={calls}
                 onToggle={() => void expand(row.tool)}
+                onSelectDetail={(c) => setDetail(c)}
                 t={t}
               />
             ))}
@@ -325,12 +339,18 @@ function ToolRow({
   expanded,
   calls,
   onToggle,
+  onSelectDetail,
   t,
 }: {
   row: Summary["byTool"][number];
   expanded: boolean;
   calls: ToolCallCardData[];
   onToggle: () => void;
+  // v0.8.5: when a record is clicked, the parent
+  // opens the detail modal. We thread the call up
+  // instead of using local state so the modal
+  // survives even if the user collapses the row.
+  onSelectDetail: (c: ToolCallCardData) => void;
   t: (k: string, p?: Record<string, string | number>) => string;
 }) {
   return (
@@ -366,7 +386,16 @@ function ToolRow({
               <ul className="space-y-2">
                 {calls.map((c, i) => (
                   <li key={`${c.context.timestamp}-${i}`}>
-                    <ToolCallCard call={c} t={t} />
+                    <ToolCallCard
+                      call={c}
+                      t={t}
+                      // v0.8.5: clicking the card opens
+                      // the detail modal. The whole card
+                      // is clickable (not just a button)
+                      // because the modal is a true
+                      // "expand the record" affordance.
+                      onClick={() => onSelectDetail(c)}
+                    />
                   </li>
                 ))}
               </ul>
@@ -382,5 +411,64 @@ function ToolRow({
         </tr>
       ) : null}
     </>
+  );
+}
+
+// v0.8.5: detail modal. Shows the raw record as
+// pretty-printed JSON. v0.7.3 deliberately did NOT
+// surface this — the dashboard was read-only and
+// the storage path was hidden. v0.8.5 introduces
+// the explicit "click a record to see its full
+// shape" affordance: the user is making a deliberate
+// choice when they click, and the raw record is more
+// useful for debugging than a second hand-crafted UI.
+// We render JSON.stringify(_, null, 2) directly — no
+// syntax highlighting or schema-aware formatter —
+// because the user wants the bytes the server sent
+// back, not a re-interpretation.
+function DetailModal({
+  detail,
+  onClose,
+}: {
+  detail: ToolCallCardData | null;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    if (!detail) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [detail, onClose]);
+  if (!detail) return null;
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      data-testid="observability-detail-modal"
+    >
+      <div className="surface rounded-lg p-5 w-full max-w-2xl space-y-3">
+        <h2 className="text-lg font-semibold font-mono">{detail.tool}</h2>
+        <pre
+          className="bg-[var(--bg)] border border-[var(--border)] rounded p-3 text-xs overflow-auto max-h-96 font-mono"
+          data-testid="observability-detail-json"
+        >
+          {JSON.stringify(detail, null, 2)}
+        </pre>
+        <div className="flex justify-end">
+          <button
+            type="button"
+            className="btn small primary"
+            onClick={onClose}
+            data-testid="observability-detail-close"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
