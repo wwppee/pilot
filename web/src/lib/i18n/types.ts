@@ -1267,4 +1267,28 @@ export type Dict = {
   "workflows.editor.error.duplicateFailed": string;
   "workflows.editor.error.loadFailed": string;
   "workflows.editor.error.deleteFailed": string;
+  // v0.7.3 (B2): observability dashboard keys. No storage
+  // path, no JSONL, no Zod field names — see user memory
+  // "storage is a blind box".
+  "nav.observability": string;
+  "nav.hint.observability": string;
+  "observability.title": string;
+  "observability.refresh": string;
+  "observability.total": string;
+  "observability.success": string;
+  "observability.fail": string;
+  "observability.denied": string;
+  "observability.empty": string;
+  "observability.empty.hint": string;
+  "observability.worstTool": string;
+  "observability.col.tool": string;
+  "observability.col.total": string;
+  "observability.col.success": string;
+  "observability.col.fail": string;
+  "observability.col.denied": string;
+  "observability.outcome.success": string;
+  "observability.outcome.fail": string;
+  "observability.outcome.denied": string;
+  "observability.reason": string;
+  "observability.managePolicy": string;
 };

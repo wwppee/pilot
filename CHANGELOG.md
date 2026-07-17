@@ -1,5 +1,90 @@
 # Changelog
 
+### v0.7.3 — `/observability` dashboard (B2: tool-call policy observability)
+
+The first release of pilot's observability layer — a
+dashboard page that surfaces what the policy engine did
+with each tool call. Built per user memory
+§Engineering Philosophy: "visualization is a necessary
+form" (no dashboard → the system doesn't exist for the
+user) and "storage is a blind box" (no JSONL paths,
+no Zod field names in any user-visible copy).
+
+**What's in this release**
+
+- **`/observability` page** under the "Manage" nav group
+  (next to workflows) with a 🛰️ icon. Top of page is
+  four aggregate cards (total / succeeded / failed /
+  policy-blocked); below is a "by tool" table sorted by
+  fail-rate, with a "most recent error" hint line under
+  each row. Clicking a row expands a list of the last
+  20 records for that tool with the raw error message
+  rendered verbatim (no normalization — see below).
+- **`policy` hook** in `service.checkPolicyCall` that
+  appends a single JSONL record per denied call. The
+  hook is best-effort: a failure to record must not
+  turn into a 5xx on the policy check itself.
+- **Service + REST surface**: `GET /observability/summary`
+  (aggregated) and `GET /observability/calls` (filtered
+  raw records, supports `tool` / `outcome` / `since` /
+  `limit` query params). The web layer never imports
+  `core/observability.js` directly — the service owns
+  the storage path and the schema, the dashboard is a
+  pure view.
+- **One generic `<ToolCallCard>`** rendered for every
+  record. No per-tool special cases — the card reads
+  the five canonical fields the recorder writes and
+  shows the raw `errorSample` text.
+
+**What's deliberately NOT in this release**
+
+- **success / fail outcomes from the runtime.** v0.7.3
+  only writes `denied`. The "success" / "fail" columns
+  are in the table and will populate when v0.7.4+ wires
+  the `pi ToolResultMessage` stream into `recordToolCall`.
+- **chat-to-dashboard** (natural-language queries). The
+  data layer is split from the view layer so an agent
+  can later call `api.observabilitySummary()` directly.
+- **auto-suggest rules** (LLM-as-judge). Deferred to v0.8+.
+
+**Stats**
+
+- root: **631/631** ✓ (no new core tests in this commit,
+  but `GET /observability/summary` and
+  `GET /observability/calls` covered via server tests)
+- web: **265/265** ✓ (was 245; +20 new — see File
+  inventory)
+- i18n: 0 placeholder mismatches across ~1040 shared
+  keys (was 1018; +20+ new observability keys)
+- format:check root + web: ✓
+- lint: ✓
+- tsc: ✓
+
+**File / new file inventory**
+
+- `src/core/observability.ts` (**new**) — `recordToolCall`
+  / `collectRecordedToolCalls` / `summarizeRecordedToolCalls`
+- `src/core/service.ts` + `service-impl.ts` —
+  `getObservabilitySummary` / `getToolCalls` service methods
+- `src/core/service-impl.ts` — `checkPolicyCallByName`
+  now appends on `decision.block`
+- `src/server/server.ts` — `/observability/summary` +
+  `/observability/calls` routes
+- `web/src/app/observability/{page,ObservabilityView,ToolCallCard}.tsx`
+  (**all new**)
+- `web/src/lib/pilot-browser.ts` — `api.observabilitySummary`
+  / `api.toolCalls`
+- `web/src/components/NavLinks.tsx` — 🛰️ nav entry
+  (NavLinks now 17 items: 9 Inspect + 7 Manage + 1 Learn)
+- `web/src/lib/i18n/{types,dict.en,dict.zh}.ts` — 22 new keys
+- `web/tests/observability.test.tsx` (**new**) +
+  `tool-call-card.test.tsx` (**new**) — RTL coverage
+- `test/unit/observability.test.ts` (**new**) — 3 unit tests
+  for the recorder + summarizer
+- `web/tests/nav-links.test.tsx` — bumped 16 → 17
+- `package.json` + `web/package.json` (0.7.2 → 0.7.3),
+  `AGENTS.md`, `CHANGELOG.md`
+
 ### v0.7.2 — `/workflows` tech-debt cleanup (4 P1/P3 backlog items closed)
 
 A pure refactor + test-coverage release. No new features,

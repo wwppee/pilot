@@ -816,6 +816,36 @@ export async function startServer(
     return service.checkPolicyCall(req.params.name, { name: tool, args });
   });
 
+  // v0.7.3 (B2): observability surface. The web dashboard
+  // calls these; the service reads from the JSONL log we
+  // append to in `service.checkPolicyCall`. The web layer
+  // never sees the storage path — that's a service-internal
+  // detail (storage-as-blind-box, per user memory).
+  app.get("/observability/summary", async () =>
+    service.getObservabilitySummary(),
+  );
+  app.get<{
+    Querystring: {
+      tool?: string;
+      outcome?: "success" | "fail" | "denied";
+      since?: string;
+      limit?: string;
+    };
+  }>("/observability/calls", async (req) => {
+    const q = req.query;
+    const filter: {
+      toolName?: string;
+      outcome?: "success" | "fail" | "denied";
+      since?: string;
+      limit?: number;
+    } = {};
+    if (q.tool) filter.toolName = q.tool;
+    if (q.outcome) filter.outcome = q.outcome;
+    if (q.since) filter.since = q.since;
+    if (q.limit) filter.limit = Number(q.limit);
+    return service.getToolCalls(filter);
+  });
+
   // ─── Plans (v0.6.0 — Agent capability layer) ────
 
   app.get("/plans", async () => service.listPlans());

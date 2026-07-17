@@ -1,0 +1,283 @@
+"use client";
+
+/**
+ * v0.7.3 (B2): observability dashboard. Renders three things:
+ *   1. The top aggregate card (total + fail + denied) so the
+ *      user sees "is something on fire?" at a glance.
+ *   2. A "by tool" table — for each tool, count of success /
+ *      fail / denied + the most recent error sample. Sorted by
+ *      fail-rate so the worst tool is at the top.
+ *   3. An expandable "recent calls" list when the user clicks
+ *      a tool row, showing the last 20 records with the raw
+ *      error message (no normalization — see user memory).
+ *
+ * v0.7.3 only emits "denied" outcomes because the v0.7.3 policy
+ * hook is the only writer wired up. Success / fail will arrive
+ * in v0.7.4+ when the pi ToolResultMessage stream is hooked in.
+ * The UI handles the three outcomes identically; this comment
+ * is here so a future reader doesn't think the empty
+ * success/fail counts are a bug.
+ */
+
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useT } from "@/components/I18n";
+import { api } from "@/lib/pilot-browser";
+import type { ToolCallCardData } from "./ToolCallCard";
+import { ToolCallCard } from "./ToolCallCard";
+
+interface Summary {
+  total: number;
+  success: number;
+  fail: number;
+  denied: number;
+  worstTool: string | null;
+  byTool: Array<{
+    tool: string;
+    total: number;
+    success: number;
+    fail: number;
+    denied: number;
+    recentError: string;
+    lastSeen: string;
+  }>;
+}
+
+export function ObservabilityView({ locale: _locale }: { locale: string }) {
+  const t = useT();
+  const [summary, setSummary] = useState<Summary | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [calls, setCalls] = useState<ToolCallCardData[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const reload = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const s = await api.observabilitySummary();
+      setSummary(s as Summary);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  const expand = useCallback(
+    async (tool: string) => {
+      if (expanded === tool) {
+        setExpanded(null);
+        setCalls([]);
+        return;
+      }
+      setExpanded(tool);
+      try {
+        const c = await api.toolCalls({ toolName: tool, limit: 20 });
+        setCalls(c as ToolCallCardData[]);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    },
+    [expanded],
+  );
+
+  if (loading && !summary) {
+    return <p className="text-[var(--text-muted)] text-sm">…</p>;
+  }
+  if (error) {
+    return (
+      <div className="surface rounded-lg p-4 text-sm text-[var(--error)]">
+        {error}
+      </div>
+    );
+  }
+  if (!summary || summary.total === 0) {
+    return (
+      <div className="space-y-4">
+        <header className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold">{t("observability.title")}</h1>
+        </header>
+        <div className="surface rounded-lg p-6 text-sm text-center space-y-2">
+          <p className="font-semibold text-[var(--text)]">
+            {t("observability.empty")}
+          </p>
+          <p className="text-[var(--text-muted)]">
+            {t("observability.empty.hint")}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <header className="flex items-center justify-between flex-wrap gap-2">
+        <h1 className="text-2xl font-semibold">{t("observability.title")}</h1>
+        <button
+          type="button"
+          className="btn small secondary"
+          onClick={() => void reload()}
+        >
+          {t("observability.refresh")}
+        </button>
+      </header>
+
+      {/* Top aggregate card — the "is something on fire?" glance. */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <AggregateCard label={t("observability.total")} value={summary.total} />
+        <AggregateCard
+          label={t("observability.success")}
+          value={summary.success}
+          tone="ok"
+        />
+        <AggregateCard
+          label={t("observability.fail")}
+          value={summary.fail}
+          tone={summary.fail > 0 ? "warn" : "neutral"}
+        />
+        <AggregateCard
+          label={t("observability.denied")}
+          value={summary.denied}
+          tone={summary.denied > 0 ? "warn" : "neutral"}
+        />
+      </div>
+
+      {summary.worstTool ? (
+        <p className="text-sm text-[var(--text-muted)]">
+          {t("observability.worstTool", { tool: summary.worstTool })}
+        </p>
+      ) : null}
+
+      {/* By-tool table — one row per tool, expandable. */}
+      <div className="surface rounded-lg overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="text-xs text-[var(--text-muted)]">
+            <tr>
+              <th className="text-left p-3">{t("observability.col.tool")}</th>
+              <th className="text-right p-3">{t("observability.col.total")}</th>
+              <th className="text-right p-3">
+                {t("observability.col.success")}
+              </th>
+              <th className="text-right p-3">{t("observability.col.fail")}</th>
+              <th className="text-right p-3">
+                {t("observability.col.denied")}
+              </th>
+              <th className="p-3" />
+            </tr>
+          </thead>
+          <tbody>
+            {summary.byTool.map((row) => (
+              <ToolRow
+                key={row.tool}
+                row={row}
+                expanded={expanded === row.tool}
+                calls={calls}
+                onToggle={() => void expand(row.tool)}
+                t={t}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="text-xs text-[var(--text-muted)]">
+        <Link href="/policy" className="hover:underline">
+          {t("observability.managePolicy")}
+        </Link>
+      </p>
+    </div>
+  );
+}
+
+function AggregateCard({
+  label,
+  value,
+  tone = "neutral",
+}: {
+  label: string;
+  value: number;
+  tone?: "ok" | "warn" | "neutral";
+}) {
+  const color =
+    tone === "warn"
+      ? "text-[var(--error)]"
+      : tone === "ok"
+        ? "text-[var(--text)]"
+        : "text-[var(--text-muted)]";
+  return (
+    <div className="surface rounded-lg p-3">
+      <p className="text-xs text-[var(--text-muted)]">{label}</p>
+      <p className={`text-2xl font-semibold ${color}`}>{value}</p>
+    </div>
+  );
+}
+
+function ToolRow({
+  row,
+  expanded,
+  calls,
+  onToggle,
+  t,
+}: {
+  row: Summary["byTool"][number];
+  expanded: boolean;
+  calls: ToolCallCardData[];
+  onToggle: () => void;
+  t: (k: string, p?: Record<string, string | number>) => string;
+}) {
+  return (
+    <>
+      <tr
+        className="border-t border-[var(--border)] cursor-pointer hover:bg-[var(--bg)]"
+        onClick={onToggle}
+        data-testid={`observability-row-${row.tool}`}
+      >
+        <td className="p-3 font-mono">{row.tool}</td>
+        <td className="p-3 text-right">{row.total}</td>
+        <td className="p-3 text-right">{row.success}</td>
+        <td
+          className={`p-3 text-right ${row.fail > 0 ? "text-[var(--error)]" : ""}`}
+        >
+          {row.fail}
+        </td>
+        <td
+          className={`p-3 text-right ${row.denied > 0 ? "text-[var(--error)]" : ""}`}
+        >
+          {row.denied}
+        </td>
+        <td className="p-3 text-right text-xs text-[var(--text-muted)]">
+          {expanded ? "▾" : "▸"}
+        </td>
+      </tr>
+      {expanded ? (
+        <tr className="border-t border-[var(--border)] bg-[var(--bg)]">
+          <td colSpan={6} className="p-3">
+            {calls.length === 0 ? (
+              <p className="text-xs text-[var(--text-muted)]">…</p>
+            ) : (
+              <ul className="space-y-2">
+                {calls.map((c, i) => (
+                  <li key={`${c.context.timestamp}-${i}`}>
+                    <ToolCallCard call={c} t={t} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </td>
+        </tr>
+      ) : null}
+      {row.recentError && !expanded ? (
+        <tr className="border-t border-[var(--border)]">
+          <td colSpan={6} className="p-3 text-xs text-[var(--text-muted)]">
+            <span className="font-mono">{row.tool}</span>: {row.recentError}
+          </td>
+        </tr>
+      ) : null}
+    </>
+  );
+}

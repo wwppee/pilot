@@ -426,6 +426,31 @@ export const browserApi = {
       throw e;
     }
   },
+
+  // ─── Observability (v0.7.3 B2) ────────────────────
+  // The dashboard's data layer. The browser code never knows
+  // about JSONL or storage paths — the service owns that and
+  // exposes a summary + a filtered record stream. Types are
+  // structural on purpose (we trust the server's shape) so
+  // the web bundle doesn't have to import `core/observability`
+  // (which is server-only).
+  observabilitySummary: () => browserFetch<unknown>("/observability/summary"),
+  toolCalls: (
+    filter: {
+      toolName?: string;
+      outcome?: "success" | "fail" | "denied";
+      since?: string;
+      limit?: number;
+    } = {},
+  ) => {
+    const qs = new URLSearchParams();
+    if (filter.toolName) qs.set("tool", filter.toolName);
+    if (filter.outcome) qs.set("outcome", filter.outcome);
+    if (filter.since) qs.set("since", filter.since);
+    if (filter.limit !== undefined) qs.set("limit", String(filter.limit));
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return browserFetch<unknown[]>(`/observability/calls${suffix}`);
+  },
 };
 
 /** Convenience alias: most client code can do `import { api as ... }`. */

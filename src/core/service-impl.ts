@@ -221,6 +221,17 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
     applyPolicy: (name) => applyPolicyByName(name, home),
     unapplyPolicy: (name) => unapplyPolicyByName(name, home),
     checkPolicyCall: (name, call) => checkPolicyCallByName(name, call, home),
+    // v0.7.3 (B2): observability accessors. The service is the
+    // single thing the dashboard talks to for these — the web
+    // layer never imports `core/observability.js` directly.
+    getObservabilitySummary: async () => {
+      const { summarizeRecordedToolCalls } = await import("./observability.js");
+      return summarizeRecordedToolCalls(home);
+    },
+    getToolCalls: async (filter) => {
+      const { collectRecordedToolCalls } = await import("./observability.js");
+      return collectRecordedToolCalls(home, filter);
+    },
 
     // ─── Plans (v0.6.0 — Agent capability layer) ────
     listPlans: () => listPlansFromHome(home),
@@ -759,7 +770,28 @@ async function checkPolicyCallByName(
   decision: PolicyDecision;
 }> {
   const policy = await readPolicyFromHome(name, home);
-  return { policy, decision: checkPolicyInEngine(call, policy) };
+  const decision = checkPolicyInEngine(call, policy);
+  // v0.7.3 (B2): when the policy engine blocks a call, record
+  // the outcome so the dashboard can show the user which rules
+  // fire most often. We record only `denied` here — `success`
+  // and `fail` come from the pi session's ToolResultMessage
+  // stream and will be wired in v0.7.4+. Recording is
+  // best-effort: a failed append must not turn into a 5xx on
+  // the policy check itself (recordToolCall already swallows).
+  if (decision.block) {
+    const { recordToolCall } = await import("./observability.js");
+    void recordToolCall(
+      {
+        tool: call.name,
+        outcome: "denied",
+        reason: decision.rule ?? "policy",
+        errorSample: decision.reason ?? "",
+        context: { timestamp: new Date().toISOString() },
+      },
+      home,
+    );
+  }
+  return { policy, decision };
 }
 
 // ─── Plans (v0.6.0 — Agent capability layer) ───────────────

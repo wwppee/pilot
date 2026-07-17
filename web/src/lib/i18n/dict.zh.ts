@@ -1266,5 +1266,29 @@ const zh: Dict = {
   "workflows.editor.error.duplicateFailed": "复制失败：{error}",
   "workflows.editor.error.loadFailed": "无法加载 {id}",
   "workflows.editor.error.deleteFailed": "删除失败：{error}",
+  // v0.7.3 (B2): observability dashboard i18n. 不提存储路径
+  // / JSONL / 实现细节——user 只看到"工具调用"和"策略拦截"。
+  // 按 user memory: 存储是盲盒。
+  "nav.observability": "可观测性",
+  "nav.hint.observability": "工具调用结果 + 策略拦截",
+  "observability.title": "可观测性",
+  "observability.refresh": "刷新",
+  "observability.total": "总调用",
+  "observability.success": "成功",
+  "observability.fail": "失败",
+  "observability.denied": "策略拦截",
+  "observability.empty": "暂无工具调用记录。",
+  "observability.empty.hint": "策略引擎评估调用后，记录会显示在这里。",
+  "observability.worstTool": "失败率最高：{tool}",
+  "observability.col.tool": "工具",
+  "observability.col.total": "总数",
+  "observability.col.success": "成功",
+  "observability.col.fail": "失败",
+  "observability.col.denied": "拦截",
+  "observability.outcome.success": "成功",
+  "observability.outcome.fail": "失败",
+  "observability.outcome.denied": "拦截",
+  "observability.reason": "规则：{reason}",
+  "observability.managePolicy": "管理策略 →",
 };
 export default zh;

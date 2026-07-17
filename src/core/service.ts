@@ -447,6 +447,18 @@ export interface PilotService {
     call: ToolCallInfo,
   ): Promise<{ policy: ToolPolicy; decision: PolicyDecision }>;
 
+  // v0.7.3 (B2): observability surface — the dashboard asks
+  // the service for aggregated + raw tool call records. The
+  // service owns the home directory so the dashboard never has
+  // to know where the JSONL log lives (storage is a blind box
+  // to the UI — see user memory §Engineering Philosophy).
+  getObservabilitySummary(): Promise<
+    import("./observability.js").ObservabilitySummary
+  >;
+  getToolCalls(
+    filter?: import("./observability.js").ObservabilityFilter,
+  ): Promise<import("./observability.js").RecordedToolCall[]>;
+
   // ─── Capabilities (v0.4+) ────────────────────────────
 
   /** All installed capabilities. Returns [] when store doesn't exist. */

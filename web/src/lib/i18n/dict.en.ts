@@ -1325,5 +1325,31 @@ const en: Dict = {
   "workflows.editor.error.duplicateFailed": "Duplicate failed: {error}",
   "workflows.editor.error.loadFailed": "Could not load {id}",
   "workflows.editor.error.deleteFailed": "Delete failed: {error}",
+  // v0.7.3 (B2): observability dashboard i18n. Note we don't
+  // mention the storage path, JSONL, or any implementation
+  // detail — the user just sees "tool calls" + "policy
+  // blocks". Per user memory: storage is a blind box.
+  "nav.observability": "Observability",
+  "nav.hint.observability": "Tool call outcomes + policy blocks",
+  "observability.title": "Observability",
+  "observability.refresh": "Refresh",
+  "observability.total": "Total calls",
+  "observability.success": "Succeeded",
+  "observability.fail": "Failed",
+  "observability.denied": "Policy blocked",
+  "observability.empty": "No tool calls recorded yet.",
+  "observability.empty.hint":
+    "Calls will appear here as the policy engine evaluates them.",
+  "observability.worstTool": "Highest fail-rate: {tool}",
+  "observability.col.tool": "Tool",
+  "observability.col.total": "Total",
+  "observability.col.success": "✓",
+  "observability.col.fail": "Failed",
+  "observability.col.denied": "Blocked",
+  "observability.outcome.success": "success",
+  "observability.outcome.fail": "fail",
+  "observability.outcome.denied": "denied",
+  "observability.reason": "rule: {reason}",
+  "observability.managePolicy": "Manage policies →",
 };
 export default en;

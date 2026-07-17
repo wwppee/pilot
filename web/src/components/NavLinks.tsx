@@ -45,7 +45,8 @@ type LabelKey =
   | "nav.avatars"
   | "nav.plans"
   | "nav.try"
-  | "nav.help";
+  | "nav.help"
+  | "nav.observability";
 
 type HintKey =
   | "nav.hint.dashboard"
@@ -63,7 +64,8 @@ type HintKey =
   | "nav.hint.compose"
   | "nav.hint.workflows"
   | "nav.hint.profiles"
-  | "nav.hint.help";
+  | "nav.hint.help"
+  | "nav.hint.observability";
 
 interface NavItem {
   href: string;
@@ -187,6 +189,18 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         labelKey: "nav.workflows",
         icon: "🌀",
         hintKey: "nav.hint.workflows",
+      },
+      // v0.7.3 (B2): observability — a dashboard page for
+      // tool-call outcomes. Lives in the "Inspect" group
+      // because it's a read-only view of records, not a
+      // write action. The 🛰️ icon reads as "monitoring" and
+      // is visually distinct from the flow / test-tube /
+      // person icons in the same group.
+      {
+        href: "/observability",
+        labelKey: "nav.observability",
+        icon: "🛰️",
+        hintKey: "nav.hint.observability",
       },
     ],
   },

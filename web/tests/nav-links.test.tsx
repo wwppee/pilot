@@ -38,10 +38,11 @@ describe("NavLinks (v0.5.21 server component, en)", () => {
     expect(learn).not.toBeNull();
   });
 
-  it("includes all 16 nav items (9 Inspect + 6 Manage + 1 Learn)", () => {
-    // v0.7.0 added the Workflows entry to Manage. 9 + 6 + 1 = 16.
+  it("includes all 17 nav items (10 Inspect + 6 Manage + 1 Learn)", () => {
+    // v0.7.0: Workflows added → 16 (9+6+1).
+    // v0.7.3 (B2): Observability added to Inspect → 17 (10+6+1).
     const totalItems = NAV_GROUPS.reduce((n, g) => n + g.items.length, 0);
-    expect(totalItems).toBe(16);
+    expect(totalItems).toBe(17);
     const allHrefs = NAV_GROUPS.flatMap((g) => g.items.map((i) => i.href));
     expect(allHrefs).toContain("/");
     expect(allHrefs).toContain("/forge");
@@ -51,6 +52,7 @@ describe("NavLinks (v0.5.21 server component, en)", () => {
     expect(allHrefs).toContain("/avatars");
     expect(allHrefs).toContain("/plans");
     expect(allHrefs).toContain("/help");
+    expect(allHrefs).toContain("/observability");
   });
 
   it("marks the active link with aria-current=page", () => {
@@ -85,11 +87,12 @@ describe("NavLinks (v0.5.21 server component, en)", () => {
   it("renders a tooltip for every nav item, with i18n'd hint", () => {
     const { container } = render(<NavLinks currentPath="/" locale="en" />);
     const tooltips = container.querySelectorAll('[role="tooltip"]');
-    // v0.7.0: 16 items (added Workflows). Bumping this
-    // number is the canonical signal that a nav item was
-    // added — it forces the test to be re-baselined rather
-    // than silently passing.
-    expect(tooltips.length).toBe(16);
+    // v0.7.0: 16 items (added Workflows). v0.7.3 (B2): 17
+    // items (added Observability). Bumping this number is
+    // the canonical signal that a nav item was added — it
+    // forces the test to be re-baselined rather than
+    // silently passing.
+    expect(tooltips.length).toBe(17);
     // Spot-check: every tooltip body is non-empty (not a raw key).
     for (const t of tooltips) {
       const text = t.textContent ?? "";
@@ -115,11 +118,11 @@ describe("NavLinks (v0.5.21 server component, en)", () => {
     ]);
   });
 
-  it("Manage group contains 6 items (Packages, Forge, Policy, Compose, Profiles, Workflows)", () => {
-    // v0.7.0 added the Workflows entry, between Profiles
-    // and the other Manage items. Order matters here — the
-    // test pins the exact sequence so an accidental
-    // reordering surfaces as a failure.
+  it("Manage group contains 7 items (Packages, Forge, Policy, Compose, Profiles, Workflows, Observability)", () => {
+    // v0.7.0 added Workflows. v0.7.3 (B2) added
+    // Observability. Order matters here — the test pins
+    // the exact sequence so an accidental reorder
+    // surfaces as a failure.
     const manageGroup = NAV_GROUPS.find(
       (g) => g.labelKey === "nav.groupManage",
     )!;
@@ -130,6 +133,7 @@ describe("NavLinks (v0.5.21 server component, en)", () => {
       "nav.compose",
       "nav.profiles",
       "nav.workflows",
+      "nav.observability",
     ]);
   });
 
@@ -152,9 +156,10 @@ describe("NavLinks (v0.5.21 server component, zh)", () => {
   it("renders zh tooltips (not raw keys)", () => {
     const { container } = render(<NavLinks currentPath="/" locale="zh" />);
     const tooltips = container.querySelectorAll('[role="tooltip"]');
-    // v0.7.0: 16 items. See the en test for why this is
-    // hard-coded rather than computed from NAV_GROUPS.
-    expect(tooltips.length).toBe(16);
+    // v0.7.0: 16 items. v0.7.3 (B2): 17 items. See the en
+    // test for why this is hard-coded rather than computed
+    // from NAV_GROUPS.
+    expect(tooltips.length).toBe(17);
     for (const t of tooltips) {
       const text = t.textContent ?? "";
       // Every hint is non-empty Chinese / English phrase, not a key.
