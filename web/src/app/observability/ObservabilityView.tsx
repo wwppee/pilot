@@ -50,19 +50,33 @@ export function ObservabilityView({ locale: _locale }: { locale: string }) {
   const [calls, setCalls] = useState<ToolCallCardData[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // v0.8.1: time-range filter. v0.7.3 only ever queried
+  // "all time" — the user had to eyeball every record.
+  // The underlying helpers already accept `since` (it's
+  // how the API was designed in v0.7.3); we're just
+  // surfacing the control. v0.7.3 dashboard's storage
+  // layer never had a TTL, so the all-time option stays
+  // useful for the first 24-48h of any deployment
+  // before users start wanting windowed views.
+  const [range, setRange] = useState<"24h" | "7d" | "all">("24h");
 
   const reload = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const s = await api.observabilitySummary();
+      const since = range === "24h"
+        ? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+        : range === "7d"
+          ? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+          : undefined;
+      const s = await api.observabilitySummary(since);
       setSummary(s as Summary);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [range]);
 
   useEffect(() => {
     void reload();
@@ -119,13 +133,28 @@ export function ObservabilityView({ locale: _locale }: { locale: string }) {
       <ChatBox t={t} />
       <header className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-semibold">{t("observability.title")}</h1>
-        <button
-          type="button"
-          className="btn small secondary"
-          onClick={() => void reload()}
-        >
-          {t("observability.refresh")}
+        <div className="flex items-center gap-2">
+          {/* v0.8.1: time-range filter. v0.7.3 always queried
+              all-time; this surfaces the same `since` filter
+              the API has supported since day one. */}
+          <select
+            value={range}
+            onChange={(e) => setRange(e.target.value as typeof range)}
+            className="px-2 py-1 text-xs bg-[var(--bg)] border border-[var(--border)] rounded"
+            data-testid="observability-range"
+          >
+            <option value="24h">{t("observability.range.24h")}</option>
+            <option value="7d">{t("observability.range.7d")}</option>
+            <option value="all">{t("observability.range.all")}</option>
+          </select>
+          <button
+            type="button"
+            className="btn small secondary"
+            onClick={() => void reload()}
+          >
+            {t("observability.refresh")}
         </button>
+        </div>
       </header>
 
       {/* Top aggregate card — the "is something on fire?" glance. */}

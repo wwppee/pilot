@@ -1297,4 +1297,7 @@ export type Dict = {
   "observability.chat.hint": string;
   "observability.chat.placeholder": string;
   "observability.chat.ask": string;
+  "observability.range.24h": string;
+  "observability.range.7d": string;
+  "observability.range.all": string;
 };

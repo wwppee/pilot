@@ -449,7 +449,10 @@ export const browserApi = {
   // structural on purpose (we trust the server's shape) so
   // the web bundle doesn't have to import `core/observability`
   // (which is server-only).
-  observabilitySummary: () => browserFetch<unknown>("/observability/summary"),
+  observabilitySummary: (since?: string) => {
+    const qs = since ? `?since=${encodeURIComponent(since)}` : "";
+    return browserFetch<unknown>(`/observability/summary${qs}`);
+  },
   toolCalls: (
     filter: {
       toolName?: string;
