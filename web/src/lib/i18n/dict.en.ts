@@ -448,6 +448,25 @@ const en: Dict = {
   "policy.form.field.requireApproval.hint":
     "Triggers ctx.ui.confirm() in the generated extension before the tool runs.",
   "policy.form.field.requireApproval.placeholder": "bash\nwrite",
+  // v0.8.6: per-tool rule editor. Each row overrides the
+  // global rule for one tool name. Leave a field empty to
+  // fall back to the global rule for that sub-field.
+  "policy.form.toolRules.legend":
+    "Per-tool rules · override the globals for one tool at a time",
+  "policy.form.toolRules.hint":
+    "Useful when one tool needs stricter (or looser) rules than the globals. Empty sub-fields fall back to the global rule.",
+  "policy.form.toolRules.empty":
+    "No per-tool overrides. The global rules above apply to every tool.",
+  "policy.form.toolRules.addTool": "+ Add per-tool rule",
+  "policy.form.toolRules.removeTool": "Remove",
+  "policy.form.toolRules.toolNameLabel": "Tool",
+  "policy.form.toolRules.toolNamePlaceholder": "bash",
+  "policy.form.toolRules.toolNameAriaLabel": "Tool name for per-tool rule row {n}",
+  "policy.form.toolRules.field.deny.label": "deny (override)",
+  "policy.form.toolRules.field.requireApproval.label":
+    "requireApproval (override)",
+  "policy.form.toolRules.field.denyPaths.label": "denyPaths (additive)",
+  "policy.form.toolRules.field.denyCommands.label": "denyCommands (additive)",
 
   // Compose
   "compose.searchPlaceholder": "Search…",

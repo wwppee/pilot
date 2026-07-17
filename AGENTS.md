@@ -17,7 +17,7 @@
 
 - pilot 是什么：pi-coding-agent 的 management plane（CLI + Web UI）—— **不拦截 pi runtime**
 - 仓库：`github.com/wwppee/pilot`（npm 名 `pilot`）
-- 当前版本：v0.8.5
+- 当前版本：v0.8.6
 - 沙盒限制：可能不能 `git push` / `npm publish` / 起 `pilot start`（见 §9）
 
 ---

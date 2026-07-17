@@ -156,3 +156,77 @@
   background: color-mix(in srgb, var(--hitl) 18%, transparent);
   color: var(--hitl);
 }
+
+/* ─── Per-tool rules (v0.8.6) ─────────────────────────── */
+
+.policy-tool-rule-rows {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.policy-tool-rule-row {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.policy-tool-rule-row-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.policy-tool-rule-tool-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  min-width: 60px;
+}
+
+.policy-tool-rule-row-header .policy-edit-input {
+  flex: 1 1 200px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.policy-tool-rule-row-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+@media (min-width: 720px) {
+  .policy-tool-rule-row-fields {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.policy-tool-rule-subfield {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.policy-tool-rule-subfield label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.policy-tool-rule-subfield textarea {
+  min-height: 60px;
+  font-size: 12px;
+}
+
+.btn.small {
+  font-size: 12px;
+  padding: 4px 10px;
+}

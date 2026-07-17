@@ -190,6 +190,12 @@ async function runNew(
     allow: [],
     deny: ["bash"], // safe-by-default starter
     denyPaths: ["**/.env", "**/.env.*", "**/secrets.json", "**/id_rsa"],
+    // v0.8.6: per-tool rules default to {} when the
+    // template is generated. Users can refine them in
+    // the form afterwards. The CLI still doesn't expose
+    // a flag to set them at create time — that's a
+    // v0.8.7+ improvement.
+    toolRules: {},
     denyCommands: [
       "^rm\\s+-rf\\s+/",
       "^mkfs",

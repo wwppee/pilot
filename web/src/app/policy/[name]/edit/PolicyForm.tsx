@@ -14,12 +14,23 @@
  * v0.5.10+: section metadata is now i18n. SECTION_DEFS is a function
  * that resolves labels/hints/placeholders via the translator. Hint
  * is optional — fields without a hint (e.g. deny) get an empty hint.
+ *
+ * v0.8.6: per-tool rules editor. v0.8.0 added the
+ * `toolRules` schema, v0.8.4 added the read-only viewer
+ * on the policy list — this release finishes the loop by
+ * making per-tool rules editable from the same form. The
+ * dashboard can now be the single source of truth for both
+ * global and per-tool rules.
  */
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, PilotApiError } from "../../../../lib/pilot-browser";
-import type { ToolPolicy, ToolPolicyInput } from "../../../../lib/types";
+import type {
+  PerToolRule,
+  ToolPolicy,
+  ToolPolicyInput,
+} from "../../../../lib/types";
 import { useT } from "@/components/I18n";
 
 interface PolicyFormProps {
@@ -102,6 +113,25 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
     }
     return out;
   });
+  // v0.8.6: per-tool rules as a list of rows (one row = one
+  // tool). Each row carries 4 textarea values keyed by the
+  // PerToolRule sub-field. We render as a list (rather than a
+  // nested record) because the user needs to add/remove whole
+  // tool rows, and a flat list is the natural form for that.
+  // On save we collapse it back into `Record<tool, PerToolRule>`.
+  const [toolRuleRows, setToolRuleRows] = useState<
+    { tool: string; values: Record<keyof PerToolRule, string> }[]
+  >(() => {
+    return Object.entries(initialPolicy.toolRules).map(([tool, rule]) => ({
+      tool,
+      values: {
+        deny: rule.deny.join("\n"),
+        requireApproval: rule.requireApproval.join("\n"),
+        denyPaths: rule.denyPaths.join("\n"),
+        denyCommands: rule.denyCommands.join("\n"),
+      },
+    }));
+  });
   const [saveState, setSaveState] = useState<SaveState>({ kind: "idle" });
   const [busy, setBusy] = useState(false);
   const [applyMessage, setApplyMessage] = useState<string | null>(null);
@@ -111,6 +141,40 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
   const ruleCount = SECTION_DEFS.reduce(
     (sum, def) => sum + parseLines(arrays[def.field] ?? "").length,
     0,
+  ) + toolRuleRows.length;
+
+  // v0.8.6: dirty check must also catch per-tool rule
+  // edits. The comparison serializes each row into the
+  // same shape we'll send on save, then string-compares
+  // against the serialized initial policy.
+  const initialToolRulesSerialized = JSON.stringify(
+    Object.entries(initialPolicy.toolRules)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([tool, rule]) => [tool, rule.deny, rule.requireApproval, rule.denyPaths, rule.denyCommands]),
+  );
+  const currentToolRulesSerialized = JSON.stringify(
+    toolRuleRows
+      .map((row) => [
+        row.tool,
+        parseLines(row.values.deny),
+        parseLines(row.values.requireApproval),
+        parseLines(row.values.denyPaths),
+        parseLines(row.values.denyCommands),
+      ])
+      // v0.8.6: rows with empty tool name AND empty
+      // sub-fields are silently dropped (the user hasn't
+      // committed to anything yet). We exclude them from
+      // the dirty comparison so adding a row and then
+      // removing it doesn't leave a phantom dirty state.
+      .filter(
+        ([tool, deny, ra, dp, dc]) =>
+          (tool as string).length > 0 ||
+          (deny as string[]).length > 0 ||
+          (ra as string[]).length > 0 ||
+          (dp as string[]).length > 0 ||
+          (dc as string[]).length > 0,
+      )
+      .sort(([a], [b]) => (a as string).localeCompare(b as string)),
   );
 
   const isDirty =
@@ -118,7 +182,8 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
     SECTION_DEFS.some(
       (def) =>
         arrays[def.field] !== (initialPolicy[def.field] as string[]).join("\n"),
-    );
+    ) ||
+    currentToolRulesSerialized !== initialToolRulesSerialized;
 
   async function onSave(e: React.FormEvent): Promise<void> {
     e.preventDefault();
@@ -130,12 +195,37 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
       allow: parseLines(arrays.allow ?? ""),
       deny: parseLines(arrays.deny ?? ""),
       denyPaths: parseLines(arrays.denyPaths ?? ""),
-      // v0.8.4: per-tool rules. The edit form doesn't
-      // surface this yet (a future v0.8.5+ adds a
-      // per-tool editor); we always send {} today.
-      // Including the field keeps the type happy
-      // until the editor grows.
-      toolRules: {},
+      // v0.8.6: per-tool rules now editable. We collapse
+      // the list-of-rows state into `Record<tool, PerToolRule>`,
+      // dropping rows with empty tool names (no commit yet)
+      // and any tool whose 4 sub-fields are all empty (no
+      // override to apply — the global rules still govern it).
+      toolRules: toolRuleRows.reduce<Record<string, PerToolRule>>(
+        (acc, row) => {
+          const tool = row.tool.trim();
+          if (tool.length === 0) return acc;
+          const rule: PerToolRule = {
+            deny: parseLines(row.values.deny),
+            requireApproval: parseLines(row.values.requireApproval),
+            denyPaths: parseLines(row.values.denyPaths),
+            denyCommands: parseLines(row.values.denyCommands),
+          };
+          // Skip empty overrides — global rules cover that case
+          // and persisting { deny: [], requireApproval: [], ... }
+          // adds noise to the TOML.
+          if (
+            rule.deny.length === 0 &&
+            rule.requireApproval.length === 0 &&
+            rule.denyPaths.length === 0 &&
+            rule.denyCommands.length === 0
+          ) {
+            return acc;
+          }
+          acc[tool] = rule;
+          return acc;
+        },
+        {},
+      ),
       denyCommands: parseLines(arrays.denyCommands ?? ""),
       sensitivePatterns: parseLines(arrays.sensitivePatterns ?? ""),
       requireApproval: parseLines(arrays.requireApproval ?? ""),
@@ -339,6 +429,13 @@ export default function PolicyForm({ initialPolicy }: PolicyFormProps) {
         );
       })}
 
+      {/* ─── Per-tool rules (v0.8.6) ──────────────────────── */}
+      <PerToolRulesEditor
+        rows={toolRuleRows}
+        onChange={setToolRuleRows}
+        t={t}
+      />
+
       {/* ─── Actions ─────────────────────────────────────── */}
       <div
         className="policy-edit-actions"
@@ -424,4 +521,220 @@ function ruleNameClass(field: string): string {
     default:
       return "deny";
   }
+}
+
+// ─── PerToolRulesEditor (v0.8.6) ──────────────────────────────
+
+/**
+ * Editor for the per-tool rule overrides. Each row = one tool
+ * name + four textareas (deny / requireApproval / denyPaths /
+ * denyCommands). The user can add new rows (with an inline
+ * tool-name input) or remove existing ones. State stays as a
+ * flat list of `{tool, values}` — the parent collapses it into
+ * `Record<tool, PerToolRule>` on save.
+ *
+ * Why a flat list and not a record directly? The user needs to
+ * (a) add a new row without picking a tool name up front (they
+ * might want to fill in the rules first), and (b) reorder /
+ * remove rows. A record forces a fixed key set; a list lets
+ * the user stage changes.
+ *
+ * a11y: each row's tool-name input has a stable id derived
+ * from its index. The "remove" button uses the row's tool
+ * name in its aria-label so screen readers can announce
+ * which row is being removed.
+ */
+type ToolRuleRow = {
+  tool: string;
+  values: Record<keyof PerToolRule, string>;
+};
+
+function PerToolRulesEditor({
+  rows,
+  onChange,
+  t,
+}: {
+  rows: ToolRuleRow[];
+  onChange: (rows: ToolRuleRow[]) => void;
+  t: (k: string, params?: Record<string, string | number>) => string;
+}) {
+  function addRow(): void {
+    onChange([...rows, { tool: "", values: emptyRowValues() }]);
+  }
+  function removeRow(index: number): void {
+    onChange(rows.filter((_, i) => i !== index));
+  }
+  function updateRow(
+    index: number,
+    patch: Partial<{ tool: string; values: Partial<ToolRuleRow["values"]> }>,
+  ): void {
+    onChange(
+      rows.map((row, i) => {
+        if (i !== index) return row;
+        return {
+          tool: patch.tool ?? row.tool,
+          values: { ...row.values, ...(patch.values ?? {}) },
+        };
+      }),
+    );
+  }
+
+  return (
+    <fieldset
+      className="policy-edit-section"
+      data-testid="policy-tool-rules-section"
+    >
+      <legend>{t("policy.form.toolRules.legend")}</legend>
+      <p className="muted small">{t("policy.form.toolRules.hint")}</p>
+      {rows.length === 0 ? (
+        <p className="hint small" data-testid="policy-tool-rules-empty">
+          {t("policy.form.toolRules.empty")}
+        </p>
+      ) : (
+        <ul
+          className="policy-tool-rule-rows"
+          data-testid="policy-tool-rule-rows"
+        >
+          {rows.map((row, index) => {
+            const toolInputId = `tool-rule-tool-${index}`;
+            return (
+              <li
+                key={index}
+                className="policy-tool-rule-row"
+                data-testid={`policy-tool-rule-row-${index}`}
+              >
+                <div className="policy-tool-rule-row-header">
+                  <label htmlFor={toolInputId} className="policy-tool-rule-tool-label">
+                    {t("policy.form.toolRules.toolNameLabel")}
+                  </label>
+                  <input
+                    id={toolInputId}
+                    type="text"
+                    value={row.tool}
+                    onChange={(e) =>
+                      updateRow(index, { tool: e.target.value })
+                    }
+                    placeholder={t(
+                      "policy.form.toolRules.toolNamePlaceholder",
+                    )}
+                    aria-label={t(
+                      "policy.form.toolRules.toolNameAriaLabel",
+                      { n: index + 1 },
+                    )}
+                    className="policy-edit-input"
+                    data-testid={`policy-tool-rule-tool-${index}`}
+                  />
+                  <button
+                    type="button"
+                    className="btn secondary small"
+                    onClick={() => removeRow(index)}
+                    aria-label={
+                      row.tool
+                        ? `${t("policy.form.toolRules.removeTool")} ${row.tool}`
+                        : t("policy.form.toolRules.removeTool")
+                    }
+                    data-testid={`policy-tool-rule-remove-${index}`}
+                  >
+                    {t("policy.form.toolRules.removeTool")}
+                  </button>
+                </div>
+                <div className="policy-tool-rule-row-fields">
+                  <ToolRuleSubField
+                    index={index}
+                    field="deny"
+                    labelKey="policy.form.toolRules.field.deny.label"
+                    value={row.values.deny}
+                    onChange={(v) => updateRow(index, { values: { deny: v } })}
+                    t={t}
+                  />
+                  <ToolRuleSubField
+                    index={index}
+                    field="requireApproval"
+                    labelKey="policy.form.toolRules.field.requireApproval.label"
+                    value={row.values.requireApproval}
+                    onChange={(v) =>
+                      updateRow(index, { values: { requireApproval: v } })
+                    }
+                    t={t}
+                  />
+                  <ToolRuleSubField
+                    index={index}
+                    field="denyPaths"
+                    labelKey="policy.form.toolRules.field.denyPaths.label"
+                    value={row.values.denyPaths}
+                    onChange={(v) =>
+                      updateRow(index, { values: { denyPaths: v } })
+                    }
+                    t={t}
+                  />
+                  <ToolRuleSubField
+                    index={index}
+                    field="denyCommands"
+                    labelKey="policy.form.toolRules.field.denyCommands.label"
+                    value={row.values.denyCommands}
+                    onChange={(v) =>
+                      updateRow(index, { values: { denyCommands: v } })
+                    }
+                    t={t}
+                  />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <button
+        type="button"
+        className="btn secondary small"
+        onClick={addRow}
+        data-testid="policy-tool-rule-add"
+      >
+        {t("policy.form.toolRules.addTool")}
+      </button>
+    </fieldset>
+  );
+}
+
+/** One sub-field (deny / requireApproval / …) inside a tool rule row. */
+function ToolRuleSubField({
+  index,
+  field,
+  labelKey,
+  value,
+  onChange,
+  t,
+}: {
+  index: number;
+  field: keyof PerToolRule;
+  labelKey: string;
+  value: string;
+  onChange: (next: string) => void;
+  t: (k: string, params?: Record<string, string | number>) => string;
+}) {
+  const id = `tool-rule-${field}-${index}`;
+  return (
+    <div className="policy-tool-rule-subfield">
+      <label htmlFor={id} className="muted small">
+        {t(labelKey)}
+      </label>
+      <textarea
+        id={id}
+        rows={3}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        spellCheck={false}
+        className="policy-edit-textarea"
+        data-testid={`policy-tool-rule-${field}-${index}`}
+      />
+    </div>
+  );
+}
+
+function emptyRowValues(): Record<keyof PerToolRule, string> {
+  return {
+    deny: "",
+    requireApproval: "",
+    denyPaths: "",
+    denyCommands: "",
+  };
 }

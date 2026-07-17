@@ -32,7 +32,7 @@
  * and the dashboard reads from.
  */
 
-import { mkdir, appendFile, readFile, readdir } from "node:fs/promises";
+import { mkdir, appendFile, readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 

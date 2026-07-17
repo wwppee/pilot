@@ -427,6 +427,22 @@ const zh: Dict = {
   "policy.form.field.requireApproval.hint":
     "在工具运行前，生成的扩展中触发 ctx.ui.confirm()。",
   "policy.form.field.requireApproval.placeholder": "bash\nwrite",
+  // v0.8.6: 按工具的规则编辑器。每一行覆盖一个工具的全局规则。
+  // 子字段留空时回退到全局规则。
+  "policy.form.toolRules.legend": "按工具规则 · 对单个工具覆盖全局规则",
+  "policy.form.toolRules.hint":
+    "用于某个工具需要比全局更严（或更松）的规则。子字段留空时回退到全局。",
+  "policy.form.toolRules.empty": "暂无按工具覆盖，使用上方全局规则。",
+  "policy.form.toolRules.addTool": "+ 新增按工具规则",
+  "policy.form.toolRules.removeTool": "删除",
+  "policy.form.toolRules.toolNameLabel": "工具",
+  "policy.form.toolRules.toolNamePlaceholder": "bash",
+  "policy.form.toolRules.toolNameAriaLabel": "第 {n} 行按工具规则的工具名",
+  "policy.form.toolRules.field.deny.label": "deny（覆盖）",
+  "policy.form.toolRules.field.requireApproval.label":
+    "requireApproval（覆盖）",
+  "policy.form.toolRules.field.denyPaths.label": "denyPaths（追加）",
+  "policy.form.toolRules.field.denyCommands.label": "denyCommands（追加）",
 
   // Compose
   "compose.searchPlaceholder": "搜索…",

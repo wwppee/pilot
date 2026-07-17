@@ -397,6 +397,23 @@ export type Dict = {
   "policy.form.field.requireApproval.legend": string;
   "policy.form.field.requireApproval.hint": string;
   "policy.form.field.requireApproval.placeholder": string;
+  // v0.8.6: per-tool rule editor (closes the B1 governance
+  // loop — v0.8.0 added the schema, v0.8.4 added the read-
+  // only viewer, v0.8.6 finally makes it editable from the
+  // form so the dashboard can be the single source of truth
+  // for both global and per-tool rules).
+  "policy.form.toolRules.legend": string;
+  "policy.form.toolRules.hint": string;
+  "policy.form.toolRules.empty": string;
+  "policy.form.toolRules.addTool": string;
+  "policy.form.toolRules.removeTool": string;
+  "policy.form.toolRules.toolNameLabel": string;
+  "policy.form.toolRules.toolNamePlaceholder": string;
+  "policy.form.toolRules.toolNameAriaLabel": string;
+  "policy.form.toolRules.field.deny.label": string;
+  "policy.form.toolRules.field.requireApproval.label": string;
+  "policy.form.toolRules.field.denyPaths.label": string;
+  "policy.form.toolRules.field.denyCommands.label": string;
 
   // ─── Compose ────────────────────────────────────────────────
   "compose.searchPlaceholder": string;

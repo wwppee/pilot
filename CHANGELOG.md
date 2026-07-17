@@ -1,5 +1,86 @@
 # Changelog
 
+### v0.8.6 — B1 governance 闭环: per-tool rules now editable from the form
+
+Closes the loop on the B1 tool-level policy feature.
+v0.8.0 added the `toolRules` schema, v0.8.4 added a
+read-only viewer on the policy list — v0.8.6 finally
+makes per-tool rules editable from the same form so
+the dashboard can be the single source of truth for
+both global and per-tool rules.
+
+**What's in this release**
+
+- **Per-tool rules editor** inside `<PolicyForm>` (the
+  edit page at `/policy/<name>/edit`). Each row is one
+  tool name (e.g. `bash`, `write`) plus four textareas
+  that override the global rule for that tool:
+  `deny` / `requireApproval` (full overrides) and
+  `denyPaths` / `denyCommands` (additive on top of the
+  global lists). Empty sub-fields fall back to the
+  global rule; rows with a tool name but no sub-fields
+  are dropped on save so the persisted TOML stays
+  clean.
+- **Add / remove rows** with a single button. The
+  editor maintains state as a flat list of rows (so
+  reordering / staging is natural) and collapses to
+  `Record<tool, PerToolRule>` on save.
+- **Dirty-state tracking** now includes per-tool rule
+  edits. Saving with a row whose tool name is empty
+  silently drops it (no phantom dirty state from an
+  uncommitted row).
+- **CLI `pilot policy new` template** also now seeds
+  `toolRules: {}` so the new policy is fully
+  ToolPolicyInput-shaped and tsc-clean.
+- **i18n**: 11 new keys (legend / hint / empty / add /
+  remove / 4 sub-field labels / tool-name label /
+  aria-label) across types.ts + en.ts + zh.ts.
+- **CSS**: a 2-column responsive grid for the sub-field
+  textareas (collapses to 1 column on narrow viewports),
+  plus `.btn.small` for the row remove button.
+
+**Stats**
+
+- root: **640/640** ✓ (no new core tests in this commit;
+  the schema was already covered by v0.8.0)
+- web: **294/294** ✓ (was 288; +6 new RTL tests for the
+  per-tool editor)
+- i18n: 0 placeholder mismatches across ~1060+ shared
+  keys (was ~1050; +11 new tool-rule keys)
+- tsc: clean (root + web)
+
+### v0.7.4 - v0.8.5 — minor release notes
+
+For brevity, the per-release notes for v0.7.4 through
+v0.8.5 are summarized below. Each commit on `main`
+carries the same explanation in the commit body.
+
+- **v0.7.4** — drag-and-drop on the workflow editor's
+  SVG preview (hand-placed positions survive
+  `computeLayout`).
+- **v0.7.5** — Run workflow stub (UI + server returns
+  `{status: "queued"}`; runtime lands in v0.7.6+).
+- **v0.7.6** — `<WorkflowListView>` mount test
+  (4 tests: empty / cards / + New dialog / error).
+- **v0.7.7** — chat-to-dashboard stub (regex keyword
+  matcher; LLM dispatcher in v0.8+).
+- **v0.7.8** — `<WorkflowEditor>` mount test
+  (2 tests: 5 top-level action buttons / notFound
+  state).
+- **0.8.0** — B1 tool-level policy (governance layer,
+  **major bump**). `toolRules` schema; runtime hook
+  deferred.
+- **v0.8.1** — observability time-range filter
+  (24h / 7d / all).
+- **v0.8.2** — chat time-window keywords (7d / today /
+  all; reply shape gains `window`).
+- **v0.8.3** — workflow `inputTemplate` is a dropdown
+  of upstream variables (free-form input retained).
+- **v0.8.4** — per-tool rule viewer in `/policy`
+  (read-only summary line; full editor is v0.8.6).
+- **v0.8.5** — observability detail modal (click a
+  record to see the raw JSON; lazy disclosure).
+
 ### v0.7.3 — `/observability` dashboard (B2: tool-call policy observability)
 
 The first release of pilot's observability layer — a
