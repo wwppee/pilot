@@ -1,5 +1,111 @@
 # Changelog
 
+### v0.9.0 — A2 tool wrapper: governance layer 从 gate 拓展到 transform (major bump)
+
+Closes the B1 / B2 / B3 governance arc and opens
+the A2 ("插拔式替换工具") arc. v0.8.0 + v0.8.6
+established **policy** as a *gate* — "should this
+tool call run?" v0.9.0 introduces **wrapper** as
+a *transform* — "given this tool call, change it
+before the tool runs." The two surfaces are
+parallel: both persist as TOML under
+`~/.pilot/`, both compile to a generated
+extension under `~/.pilot/extensions/`, both
+expose CRUD + apply/unapply endpoints. The
+dashboard at `/wrappers` mirrors `/policy`.
+
+**Why major bump** — the wrapper layer is a new
+product dimension. B1 (policy) is governance;
+A2 (wrapper) is intervention. The dashboard
+gains a new entry (Manage group: 7 → 8 items),
+the data model gains a discriminated union on
+`rule.kind`, and the apply flow produces a
+second extension kind (`pilot-wrapper-*.ts` vs
+`pilot-policy-*.ts`).
+
+**What's in this release**
+
+- **`ToolWrapper` data model** in `core/tool-wrapper.ts`:
+  - `tools: string[]` — which tool names this
+    wrapper applies to (e.g. `["bash", "write"]`)
+  - `rule` — discriminated union on `kind`:
+    - `retry`: `{ maxRetries, initialBackoffMs }`
+      — wrap a tool so isError triggers up to N
+      automatic retries with exponential backoff
+    - `log`: `{ logPath }` — every call to the
+      wrapped tool is recorded to a separate
+      audit log (`tool-calls-wrapper.jsonl`)
+    - `transform`: `{ transform, patterns }` —
+      the call's args are rewritten before
+      execution (v0.9.0 ships two transform
+      kinds: `rewrite-path-redact` and
+      `rewrite-content-redact`)
+- **Persistence** in `~/.pilot/wrappers/<name>.toml`
+  (same dir pattern as `~/.pilot/policy/`)
+- **REST surface** — mirrors the policy endpoints:
+  - `GET /wrappers` — list
+  - `GET /wrappers/:name` — read (404 if missing)
+  - `PUT /wrappers/:name` — create / update
+  - `DELETE /wrappers/:name` — delete (404 if
+    missing; idempotent otherwise)
+  - `POST /wrappers/:name/apply` — generate
+    `pilot-wrapper-<name>.ts` under
+    `~/.pilot/extensions/`
+  - `POST /wrappers/:name/unapply` — remove the
+    generated extension (idempotent)
+- **No-op stub extension** — `apply` today writes
+  a well-formed but non-transforming TypeScript
+  extension. The real pi-side hook (which reads
+  the wrapper config and installs the transform
+  on the registered tools) lands in a future
+  v0.9.x release. The stub exists so the apply /
+  unapply flow is observable end-to-end — when
+  the pi hook lands, the stub is swapped in
+  place without re-issuing `apply`.
+- **`/wrappers` dashboard** — list of wrappers
+  with apply / unapply / delete actions, plus a
+  "New wrapper" form (name + kind + tools). The
+  full edit form (with all rule-specific fields
+  per kind) is a v0.9.x followup; v0.9.0 ships
+  the MVP CRUD that the contract requires.
+- **NavLinks**: Manage group 7 → 8 items
+  (`/wrappers` next to `/policy`).
+
+**What's deliberately NOT in this release**
+
+- **Real pi-side hook** — the no-op stub
+  extension doesn't actually transform anything.
+  The hook is a v0.9.x feature (depends on the
+  same pi integration that B1 runtime + chat
+  LLM dispatcher are blocked on).
+- **A1 tool marketplace** — the "swap a tool for
+  another" UI is design-only in v0.9.0; the
+  contract lives in `docs/roadmap-pi-grounded.md`
+  (separate design doc).
+- **Full edit form** — the dashboard's "New
+  wrapper" form takes name + kind + tools only;
+  the per-kind rule fields default to sensible
+  values. Users who want to fine-tune can edit
+  the TOML directly or use the v0.9.x form.
+
+**Stats**
+
+- root: **109/109** in the touched suites
+  (server + workflow + tool-wrapper); 679/679
+  total (was 671; +8 tool-wrapper unit tests).
+  Note: a few pre-existing sandbox-network tests
+  (npm install / `pilot doctor`) are not
+  exercised in this run; they were flaky before
+  v0.9.0 and remain so.
+- web: **296/296** ✓ (was 296; the
+  nav-links-test count update is the only
+  test change — `17 → 18` items, `Manage 7 → 8`)
+- i18n: 0 placeholder mismatches across ~1100+
+  shared keys (+31 new wrapper keys: nav,
+  dashboard copy, error/success messages,
+  button labels for both en + zh)
+- tsc: clean (root + web)
+
 ### v0.8.10 — workflow Validate 按钮: cycle / 悬空 / 孤儿 / 缺失变量
 
 Closes the "is my workflow runnable?" gap. Until

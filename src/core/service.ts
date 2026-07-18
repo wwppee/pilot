@@ -438,6 +438,26 @@ export interface PilotService {
   /** Remove the generated extension for a policy. Idempotent. */
   unapplyPolicy(name: string): Promise<{ removed: boolean }>;
 
+  // v0.9.0 (A2 — tool wrapper): mirrors the policy
+  // surface for tool wrappers. A wrapper transforms
+  // a tool call (retry on failure, log to a separate
+  // audit log, rewrite the args) instead of gating
+  // it. Same shape as the policy methods so the
+  // dashboard and CLI can reuse the CRUD flow.
+  listWrappers(): Promise<
+    import("./tool-wrapper.js").ToolWrapper[]
+  >;
+  getWrapper(name: string): Promise<
+    import("./tool-wrapper.js").ToolWrapper | null
+  >;
+  setWrapper(
+    name: string,
+    input: import("./tool-wrapper.js").ToolWrapperInput,
+  ): Promise<import("./tool-wrapper.js").ToolWrapper>;
+  deleteWrapper(name: string): Promise<boolean>;
+  applyWrapper(name: string): Promise<{ path: string; bytes: number }>;
+  unapplyWrapper(name: string): Promise<{ removed: boolean }>;
+
   /**
    * Dry-run a tool call against a policy. Used by `pilot policy check`
    * and the Web UI "test a rule" form.

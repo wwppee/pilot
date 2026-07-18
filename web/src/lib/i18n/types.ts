@@ -1301,6 +1301,41 @@ export type Dict = {
   "workflows.editor.validateErrorBadge": string;
   "workflows.editor.validateWarningBadge": string;
   "workflows.editor.validateErrorPrefix": string;
+  // v0.9.0 (A2 — tool wrapper): the /wrappers
+  // dashboard. Mirrors the policy dashboard copy
+  // (the two surfaces are parallel: policy = gate,
+  // wrapper = transform).
+  "wrappers.h1": string;
+  "wrappers.subtitle": string;
+  "wrappers.loadErrorTitle": string;
+  "wrappers.empty.title": string;
+  "wrappers.empty.body": string;
+  "wrappers.card.applied": string;
+  "wrappers.card.notApplied": string;
+  "wrappers.card.kind": string;
+  "wrappers.card.tools": string;
+  "wrappers.apply": string;
+  "wrappers.unapply": string;
+  "wrappers.delete": string;
+  "wrappers.applyOk": string;
+  "wrappers.applyFailed": string;
+  "wrappers.unapplyOk": string;
+  "wrappers.unapplyNotApplied": string;
+  "wrappers.unapplyFailed": string;
+  "wrappers.deleteFailed": string;
+  "wrappers.confirmDelete": string;
+  "wrappers.newCard.title": string;
+  "wrappers.newCard.subtitle": string;
+  "wrappers.newCard.nameLabel": string;
+  "wrappers.newCard.namePlaceholder": string;
+  "wrappers.newCard.nameRequired": string;
+  "wrappers.newCard.kindLabel": string;
+  "wrappers.newCard.kindRetry": string;
+  "wrappers.newCard.kindLog": string;
+  "wrappers.newCard.kindTransform": string;
+  "wrappers.newCard.toolsLabel": string;
+  "wrappers.newCard.submit": string;
+  "nav.wrappers": string;
   // v0.7.3 (B2): observability dashboard keys. No storage
   // path, no JSONL, no Zod field names — see user memory
   // "storage is a blind box".

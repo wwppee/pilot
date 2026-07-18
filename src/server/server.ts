@@ -1099,6 +1099,51 @@ export async function startServer(
     return service.checkPolicyCall(req.params.name, { name: tool, args });
   });
 
+  // v0.9.0 (A2 — tool wrapper): REST surface mirrors
+  // the policy surface. The data model + apply flow
+  // are the contract for the future pi-side hook;
+  // v0.9.0 ships the schema + CRUD + apply (which
+  // writes a no-op stub extension so the apply / unapply
+  // flow is observable end-to-end).
+  app.get("/wrappers", async () => service.listWrappers());
+
+  app.get<{ Params: { name: string } }>("/wrappers/:name", async (req, reply) => {
+    const w = await service.getWrapper(req.params.name);
+    if (!w) {
+      await reply.code(404).send({ error: "wrapper not found" });
+      return;
+    }
+    return w;
+  });
+
+  app.put<{
+    Params: { name: string };
+    Body: import("../core/tool-wrapper.js").ToolWrapperInput;
+  }>("/wrappers/:name", async (req) => {
+    return service.setWrapper(req.params.name, req.body as any);
+  });
+
+  app.delete<{ Params: { name: string } }>(
+    "/wrappers/:name",
+    async (req, reply) => {
+      const removed = await service.deleteWrapper(req.params.name);
+      if (!removed) {
+        await reply.code(404).send({ error: "wrapper not found" });
+        return;
+      }
+      return { removed: true };
+    },
+  );
+
+  app.post<{ Params: { name: string } }>("/wrappers/:name/apply", async (req) =>
+    service.applyWrapper(req.params.name),
+  );
+
+  app.post<{ Params: { name: string } }>(
+    "/wrappers/:name/unapply",
+    async (req) => service.unapplyWrapper(req.params.name),
+  );
+
   // v0.7.3 (B2): observability surface. The web dashboard
   // calls these; the service reads from the JSONL log we
   // append to in `service.checkPolicyCall`. The web layer

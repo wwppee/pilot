@@ -172,6 +172,8 @@ import type {
   ProjectContextRef,
   ToolPolicy,
   ToolPolicyInput,
+  ToolWrapper,
+  ToolWrapperInput,
   PolicyDecision,
   ComposeCatalog,
   Plan,
@@ -379,6 +381,33 @@ export const api = {
     pilot<{ removed: boolean }>(`/policies/${encodeName(name)}/unapply`, {
       method: "POST",
     }),
+  // v0.9.0 (A2 — tool wrapper): server-side proxy
+  // mirror of the browser api (the dashboard's
+  // server component uses this for the initial
+  // SSR fetch; the client component uses
+  // pilot-browser for subsequent actions).
+  listWrappers: () => pilot<ToolWrapper[]>("/wrappers"),
+  getWrapper: (name: string) =>
+    pilot<ToolWrapper>(`/wrappers/${encodeName(name)}`),
+  setWrapper: (name: string, input: ToolWrapperInput) =>
+    pilot<ToolWrapper>(`/wrappers/${encodeName(name)}`, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    }),
+  deleteWrapper: (name: string) =>
+    pilot<{ removed: boolean }>(`/wrappers/${encodeName(name)}`, {
+      method: "DELETE",
+    }),
+  applyWrapper: (name: string) =>
+    pilot<{ path: string; bytes: number }>(
+      `/wrappers/${encodeName(name)}/apply`,
+      { method: "POST" },
+    ),
+  unapplyWrapper: (name: string) =>
+    pilot<{ removed: boolean }>(
+      `/wrappers/${encodeName(name)}/unapply`,
+      { method: "POST" },
+    ),
   checkPolicy: (
     name: string,
     tool: string,

@@ -37,6 +37,7 @@ type LabelKey =
   | "nav.tools"
   | "nav.context"
   | "nav.policy"
+  | "nav.wrappers"
   | "nav.compose"
   | "nav.workflows"
   | "nav.profiles"
@@ -164,6 +165,15 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         href: "/policy",
         labelKey: "nav.policy",
         icon: "🛡",
+        hintKey: "nav.hint.policy",
+      },
+      // v0.9.0: wrappers dashboard sits next to
+      // policy in the Manage group because the two
+      // surfaces are parallel (gate vs transform).
+      {
+        href: "/wrappers",
+        labelKey: "nav.wrappers",
+        icon: "🧰",
         hintKey: "nav.hint.policy",
       },
       {

@@ -1376,6 +1376,42 @@ const en: Dict = {
   "workflows.editor.validateErrorBadge": "error",
   "workflows.editor.validateWarningBadge": "warning",
   "workflows.editor.validateErrorPrefix": "Validation failed: {msg}",
+  // v0.9.0 (A2 — tool wrapper): /wrappers dashboard.
+  "wrappers.h1": "Wrappers",
+  "wrappers.subtitle":
+    "Tool wrappers transform a tool call before it runs (retry on failure, log to a separate audit log, rewrite the args). Mirrors the policy surface.",
+  "wrappers.loadErrorTitle": "Couldn't load wrappers",
+  "wrappers.empty.title": "No wrappers yet",
+  "wrappers.empty.body":
+    "Create a wrapper below to add a transform to one or more tools.",
+  "wrappers.card.applied": "applied",
+  "wrappers.card.notApplied": "not applied",
+  "wrappers.card.kind": "kind:",
+  "wrappers.card.tools": "tools:",
+  "wrappers.apply": "Apply",
+  "wrappers.unapply": "Unapply",
+  "wrappers.delete": "Delete",
+  "wrappers.applyOk":
+    "✓ Stub extension written to {path} ({bytes} bytes).",
+  "wrappers.applyFailed": "Apply failed",
+  "wrappers.unapplyOk": "Extension removed.",
+  "wrappers.unapplyNotApplied": "Extension was not applied.",
+  "wrappers.unapplyFailed": "Unapply failed",
+  "wrappers.deleteFailed": "Delete failed",
+  "wrappers.confirmDelete": "Delete wrapper {name}?",
+  "wrappers.newCard.title": "New wrapper",
+  "wrappers.newCard.subtitle":
+    "Pick a kind, give it a kebab-case name, and the wrapper will be saved to ~/.pilot/wrappers/.",
+  "wrappers.newCard.nameLabel": "Name",
+  "wrappers.newCard.namePlaceholder": "bash-retry",
+  "wrappers.newCard.nameRequired": "Name is required",
+  "wrappers.newCard.kindLabel": "Kind",
+  "wrappers.newCard.kindRetry": "Retry on failure",
+  "wrappers.newCard.kindLog": "Log to audit trail",
+  "wrappers.newCard.kindTransform": "Transform args",
+  "wrappers.newCard.toolsLabel": "Tools (comma-separated)",
+  "wrappers.newCard.submit": "Create",
+  "nav.wrappers": "Wrappers",
   // v0.7.3 (B2): observability dashboard i18n. Note we don't
   // mention the storage path, JSONL, or any implementation
   // detail — the user just sees "tool calls" + "policy

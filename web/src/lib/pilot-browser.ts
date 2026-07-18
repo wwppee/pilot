@@ -44,6 +44,8 @@ import type {
   ToolPolicy,
   ToolPolicyInput,
   PolicyDecision,
+  ToolWrapper,
+  ToolWrapperInput,
   ComposeCatalog,
   ComposeEntityDetail,
   ComposeEntityKind,
@@ -299,6 +301,35 @@ export const browserApi = {
         method: "POST",
         body: JSON.stringify({ tool, args }),
       },
+    ),
+
+  // v0.9.0 (A2 — tool wrapper): REST surface mirrors
+  // the policy surface. The wrapper dashboard at
+  // /wrappers uses these for list / create / delete /
+  // apply / unapply. The same data model is in
+  // core/tool-wrapper.ts; web types are in
+  // lib/types.ts (ToolWrapper / ToolWrapperInput).
+  listWrappers: () => browserFetch<ToolWrapper[]>("/wrappers"),
+  getWrapper: (name: string) =>
+    browserFetch<ToolWrapper>(`/wrappers/${encodeName(name)}`),
+  setWrapper: (name: string, input: ToolWrapperInput) =>
+    browserFetch<ToolWrapper>(`/wrappers/${encodeName(name)}`, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    }),
+  deleteWrapper: (name: string) =>
+    browserFetch<{ removed: boolean }>(`/wrappers/${encodeName(name)}`, {
+      method: "DELETE",
+    }),
+  applyWrapper: (name: string) =>
+    browserFetch<{ path: string; bytes: number }>(
+      `/wrappers/${encodeName(name)}/apply`,
+      { method: "POST" },
+    ),
+  unapplyWrapper: (name: string) =>
+    browserFetch<{ removed: boolean }>(
+      `/wrappers/${encodeName(name)}/unapply`,
+      { method: "POST" },
     ),
 
   composeCatalog: () => browserFetch<ComposeCatalog>("/compose/catalog"),

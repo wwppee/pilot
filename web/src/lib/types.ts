@@ -466,6 +466,37 @@ export type ToolPolicyInput = Omit<
   description?: string | undefined;
 };
 
+/**
+ * v0.9.0 (A2 — tool wrapper): per-wrapper config.
+ * A wrapper transforms a tool call (retry / log /
+ * rewrite) instead of gating it. Same data model
+ * as core/tool-wrapper.ts.
+ */
+export type ToolWrapperRule =
+  | { kind: "retry"; maxRetries: number; initialBackoffMs: number }
+  | { kind: "log"; logPath: string }
+  | {
+      kind: "transform";
+      transform: "rewrite-path-redact" | "rewrite-content-redact";
+      patterns: string[];
+    };
+
+export interface ToolWrapper {
+  name: string;
+  description?: string;
+  tools: string[];
+  rule: ToolWrapperRule;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ToolWrapperInput = Omit<
+  ToolWrapper,
+  "name" | "createdAt" | "updatedAt" | "description"
+> & {
+  description?: string | undefined;
+};
+
 /** Decision returned by `pilot policy check`. */
 export interface PolicyDecision {
   block: boolean;

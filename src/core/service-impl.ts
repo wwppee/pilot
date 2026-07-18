@@ -220,6 +220,36 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
     deletePolicy: (name) => deletePolicyByName(name, home),
     applyPolicy: (name) => applyPolicyByName(name, home),
     unapplyPolicy: (name) => unapplyPolicyByName(name, home),
+    // v0.9.0 (A2 — tool wrapper): same CRUD + apply
+    // surface as policy, but operating on the
+    // wrapper store. The apply step generates a
+    // no-op stub extension today (the real pi-side
+    // hook is a v0.9.x release); the schema + REST
+    // contract are what v0.9.0 ships.
+    listWrappers: async () => {
+      const { listWrappers } = await import("./tool-wrapper.js");
+      return listWrappers(home);
+    },
+    getWrapper: async (name) => {
+      const { tryReadWrapper } = await import("./tool-wrapper.js");
+      return tryReadWrapper(name, home);
+    },
+    setWrapper: async (name, input) => {
+      const { writeWrapper } = await import("./tool-wrapper.js");
+      return writeWrapper(name, input, home);
+    },
+    deleteWrapper: async (name) => {
+      const { deleteWrapper } = await import("./tool-wrapper.js");
+      return deleteWrapper(name, home);
+    },
+    applyWrapper: async (name) => {
+      const { applyWrapper } = await import("./tool-wrapper.js");
+      return applyWrapper(name, home);
+    },
+    unapplyWrapper: async (name) => {
+      const { unapplyWrapper } = await import("./tool-wrapper.js");
+      return unapplyWrapper(name, home);
+    },
     checkPolicyCall: (name, call) => checkPolicyCallByName(name, call, home),
     // v0.7.3 (B2): observability accessors. The service is the
     // single thing the dashboard talks to for these — the web
