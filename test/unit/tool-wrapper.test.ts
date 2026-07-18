@@ -162,3 +162,30 @@ describe("v0.9.0: tool-wrapper persistence", () => {
     expect(removed2).toBe(false);
   });
 });
+
+describe("v0.9.7: writeWrapper / applyWrapper atomic write", () => {
+  it("leaves no .tmp behind after a successful wrapper write", async () => {
+    await writeWrapper(
+      "atomic-wrapper",
+      { tools: ["bash"], rule: { kind: "log", logPath: "x" } },
+      fakeHome,
+    );
+    const { wrapperPath } = await import("../../src/core/tool-wrapper.js");
+    const path = wrapperPath("atomic-wrapper", fakeHome);
+    const { stat } = await import("node:fs/promises");
+    await expect(stat(`${path}.tmp`)).rejects.toThrow();
+  });
+
+  it("leaves no .tmp behind after apply", async () => {
+    await writeWrapper(
+      "atomic-apply",
+      { tools: ["bash"], rule: { kind: "log", logPath: "x" } },
+      fakeHome,
+    );
+    const { path } = await applyWrapper("atomic-apply", fakeHome);
+    // The atomic helper writes to <path>.tmp then
+    // renames — no leftover .tmp on success.
+    const { stat } = await import("node:fs/promises");
+    await expect(stat(`${path}.tmp`)).rejects.toThrow();
+  });
+});

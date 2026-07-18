@@ -259,3 +259,59 @@ describe("policyExtensionPath", () => {
     expect(() => policyExtensionPath("Invalid", home)).toThrow();
   });
 });
+
+describe("v0.9.7: writePolicy atomic write", () => {
+  it("leaves no .tmp behind after a successful write", async () => {
+    await writePolicy(
+      "atomic-clean",
+      {
+        allow: [],
+        deny: [],
+        denyPaths: [],
+        denyCommands: [],
+        sensitivePatterns: [],
+        requireApproval: [],
+      },
+      home,
+    );
+    // The atomic helper writes to <file>.tmp then
+    // renames over the target. After the write, the
+    // .tmp must be gone so a stale half-written file
+    // never lingers in the policies dir.
+    const tmp = `${policyPath("atomic-clean", home)}.tmp`;
+    expect(existsSync(tmp)).toBe(false);
+  });
+
+  it("recovers from a stale .tmp left by a prior crash", async () => {
+    // Simulate a crash mid-write by leaving a
+    // <file>.tmp behind. The next writePolicy call
+    // must remove it (the atomic helper does this)
+    // and successfully persist the new policy.
+    const path = policyPath("recover", home);
+    const tmp = `${path}.tmp`;
+    mkdirSync(join(home, ".pilot", "policy"), { recursive: true });
+    writeFileSync(tmp, "stale half-written", "utf-8");
+
+    await writePolicy(
+      "recover",
+      {
+        allow: [],
+        deny: [],
+        denyPaths: [],
+        denyCommands: [],
+        sensitivePatterns: [],
+        requireApproval: [],
+      },
+      home,
+    );
+
+    // The final file is the new policy, not the
+    // stale tmp content. (Pre-v0.9.7 the non-atomic
+    // path would have written over the target fine,
+    // but the stale .tmp would still be sitting in
+    // the dir as dead weight.)
+    expect(existsSync(tmp)).toBe(false);
+    const p = await readPolicy("recover", home);
+    expect(p.name).toBe("recover");
+  });
+});

@@ -53,7 +53,6 @@
 import {
   readFile,
   readdir,
-  writeFile,
   mkdir,
   unlink,
   stat,
@@ -62,6 +61,7 @@ import { join } from "node:path";
 import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
 import { z } from "zod";
 import { pilotDir } from "./types.js";
+import { atomicWriteFile } from "./fs-utils.js";
 
 // ─── Zod schemas ──────────────────────────────────────────
 
@@ -76,8 +76,17 @@ export const ToolWrapperRetrySchema = z.object({
 
 export const ToolWrapperLogSchema = z.object({
   kind: z.literal("log"),
-  /** Path to the audit log (relative to home). */
-  logPath: z.string().default("observability/tool-calls-wrapper.jsonl"),
+  /**
+   * Path to the audit log (relative to home).
+   * v0.9.7: required. Pre-v0.9.7 had `.default(...)`
+   * which silently filled in a path when the user
+   * didn't specify one — the user then didn't know
+   * where their log was being written, which is a
+   * worse failure mode than asking them to pick a
+   * path. The web form already requires this
+   * field, so production wrappers always set it.
+   */
+  logPath: z.string().min(1),
 });
 
 export const ToolWrapperTransformSchema = z.object({
@@ -115,6 +124,22 @@ export type ToolWrapperInput = Omit<
   ToolWrapper,
   "name" | "createdAt" | "updatedAt"
 >;
+
+/**
+ * v0.9.7: Zod schema for the wrapper INPUT (the
+ * body the client sends). Server routes use this
+ * to parse `req.body` strictly, so a bad request
+ * returns 400 at the transport layer instead of
+ * silently round-tripping through the service to
+ * fail (or not) at the write layer. Pairs with
+ * the `ToolWrapperInput` type which is the
+ * inferred shape.
+ */
+export const ToolWrapperInputSchema = ToolWrapperSchema.omit({
+  name: true,
+  createdAt: true,
+  updatedAt: true,
+});
 
 // ─── Path helpers ──────────────────────────────────────
 
@@ -207,7 +232,10 @@ export async function writeWrapper(
   const validated = ToolWrapperSchema.parse(full);
   const { name: _omit, ...rest } = validated;
   await mkdir(dir, { recursive: true });
-  await writeFile(file, stringifyToml(rest), "utf-8");
+  // v0.9.7: atomic write so a crash mid-write can't
+  // leave a corrupt TOML behind that fails the next
+  // read of this wrapper. Mirrors `writePolicy`.
+  await atomicWriteFile(file, stringifyToml(rest));
   return validated;
 }
 
@@ -255,7 +283,10 @@ export async function applyWrapper(
   const wrapper = await readWrapper(name, home);
   const path = wrapperExtensionPath(name, home);
   const stub = generateWrapperStub(wrapper);
-  await writeFile(path, stub, "utf-8");
+  // v0.9.7: atomic write so a crash mid-write doesn't
+  // leave a half-written `.ts` that pi would refuse
+  // to load on next startup.
+  await atomicWriteFile(path, stub);
   return { path, bytes: Buffer.byteLength(stub, "utf-8") };
 }
 

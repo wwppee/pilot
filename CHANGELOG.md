@@ -1,5 +1,118 @@
 # Changelog
 
+### v0.9.7 — code audit: atomic writes + body validation + logPath required
+
+A focused audit release. The v0.9.x work
+pushed three close-out paths (B1 governance,
+B2 observability, A2 wrappers) all the way to
+user-facing UI; the audit found four small
+correctness gaps that, while each individually
+narrow, are exactly the kind of "silent
+footgun" that erodes user trust over time.
+This release closes them.
+
+**What's in this release**
+
+- **Atomic write helper** (`src/core/fs-utils.ts`).
+  `writePolicy` and `writeWrapper` (and
+  `applyWrapper`, which writes the generated
+  stub extension) were writing directly to
+  the target file with `writeFile`. If the
+  process crashed mid-write — power loss,
+  OOM kill, user Ctrl-C — the policy / wrapper
+  TOML on disk would be half-written and the
+  next read would fail to parse. The new
+  `atomicWriteFile(file, content, encoding?)`
+  helper does the standard tmp-then-rename
+  dance: write to `<file>.tmp`, then `rename`
+  it over the target. The OS rename is atomic
+  on the same filesystem, so a reader always
+  sees either the old version or the new
+  version — never a partial. A stale `.tmp`
+  from a prior crash is cleaned up first, so
+  a debug `ls` after a recovery doesn't show
+  a confusing orphan. `saveWorkflow` already
+  had this pattern inline; consolidating the
+  three writers behind one helper makes it
+  impossible to forget the next time someone
+  adds a fourth persisted file.
+
+- **PUT /wrappers/:name Zod body validation**.
+  The route was previously `req.body as any`
+  — typed, but unvalidated. Bad input would
+  silently round-trip through the service
+  layer and fail (or not) at the write layer
+  with an opaque 500. Now the route does
+  `ToolWrapperInputSchema.safeParse(req.body)`
+  and returns 400 with the Zod issues on
+  failure. Pairs with a new
+  `ToolWrapperInputSchema` export (omitting
+  `name` / `createdAt` / `updatedAt` since
+  those are managed by the service).
+
+- **`logPath` is now required** on the `log`
+  wrapper kind. It used to be
+  `z.string().default("observability/...")`,
+  which meant a user writing a log wrapper
+  without `logPath` would silently get the
+  default — and never know where their log
+  was being written. The web form already
+  required the field, so production wrappers
+  are unaffected. Default-as-silent-fallback
+  is exactly the pattern this audit was
+  designed to catch.
+
+- **Total card no longer shows a duplicate
+  label**. The `<AggregateCard>` for "Total
+  calls" had `rateLabel={t("observability.total")}`
+  (the label was the same as the card label),
+  so the rate sub-line read "Total: —" with
+  "Total" appearing twice. The card now passes
+  `rateLabel=""`; `<AggregateCard>` hides the
+  "{label}: " prefix when the label is empty,
+  so the total card just shows "—". The other
+  three cards (success / fail / denied) keep
+  their "{label}: {pct}%" sub-label.
+
+**Why this is a separate release**
+
+None of these are feature-level — they're
+correctness / UX-clarity. But each one would
+have shown up later as a confused user
+("why is my policy empty?", "why does the
+PUT keep returning 500?", "where is my log
+going?", "why does the total card say Total
+twice?"). Bundling them as a single audit
+release is more honest than pretending they
+were always there, and easier to bisect
+later if a regression is traced to one of
+them.
+
+**Tests**
+
+- 5 new tests in `test/unit/fs-utils.test.ts`
+  for the atomic helper itself (write, no
+  leftover tmp, overwrite, stale tmp
+  cleanup, custom encoding).
+- 2 new tests in `test/unit/policy.test.ts`
+  (no leftover .tmp after write, recovery
+  from a stale .tmp left by a prior crash).
+- 2 new tests in `test/unit/tool-wrapper.test.ts`
+  (no leftover .tmp after wrapper write,
+  no leftover .tmp after `applyWrapper`).
+- 3 new tests in `test/unit/server.test.ts`
+  for `PUT /wrappers/:name` body validation
+  (valid body succeeds, wrong `rule.kind`
+  returns 400, missing `logPath` returns 400).
+- 1 new test in `web/tests/observability.test.tsx`
+  (total card has no rateLabel prefix).
+
+**Totals**
+
+- root: 689 → 701 tests (+12)
+- web: 297 → 298 tests (+1)
+- tsc: clean on both packages
+
 ### v0.9.6 — chat 多轮 session: history + clear button
 
 Closes the "the chat box only remembers the

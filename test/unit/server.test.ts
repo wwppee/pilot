@@ -1891,4 +1891,76 @@ describe("pilot server", () => {
       expect(r.body.intent).toBe("wrappers");
     });
   });
+
+  // ─── Wrapper endpoints (v0.9.7 audit: Zod body
+  //    validation at the transport layer) ─────────────
+
+  describe("PUT /wrappers/:name (v0.9.7 body validation)", () => {
+    const auth = () => ({ "x-pilot-token": handle.token });
+
+    it("accepts a well-formed wrapper body and persists it", async () => {
+      const res = await handle.app.inject({
+        method: "PUT",
+        url: "/wrappers/atomic-test",
+        headers: { ...auth(), "content-type": "application/json" },
+        payload: JSON.stringify({
+          description: "v0.9.7 audit: created via Zod-validated route",
+          tools: ["bash"],
+          rule: { kind: "log", logPath: "x" },
+        }),
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.name).toBe("atomic-test");
+      // Round-trip: GET should return the same shape.
+      const get = await handle.app.inject({
+        method: "GET",
+        url: "/wrappers/atomic-test",
+        headers: auth(),
+      });
+      expect(get.statusCode).toBe(200);
+      const w = get.json();
+      expect(w.description).toContain("v0.9.7 audit");
+      if (w.rule.kind !== "log") throw new Error("expected log rule");
+      expect(w.rule.logPath).toBe("x");
+    });
+
+    it("returns 400 on a body with the wrong rule kind", async () => {
+      // `rule.kind` is the discriminated union
+      // discriminator. A non-supported kind is a
+      // schema violation; pre-v0.9.7 the route
+      // would `as any` cast and pass it through to
+      // the service layer (which would then throw
+      // an unhandled ZodError → 500).
+      const res = await handle.app.inject({
+        method: "PUT",
+        url: "/wrappers/bad-kind",
+        headers: { ...auth(), "content-type": "application/json" },
+        payload: JSON.stringify({
+          tools: ["bash"],
+          rule: { kind: "explode", maxRetries: 99 },
+        }),
+      });
+      expect(res.statusCode).toBe(400);
+      const body = res.json();
+      expect(body.error).toBe("invalid wrapper body");
+      expect(Array.isArray(body.issues)).toBe(true);
+    });
+
+    it("returns 400 when required rule fields are missing", async () => {
+      // log kind requires `logPath`; omitting it
+      // must be a validation error, not a silent
+      // success that persists a half-formed wrapper.
+      const res = await handle.app.inject({
+        method: "PUT",
+        url: "/wrappers/missing-field",
+        headers: { ...auth(), "content-type": "application/json" },
+        payload: JSON.stringify({
+          tools: ["bash"],
+          rule: { kind: "log" },
+        }),
+      });
+      expect(res.statusCode).toBe(400);
+    });
+  });
 });

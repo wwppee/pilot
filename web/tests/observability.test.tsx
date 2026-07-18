@@ -120,6 +120,47 @@ describe("v0.7.3: <ObservabilityView>", () => {
     });
   });
 
+  // v0.9.7 (audit fix): the total card has no
+  // rate sub-label (it IS the denominator). The
+  // old implementation passed the total label
+  // as `rateLabel`, which made the card show
+  // "Total: —" — i.e. "Total: " twice in two
+  // different visual layers. The fix passes
+  // `rateLabel=""`; AggregateCard hides the
+  // "{label}: " prefix when the label is empty.
+  it("total card shows no rateLabel prefix (audit fix)", async () => {
+    mockSummary.mockResolvedValue({
+      total: 10,
+      success: 7,
+      fail: 2,
+      denied: 1,
+      successRate: 0.7,
+      failRate: 0.2,
+      deniedRate: 0.1,
+      worstTool: null,
+      byTool: [],
+    });
+    const { container } = renderView();
+    await waitFor(() => {
+      expect(screen.getByText("Total calls")).toBeTruthy();
+    });
+    // The total card's data-testid is
+    // "observability-rate-<label.toLowerCase()>" —
+    // i.e. "observability-rate-total calls"
+    // (with the space preserved). The total card
+    // must NOT prefix its rate sub-label with the
+    // "Total: " label (that was the audit bug).
+    const totalRate = container.querySelector(
+      '[data-testid^="observability-rate-total"]',
+    );
+    expect(totalRate?.textContent).toBe("—");
+    // Sanity: the success card still has its label prefix.
+    const successRate = container.querySelector(
+      '[data-testid^="observability-rate-succeeded"]',
+    );
+    expect(successRate?.textContent).toBe("70%");
+  });
+
   // v0.8.7: success rate under the count. We
 
   // v0.8.7: when total === 0, the dashboard shows

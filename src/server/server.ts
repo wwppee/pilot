@@ -1333,8 +1333,26 @@ export async function startServer(
   app.put<{
     Params: { name: string };
     Body: import("../core/tool-wrapper.js").ToolWrapperInput;
-  }>("/wrappers/:name", async (req) => {
-    return service.setWrapper(req.params.name, req.body as any);
+  }>("/wrappers/:name", async (req, reply) => {
+    // v0.9.7: parse body against the Zod schema
+    // before handing it to the service. Pre-v0.9.7
+    // we used `req.body as any`, which trusted the
+    // client fully and only validated at the write
+    // layer (a layer-down Zod parse inside
+    // `writeWrapper`). Now bad input returns 400
+    // immediately with a clear Zod error message.
+    const { ToolWrapperInputSchema } = await import(
+      "../core/tool-wrapper.js"
+    );
+    const parsed = ToolWrapperInputSchema.safeParse(req.body);
+    if (!parsed.success) {
+      await reply.code(400).send({
+        error: "invalid wrapper body",
+        issues: parsed.error.issues,
+      });
+      return;
+    }
+    return service.setWrapper(req.params.name, parsed.data);
   });
 
   app.delete<{ Params: { name: string } }>(

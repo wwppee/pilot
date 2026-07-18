@@ -187,15 +187,16 @@ export function ObservabilityView({ locale: _locale }: { locale: string }) {
         <AggregateCard
           label={t("observability.total")}
           value={summary.total}
-          // v0.8.7: total has no rate (it IS the
-          // denominator), but AggregateCard requires
-          // the props. We pass `null` rate and
-          // `rateLabel: ""` so the rate line still
-          // renders consistently — a single "—"
-          // character keeps the card heights aligned
-          // across the row.
+          // v0.9.7: total has no rate (it IS the
+          // denominator). We pass `null` rate and
+          // an empty `rateLabel`; AggregateCard
+          // hides the "{label}: " prefix when the
+          // label is empty, so the total card just
+          // shows the em-dash. The other three
+          // cards keep their "{label}: {pct}%"
+          // sub-label.
           rate={null}
-          rateLabel={t("observability.total")}
+          rateLabel=""
           rateEmpty={t("observability.rate.empty")}
         />
         <AggregateCard
@@ -335,7 +336,17 @@ function AggregateCard({
           having to do mental arithmetic from the
           total/success split. */}
       <p className="text-xs text-[var(--text-muted)] mt-1">
-        <span>{rateLabel}: </span>
+        {/* v0.9.7: when `rateLabel` is empty (the
+            total card has no rate sub-label), hide
+            the "{label}: " prefix so the card just
+            shows the em-dash / pct. When the label
+            is present, render it as before. This
+            keeps the card heights aligned across
+            the row without the leading "Total: " on
+            the total card. */}
+        {rateLabel ? (
+          <span>{rateLabel}: </span>
+        ) : null}
         <span className="font-mono" data-testid={`observability-rate-${label.toLowerCase()}`}>
           {pct === null ? rateEmpty : `${pct}%`}
         </span>

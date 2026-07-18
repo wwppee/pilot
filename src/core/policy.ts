@@ -18,7 +18,6 @@
 import {
   readFile,
   readdir,
-  writeFile,
   mkdir,
   unlink,
   stat,
@@ -27,6 +26,7 @@ import { join } from "node:path";
 import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
 import { z } from "zod";
 import { pilotDir } from "./types.js";
+import { atomicWriteFile } from "./fs-utils.js";
 
 // ─── Zod schemas ──────────────────────────────────────────────
 
@@ -242,7 +242,10 @@ export async function writePolicy(
   // Strip the injected name (it's the file's identity)
   const { name: _omit, ...rest } = validated;
   await mkdir(dir, { recursive: true });
-  await writeFile(file, stringifyToml(rest), "utf-8");
+  // v0.9.7: atomic write so a crash mid-write can't
+  // leave a corrupt TOML behind that fails the next
+  // read of this policy.
+  await atomicWriteFile(file, stringifyToml(rest));
   return validated;
 }
 
