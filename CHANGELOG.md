@@ -1,5 +1,67 @@
 # Changelog
 
+### v0.8.9 — WorkflowEditor 拆 3 文件 (v0.7.2 backlog 关闭)
+
+Closes the v0.7.2 backlog item: extract the 3
+inline sub-components (`StepsPanel`, `NodeCard`,
+`PreviewPanel`) from `WorkflowEditor.tsx` into
+their own files. The editor shrinks from
+**~980 lines to 444** (a 55% reduction), each
+panel is now a self-contained pure component
+that can be reasoned about (and tested) in
+isolation.
+
+**What's in this release**
+
+- **`StepsPanel.tsx`** (231 lines) — the left
+  side of the editor: "+ Add step" button, the
+  list of NodeCards, and the compact edges list
+  at the bottom. Owns the 5 mutator callbacks
+  (`addNode` / `updateNode` / `removeNode` /
+  `addEdge` / `removeEdge`) closed over the
+  parent's `mutate(updater)` setter.
+- **`NodeCard.tsx`** (163 lines) — one workflow
+  step: the `#index` badge, the name input, the
+  remove button, the `NodeFields` form, and the
+  "connect to" picker. Pure presentational +
+  callback surface (no state ownership).
+- **`PreviewPanel.tsx`** (229 lines) — the
+  right side: SVG that lays out the workflow by
+  BFS depth and renders the edges as curves.
+  v0.7.4's drag-and-drop stays here (it owns the
+  pointer math via `getScreenCTM` +
+  `createSVGPoint`); the editor receives a
+  single `onNodeMove(nodeId, position)` callback
+  and mutates the workflow.
+- **`WorkflowEditor.tsx`** (444 lines, was 980)
+  — now owns ONLY the state machine (load /
+  save / dirty / busy / delete / run) and the
+  top-level action bar. The body is a 2-line
+  composition: `<StepsPanel ... />` + `<PreviewPanel
+  ... />`.
+- **Dropped `announcement` state**: the v0.7.0
+  live region was never used for anything
+  user-visible (the editor just called
+  `setAnnouncement` in 4 catch blocks but never
+  read it). v0.8.9 removes the state and
+  self-closes the div; the next v0.8.10+ can
+  re-add proper error-toast surface if needed.
+- **Import cleanup**: dropped `useMemo` /
+  `useRef` (only used in PreviewPanel) and
+  `WorkflowNode` / `WorkflowEdge` (only used in
+  StepsPanel) from the editor's imports.
+
+**Stats**
+
+- root: **658/658** ✓ (no new server tests —
+  the refactor is web-only)
+- web: **296/296** ✓ (no new RTL tests — the
+  existing workflow-editor mount test still
+  renders the 5 top-level action buttons, which
+  is enough to lock the page-level wiring)
+- tsc: clean (root + web)
+- editor size: **978 → 444 lines** (-55%)
+
 ### v0.8.8 — chat 智能升级: 6-intent 路由器 (3 → 6)
 
 Closes the chat-to-dashboard loop. v0.7.7 was a
