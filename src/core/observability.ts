@@ -96,6 +96,19 @@ export interface ObservabilitySummary {
   success: number;
   fail: number;
   denied: number;
+  // v0.8.7 (B2 闭环): per-outcome rate, expressed
+  // as a 0-1 fraction (0.5 = 50%). The dashboard
+  // multiplies by 100 for display. We compute these
+  // here (not in the UI) so a non-React caller
+  // (e.g. the chat endpoint) can answer "what's
+  // the success rate?" without re-deriving it.
+  //
+  // When `total === 0` every rate is 0, not NaN
+  // — the dashboard renders "—" in that case
+  // (zero-data UI is clearer than zero-percent).
+  successRate: number;
+  failRate: number;
+  deniedRate: number;
   /** Tool with the highest fail-rate (min 5 calls to qualify). */
   worstTool: string | null;
   byTool: ToolCallSummary[];
@@ -222,11 +235,21 @@ export async function summarizeRecordedToolCalls(
   const candidates = rows.filter((r) => r.total >= 5);
   const worst = candidates[0] ?? null;
   const total = all.length;
+  // v0.8.7: rates. We divide by `total` and return 0
+  // when `total === 0` so a fresh install (no records
+  // at all) doesn't render "NaN%" in the dashboard.
+  const success = all.filter((c) => c.outcome === "success").length;
+  const fail = all.filter((c) => c.outcome === "fail").length;
+  const denied = all.filter((c) => c.outcome === "denied").length;
+  const safe = total > 0 ? total : 1; // avoid /0; rates clamp to 0 anyway
   const summary: ObservabilitySummary = {
     total,
-    success: all.filter((c) => c.outcome === "success").length,
-    fail: all.filter((c) => c.outcome === "fail").length,
-    denied: all.filter((c) => c.outcome === "denied").length,
+    success,
+    fail,
+    denied,
+    successRate: total > 0 ? success / safe : 0,
+    failRate: total > 0 ? fail / safe : 0,
+    deniedRate: total > 0 ? denied / safe : 0,
     worstTool: worst && worst.fail > 0 ? worst.tool : null,
     byTool: rows,
   };

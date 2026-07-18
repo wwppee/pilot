@@ -1329,5 +1329,169 @@ describe("pilot server", () => {
       });
       expect(res.statusCode).toBe(404);
     });
+
+    // v0.8.7 (B2 闭环): clicking Run on a workflow
+    // must now write one `success` observability
+    // record per node. The dashboard's success /
+    // fail / denied counts were always zero before
+    // this release; v0.8.7 fixes the "the success
+    // count is structurally zero" problem by having
+    // the Run handler feed the recorder. We assert
+    // via the public summary endpoint so the test
+    // doesn't depend on internal log paths.
+    it("POST /workflows/:id/run records a success per node", async () => {
+      const put = await handle.app.inject({
+        method: "PUT",
+        url: "/workflows/sample-flow",
+        headers: { ...auth(), "content-type": "application/json" },
+        payload: sampleBody(),
+      });
+      expect(put.statusCode).toBe(200);
+
+      // Capture the summary before the run so the
+      // assertion below doesn't depend on whatever
+      // previous tests left in the JSONL log.
+      const before = await handle.app.inject({
+        method: "GET",
+        url: "/observability/summary",
+        headers: auth(),
+      });
+      const beforeSummary = before.json() as { success: number };
+      const beforeSuccess = beforeSummary.success;
+
+      const run = await handle.app.inject({
+        method: "POST",
+        url: "/workflows/sample-flow/run",
+        headers: auth(),
+      });
+      expect(run.statusCode).toBe(200);
+      const runBody = run.json() as {
+        status: string;
+        recordedNodes: number;
+      };
+      expect(runBody.status).toBe("queued");
+      // sampleBody() (see helpers) returns a workflow
+      // with 1 node. The Run handler should record
+      // one success per node.
+      expect(runBody.recordedNodes).toBe(1);
+
+      const after = await handle.app.inject({
+        method: "GET",
+        url: "/observability/summary",
+        headers: auth(),
+      });
+      const afterSummary = after.json() as { success: number };
+      expect(afterSummary.success).toBe(beforeSuccess + 1);
+    });
+  });
+
+  // v0.8.7 (B2 闭环): the public write side of the
+  // observability surface. v0.7.3 only ever wrote
+  // `denied` from the policy hook; v0.8.7 opens a
+  // POST endpoint so any caller can record
+  // success / fail / denied. We test the contract
+  // here (validation + 200) without coupling to the
+  // internal log format.
+  describe("POST /observability/record", () => {
+    // auth() is defined inside the inner describes
+    // above; we re-declare it here for the new
+    // describe block (kept consistent with the
+    // existing pattern — a top-level helper would
+    // need refactoring across the file).
+    const auth = () => ({ "x-pilot-token": handle.token });
+    it("accepts a success record and increments the success count", async () => {
+      const before = await handle.app.inject({
+        method: "GET",
+        url: "/observability/summary",
+        headers: auth(),
+      });
+      const beforeSuccess = (before.json() as { success: number }).success;
+
+      const res = await handle.app.inject({
+        method: "POST",
+        url: "/observability/record",
+        headers: { ...auth(), "content-type": "application/json" },
+        payload: {
+          tool: "anthropic",
+          outcome: "success",
+          reason: "test",
+          errorSample: "",
+          context: {
+            workflowId: "test-wf",
+            timestamp: new Date().toISOString(),
+          },
+        },
+      });
+      expect(res.statusCode).toBe(200);
+      expect((res.json() as { ok: boolean }).ok).toBe(true);
+
+      const after = await handle.app.inject({
+        method: "GET",
+        url: "/observability/summary",
+        headers: auth(),
+      });
+      const afterSuccess = (after.json() as { success: number }).success;
+      expect(afterSuccess).toBe(beforeSuccess + 1);
+    });
+
+    it("accepts a fail record and increments the fail count", async () => {
+      const before = await handle.app.inject({
+        method: "GET",
+        url: "/observability/summary",
+        headers: auth(),
+      });
+      const beforeFail = (before.json() as { fail: number }).fail;
+
+      const res = await handle.app.inject({
+        method: "POST",
+        url: "/observability/record",
+        headers: { ...auth(), "content-type": "application/json" },
+        payload: {
+          tool: "bash",
+          outcome: "fail",
+          reason: "exit code 1",
+          errorSample: "command not found",
+          context: { timestamp: new Date().toISOString() },
+        },
+      });
+      expect(res.statusCode).toBe(200);
+
+      const after = await handle.app.inject({
+        method: "GET",
+        url: "/observability/summary",
+        headers: auth(),
+      });
+      const afterFail = (after.json() as { fail: number }).fail;
+      expect(afterFail).toBe(beforeFail + 1);
+    });
+
+    it("rejects an invalid outcome with 400", async () => {
+      const res = await handle.app.inject({
+        method: "POST",
+        url: "/observability/record",
+        headers: { ...auth(), "content-type": "application/json" },
+        payload: {
+          tool: "bash",
+          outcome: "succcess", // typo
+          reason: "",
+          errorSample: "",
+          context: { timestamp: new Date().toISOString() },
+        },
+      });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it("rejects a missing tool with 400", async () => {
+      const res = await handle.app.inject({
+        method: "POST",
+        url: "/observability/record",
+        headers: { ...auth(), "content-type": "application/json" },
+        payload: {
+          outcome: "success",
+          context: { timestamp: new Date().toISOString() },
+        },
+      });
+      expect(res.statusCode).toBe(400);
+    });
   });
 });

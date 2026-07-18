@@ -31,6 +31,11 @@ interface Summary {
   success: number;
   fail: number;
   denied: number;
+  // v0.8.7 (B2 闭环): per-outcome rate as 0-1 fraction.
+  // The dashboard multiplies by 100 to render "{pct}%".
+  successRate: number;
+  failRate: number;
+  deniedRate: number;
   worstTool: string | null;
   byTool: Array<{
     tool: string;
@@ -172,21 +177,51 @@ export function ObservabilityView({ locale: _locale }: { locale: string }) {
 
       {/* Top aggregate card — the "is something on fire?" glance. */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <AggregateCard label={t("observability.total")} value={summary.total} />
+        <AggregateCard
+          label={t("observability.total")}
+          value={summary.total}
+          // v0.8.7: total has no rate (it IS the
+          // denominator), but AggregateCard requires
+          // the props. We pass `null` rate and
+          // `rateLabel: ""` so the rate line still
+          // renders consistently — a single "—"
+          // character keeps the card heights aligned
+          // across the row.
+          rate={null}
+          rateLabel={t("observability.total")}
+          rateEmpty={t("observability.rate.empty")}
+        />
         <AggregateCard
           label={t("observability.success")}
           value={summary.success}
           tone="ok"
+          // v0.8.7: success rate under the count. We
+          // pre-compute on the server (the
+          // `successRate` field is part of
+          // ObservabilitySummary) so the UI is a
+          // pure presentational layer. The empty
+          // case (`total === 0`) shows "—" rather
+          // than "0%" so a fresh install doesn't
+          // render misleadingly.
+          rate={summary.total > 0 ? summary.successRate : null}
+          rateLabel={t("observability.rate.success")}
+          rateEmpty={t("observability.rate.empty")}
         />
         <AggregateCard
           label={t("observability.fail")}
           value={summary.fail}
           tone={summary.fail > 0 ? "warn" : "neutral"}
+          rate={summary.total > 0 ? summary.failRate : null}
+          rateLabel={t("observability.rate.fail")}
+          rateEmpty={t("observability.rate.empty")}
         />
         <AggregateCard
           label={t("observability.denied")}
           value={summary.denied}
           tone={summary.denied > 0 ? "warn" : "neutral"}
+          rate={summary.total > 0 ? summary.deniedRate : null}
+          rateLabel={t("observability.rate.denied")}
+          rateEmpty={t("observability.rate.empty")}
         />
       </div>
 
@@ -242,10 +277,19 @@ function AggregateCard({
   label,
   value,
   tone = "neutral",
+  rate,
+  rateLabel,
+  rateEmpty,
 }: {
   label: string;
   value: number;
   tone?: "ok" | "warn" | "neutral";
+  // v0.8.7: per-outcome rate. `null` means "no data
+  // — render `rateEmpty` instead of "0%". A number
+  // is rendered as "{pct}%".
+  rate: number | null;
+  rateLabel: string;
+  rateEmpty: string;
 }) {
   const color =
     tone === "warn"
@@ -253,10 +297,30 @@ function AggregateCard({
       : tone === "ok"
         ? "text-[var(--text)]"
         : "text-[var(--text-muted)]";
+  // v0.8.7: format as integer percent. 0.5 → "50%",
+  // 0.123 → "12%". We deliberately round to integer
+  // because the dashboard is for glance, not precision
+  // — a "12.3%" rate label clutters the card without
+  // telling the user anything useful.
+  const pct = rate === null ? null : Math.round(rate * 100);
   return (
-    <div className="surface rounded-lg p-3">
+    <div
+      className="surface rounded-lg p-3"
+      data-testid={`observability-card-${label.toLowerCase()}`}
+    >
       <p className="text-xs text-[var(--text-muted)]">{label}</p>
       <p className={`text-2xl font-semibold ${color}`}>{value}</p>
+      {/* v0.8.7: rate sub-label. Rendered as a small
+          line under the count so the user gets the
+          "80% success" reading at a glance, without
+          having to do mental arithmetic from the
+          total/success split. */}
+      <p className="text-xs text-[var(--text-muted)] mt-1">
+        <span>{rateLabel}: </span>
+        <span className="font-mono" data-testid={`observability-rate-${label.toLowerCase()}`}>
+          {pct === null ? rateEmpty : `${pct}%`}
+        </span>
+      </p>
     </div>
   );
 }

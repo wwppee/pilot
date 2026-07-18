@@ -100,3 +100,80 @@ describe("v0.7.3: observability recorder + summarizer", () => {
     expect(bash.recentError).toBeTruthy();
   });
 });
+
+// v0.8.7 (B2 闭环): per-outcome rate tests. The
+// summary must now include `successRate` / `failRate`
+// / `deniedRate` (each as a 0-1 fraction), AND it must
+// return 0 for every rate when `total === 0` (a fresh
+// install). The latter is the regression we explicitly
+// guarded against: dividing by zero used to produce
+// NaN, which the dashboard then rendered as "NaN%".
+describe("v0.8.7: observability summary rates", () => {
+  it("returns zero rates when total is 0 (no NaN)", async () => {
+    const s = await summarizeRecordedToolCalls(fakeHome);
+    expect(s.total).toBe(0);
+    expect(s.successRate).toBe(0);
+    expect(s.failRate).toBe(0);
+    expect(s.deniedRate).toBe(0);
+  });
+
+  it("computes the rate per outcome as a 0-1 fraction", async () => {
+    // 4 success / 3 fail / 3 denied = 10 total.
+    // successRate = 0.4, failRate = 0.3, deniedRate = 0.3.
+    const events: Array<{
+      tool: string;
+      outcome: "success" | "fail" | "denied";
+    }> = [
+      { tool: "bash", outcome: "success" },
+      { tool: "bash", outcome: "success" },
+      { tool: "bash", outcome: "success" },
+      { tool: "bash", outcome: "success" },
+      { tool: "read", outcome: "fail" },
+      { tool: "read", outcome: "fail" },
+      { tool: "read", outcome: "fail" },
+      { tool: "write", outcome: "denied" },
+      { tool: "write", outcome: "denied" },
+      { tool: "write", outcome: "denied" },
+    ];
+    for (const ev of events) {
+      await recordToolCall(
+        {
+          ...ev,
+          reason: "",
+          errorSample: "",
+          context: { timestamp: new Date().toISOString() },
+        },
+        fakeHome,
+      );
+    }
+    const s = await summarizeRecordedToolCalls(fakeHome);
+    expect(s.total).toBe(10);
+    expect(s.successRate).toBe(0.4);
+    expect(s.failRate).toBe(0.3);
+    expect(s.deniedRate).toBe(0.3);
+  });
+
+  it("rates sum to 1 (or 0 when total is 0)", async () => {
+    const events: Array<{
+      tool: string;
+      outcome: "success" | "fail" | "denied";
+    }> = [
+      { tool: "bash", outcome: "success" },
+      { tool: "bash", outcome: "fail" },
+      { tool: "bash", outcome: "denied" },
+    ];
+    for (const ev of events) {
+      await recordToolCall(
+        {
+          ...ev,
+          reason: "",
+          errorSample: "",
+          context: { timestamp: new Date().toISOString() },
+        },
+        fakeHome,
+      );
+    }
+    const s = await summarizeRecordedToolCalls(fakeHome);
+    expect(s.successRate + s.failRate + s.deniedRate).toBeCloseTo(1, 6);
+  });
+});

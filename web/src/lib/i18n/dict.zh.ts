@@ -1319,5 +1319,10 @@ const zh: Dict = {
   "observability.range.24h": "最近 24 小时",
   "observability.range.7d": "最近 7 天",
   "observability.range.all": "全部时间",
+  // v0.8.7 (B2 闭环): 每种 outcome 的比率。
+  "observability.rate.success": "成功率",
+  "observability.rate.fail": "失败率",
+  "observability.rate.denied": "拦截率",
+  "observability.rate.empty": "—",
 };
 export default zh;

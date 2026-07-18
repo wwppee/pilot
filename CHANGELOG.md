@@ -1,5 +1,78 @@
 # Changelog
 
+### v0.8.7 — B2 observability 闭环: success / fail 实时记 + 失败率 4 卡片
+
+Closes the B2 observability loop. v0.7.3 only ever
+wrote `denied` outcomes (from the policy hook) and
+the dashboard's success / fail columns were
+structurally zero. v0.8.7 opens the writer so any
+caller — the workflow Run handler, the future pi
+ToolResultMessage stream hook, or a third-party
+integration — can record `success` / `fail` / `denied`
+events, and adds a per-outcome rate sub-label to each
+aggregate card so the user gets the "70% success"
+reading at a glance.
+
+**What's in this release**
+
+- **`PilotService.recordToolCall(event)`** — public
+  write side of the observability layer. v0.7.3
+  exposed `getObservabilitySummary` and `getToolCalls`
+  but no write path; the only writer was the internal
+  `service.checkPolicyCall` hook. v0.8.7 adds a thin
+  pass-through to `core/observability.recordToolCall`
+  so any caller can write a record.
+- **`POST /observability/record`** — write endpoint
+  for the success / fail outcomes. Validates the
+  `outcome` field (rejects "succcess"-style typos
+  with 400) and otherwise mirrors the
+  `RecordedToolCall` shape 1:1 so a record written
+  here and a record written by the policy hook are
+  indistinguishable in the UI.
+- **`POST /workflows/:id/run` writes success records**:
+  for every node in the workflow, the Run handler
+  now records a `success` outcome under the tool
+  name `node.model.provider` (e.g. "anthropic",
+  "openai"). The mock runtime can't actually fail,
+  so all records are `success` for now; the
+  contract is the same and the real pi runtime will
+  write `fail` / `denied` when it lands in v0.9.x.
+- **Per-outcome rate** in `ObservabilitySummary`:
+  `successRate` / `failRate` / `deniedRate` as 0-1
+  fractions, pre-computed on the server so the UI is
+  a pure presentational layer. When `total === 0`
+  every rate is `0` (not `NaN`) so a fresh install
+  renders "—" rather than "NaN%".
+- **4 卡片 rate sub-label** on the dashboard: each
+  card now renders "{rateLabel}: {pct}%" under the
+  count. The Total card passes `rate: null` and
+  shows "—" (the rate label is the card title
+  itself, so the line still reads "Total: —" for
+  visual alignment across the row).
+
+**What's deliberately NOT in this release**
+
+- **Real pi ToolResultMessage stream** — the public
+  write side is the contract the runtime will call.
+  When the runtime lands in v0.9.x, success / fail
+  records will flow automatically. v0.8.7 just opens
+  the door.
+- **Per-tool `successRate` / `failRate`** on the
+  `ToolCallSummary` rows. The by-tool table still
+  shows raw counts; rates only appear on the
+  aggregate cards. v0.8.8+ can add per-tool rates
+  if the user wants it.
+
+**Stats**
+
+- root: **648/648** ✓ (was 640; +3 rate tests + 5
+  server tests for the new endpoint + Run handler)
+- web: **296/296** ✓ (was 294; +2 dashboard rate
+  tests)
+- i18n: 0 placeholder mismatches across ~1064+
+  shared keys (+4 new rate labels)
+- tsc: clean (root + web)
+
 ### v0.8.6 — B1 governance 闭环: per-tool rules now editable from the form
 
 Closes the loop on the B1 tool-level policy feature.

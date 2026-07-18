@@ -236,6 +236,18 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
       const { collectRecordedToolCalls } = await import("./observability.js");
       return collectRecordedToolCalls(home, filter);
     },
+    // v0.8.7: public write side. The implementation
+    // is a thin pass-through to `core/observability.js`,
+    // which already swallows its own errors. The
+    // service surface is the only place the server
+    // (and any future in-process tool caller) should
+    // record — never reach for `core/observability.js`
+    // directly, because that would skip the home-dir
+    // indirection the service owns.
+    recordToolCall: async (event) => {
+      const { recordToolCall: record } = await import("./observability.js");
+      await record(event, home);
+    },
 
     // ─── Plans (v0.6.0 — Agent capability layer) ────
     listPlans: () => listPlansFromHome(home),

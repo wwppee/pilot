@@ -458,6 +458,22 @@ export interface PilotService {
   getToolCalls(
     filter?: import("./observability.js").ObservabilityFilter,
   ): Promise<import("./observability.js").RecordedToolCall[]>;
+  // v0.8.7 (B2 闭环): public write side of the
+  // observability layer. v0.7.3 only ever wrote
+  // `denied` (from the policy hook). v0.8.7 opens
+  // the writer so the workflow runtime + any future
+  // tool-caller can record `success` / `fail` too.
+  // The actual pi ToolResultMessage stream still
+  // lives behind a future v0.9.x hook — this is the
+  // contract the runtime will call.
+  //
+  // Recording is best-effort inside the implementation
+  // (a 5xx on the recorder must not turn into a 5xx
+  // on the caller's tool call), so the return type
+  // is `void` rather than `Promise<void>`-with-error.
+  recordToolCall(
+    event: import("./observability.js").RecordedToolCall,
+  ): Promise<void>;
 
   // ─── Capabilities (v0.4+) ────────────────────────────
 

@@ -1320,4 +1320,13 @@ export type Dict = {
   "observability.range.24h": string;
   "observability.range.7d": string;
   "observability.range.all": string;
+  // v0.8.7 (B2 闭环): per-outcome rate labels rendered
+  // under each aggregate card. `rate.empty` is shown
+  // when total === 0 (a fresh install has no data to
+  // divide by; "0%" would be technically correct but
+  // visually noisy).
+  "observability.rate.success": string;
+  "observability.rate.fail": string;
+  "observability.rate.denied": string;
+  "observability.rate.empty": string;
 };

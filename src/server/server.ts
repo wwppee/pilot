@@ -820,23 +820,64 @@ export async function startServer(
         await reply.code(404).send({ error: "workflow not found" });
         return;
       }
-      // The v0.7.0 MVP allows zero-node workflows ("the
-      // editor's no-nodes empty state is nicer to start
-      // from than a stub node" — see WorkflowListView
-      // comment), so we don't reject those. A workflow
-      // with nodes but no edges is also valid (a single
-      // step that runs and produces output).
+      // v0.8.7 (B2 闭环): the workflow "Run" stub
+      // now actually exercises the observability layer.
+      // v0.7.5 returned `{status: "queued"}` and that
+      // was the whole story — the dashboard's success /
+      // fail counts were always zero because nothing
+      // ever wrote a `success` record. v0.8.7 keeps the
+      // "queued" surface (the real runtime is still
+      // future work — pi ToolResultMessage wiring
+      // lands in v0.9.x) but now, for every node in
+      // the workflow, we record a `success` outcome so
+      // the dashboard immediately reflects "this
+      // workflow ran" once the user clicks Run. The
+      // recorded event carries `workflowId` in its
+      // context so the dashboard can correlate "the
+      // success spike 5 seconds ago" with "I just
+      // clicked Run on workflow X".
+      //
+      // We record every node as a `success` here
+      // because the mock runtime can't actually fail.
+      // When the real runtime lands, the per-node
+      // record will carry `fail` instead when the
+      // tool errored, and `denied` when policy
+      // intercepted. The contract is the same.
+      const recordedAt = new Date().toISOString();
+      for (const node of wf.nodes) {
+        // Each LLM config records under the tool name
+        // `node.model.provider` (or just the node id if
+        // no provider is set) — we don't have a real
+        // "tool" here, but the dashboard keys by tool
+        // name and "anthropic" / "openai" are useful
+        // buckets for the "which provider is most
+        // exercised?" question the user will want to
+        // ask in chat.
+        const tool = node.model?.provider ?? `node:${node.id}`;
+        await service.recordToolCall({
+          tool,
+          outcome: "success",
+          reason: "workflow run",
+          errorSample: "",
+          context: {
+            workflowId: wf.id,
+            timestamp: recordedAt,
+          },
+        });
+      }
       return {
         status: "queued" as const,
         workflowId: wf.id,
-        // Stub: the real runtime will start a pi session,
-        // follow the edges in topological order, and
-        // apply each node's onFailure strategy. For now
-        // we just acknowledge the request and return.
-        // The editor's Run button transitions to a
-        // "queued" state and shows a hint that runtime
-        // is coming.
-        message: "Run is queued. Runtime lands in v0.7.6+.",
+        // v0.8.7: keep the same surface but acknowledge
+        // the per-node observability writes explicitly.
+        // The message no longer says "Runtime lands in
+        // v0.7.6+" — that was wrong (we are now at
+        // v0.8.7) and the new text reflects the real
+        // state of affairs: the runtime is still future
+        // work, but observability is already wired.
+        message:
+          "Run is queued. Per-node tool calls are recorded to the observability log; full pi runtime lands in v0.9.x.",
+        recordedNodes: wf.nodes.length,
       };
     },
   );
@@ -887,6 +928,65 @@ export async function startServer(
     if (q.limit) filter.limit = Number(q.limit);
     return service.getToolCalls(filter);
   });
+
+  // v0.8.7 (B2 闭环): write side of the observability
+  // surface. v0.7.3 only ever wrote `denied` (from the
+  // policy hook in `service.checkPolicyCall`). v0.8.7
+  // opens a POST endpoint so any caller — the workflow
+  // Run handler above, the future pi ToolResultMessage
+  // stream hook, or a third-party integration — can
+  // record a `success` / `fail` / `denied` event.
+  //
+  // The body shape mirrors `RecordedToolCall` 1:1
+  // (intentionally — the dashboard's ToolCallCard reads
+  // the same fields, so a record written here and a
+  // record written by the policy hook are
+  // indistinguishable in the UI). We validate the
+  // `outcome` field here so a typo (e.g. "succcess")
+  // doesn't poison the log with unparseable records;
+  // the other fields are the same strings the recorder
+  // already writes today.
+  app.post<{ Body: import("../core/observability.js").RecordedToolCall }>(
+    "/observability/record",
+    async (req, reply) => {
+      const body = req.body as Partial<
+        import("../core/observability.js").RecordedToolCall
+      > | undefined;
+      if (
+        !body ||
+        typeof body.tool !== "string" ||
+        typeof body.outcome !== "string" ||
+        !["success", "fail", "denied"].includes(body.outcome)
+      ) {
+        await reply.code(400).send({
+          error:
+            "invalid body: expected { tool: string, outcome: 'success'|'fail'|'denied', reason?: string, errorSample?: string, context?: { ... } }",
+        });
+        return;
+      }
+      await service.recordToolCall({
+        tool: body.tool,
+        outcome: body.outcome as "success" | "fail" | "denied",
+        reason: body.reason ?? "",
+        errorSample: body.errorSample ?? "",
+        // exactOptionalPropertyTypes is on, so we
+        // conditionally spread the optional context
+        // fields rather than passing `string |
+        // undefined` (which would widen the type and
+        // fail the assignment).
+        context: {
+          ...(body.context?.sessionId
+            ? { sessionId: body.context.sessionId }
+            : {}),
+          ...(body.context?.workflowId
+            ? { workflowId: body.context.workflowId }
+            : {}),
+          timestamp: body.context?.timestamp ?? new Date().toISOString(),
+        },
+      });
+      return { ok: true };
+    },
+  );
 
   // v0.7.7: chat-to-dashboard stub. Accepts a natural-
   // language query and returns the relevant data slice

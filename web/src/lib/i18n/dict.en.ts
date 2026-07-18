@@ -1407,5 +1407,13 @@ const en: Dict = {
   "observability.range.24h": "Last 24h",
   "observability.range.7d": "Last 7 days",
   "observability.range.all": "All time",
+  // v0.8.7 (B2 闭环): per-outcome rate. The string
+  // template is "{pct}%" rendered as a single line
+  // under the count — the dashboard substitutes
+  // "—" when total === 0.
+  "observability.rate.success": "success rate",
+  "observability.rate.fail": "fail rate",
+  "observability.rate.denied": "denied rate",
+  "observability.rate.empty": "—",
 };
 export default en;
