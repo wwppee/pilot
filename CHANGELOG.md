@@ -1,5 +1,55 @@
 # Changelog
 
+### v0.9.4 — chat 跨 dashboard: policies / workflows / wrappers intents
+
+Closes the "the chat box can only answer
+observability questions" gap. The chat input
+on the observability page used to be a 6-intent
+router that all queried the same observability
+summary. v0.9.4 adds a 3-intent *cross-dashboard*
+router that fires first and answers questions
+about the user's policies, workflows, and
+wrappers — so the user can ask "list my
+workflows" without leaving the page.
+
+**What's in this release**
+
+- **3 cross-dashboard intents** (policies /
+  workflows / wrappers) detected BEFORE the
+  observability summary is computed. The
+  matcher uses quantifier phrases ("my X" /
+  "how many X" / "list X" / "X 个" / "X 几
+  个") so a bare mention of "policy" still
+  routes to the observability "denied" intent
+  — a deliberate trade-off to avoid shadowing
+  the existing flow ("what was blocked by
+  policy?" still works).
+- **`buildCrossDashboardReply(intent, service)`**
+  helper: pulls the right list from the
+  service, formats as "{n} X: name1, name2, name3
+  …" (or "No X saved." when empty), returns
+  the same `{ intent, text }` shape as the
+  observability reply. The client doesn't
+  need to special-case the new intents.
+- **Test coverage**: 5 new server tests
+  covering the bilingual router (en + zh) and
+  the 3 new intents, plus a regression
+  regression for the "denied" intent's
+  existing 4 cases (which would have broken
+  if the cross-dashboard matcher was too
+  aggressive on the word "policy").
+
+**Stats**
+
+- root: **87/87** ✓ (was 82, +5 cross-dashboard
+  tests)
+- web: 297/297 (no client changes — the chat
+  box already accepts arbitrary text; the
+  improvement is server-side routing)
+- i18n: no new keys (the chat reply text is
+  English-only today, same as v0.7.7-v0.8.8)
+- tsc: clean (root + web)
+
 ### v0.9.3 — A2 wrapper full edit form (per-kind rule fields)
 
 Closes the A2 wrapper management loop. v0.9.0

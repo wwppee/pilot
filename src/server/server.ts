@@ -97,7 +97,17 @@ type ChatIntent =
   | "worst"
   | "success"
   | "rate"
-  | "summary";
+  | "summary"
+  // v0.9.4: cross-dashboard intents. The chat box
+  // lives on the observability page, but the
+  // router now also answers questions about
+  // policies / workflows / wrappers so the user
+  // doesn't have to leave the page to ask "how
+  // many policies do I have?" or "list my
+  // workflows".
+  | "policies"
+  | "workflows"
+  | "wrappers";
 
 /**
  * Build a one-line chat reply for a given intent.
@@ -119,6 +129,10 @@ function buildChatReply(
   summary: import("../core/observability.js").ObservabilitySummary,
   windowLabel: string,
 ): { intent: ChatIntent; text: string; window?: string } {
+  // v0.9.4: cross-dashboard intents are
+  // handled by the route handler before this
+  // helper is called. The switch only sees
+  // observability-derived intents.
   switch (intent) {
     case "errors": {
       const failing = summary.byTool
@@ -209,15 +223,147 @@ function buildChatReply(
         text: `${summary.total} call(s); ${summary.success} success, ${summary.fail} fail, ${summary.denied} denied. Worst tool: ${summary.worstTool ?? "none"}.`,
       };
     }
+    // v0.9.4: cross-dashboard intents are
+    // handled by the route handler before this
+    // helper is called. The remaining cases
+    // (errors / denied / worst / success / rate
+    // / summary) are all observability-derived.
+    // If a future change adds a new ChatIntent
+    // member, the route handler will fail to
+    // compile until it routes the new intent
+    // to the right helper. The default branch
+    // below is the catch-all for any
+    // cross-dashboard intent that somehow
+    // slips through (defensive — in practice
+    // the route handler short-circuits first).
+    default:
+      return {
+        intent,
+        text: "Try a more specific question about your policies, workflows, wrappers, or observability data.",
+      };
   }
 }
 
+// ─── v0.9.4: cross-dashboard chat helpers ──────────────
+
 /**
- * Build the set of allowed Origin values for the bound host+port.
+ * Detect a cross-dashboard intent (policies /
+ * workflows / wrappers) from the lowercased
+ * message. Returns the matching intent or
+ * `null` if the message is about observability
+ * (or anything else — the route handler then
+ * falls through to the observability router).
  *
- * Localhost has two reasonable spellings; both 127.0.0.1 and localhost must
- * be accepted because browsers and OSes don't always agree on which to send.
+ * Same specific-before-general ordering as the
+ * observability router: a regex match for
+ * "policy" wins over a regex match for "denied"
+ * because policy is a noun (the resource) and
+ * denied is a verb (the outcome). The user's
+ * intent is more likely to be "tell me about
+ * my policies" than "tell me about denied
+ * events" if the word policy appears at all.
  */
+function matchCrossDashboardIntent(lower: string): ChatIntent | null {
+  // v0.9.4: cross-dashboard intents are detected
+  // by quantifier phrases ("my X" / "how many X" /
+  // "list X" / "X 个" / "X 几个"). Bare mentions of
+  // "policy" / "策略" stay with the observability
+  // router (they map to the "denied" intent) so
+  // "what was blocked by policy?" still works.
+  //
+  // The regexes are intentionally specific so
+  // they don't shadow the observability intents.
+  // If the user types just "policy" the
+  // observability router wins (denied / block /
+  // 拦截 / 策略 are the keywords there). If they
+  // type "my policies" / "策略有几个" the
+  // cross-dashboard router wins.
+  if (
+    /(my\s+polic|how\s+many\s+polic|list\s+polic|count\s+polic|polic(y|ies)\s+saved|polic(y|ies)\s+exist|几条\s*策略|几个\s*策略|我的\s*策略|有哪些\s*策略|list.*策略)/i.test(
+      lower,
+    )
+  ) {
+    return "policies";
+  }
+  if (
+    /(my\s+workflow|how\s+many\s+workflow|list\s+workflow|count\s+workflow|workflows?\s+saved|workflows?\s+exist|几\s*个\s*工作流|多少\s*个?\s*工作流|我\s*的\s*工作流|有哪些\s*工作流|list.*工作流)/i.test(
+      lower,
+    )
+  ) {
+    return "workflows";
+  }
+  if (
+    /(my\s+wrapper|how\s+many\s+wrapper|list\s+wrapper|count\s+wrapper|wrappers?\s+saved|wrappers?\s+exist|几\s*个\s*包装|我\s*的\s*包装|有哪些\s*包装|list.*包装)/i.test(
+      lower,
+    )
+  ) {
+    return "wrappers";
+  }
+  return null;
+}
+
+/**
+ * Build a one-line chat reply for a cross-dashboard
+ * intent. Pulls the data from the right service
+ * method and formats the list compactly. Each
+ * intent returns:
+ *   - a count (so the user can scan "5
+ *     policies" without doing arithmetic)
+ *   - up to 5 names (so the user sees the
+ *     actual resources, not just a number)
+ *
+ * The shape is the same as buildChatReply
+ * (intent / text / window?) so the client
+ * doesn't need to special-case.
+ */
+async function buildCrossDashboardReply(
+  intent: ChatIntent,
+  service: PilotService,
+): Promise<{ intent: ChatIntent; text: string }> {
+  if (intent === "policies") {
+    const policies = await service.listPolicies();
+    const names = policies.slice(0, 5).map((p) => p.name).join(", ");
+    return {
+      intent,
+      text:
+        policies.length === 0
+          ? "No policies saved."
+          : `${policies.length} polic${policies.length === 1 ? "y" : "ies"}: ${names}${policies.length > 5 ? "…" : ""}`,
+    };
+  }
+  if (intent === "workflows") {
+    const workflows = await service.listWorkflows();
+    const names = workflows.slice(0, 5).map((w) => w.id).join(", ");
+    return {
+      intent,
+      text:
+        workflows.length === 0
+          ? "No workflows saved."
+          : `${workflows.length} workflow${workflows.length === 1 ? "" : "s"}: ${names}${workflows.length > 5 ? "…" : ""}`,
+    };
+  }
+  if (intent === "wrappers") {
+    const wrappers = await service.listWrappers();
+    const names = wrappers.slice(0, 5).map((w) => w.name).join(", ");
+    return {
+      intent,
+      text:
+        wrappers.length === 0
+          ? "No wrappers saved."
+          : `${wrappers.length} wrapper${wrappers.length === 1 ? "" : "s"}: ${names}${wrappers.length > 5 ? "…" : ""}`,
+    };
+  }
+  // v0.9.4: any future ChatIntent addition
+  // that's not handled above will fail the
+  // exhaustive type check. We fall through to
+  // a generic reply rather than throwing so the
+  // chat endpoint stays useful even for a brand
+  // new intent that hasn't been wired up yet.
+  return {
+    intent,
+    text: "I can answer questions about your policies, workflows, wrappers, and observability data. Try a more specific question.",
+  };
+}
 function allowedOriginsFor(host: string, port: number): Set<string> {
   const origins = new Set<string>();
   const variants =
@@ -1343,6 +1489,22 @@ export async function startServer(
               ? 0
               : Date.now() - 24 * 60 * 60 * 1000;
       const since = sinceMs > 0 ? new Date(sinceMs).toISOString() : undefined;
+      // v0.9.4: cross-dashboard intents are
+      // detected first. If the message is about
+      // policies / workflows / wrappers, we
+      // short-circuit before computing the
+      // observability summary (which would be
+      // wasted work for a non-observability
+      // question). Order: cross-dashboard
+      // > specific observability > general
+      // observability > fallback.
+      const crossDashboardIntent = matchCrossDashboardIntent(lower);
+      if (crossDashboardIntent) {
+        return buildCrossDashboardReply(
+          crossDashboardIntent,
+          service,
+        );
+      }
       const summary = await service.getObservabilitySummary(since);
       // v0.8.8: 6-intent router. Each intent's
       // keyword group is bilingual (en + zh) — the

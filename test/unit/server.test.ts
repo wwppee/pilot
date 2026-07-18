@@ -1851,5 +1851,44 @@ describe("pilot server", () => {
       const r = await postRaw({ message: "   " });
       expect(r.statusCode).toBe(400);
     });
+
+    // v0.9.4: cross-dashboard intents. The
+    // observability chat box now also answers
+    // questions about policies / workflows /
+    // wrappers, so the user can ask "how many
+    // workflows do I have?" without leaving the
+    // page. The intents are detected BEFORE the
+    // observability summary is computed (no
+    // wasted work for a non-observability
+    // question).
+    it("POST /observability/chat routes 'policies' to the policies intent", async () => {
+      const r = await ask("list my policies");
+      expect(r.status).toBe(200);
+      expect(r.body.intent).toBe("policies");
+    });
+
+    it("POST /observability/chat routes '策略' to the policies intent (zh)", async () => {
+      const r = await ask("我的策略有几个？");
+      expect(r.status).toBe(200);
+      expect(r.body.intent).toBe("policies");
+    });
+
+    it("POST /observability/chat routes 'workflows' to the workflows intent", async () => {
+      const r = await ask("list my workflows");
+      expect(r.status).toBe(200);
+      expect(r.body.intent).toBe("workflows");
+    });
+
+    it("POST /observability/chat routes '工作流' to the workflows intent (zh)", async () => {
+      const r = await ask("有多少个工作流？");
+      expect(r.status).toBe(200);
+      expect(r.body.intent).toBe("workflows");
+    });
+
+    it("POST /observability/chat routes 'wrappers' to the wrappers intent", async () => {
+      const r = await ask("list my wrappers");
+      expect(r.status).toBe(200);
+      expect(r.body.intent).toBe("wrappers");
+    });
   });
 });
