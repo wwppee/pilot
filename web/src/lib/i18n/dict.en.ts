@@ -1448,6 +1448,9 @@ const en: Dict = {
   "observability.col.success": "✓",
   "observability.col.fail": "Failed",
   "observability.col.denied": "Blocked",
+  // v0.9.2: per-tool rate columns.
+  "observability.col.successRate": "ok %",
+  "observability.col.failRate": "fail %",
   "observability.outcome.success": "success",
   "observability.outcome.fail": "fail",
   "observability.outcome.denied": "denied",

@@ -1372,6 +1372,12 @@ export type Dict = {
   "observability.col.success": string;
   "observability.col.fail": string;
   "observability.col.denied": string;
+  // v0.9.2: per-tool rate columns in the
+  // by-tool table. Success / fail rate next
+  // to the raw counts so the user can spot
+  // high-fail tools at a glance.
+  "observability.col.successRate": string;
+  "observability.col.failRate": string;
   "observability.outcome.success": string;
   "observability.outcome.fail": string;
   "observability.outcome.denied": string;

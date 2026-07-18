@@ -177,3 +177,74 @@ describe("v0.8.7: observability summary rates", () => {
     expect(s.successRate + s.failRate + s.deniedRate).toBeCloseTo(1, 6);
   });
 });
+
+// v0.9.2: per-tool rate fields. The summary
+// must now include `successRate` / `failRate` /
+// `deniedRate` on each `ToolCallSummary` row,
+// mirroring the v0.8.7 aggregate-card rates.
+// `total === 0` clamps to 0 (not NaN) — same
+// contract as the top-level rates.
+describe("v0.9.2: per-tool rate fields", () => {
+  it("computes per-tool success / fail / denied rate", async () => {
+    const events: Array<{
+      tool: string;
+      outcome: "success" | "fail" | "denied";
+    }> = [
+      { tool: "bash", outcome: "success" },
+      { tool: "bash", outcome: "success" },
+      { tool: "bash", outcome: "fail" },
+      { tool: "bash", outcome: "denied" },
+      { tool: "read", outcome: "success" },
+      { tool: "read", outcome: "success" },
+      { tool: "read", outcome: "success" },
+    ];
+    for (const ev of events) {
+      await recordToolCall(
+        {
+          ...ev,
+          reason: "",
+          errorSample: "",
+          context: { timestamp: new Date().toISOString() },
+        },
+        fakeHome,
+      );
+    }
+    const s = await summarizeRecordedToolCalls(fakeHome);
+    const bash = s.byTool.find((r) => r.tool === "bash")!;
+    expect(bash.total).toBe(4);
+    expect(bash.successRate).toBe(0.5); // 2 / 4
+    expect(bash.failRate).toBe(0.25); // 1 / 4
+    expect(bash.deniedRate).toBe(0.25); // 1 / 4
+    const read = s.byTool.find((r) => r.tool === "read")!;
+    expect(read.total).toBe(3);
+    expect(read.successRate).toBe(1);
+    expect(read.failRate).toBe(0);
+    expect(read.deniedRate).toBe(0);
+  });
+
+  it("per-tool rates sum to 1 when total > 0", async () => {
+    await recordToolCall(
+      {
+        tool: "write",
+        outcome: "success",
+        reason: "",
+        errorSample: "",
+        context: { timestamp: new Date().toISOString() },
+      },
+      fakeHome,
+    );
+    await recordToolCall(
+      {
+        tool: "write",
+        outcome: "fail",
+        reason: "",
+        errorSample: "",
+        context: { timestamp: new Date().toISOString() },
+      },
+      fakeHome,
+    );
+    const s = await summarizeRecordedToolCalls(fakeHome);
+    const w = s.byTool.find((r) => r.tool === "write")!;
+    expect(w.successRate + w.failRate + w.deniedRate).toBeCloseTo(1, 6);
+  });
+});

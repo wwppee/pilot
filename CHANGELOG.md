@@ -1,5 +1,51 @@
 # Changelog
 
+### v0.9.2 — observability by-tool rate: per-tool 成功率 / 失败率
+
+Closes the per-tool observability loop. v0.8.7
+added per-outcome rate to the 4 aggregate cards
+(total / success / fail / denied). v0.9.2
+extends the same idea to the by-tool table —
+each tool row now shows its success rate and
+fail rate as a "{pct}%" sub-cell next to the
+raw count, so the user can scan the column
+to spot high-fail tools without doing mental
+arithmetic.
+
+**What's in this release**
+
+- **`ToolCallSummary` rate fields** —
+  `successRate` / `failRate` / `deniedRate`
+  added to the per-tool summary row in
+  `core/observability.ts`. Pre-computed once
+  per row (post-loop) so the UI is a pure
+  presentational layer. `total === 0` clamps
+  to 0 (not NaN) — same contract as the
+  aggregate-card rates.
+- **2 new columns** in the by-tool table:
+  "ok %" and "fail %". The fail-rate cell
+  turns red when the rate is non-zero (same
+  visual signal as the raw fail count); the
+  success-rate cell stays muted (it's the
+  background — the user is looking for the
+  bright red).
+- **"—" placeholder** when a tool's `total`
+  is 0 (filter window excluded all records
+  for that tool). Same "no data ≠ zero" UX
+  as the aggregate cards.
+
+**Stats**
+
+- root: **90/90** in touched suites
+  (observability + server; was 88, +2 new
+  per-tool rate tests)
+- web: **297/297** ✓ (was 296, +1 new RTL test
+  asserting the per-tool rate columns render
+  with the right "{pct}%" values)
+- i18n: 0 placeholder mismatches across ~1112+
+  shared keys (+2 new column labels)
+- tsc: clean (root + web)
+
 ### v0.9.1 — workflow template marketplace: export / import JSON
 
 Closes the workflow sharing loop. Until v0.9.1

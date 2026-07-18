@@ -1366,6 +1366,9 @@ const zh: Dict = {
   "observability.col.success": "成功",
   "observability.col.fail": "失败",
   "observability.col.denied": "拦截",
+  // v0.9.2: per-tool rate columns.
+  "observability.col.successRate": "成功率",
+  "observability.col.failRate": "失败率",
   "observability.outcome.success": "成功",
   "observability.outcome.fail": "失败",
   "observability.outcome.denied": "拦截",

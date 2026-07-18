@@ -84,6 +84,16 @@ export interface ToolCallSummary {
   success: number;
   fail: number;
   denied: number;
+  // v0.9.2: per-tool rate as 0-1 fractions.
+  // `total === 0` clamps to 0 (not NaN) — same
+  // contract as the v0.8.7 aggregate-card rates.
+  // The dashboard's by-tool table renders a
+  // "{pct}%" sub-cell next to each count so the
+  // user can spot high-fail tools without
+  // mental arithmetic.
+  successRate: number;
+  failRate: number;
+  deniedRate: number;
   /** Most recent error sample seen for this tool, if any. */
   recentError: string;
   /** ISO timestamp of the most recent call to this tool. */
@@ -212,6 +222,18 @@ export async function summarizeRecordedToolCalls(
         success: 0,
         fail: 0,
         denied: 0,
+        // v0.9.2: rate fields are filled in
+        // after the loop (we need the final
+        // totals). Initialise to 0 so the
+        // shape is always present, even on
+        // zero-data tools (a tool that has
+        // been seen but whose records are
+        // empty after the filter window —
+        // shouldn't happen in practice but
+        // the shape is the contract).
+        successRate: 0,
+        failRate: 0,
+        deniedRate: 0,
         recentError: "",
         lastSeen: c.context.timestamp,
       };
@@ -225,6 +247,16 @@ export async function summarizeRecordedToolCalls(
     if (c.context.timestamp > s.lastSeen) {
       s.lastSeen = c.context.timestamp;
     }
+  }
+  // v0.9.2: post-loop rate computation. We do
+  // this once per row (not per-call) so the
+  // per-tool rate is always consistent with the
+  // final count. The /0 guard clamps to 0.
+  for (const row of byTool.values()) {
+    const safe = row.total > 0 ? row.total : 1;
+    row.successRate = row.total > 0 ? row.success / safe : 0;
+    row.failRate = row.total > 0 ? row.fail / safe : 0;
+    row.deniedRate = row.total > 0 ? row.denied / safe : 0;
   }
   const rows = Array.from(byTool.values()).sort(
     (a, b) =>

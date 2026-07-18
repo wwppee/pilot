@@ -43,6 +43,13 @@ interface Summary {
     success: number;
     fail: number;
     denied: number;
+    // v0.9.2: per-tool rate as 0-1 fraction.
+    // The by-tool table renders "{pct}%" in two
+    // new columns (success rate + fail rate)
+    // so the user can spot high-fail tools.
+    successRate: number;
+    failRate: number;
+    deniedRate: number;
     recentError: string;
     lastSeen: string;
   }>;
@@ -245,6 +252,18 @@ export function ObservabilityView({ locale: _locale }: { locale: string }) {
               <th className="text-right p-3">
                 {t("observability.col.denied")}
               </th>
+              {/* v0.9.2: per-tool rate columns. Each
+                  shows "{count} ({pct}%)" so the
+                  user can scan the column to spot
+                  the worst tool. The rate is
+                  pre-computed on the server (no
+                  per-row math in the UI). */}
+              <th className="text-right p-3">
+                {t("observability.col.successRate")}
+              </th>
+              <th className="text-right p-3">
+                {t("observability.col.failRate")}
+              </th>
               <th className="p-3" />
             </tr>
           </thead>
@@ -436,6 +455,31 @@ function ToolRow({
           className={`p-3 text-right ${row.denied > 0 ? "text-[var(--error)]" : ""}`}
         >
           {row.denied}
+        </td>
+        {/* v0.9.2: per-tool success rate and fail
+            rate. Each is "{pct}%" rendered as
+            integer percent (we round to whole
+            percent for the table — the
+            aggregate card is the precision-
+            oriented view; the table is a
+            glance-oriented view). The success
+            rate is shown so the user can spot
+            a tool that's mostly successful;
+            the fail rate is the headline
+            "what's broken?" signal. */}
+        <td
+          className="p-3 text-right text-xs text-[var(--text-muted)] font-mono"
+          data-testid={`observability-rate-success-${row.tool}`}
+        >
+          {row.total > 0 ? `${Math.round(row.successRate * 100)}%` : "—"}
+        </td>
+        <td
+          className={`p-3 text-right text-xs font-mono ${
+            row.failRate > 0 ? "text-[var(--error)]" : "text-[var(--text-muted)]"
+          }`}
+          data-testid={`observability-rate-fail-${row.tool}`}
+        >
+          {row.total > 0 ? `${Math.round(row.failRate * 100)}%` : "—"}
         </td>
         <td className="p-3 text-right text-xs text-[var(--text-muted)]">
           {expanded ? "▾" : "▸"}

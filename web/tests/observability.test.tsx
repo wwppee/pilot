@@ -120,6 +120,8 @@ describe("v0.7.3: <ObservabilityView>", () => {
     });
   });
 
+  // v0.8.7: success rate under the count. We
+
   // v0.8.7: when total === 0, the dashboard shows
   // "—" (rateEmpty) instead of "0%". A fresh install
   // has no data, and "0% success" is misleading
@@ -154,6 +156,50 @@ describe("v0.7.3: <ObservabilityView>", () => {
       // The empty state copy ("No tool calls recorded yet.")
       // is the contract; the "0%" never appears.
       expect(screen.getByText("No tool calls recorded yet.")).toBeTruthy();
+    });
+  });
+
+  // v0.9.2: per-tool success / fail rate is
+  // rendered as a "{pct}%" sub-cell next to
+  // the raw count in the by-tool table.
+  it("renders the per-tool rate columns in the by-tool table", async () => {
+    mockSummary.mockResolvedValue({
+      total: 4,
+      success: 2,
+      fail: 1,
+      denied: 1,
+      successRate: 0.5,
+      failRate: 0.25,
+      deniedRate: 0.25,
+      worstTool: "bash",
+      byTool: [
+        {
+          tool: "bash",
+          total: 4,
+          success: 2,
+          fail: 1,
+          denied: 1,
+          successRate: 0.5,
+          failRate: 0.25,
+          deniedRate: 0.25,
+          recentError: "permission denied",
+          lastSeen: "2026-07-18T00:00:00Z",
+        },
+      ],
+    });
+    renderView();
+    await waitFor(() => {
+      // The data-testid is "observability-rate-{kind}-{tool}".
+      // textContent check: just look for the %
+      // value (toHaveTextContent requires
+      // @testing-library/jest-dom which we
+      // don't import — the project relies on
+      // the legacy vitest `toBe` / `textContent`
+      // matchers).
+      const ok = screen.getByTestId("observability-rate-success-bash");
+      const fail = screen.getByTestId("observability-rate-fail-bash");
+      expect(ok.textContent).toBe("50%");
+      expect(fail.textContent).toBe("25%");
     });
   });
 
