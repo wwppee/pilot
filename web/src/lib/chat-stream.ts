@@ -33,7 +33,25 @@ export type ContentBlock =
       partialResult?: unknown;
       result?: unknown;
       isError?: boolean;
-      status: "streaming" | "executing" | "complete";
+      // v0.9.8: pilot governance annotations.
+      // `denied` means B1 policy (B1) blocked this call
+      // before it ran — `deniedBy` is the policy name.
+      // `wrapped` means A2 wrapper (A2) rewrote the args
+      // before the call ran — `wrappedBy` is the wrapper
+      // name and `transformedArgs` is the rewritten args.
+      // Runtime data source is the future v0.9.x+ pi
+      // hook; for now the fields are UI-ready so the
+      // visualization works end-to-end once the hook
+      // starts emitting these events.
+      status: "streaming" | "executing" | "complete" | "denied" | "wrapped";
+      /** Name of the policy that denied this call (B1). */
+      deniedBy?: string;
+      /** Reason / rule the policy matched. */
+      deniedReason?: string;
+      /** Name of the wrapper that transformed the args (A2). */
+      wrappedBy?: string;
+      /** Args after the wrapper applied (vs. `args` which is pre-wrap). */
+      transformedArgs?: unknown;
     };
 
 export type ChatMessage = {

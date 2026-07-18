@@ -121,6 +121,15 @@ const en: Dict = {
   "try.tool.result": "Result",
   "try.tool.error": "Tool error",
   "try.tool.args": "Arguments",
+  // v0.9.8: pilot governance visualization (B1 + A2).
+  // These render on the tool call's <summary> line so the
+  // user sees *why* a call was blocked or wrapped, not just
+  // that something happened.
+  "try.tool.denied": "Denied by policy: {policy}",
+  "try.tool.wrapped": "Wrapped by: {wrapper}",
+  "try.tool.preWrap": "before wrap",
+  "try.tool.postWrap": "after wrap",
+  "try.tool.reason": "Reason",
   "try.developerDetails": "Developer details",
   "try.developerDetailsHint":
     "Raw events from the pi RPC bridge — useful for debugging.",

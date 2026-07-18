@@ -188,6 +188,12 @@ export type Dict = {
   "try.tool.result": string;
   "try.tool.error": string;
   "try.tool.args": string;
+  // v0.9.8: pilot governance visualization.
+  "try.tool.denied": string;
+  "try.tool.wrapped": string;
+  "try.tool.preWrap": string;
+  "try.tool.postWrap": string;
+  "try.tool.reason": string;
   "try.developerDetails": string;
   "try.developerDetailsHint": string;
   // v0.5.20: SessionTree view.

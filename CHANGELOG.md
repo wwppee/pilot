@@ -1,5 +1,74 @@
 # Changelog
 
+### v0.9.8 — MessageView 抽组件 + 工具调用治理可视化 (denied / wrapped)
+
+pilot 跟 agegr/pi-web 的对位分析（v0.9.7 末）发现：
+- pilot `/try` 页 710 行堆在单文件，agegr 早拆了
+  `MessageView.tsx`
+- agegr 只有 3 个 tool call 状态（streaming /
+  executing / complete），但 pilot 因为有 B1 policy +
+  A2 wrapper 两层治理，**应该展示更多状态** — 让用户
+  看到"为什么"而不只是"发生了什么"
+
+这次 release 修这 2 件事。
+
+**What's in this release**
+
+- **抽 `web/src/components/MessageView.tsx`**。原
+  inline 在 `try/page.tsx` 的 `MessageBubble` +
+  `BlockView` 全部移过去；`try/page.tsx` 710 → 587
+  行（-17%）。拆完跟 agegr/pi-web 的 `MessageView.tsx`
+  形态对位，未来 syntax highlight / mermaid / lazy
+  image 都有单一位置。
+
+- **toolCall 加 2 个 pilot 独门 status**：
+  - `denied` 🚫 — B1 policy 拦截，带 `deniedBy`
+    (policy name) + `deniedReason` (rule reason)
+  - `wrapped` 🔄 — A2 wrapper 改写 args，带
+    `wrappedBy` (wrapper name) + `transformedArgs`
+    (改后 args)
+  - 背景色：denied 红色，wrapped 蓝色，普通灰色
+  - wrapped 时**同时显示 pre-args (划线) 和
+    post-args**，让 wrapper 的行为可观察
+
+  **这是 pilot 真正差异化 agegr 的点**。agegr 没
+  policy / wrapper 概念，永远展示不到这层。**runtime
+  数据来自未来 v0.9.x+ pi hook** (sandbox hard block
+  today)；type + UI 先 ready，hook 接上就立刻能显示。
+
+- **5 new i18n keys**：`try.tool.denied` /
+  `try.tool.wrapped` / `try.tool.preWrap` /
+  `try.tool.postWrap` / `try.tool.reason`，双语同步
+
+**Tests**
+
+- 9 new tests in `web/tests/message-view.test.tsx`：
+  - text block 渲染
+  - thinking 块折叠
+  - 5 个 toolCall status 各自渲染
+  - wrapped 时 line-through pre + post-args 区分
+  - user bubble fork 行为（onFork 给 / 不给）
+  - assistant message 的 provider/model footer
+
+**Totals**
+
+- root: 701 → 701 (no change)
+- web: 298 → 307 tests (+9)
+- tsc: clean on both packages
+- try/page.tsx: 710 → 587 (-17%)
+
+**Why a "denied/wrapped" visualization matters**
+
+v0.9.7 audit 时用户问："pilot 跟 agegr 区别在哪？"答：
+pilot 有管理平面（policy / wrapper / observability），
+但**用户感知不到**——用户只看到 pi 在跑，不知道背后
+有 5 条 policy 在拦、有 2 个 wrapper 在改 args。
+
+v0.9.8 之后，**用户在 /try 实时对话里就能看到**：
+"刚刚那个 bash 被 safe-bash 拦了" +
+"这个 read 被 redact-env 改了路径"。**这是 pilot 真
+正的价值可视化**——agegr 永远做不到。
+
 ### v0.9.7 — code audit: atomic writes + body validation + logPath required
 
 A focused audit release. The v0.9.x work

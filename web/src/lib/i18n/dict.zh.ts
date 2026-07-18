@@ -115,6 +115,14 @@ const zh: Dict = {
   "try.tool.result": "结果",
   "try.tool.error": "工具错误",
   "try.tool.args": "参数",
+  // v0.9.8: pilot 治理可视化（B1 + A2）。
+  // 渲染在 tool call 的 <summary> 行，让用户看到「为什么」
+  // 这条调用被拦了或被改了，而不只是"发生了什么"。
+  "try.tool.denied": "被策略拦截：{policy}",
+  "try.tool.wrapped": "已被包装：{wrapper}",
+  "try.tool.preWrap": "包装前",
+  "try.tool.postWrap": "包装后",
+  "try.tool.reason": "原因",
   "try.developerDetails": "开发者详情",
   "try.developerDetailsHint": "pi RPC 桥接的原始事件——便于调试。",
   // v0.5.20: SessionTree view of the full conversation DAG.
