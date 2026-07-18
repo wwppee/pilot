@@ -1290,6 +1290,17 @@ export type Dict = {
   "workflows.editor.run": string;
   "workflows.editor.runHint": string;
   "workflows.editor.runFailed": string;
+  // v0.8.10: structural validation. The Validate
+  // button calls /workflows/:id/validate and we
+  // surface the issue list (or "ok") below the
+  // action bar.
+  "workflows.editor.validate": string;
+  "workflows.editor.validateHint": string;
+  "workflows.editor.validateOk": string;
+  "workflows.editor.validateIssuesTitle": string;
+  "workflows.editor.validateErrorBadge": string;
+  "workflows.editor.validateWarningBadge": string;
+  "workflows.editor.validateErrorPrefix": string;
   // v0.7.3 (B2): observability dashboard keys. No storage
   // path, no JSONL, no Zod field names — see user memory
   // "storage is a blind box".

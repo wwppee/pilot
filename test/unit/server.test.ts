@@ -1330,6 +1330,137 @@ describe("pilot server", () => {
       expect(res.statusCode).toBe(404);
     });
 
+    // v0.8.10: the /run handler now refuses to
+    // queue a run if the workflow has a structural
+    // error (cycle / self-edge / dangling edge).
+    // Warnings still let the user proceed. We
+    // assert the 400 + issues shape so the editor
+    // can render the error list correctly.
+    it("POST /workflows/:id/run 400s on a workflow with a self-edge", async () => {
+      await handle.app.inject({
+        method: "PUT",
+        url: "/workflows/cycle-flow",
+        headers: { ...auth(), "content-type": "application/json" },
+        payload: {
+          name: "Cycle",
+          description: "",
+          version: 1,
+          nodes: [
+            {
+              id: "n1",
+              name: "Step 1",
+              kind: "step",
+              model: { provider: "anthropic", model: "claude-haiku-4-5" },
+              systemPrompt: "",
+              inputTemplate: "",
+              outputVar: "out1",
+              tools: [],
+              onFailure: "stop",
+              position: { x: 0, y: 0 },
+            },
+          ],
+          edges: [{ id: "e1", from: "n1", to: "n1" }],
+        },
+      });
+      const res = await handle.app.inject({
+        method: "POST",
+        url: "/workflows/cycle-flow/run",
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(400);
+      const body = res.json() as { error: string; issues: Array<{ code: string }> };
+      expect(body.error).toMatch(/structural errors/);
+      const codes = body.issues.map((i) => i.code);
+      expect(codes).toContain("self-edge");
+    });
+
+    // v0.8.10: standalone validation endpoint.
+    // The editor's "Validate" button calls this
+    // without queuing a run.
+    it("GET /workflows/:id/validate returns ok on a clean workflow", async () => {
+      const put = await handle.app.inject({
+        method: "PUT",
+        url: "/workflows/validate-flow",
+        headers: { ...auth(), "content-type": "application/json" },
+        payload: sampleBody(),
+      });
+      expect(put.statusCode).toBe(200);
+
+      const res = await handle.app.inject({
+        method: "GET",
+        url: "/workflows/validate-flow/validate",
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json() as { ok: boolean; issues: Array<{ code: string }> };
+      expect(body.ok).toBe(true);
+      expect(body.issues).toEqual([]);
+    });
+
+    it("GET /workflows/:id/validate returns issues for a broken workflow", async () => {
+      await handle.app.inject({
+        method: "PUT",
+        url: "/workflows/broken-flow",
+        headers: { ...auth(), "content-type": "application/json" },
+        payload: {
+          name: "Broken",
+          description: "",
+          version: 1,
+          nodes: [
+            {
+              id: "n1",
+              name: "Step 1",
+              kind: "step",
+              model: { provider: "anthropic", model: "claude-haiku-4-5" },
+              systemPrompt: "",
+              inputTemplate: "",
+              outputVar: "out1",
+              tools: [],
+              onFailure: "stop",
+              position: { x: 0, y: 0 },
+            },
+            {
+              id: "n2",
+              name: "Step 2",
+              kind: "step",
+              model: { provider: "anthropic", model: "claude-haiku-4-5" },
+              systemPrompt: "",
+              inputTemplate: "",
+              outputVar: "out2",
+              tools: [],
+              onFailure: "stop",
+              position: { x: 0, y: 100 },
+            },
+          ],
+          edges: [
+            { id: "e1", from: "n1", to: "n2" },
+            { id: "e2", from: "n2", to: "n1" },
+            { id: "e3", from: "n1", to: "ghost" },
+          ],
+        },
+      });
+      const res = await handle.app.inject({
+        method: "GET",
+        url: "/workflows/broken-flow/validate",
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json() as { ok: boolean; issues: Array<{ code: string; severity: string }> };
+      expect(body.ok).toBe(false);
+      const codes = body.issues.map((i) => i.code);
+      expect(codes).toContain("cycle");
+      expect(codes).toContain("unknown-target");
+    });
+
+    it("GET /workflows/:id/validate 404s for a missing workflow", async () => {
+      const res = await handle.app.inject({
+        method: "GET",
+        url: "/workflows/never-existed/validate",
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(404);
+    });
+
     // v0.8.7 (B2 闭环): clicking Run on a workflow
     // must now write one `success` observability
     // record per node. The dashboard's success /

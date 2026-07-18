@@ -1,5 +1,80 @@
 # Changelog
 
+### v0.8.10 — workflow Validate 按钮: cycle / 悬空 / 孤儿 / 缺失变量
+
+Closes the "is my workflow runnable?" gap. Until
+v0.8.10 the editor let you draw a workflow with a
+self-edge, a cycle, or a `{varname}` reference to
+an outputVar nobody produces — the v0.7.5 Run
+button would queue a stub success regardless, and
+the v0.9.x runtime would fail at execution time
+with a confusing error. v0.8.10 adds a structural
+validator that catches the 5 error / warning
+classes before the user clicks Run.
+
+**What's in this release**
+
+- **`validateWorkflow(wf)`** in `core/workflow.ts`
+  — pure function, no I/O. Returns
+  `{ ok, issues[] }` where each issue has a
+  `severity` (`error` / `warning`), a stable
+  `code` (5 of them: `cycle` / `orphan-node` /
+  `dangling-reference` / `self-edge` /
+  `unknown-target` + `unknown-source`),
+  a human-readable `message`, and the offending
+  `nodeId` / `edgeId` when applicable.
+- **3-color DFS** for cycle detection (white =
+  unvisited, gray = in stack, black = done). A
+  back-edge (white→gray) is a cycle. The DFS
+  uses an adjacency list cached once per
+  validation pass.
+- **`GET /workflows/:id/validate`** endpoint
+  returns the same shape. The editor's "Validate"
+  button calls this without queuing a run.
+- **`POST /workflows/:id/run`** now refuses to
+  queue if `validation.issues` has any
+  `severity: "error"` (400 + the issues array in
+  the body). Warnings still let the user proceed
+  because the v0.9.x runtime can recover at
+  execution time.
+- **"Validate" button** in the editor's action
+  bar (next to Run). Shows a structured issue
+  list below the action bar: severity badge +
+  code + message per issue. `errors` get a red
+  badge, `warnings` get a neutral badge.
+- **Server-side gate** mirrors the editor's
+  client-side check: even if a user crafts a
+  POST /workflows/:id/run by hand with a broken
+  workflow, the server returns 400 with the
+  same `issues` array.
+
+**What's deliberately NOT in this release**
+
+- **Auto-fix**. The validator tells you what's
+  wrong but doesn't fix it. v0.9.x could grow a
+  "Fix all" affordance (e.g. drop dangling edges,
+  break cycles by removing the lowest-weight
+  edge) but that's a bigger UX call.
+- **Type / port coverage** (every `model.provider`
+  has a model id, every `outputVar` is a valid
+  identifier). The Zod schema already enforces
+  these at save time; the validator is purely
+  graph-shape.
+
+**Stats**
+
+- root: **671/671** ✓ (was 658; +10 validate
+  unit tests + 4 server tests for the new
+  endpoint and the Run gate)
+- web: **296/296** ✓ (no new RTL tests — the
+  existing workflow-editor mount test still
+  renders the 6 top-level action buttons, and
+  the validate flow goes through the same
+  `useT` + i18n path as the other buttons)
+- i18n: 0 placeholder mismatches across ~1070+
+  shared keys (+7 new validate keys)
+- tsc: clean (root + web)
+
 ### v0.8.9 — WorkflowEditor 拆 3 文件 (v0.7.2 backlog 关闭)
 
 Closes the v0.7.2 backlog item: extract the 3

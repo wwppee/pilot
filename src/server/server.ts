@@ -922,6 +922,39 @@ export async function startServer(
     }
   });
 
+  // v0.8.10: structural validation endpoint. Lets the
+  // editor's "Validate" button ask the server "is this
+  // workflow runnable?" without queuing a real run. We
+  // do the validation in core/workflow.ts (pure
+  // function) and surface the same `WorkflowValidationResult`
+  // shape here.
+  //
+  // The HTTP status is 200 for both "ok" and "has
+  // warnings" (the call succeeded; the user can read
+  // the issues). 400 only for a malformed request
+  // (bad id). We deliberately don't 400 on validation
+  // errors themselves — that would conflate "the call
+  // worked and the workflow is broken" with "the call
+  // was malformed", which makes the editor's UX
+  // worse (it'd render an error toast instead of a
+  // structured issues list).
+  app.get<{ Params: { id: string } }>(
+    "/workflows/:id/validate",
+    async (req, reply) => {
+      if (!isValidWorkflowId(req.params.id)) {
+        await reply.code(400).send({ error: "invalid workflow id" });
+        return;
+      }
+      const wf = await service.getWorkflow(req.params.id);
+      if (!wf) {
+        await reply.code(404).send({ error: "workflow not found" });
+        return;
+      }
+      const { validateWorkflow } = await import("../core/workflow.js");
+      return validateWorkflow(wf);
+    },
+  );
+
   // v0.7.1 (audit fix): distinguish "deleted" from "didn't
   // exist". Previously we always returned 200, which made
   // the UI's "row is gone, the list reloaded" path run
@@ -966,6 +999,25 @@ export async function startServer(
       const wf = await service.getWorkflow(req.params.id);
       if (!wf) {
         await reply.code(404).send({ error: "workflow not found" });
+        return;
+      }
+      // v0.8.10: refuse to queue a run if the
+      // workflow has a structural error (cycle,
+      // dangling edge, self-edge). Warnings
+      // (orphan, dangling-reference) still let
+      // the user proceed because the v0.9.x
+      // runtime can recover at execution time;
+      // errors are hard stops.
+      const { validateWorkflow } = await import("../core/workflow.js");
+      const validation = validateWorkflow(wf);
+      const hasError = validation.issues.some(
+        (i) => i.severity === "error",
+      );
+      if (hasError) {
+        await reply.code(400).send({
+          error: "workflow has structural errors",
+          issues: validation.issues,
+        });
         return;
       }
       // v0.8.7 (B2 闭环): the workflow "Run" stub

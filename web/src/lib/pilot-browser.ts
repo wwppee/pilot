@@ -441,6 +441,27 @@ export const browserApi = {
       message: string;
     }>(`/workflows/${id}/run`, { method: "POST" });
   },
+  // v0.8.10: structural validation. The Validate
+  // button calls this to surface cycle / orphan /
+  // dangling-reference issues before the user
+  // clicks Run. The shape mirrors the server's
+  // `WorkflowValidationResult`:
+  //   { ok: boolean, issues: WorkflowIssue[] }
+  // where each issue has { severity, code, message,
+  // nodeId?, edgeId? }. The Run handler does the
+  // same validation server-side; this endpoint is
+  // the read-only preview for the editor.
+  validateWorkflow: (id: string) =>
+    browserFetch<{
+      ok: boolean;
+      issues: Array<{
+        severity: "error" | "warning";
+        code: string;
+        message: string;
+        nodeId?: string;
+        edgeId?: string;
+      }>;
+    }>(`/workflows/${id}/validate`),
 
   // ─── Observability (v0.7.3 B2) ────────────────────
   // The dashboard's data layer. The browser code never knows

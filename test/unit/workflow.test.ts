@@ -270,3 +270,129 @@ describe("v0.7.0: workflow persistence", () => {
     expect(warnings.some((w) => /not valid JSON/.test(w))).toBe(false);
   });
 });
+
+// v0.8.10: structural validation tests. The
+// `validateWorkflow` function is pure, so we can
+// drive every branch from a hand-built workflow
+// object without any I/O. The cases cover the 5
+// issue codes (cycle / orphan / dangling-reference
+// / self-edge / unknown-target) plus the happy
+// path (no issues).
+import { validateWorkflow } from "../../src/core/workflow.js";
+import type { Workflow } from "../../src/core/workflow.js";
+
+function wf(nodes: Workflow["nodes"], edges: Workflow["edges"]): Pick<Workflow, "nodes" | "edges"> {
+  return { nodes, edges };
+}
+
+function node(id: string, outputVar = id, inputTemplate = "") {
+  return {
+    id,
+    name: id,
+    kind: "step" as const,
+    model: { provider: "anthropic", model: "claude-haiku-4-5" },
+    systemPrompt: "",
+    inputTemplate,
+    outputVar,
+    tools: [],
+    onFailure: "stop" as const,
+    position: { x: 0, y: 0 },
+  };
+}
+
+describe("v0.8.10: validateWorkflow", () => {
+  it("returns ok on a 1-node workflow with no edges", () => {
+    const r = validateWorkflow(wf([node("a", "out_a")], []));
+    expect(r.ok).toBe(true);
+    expect(r.issues).toEqual([]);
+  });
+
+  it("returns ok on a 2-node linear chain", () => {
+    const r = validateWorkflow(
+      wf(
+        [node("a", "out_a"), node("b", "out_b", "{out_a}")],
+        [{ id: "e1", from: "a", to: "b" }],
+      ),
+    );
+    expect(r.ok).toBe(true);
+    expect(r.issues).toEqual([]);
+  });
+
+  it("flags a self-edge as an error", () => {
+    const r = validateWorkflow(
+      wf([node("a", "out_a")], [{ id: "e1", from: "a", to: "a" }]),
+    );
+    expect(r.ok).toBe(false);
+    const codes = r.issues.map((i) => i.code);
+    expect(codes).toContain("self-edge");
+  });
+
+  it("flags a cycle as an error", () => {
+    const r = validateWorkflow(
+      wf(
+        [node("a"), node("b"), node("c")],
+        [
+          { id: "e1", from: "a", to: "b" },
+          { id: "e2", from: "b", to: "c" },
+          { id: "e3", from: "c", to: "a" },
+        ],
+      ),
+    );
+    expect(r.ok).toBe(false);
+    const cycleIssues = r.issues.filter((i) => i.code === "cycle");
+    expect(cycleIssues.length).toBeGreaterThan(0);
+  });
+
+  it("flags a dangling edge (unknown target) as an error", () => {
+    const r = validateWorkflow(
+      wf([node("a", "out_a")], [{ id: "e1", from: "a", to: "ghost" }]),
+    );
+    expect(r.ok).toBe(false);
+    expect(r.issues.some((i) => i.code === "unknown-target")).toBe(true);
+  });
+
+  it("flags a dangling edge (unknown source) as an error", () => {
+    const r = validateWorkflow(
+      wf([node("a", "out_a")], [{ id: "e1", from: "ghost", to: "a" }]),
+    );
+    expect(r.ok).toBe(false);
+    expect(r.issues.some((i) => i.code === "unknown-source")).toBe(true);
+  });
+
+  it("flags a 2+ node orphan as a warning (not an error)", () => {
+    const r = validateWorkflow(
+      wf(
+        [node("a", "out_a"), node("b", "out_b")],
+        [], // no edges → both are orphans
+      ),
+    );
+    // Warnings don't make `ok` false.
+    expect(r.ok).toBe(true);
+    const orphans = r.issues.filter((i) => i.code === "orphan-node");
+    expect(orphans.length).toBe(2);
+    expect(orphans.every((o) => o.severity === "warning")).toBe(true);
+  });
+
+  it("flags a dangling {var} reference as a warning", () => {
+    const r = validateWorkflow(
+      wf(
+        [node("a", "out_a"), node("b", "out_b", "{does_not_exist}")],
+        [{ id: "e1", from: "a", to: "b" }],
+      ),
+    );
+    expect(r.ok).toBe(true);
+    const dangling = r.issues.filter((i) => i.code === "dangling-reference");
+    expect(dangling).toHaveLength(1);
+    expect(dangling[0]?.nodeId).toBe("b");
+  });
+
+  it("self-reference ({myOwnOutputVar}) is not flagged", () => {
+    // A node referring to its own outputVar in
+    // inputTemplate is weird but not structurally
+    // broken — the runtime can ignore the loop.
+    const r = validateWorkflow(
+      wf([node("a", "out_a", "{out_a}")], []),
+    );
+    expect(r.issues.filter((i) => i.code === "dangling-reference")).toEqual([]);
+  });
+});

@@ -1288,6 +1288,16 @@ const zh: Dict = {
   "workflows.editor.run": "运行",
   "workflows.editor.runHint": "运行此工作流。Runtime 在 v0.7.6+ 上线。",
   "workflows.editor.runFailed": "运行失败：",
+  // v0.8.10: 结构校验。"ok" 是唯一完全正向反馈；
+  // issues case 渲染 severity 标签让 user 看哪些阻塞。
+  "workflows.editor.validate": "校验",
+  "workflows.editor.validateHint":
+    "运行前检查工作流的结构问题（环、悬空边、缺失变量）。",
+  "workflows.editor.validateOk": "✓ 没有结构问题。",
+  "workflows.editor.validateIssuesTitle": "发现 {n} 个问题：",
+  "workflows.editor.validateErrorBadge": "错误",
+  "workflows.editor.validateWarningBadge": "警告",
+  "workflows.editor.validateErrorPrefix": "校验失败：{msg}",
   // v0.7.3 (B2): observability dashboard i18n. 不提存储路径
   // / JSONL / 实现细节——user 只看到"工具调用"和"策略拦截"。
   // 按 user memory: 存储是盲盒。

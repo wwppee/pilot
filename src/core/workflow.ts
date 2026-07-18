@@ -406,3 +406,197 @@ export async function deleteWorkflow(
   await rm(dir, { recursive: true, force: true });
   return true;
 }
+
+// ─── Validate (v0.8.10) ─────────────────────────────────
+
+/**
+ * v0.8.10: structural validation of a workflow before
+ * it's run. Returns a list of issues (each with a
+ * severity + a human-readable message + the offending
+ * node/edge id when applicable). A workflow with no
+ * issues returns `{ok: true, issues: []}`.
+ *
+ * Three classes of issues:
+ *
+ *   - **cycle**: an edge back-edge in the graph. A
+ *     workflow with a cycle has no topological order,
+ *     so the v0.9.x runtime can't execute it. We use
+ *     a 3-color DFS (white = unvisited, gray =
+ *     currently in the recursion stack, black =
+ *     done). A gray node reached from a gray node is
+ *     a back-edge — that's a cycle.
+ *
+ *   - **orphan**: a node with neither incoming nor
+ *     outgoing edges. This isn't a hard error (a
+ *     zero-node workflow is fine; a 1-node workflow
+ *     with no edges is just a single-step run), but
+ *     in a 2+ node workflow an orphan usually means
+ *     the user forgot to connect it. We report it
+ *     as a `warning` so the editor can show a hint
+ *     without blocking the run.
+ *
+ *   - **dangling reference**: a node's `inputTemplate`
+ *     mentions a variable (e.g. `{out1}`) that no
+ *     other node's `outputVar` produces. This is a
+ *     `warning` because the v0.9.x runtime will
+ *     probably fail at execution time but the editor
+ *     can show "this looks broken" without refusing
+ *     to save.
+ *
+ * The function is pure (no I/O) so the test file
+ * can exercise every branch without spinning up a
+ * server.
+ */
+export type WorkflowIssueSeverity = "error" | "warning";
+
+export interface WorkflowIssue {
+  severity: WorkflowIssueSeverity;
+  code:
+    | "cycle"
+    | "orphan-node"
+    | "dangling-reference"
+    | "self-edge"
+    | "unknown-target"
+    | "unknown-source";
+  message: string;
+  /** The offending node id (when applicable). */
+  nodeId?: string;
+  /** The offending edge id (when applicable). */
+  edgeId?: string;
+}
+
+export interface WorkflowValidationResult {
+  ok: boolean;
+  issues: WorkflowIssue[];
+}
+
+export function validateWorkflow(
+  wf: Pick<Workflow, "nodes" | "edges">,
+): WorkflowValidationResult {
+  const issues: WorkflowIssue[] = [];
+  const nodeIds = new Set(wf.nodes.map((n) => n.id));
+  const edges = wf.edges;
+
+  // 1. Edge integrity — every `from` and `to` must
+  //    reference an existing node id. A dangling
+  //    edge is a structural error (the file is
+  //    corrupt or the user did something through a
+  //    path we don't have a UI for).
+  for (const e of edges) {
+    if (!nodeIds.has(e.from)) {
+      issues.push({
+        severity: "error",
+        code: "unknown-source",
+        message: `Edge ${e.id} references unknown source node "${e.from}".`,
+        edgeId: e.id,
+      });
+    }
+    if (!nodeIds.has(e.to)) {
+      issues.push({
+        severity: "error",
+        code: "unknown-target",
+        message: `Edge ${e.id} references unknown target node "${e.to}".`,
+        edgeId: e.id,
+      });
+    }
+    if (e.from === e.to) {
+      // A self-edge is a degenerate cycle of length
+      // 1. The cycle detection below will also catch
+      // it, but reporting it explicitly with a
+      // clearer message is more useful.
+      issues.push({
+        severity: "error",
+        code: "self-edge",
+        message: `Node ${e.from} has a self-edge.`,
+        nodeId: e.from,
+        edgeId: e.id,
+      });
+    }
+  }
+
+  // 2. Cycle detection via 3-color DFS. We build
+  //    an adjacency list once, then DFS from each
+  //    unvisited node. A back-edge (white→gray) is
+  //    a cycle.
+  const adj = new Map<string, string[]>();
+  for (const n of wf.nodes) adj.set(n.id, []);
+  for (const e of edges) {
+    if (nodeIds.has(e.from) && nodeIds.has(e.to)) {
+      adj.get(e.from)!.push(e.to);
+    }
+  }
+  const color = new Map<string, "white" | "gray" | "black">(
+    wf.nodes.map((n) => [n.id, "white"]),
+  );
+  function dfs(node: string): void {
+    color.set(node, "gray");
+    for (const next of adj.get(node) ?? []) {
+      const c = color.get(next) ?? "white";
+      if (c === "gray") {
+        issues.push({
+          severity: "error",
+          code: "cycle",
+          message: `Cycle detected: node ${next} is reachable from itself via ${node}.`,
+          nodeId: next,
+        });
+      } else if (c === "white") {
+        dfs(next);
+      }
+    }
+    color.set(node, "black");
+  }
+  for (const n of wf.nodes) {
+    if (color.get(n.id) === "white") dfs(n.id);
+  }
+
+  // 3. Orphan detection — a node with no edges in
+  //    OR out. Only flag in workflows with 2+ nodes
+  //    (a 1-node workflow with no edges is the
+  //    legitimate "single step, no upstream" shape).
+  if (wf.nodes.length >= 2) {
+    const hasIncoming = new Set<string>();
+    const hasOutgoing = new Set<string>();
+    for (const e of edges) {
+      hasOutgoing.add(e.from);
+      hasIncoming.add(e.to);
+    }
+    for (const n of wf.nodes) {
+      if (!hasIncoming.has(n.id) && !hasOutgoing.has(n.id)) {
+        issues.push({
+          severity: "warning",
+          code: "orphan-node",
+          message: `Node "${n.name}" (${n.id}) has no connections.`,
+          nodeId: n.id,
+        });
+      }
+    }
+  }
+
+  // 4. Dangling reference — a node's inputTemplate
+  //    contains `{varname}` where no other node's
+  //    outputVar produces `varname`. We extract
+  //    {…} placeholders with a simple regex (the
+  //    runtime will use the same lookup).
+  const outputs = new Set(wf.nodes.map((n) => n.outputVar).filter(Boolean));
+  for (const n of wf.nodes) {
+    if (!n.inputTemplate) continue;
+    const refs = n.inputTemplate.match(/\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g) ?? [];
+    for (const ref of refs) {
+      const name = ref.slice(1, -1);
+      if (name === n.outputVar) continue; // self-reference is fine
+      if (!outputs.has(name)) {
+        issues.push({
+          severity: "warning",
+          code: "dangling-reference",
+          message: `Node "${n.name}" references {${name}} but no node produces that output.`,
+          nodeId: n.id,
+        });
+      }
+    }
+  }
+
+  return {
+    ok: issues.every((i) => i.severity !== "error"),
+    issues,
+  };
+}

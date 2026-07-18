@@ -1364,6 +1364,18 @@ const en: Dict = {
   "workflows.editor.runHint":
     "Run this workflow. Runtime lands in v0.7.6+.",
   "workflows.editor.runFailed": "Run failed: ",
+  // v0.8.10: structural validation. The "ok"
+  // case is the only fully positive feedback;
+  // the issues case renders a list with severity
+  // badges so the user can see what's blocking.
+  "workflows.editor.validate": "Validate",
+  "workflows.editor.validateHint":
+    "Check the workflow for structural issues (cycles, dangling edges, missing variables) before running.",
+  "workflows.editor.validateOk": "✓ No structural issues found.",
+  "workflows.editor.validateIssuesTitle": "{n} issue(s) found:",
+  "workflows.editor.validateErrorBadge": "error",
+  "workflows.editor.validateWarningBadge": "warning",
+  "workflows.editor.validateErrorPrefix": "Validation failed: {msg}",
   // v0.7.3 (B2): observability dashboard i18n. Note we don't
   // mention the storage path, JSONL, or any implementation
   // detail — the user just sees "tool calls" + "policy

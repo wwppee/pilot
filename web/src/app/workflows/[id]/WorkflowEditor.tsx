@@ -80,6 +80,20 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
   // can't fire a duplicate request. Same pattern as
   // `saving` above.
   const [deletingBusy, setDeletingBusy] = useState(false);
+  // v0.8.10: validation state. The "Validate"
+  // button calls /workflows/:id/validate and we
+  // keep the result here so the editor can render
+  // the issue list. We use the same dirty gate as
+  // the save button so the user always validates
+  // the version they're about to save (or just
+  // saved).
+  const [validating, setValidating] = useState(false);
+  const [validation, setValidation] = useState<
+    | { kind: "idle" }
+    | { kind: "ok" }
+    | { kind: "issues"; issues: Array<{ severity: "error" | "warning"; code: string; message: string; nodeId?: string; edgeId?: string }> }
+    | { kind: "error"; message: string }
+  >({ kind: "idle" });
 
   // Load on mount / id change.
   useEffect(() => {
@@ -190,6 +204,44 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
       setRunning(false);
     }
   }, [state, t]);
+
+  // v0.8.10: structural validation. Calls
+  // /workflows/:id/validate and renders the issue
+  // list below the action bar. We don't require
+  // `dirty` here — the user might want to validate
+  // the on-disk version (e.g. "did my last save
+  // introduce a cycle?"). The endpoint always reads
+  // from disk, so a dirty state would validate
+  // against a different version than what the
+  // editor shows; we deliberately do NOT block on
+  // dirty so the user has a fast way to check the
+  // persisted shape.
+  const validate = useCallback(async () => {
+    if (state.kind !== "ok") return;
+    if (validating) return;
+    setValidating(true);
+    setValidation({ kind: "idle" });
+    try {
+      const result = await api.validateWorkflow(state.workflow.id);
+      if (result.ok && result.issues.length === 0) {
+        setValidation({ kind: "ok" });
+      } else {
+        setValidation({ kind: "issues", issues: result.issues });
+      }
+    } catch (e) {
+      setValidation({
+        kind: "error",
+        message:
+          e instanceof Error
+            ? e.message
+            : typeof e === "string"
+              ? e
+              : "validation failed",
+      });
+    } finally {
+      setValidating(false);
+    }
+  }, [state, validating]);
 
   const confirmDelete = useCallback(async () => {
     if (state.kind !== "ok") return;
@@ -319,6 +371,24 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
           >
             {running ? "…" : t("workflows.editor.run")}
           </button>
+          {/* v0.8.10: Validate button. Calls the
+              /workflows/:id/validate endpoint so the
+              user can see structural issues (cycle,
+              dangling edge, orphan, dangling var
+              reference) before clicking Run. The
+              result renders in a list below the
+              action bar. Same disabled-while-busy
+              pattern as the other buttons. */}
+          <button
+            type="button"
+            className="btn small secondary"
+            onClick={() => void validate()}
+            disabled={validating}
+            data-testid="workflow-validate"
+            title={t("workflows.editor.validateHint")}
+          >
+            {validating ? "…" : t("workflows.editor.validate")}
+          </button>
           <button
             type="button"
             className="btn small secondary"
@@ -438,6 +508,67 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
         className="sr-only"
         data-testid="workflow-announce"
       />
+
+      {/* v0.8.10: validation result panel. Renders
+          the issue list (or "all good" / error) below
+          the action bar. The panel is hidden in the
+          `idle` state so the user only sees something
+          after clicking Validate. */}
+      {validation.kind === "ok" ? (
+        <div
+          className="surface rounded-lg p-3 text-sm text-[var(--text)] border border-[var(--accent-2)]"
+          data-testid="workflow-validation-ok"
+        >
+          {t("workflows.editor.validateOk")}
+        </div>
+      ) : null}
+      {validation.kind === "issues" ? (
+        <div
+          className="surface rounded-lg p-3 text-sm space-y-2 border border-[var(--error)]"
+          data-testid="workflow-validation-issues"
+        >
+          <p className="font-semibold text-[var(--text)]">
+            {t("workflows.editor.validateIssuesTitle", {
+              n: validation.issues.length,
+            })}
+          </p>
+          <ul className="space-y-1">
+            {validation.issues.map((iss, i) => (
+              <li
+                key={`${iss.code}-${iss.nodeId ?? iss.edgeId ?? i}`}
+                className="flex items-baseline gap-2 text-xs"
+                data-testid={`workflow-validation-issue-${i}`}
+              >
+                <span
+                  className={`pill ${
+                    iss.severity === "error" ? "warn" : "ok"
+                  }`}
+                >
+                  {iss.severity === "error"
+                    ? t("workflows.editor.validateErrorBadge")
+                    : t("workflows.editor.validateWarningBadge")}
+                </span>
+                <span className="font-mono text-[var(--text-muted)]">
+                  {iss.code}
+                </span>
+                <span className="flex-1 text-[var(--text)]">
+                  {iss.message}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {validation.kind === "error" ? (
+        <div
+          className="surface rounded-lg p-3 text-sm text-[var(--error)] border border-[var(--error)]"
+          data-testid="workflow-validation-error"
+        >
+          {t("workflows.editor.validateErrorPrefix", {
+            msg: validation.message,
+          })}
+        </div>
+      ) : null}
     </div>
   );
 }
