@@ -1381,6 +1381,15 @@ export type Dict = {
   "workflows.import.success": string;
   "workflows.editor.export": string;
   "workflows.editor.exportHint": string;
+  // v0.9.5: visual edge editor. The user
+  // clicks an output handle (the small circle
+  // on the right side of each node in the SVG
+  // preview) to start a connect, then clicks
+  // the target node. The hint explains what
+  // to do next; the Cancel button is the only
+  // way to abort (clicking another node
+  // completes the edge).
+  "workflows.editor.connectModeHint": string;
   // v0.7.3 (B2): observability dashboard keys. No storage
   // path, no JSONL, no Zod field names — see user memory
   // "storage is a blind box".

@@ -1456,6 +1456,9 @@ const en: Dict = {
   "workflows.editor.export": "Export",
   "workflows.editor.exportHint":
     "Download this workflow as a JSON template you can share or version-control.",
+  // v0.9.5: visual edge editor hint.
+  "workflows.editor.connectModeHint":
+    "Click the target node to connect from {name}. Click Cancel to abort.",
   // v0.7.3 (B2): observability dashboard i18n. Note we don't
   // mention the storage path, JSONL, or any implementation
   // detail — the user just sees "tool calls" + "policy

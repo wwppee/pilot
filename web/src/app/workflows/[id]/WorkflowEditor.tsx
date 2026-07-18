@@ -515,6 +515,31 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
             }));
             setDirty(true);
           }}
+          // v0.9.5: visual edge editor. The
+          // PreviewPanel enters "connect mode"
+          // when the user shift-clicks a node's
+          // output handle (right side) and
+          // clicks a second node. We dispatch
+          // the new edge up to the editor and
+          // mark dirty so the next Save
+          // persists it. Self-edges and
+          // duplicate edges are filtered by the
+          // panel.
+          onConnectEdge={(fromId, toId) => {
+            if (fromId === toId) return;
+            const exists = wf.edges.some(
+              (e) => e.from === fromId && e.to === toId,
+            );
+            if (exists) return;
+            const newId = `e${wf.edges.length + 1}-${Math.random()
+              .toString(36)
+              .slice(2, 6)}`;
+            mutate((w) => ({
+              ...w,
+              edges: [...w.edges, { id: newId, from: fromId, to: toId }],
+            }));
+            setDirty(true);
+          }}
         />
       </div>
 

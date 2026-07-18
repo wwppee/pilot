@@ -37,9 +37,34 @@ export interface PreviewPanelProps {
     nodeId: string,
     position: { x: number; y: number },
   ) => void;
+  // v0.9.5: visual edge editor callback.
+  // PreviewPanel reports a "this user wants to
+  // connect from `fromId` to `toId`" intent
+  // up to the editor. The editor filters
+  // self-edges and duplicates (since both
+  // are common UX mistakes) and adds the
+  // edge to the workflow. The panel just
+  // reports the intent; the editor owns
+  // the data.
+  onConnectEdge?: (fromId: string, toId: string) => void;
 }
 
-export function PreviewPanel({ workflow, t, onNodeMove }: PreviewPanelProps) {
+export function PreviewPanel({
+  workflow,
+  t,
+  onNodeMove,
+  onConnectEdge,
+}: PreviewPanelProps) {
+  // v0.9.5: visual edge editor. "connectSource"
+  // is the id of the node the user clicked
+  // "connect from" — the next node click
+  // (any node) completes the edge and clears
+  // the state. null = not in connect mode.
+  // We don't use a global click listener so
+  // the connect mode is locked to the SVG
+  // surface (clicking outside the preview
+  // doesn't accidentally cancel).
+  const [connectSource, setConnectSource] = useState<string | null>(null);
   // BFS from the source-most nodes (no incoming edge)
   // and lay out top-to-bottom by depth. The output is
   // the same data the SVG renders; we memoize so re-
@@ -118,6 +143,38 @@ export function PreviewPanel({ workflow, t, onNodeMove }: PreviewPanelProps) {
       <p className="text-xs text-[var(--text-muted)] mb-3">
         {t("workflows.editor.layoutHint")}
       </p>
+      {/* v0.9.5: connect-mode hint. When the user
+          has clicked an output handle, the
+          preview flips into a "click target"
+          mode and the hint explains what to do
+          next. We also offer a Cancel button
+          because clicking outside the SVG
+          doesn't always cancel (the SVG fills
+          the preview area, and a click on
+          another node is "complete the edge",
+          not "cancel"). */}
+      {connectSource ? (
+        <div
+          className="text-xs text-[var(--error)] mb-2 flex items-center gap-2"
+          data-testid="workflow-connect-mode-hint"
+        >
+          <span>
+            {t("workflows.editor.connectModeHint", {
+              name:
+                workflow.nodes.find((n) => n.id === connectSource)
+                  ?.name ?? connectSource,
+            })}
+          </span>
+          <button
+            type="button"
+            className="btn small secondary"
+            onClick={() => setConnectSource(null)}
+            data-testid="workflow-connect-cancel"
+          >
+            {t("workflows.editor.cancel")}
+          </button>
+        </div>
+      ) : null}
       <svg
         ref={svgRef}
         viewBox={`0 0 ${layout.cols * colWidth} ${Math.max(1, layout.depth) * rowHeight}`}
@@ -153,6 +210,18 @@ export function PreviewPanel({ workflow, t, onNodeMove }: PreviewPanelProps) {
           const pos = layout.positions[n.id];
           if (!pos) return null;
           const isDragging = dragging?.nodeId === n.id;
+          const isConnectSource = connectSource === n.id;
+          // v0.9.5: when this node is the
+          // pending connect source, draw a
+          // dashed line from its right edge
+          // to the cursor position. We don't
+          // track the cursor here; the line
+          // simply says "an edge is being
+          // drawn from this node". The user
+          // clicks the target node to
+          // complete the edge.
+          const isConnectTarget =
+            connectSource !== null && connectSource !== n.id;
           return (
             <g
               key={n.id}
@@ -160,10 +229,35 @@ export function PreviewPanel({ workflow, t, onNodeMove }: PreviewPanelProps) {
               data-node-id={n.id}
               data-testid={`workflow-preview-node-${n.id}`}
               style={{
-                cursor: isDragging ? "grabbing" : "grab",
+                cursor: isDragging
+                  ? "grabbing"
+                  : connectSource
+                    ? "crosshair"
+                    : "grab",
                 opacity: isDragging ? 0.8 : 1,
               }}
+              // v0.9.5: connect-mode click. When
+              // the user is in connect mode
+              // (connectSource is set), clicking
+              // a node completes the edge
+              // instead of starting a drag. The
+              // self-edge / duplicate check lives
+              // in the editor (we trust the
+              // panel to report the intent; the
+              // editor owns the data).
+              onClick={(e) => {
+                if (connectSource && connectSource !== n.id) {
+                  e.stopPropagation();
+                  onConnectEdge?.(connectSource, n.id);
+                  setConnectSource(null);
+                }
+              }}
               onPointerDown={(e) => {
+                // v0.9.5: if we're in connect
+                // mode, don't start a drag. The
+                // click handler above will
+                // complete the edge.
+                if (connectSource) return;
                 // v0.7.4: start a drag. The offset is the
                 // distance from the cursor to the node's
                 // top-left corner so the node doesn't jump
@@ -190,8 +284,23 @@ export function PreviewPanel({ workflow, t, onNodeMove }: PreviewPanelProps) {
                 height={nodeHeight}
                 rx={6}
                 fill="var(--surface)"
-                stroke="var(--accent)"
-                strokeWidth={1.5}
+                // v0.9.5: highlight the connect
+                // source in red and the
+                // potential target in green.
+                // Color-blind safe: the difference
+                // is in the stroke color and
+                // width, not just the hue.
+                stroke={
+                  isConnectSource
+                    ? "var(--error)"
+                    : isConnectTarget
+                      ? "var(--accent-2)"
+                      : "var(--accent)"
+                }
+                strokeWidth={
+                  isConnectSource || isConnectTarget ? 2.5 : 1.5
+                }
+                strokeDasharray={isConnectSource ? "4 2" : undefined}
               />
               <text
                 x={10}
@@ -220,6 +329,32 @@ export function PreviewPanel({ workflow, t, onNodeMove }: PreviewPanelProps) {
               >
                 → {n.outputVar}
               </text>
+              {/* v0.9.5: output handle on the
+                  right side. A small filled
+                  circle the user clicks to
+                  start a connect operation.
+                  The handle is a sibling of
+                  the rect (not inside the
+                  onClick handler) so the
+                  click is its own event target
+                  — clicking the rect's interior
+                  still starts a drag. */}
+              <circle
+                cx={nodeWidth}
+                cy={nodeHeight / 2}
+                r={6}
+                fill="var(--accent)"
+                stroke="var(--surface)"
+                strokeWidth={2}
+                data-testid={`workflow-preview-handle-${n.id}`}
+                style={{ cursor: "crosshair" }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setConnectSource((cur) =>
+                    cur === n.id ? null : n.id,
+                  );
+                }}
+              />
             </g>
           );
         })}

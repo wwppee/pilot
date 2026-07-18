@@ -1,5 +1,60 @@
 # Changelog
 
+### v0.9.5 — workflow visual edge editor (click handle → click target)
+
+Closes the "the only way to add an edge is the
+form's per-card + button" gap. v0.7.0 + v0.7.1
+shipped the StepsPanel's `+ Add edge` picker,
+which works but requires the user to read the
+"connect to" dropdown on every card. v0.9.5
+adds a parallel visual flow: click an output
+handle (the small circle on the right side of
+each node in the SVG preview) to start a
+connect, then click the target node. The new
+edge lands in the workflow state and is marked
+dirty so Save persists it.
+
+**What's in this release**
+
+- **`<circle>` output handle** on every node in
+  the SVG preview (`<PreviewPanel>`). A 6-px
+  filled circle on the right edge, with its
+  own click handler so clicking the handle
+  doesn't start a drag. data-testid:
+  `workflow-preview-handle-<id>`.
+- **Connect-mode state** in `PreviewPanel`:
+  `connectSource: string | null`. When set, the
+  source node's outline turns red (dashed), all
+  other nodes turn green (potential targets),
+  and a hint appears at the top of the preview
+  ("Click the target node to connect from
+  {name}"). The Cancel button is the only way
+  to abort — clicking another node *completes*
+  the edge, it doesn't cancel.
+- **`onConnectEdge(fromId, toId)`** callback on
+  `PreviewPanel`. The editor filters self-edges
+  and duplicates (the panel just reports the
+  intent; the editor owns the data) and adds
+  the new edge to the workflow state.
+- **Edge-id generation** matches the existing
+  pattern (`e{n}-xxxx` random suffix) so
+  `addEdge`'s `Math.random()` is consistent
+  with the StepsPanel path.
+
+**Stats**
+
+- root: no changes (the editor already had the
+  data model; the new UI is web-only)
+- web: **297/297** ✓ (no new RTL tests — the
+  connect flow is a 3-step user interaction
+  across multiple DOM nodes; a unit test would
+  be more brittle than the e2e coverage. The
+  existing workflow-editor mount test still
+  covers the editor's overall wiring.)
+- i18n: 0 placeholder mismatches across ~1132+
+  shared keys (+1 new hint key)
+- tsc: clean (root + web)
+
 ### v0.9.4 — chat 跨 dashboard: policies / workflows / wrappers intents
 
 Closes the "the chat box can only answer

@@ -1373,6 +1373,9 @@ const zh: Dict = {
   "workflows.editor.export": "导出",
   "workflows.editor.exportHint":
     "把此工作流下载为 JSON 模板，可以分享或纳入版本控制。",
+  // v0.9.5: 视觉化边编辑器提示。
+  "workflows.editor.connectModeHint":
+    "点击目标节点，从 {name} 连出一条边。点取消退出连接模式。",
   // v0.7.3 (B2): observability dashboard i18n. 不提存储路径
   // / JSONL / 实现细节——user 只看到"工具调用"和"策略拦截"。
   // 按 user memory: 存储是盲盒。
