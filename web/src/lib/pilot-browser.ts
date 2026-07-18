@@ -472,6 +472,27 @@ export const browserApi = {
       message: string;
     }>(`/workflows/${id}/run`, { method: "POST" });
   },
+  // v0.9.1 (template marketplace): export a
+  // workflow as a shareable JSON payload, and import
+  // one back. The export shape strips metadata
+  // (server-managed) so the round-trip is clean:
+  // imported workflow has a fresh createdAt /
+  // updatedAt.
+  exportWorkflow: (id: string) =>
+    browserFetch<{
+      name: string;
+      description: string;
+      version: 1;
+      nodes: Workflow["nodes"];
+      edges: Workflow["edges"];
+      format: "pilot-workflow@1";
+      exportedAt: string;
+    }>(`/workflows/${id}/export`),
+  importWorkflow: (id: string, input: WorkflowInput) =>
+    browserFetch<Workflow>(`/workflows/import/${id}`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
   // v0.8.10: structural validation. The Validate
   // button calls this to surface cycle / orphan /
   // dangling-reference issues before the user

@@ -1461,6 +1461,93 @@ describe("pilot server", () => {
       expect(res.statusCode).toBe(404);
     });
 
+    // v0.9.1 (template marketplace): export + import
+    // round-trip. The export shape strips metadata
+    // (server-managed) so the round-trip is clean.
+    it("GET /workflows/:id/export returns the workflow as a JSON template", async () => {
+      const put = await handle.app.inject({
+        method: "PUT",
+        url: "/workflows/sample-flow",
+        headers: { ...auth(), "content-type": "application/json" },
+        payload: sampleBody(),
+      });
+      expect(put.statusCode).toBe(200);
+
+      const res = await handle.app.inject({
+        method: "GET",
+        url: "/workflows/sample-flow/export",
+        headers: auth(),
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json() as {
+        name: string;
+        format: string;
+        nodes: unknown[];
+        edges: unknown[];
+        version: number;
+      };
+      expect(body.format).toBe("pilot-workflow@1");
+      expect(body.name).toBe("Sample");
+      expect(body.version).toBe(1);
+      expect(body.nodes).toHaveLength(1);
+      // No metadata leaked.
+      expect((body as Record<string, unknown>)["metadata"]).toBeUndefined();
+    });
+
+    it("POST /workflows/import/:id creates a new workflow", async () => {
+      const res = await handle.app.inject({
+        method: "POST",
+        url: "/workflows/import/imported-flow",
+        headers: { ...auth(), "content-type": "application/json" },
+        payload: {
+          name: "Imported",
+          description: "From a template",
+          version: 1,
+          nodes: [
+            {
+              id: "n1",
+              name: "Step 1",
+              kind: "step",
+              model: { provider: "anthropic", model: "claude-haiku-4-5" },
+              systemPrompt: "",
+              inputTemplate: "",
+              outputVar: "out1",
+              tools: [],
+              onFailure: "stop",
+              position: { x: 0, y: 0 },
+            },
+          ],
+          edges: [],
+        },
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json() as { id: string; name: string };
+      expect(body.id).toBe("imported-flow");
+      expect(body.name).toBe("Imported");
+    });
+
+    it("POST /workflows/import/:id 409s when the id already exists", async () => {
+      await handle.app.inject({
+        method: "PUT",
+        url: "/workflows/exists-flow",
+        headers: { ...auth(), "content-type": "application/json" },
+        payload: sampleBody(),
+      });
+      const res = await handle.app.inject({
+        method: "POST",
+        url: "/workflows/import/exists-flow",
+        headers: { ...auth(), "content-type": "application/json" },
+        payload: {
+          name: "Conflicting",
+          description: "",
+          version: 1,
+          nodes: [],
+          edges: [],
+        },
+      });
+      expect(res.statusCode).toBe(409);
+    });
+
     // v0.8.7 (B2 闭环): clicking Run on a workflow
     // must now write one `success` observability
     // record per node. The dashboard's success /

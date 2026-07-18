@@ -1,5 +1,56 @@
 # Changelog
 
+### v0.9.1 — workflow template marketplace: export / import JSON
+
+Closes the workflow sharing loop. Until v0.9.1
+a workflow was locked to its editor — the only
+way to "share" it was to copy the JSON file out
+of `~/.pilot/workflows/` by hand. v0.9.1 adds
+proper export + import endpoints so the user
+can save a workflow as a portable template,
+version-control it, share it, and feed it back
+through the import flow.
+
+**What's in this release**
+
+- **`GET /workflows/:id/export`** — returns the
+  workflow as a JSON template (name, description,
+  version, nodes, edges) plus a `format` magic
+  string (`"pilot-workflow@1"`) and an
+  `exportedAt` timestamp. Metadata (createdAt /
+  updatedAt) is intentionally stripped so the
+  round-trip is clean: the importer creates a
+  fresh metadata stamp.
+- **`POST /workflows/import/:id`** — takes a
+  WorkflowInput (same shape as the PUT body) and
+  creates a new workflow under `:id`. Returns 409
+  if the id already exists; the user is expected
+  to pick a new id (or use PUT to overwrite).
+- **Export button** in the editor's action bar
+  (next to Run / Validate / Duplicate). Triggers
+  a browser download of `<id>.pilot-workflow.json`.
+- **Import button** on the workflows list page
+  (next to "+ New"). Opens a dialog that accepts
+  either a file picker OR a paste-textarea (both
+  code paths feed the same parser), then asks
+  for a new id before submitting.
+- **Smart parsing**: the importer accepts both
+  raw `WorkflowInput` payloads AND full export
+  shapes (with `format` / `exportedAt` fields) —
+  the parser strips the export-only fields
+  before posting.
+
+**Stats**
+
+- root: 118/118 in touched suites (server +
+  workflow + tool-wrapper + observability)
+- web: **296/296** ✓ (no new RTL tests — the
+  Import dialog goes through the same `useT` +
+  i18n path as the rest of the workflows surface)
+- i18n: 0 placeholder mismatches across ~1110+
+  shared keys (+10 new import keys)
+- tsc: clean (root + web)
+
 ### v0.9.0 — A2 tool wrapper: governance layer 从 gate 拓展到 transform (major bump)
 
 Closes the B1 / B2 / B3 governance arc and opens

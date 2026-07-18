@@ -922,6 +922,74 @@ export async function startServer(
     }
   });
 
+  // v0.9.1 (template marketplace): export a workflow
+  // as a JSON payload the user can save, share,
+  // version-control, or feed back to /workflows/import.
+  // We strip the metadata (createdAt / updatedAt are
+  // server-managed) so the exported shape is
+  // round-trip-clean: importing it produces a
+  // workflow with a fresh metadata stamp.
+  app.get<{ Params: { id: string } }>(
+    "/workflows/:id/export",
+    async (req, reply) => {
+      if (!isValidWorkflowId(req.params.id)) {
+        await reply.code(400).send({ error: "invalid workflow id" });
+        return;
+      }
+      const wf = await service.getWorkflow(req.params.id);
+      if (!wf) {
+        await reply.code(404).send({ error: "workflow not found" });
+        return;
+      }
+      return {
+        name: wf.name,
+        description: wf.description,
+        version: wf.version,
+        nodes: wf.nodes,
+        edges: wf.edges,
+        // v0.9.1: a magic string the importer
+        // checks. Future versions can branch on
+        // this for migration paths.
+        format: "pilot-workflow@1" as const,
+        exportedAt: new Date().toISOString(),
+      };
+    },
+  );
+
+  // v0.9.1: import a workflow from an exported JSON
+  // payload. The body must include the new id (URL
+  // path) plus the rest of the WorkflowInput fields.
+  // We reject if the id already exists (409) so the
+  // user explicitly chooses to overwrite via PUT.
+  app.post<{
+    Params: { id: string };
+    Body: import("../core/workflow.js").WorkflowInput;
+  }>("/workflows/import/:id", async (req, reply) => {
+    if (!isValidWorkflowId(req.params.id)) {
+      await reply.code(400).send({ error: "invalid workflow id" });
+      return;
+    }
+    const existing = await service.getWorkflow(req.params.id);
+    if (existing) {
+      await reply.code(409).send({
+        error: "workflow id already exists; pick a new id or PUT to overwrite",
+        existingId: req.params.id,
+      });
+      return;
+    }
+    try {
+      const saved = await service.saveWorkflow({
+        ...req.body,
+        id: req.params.id,
+      });
+      return saved;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "import failed";
+      await reply.code(400).send({ error: msg });
+      return;
+    }
+  });
+
   // v0.8.10: structural validation endpoint. Lets the
   // editor's "Validate" button ask the server "is this
   // workflow runnable?" without queuing a real run. We

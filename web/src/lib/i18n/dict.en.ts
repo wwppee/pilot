@@ -1412,6 +1412,21 @@ const en: Dict = {
   "wrappers.newCard.toolsLabel": "Tools (comma-separated)",
   "wrappers.newCard.submit": "Create",
   "nav.wrappers": "Wrappers",
+  // v0.9.1 (template marketplace).
+  "workflows.import.button": "Import",
+  "workflows.import.title": "Import workflow",
+  "workflows.import.hint":
+    "Paste a workflow JSON below or pick a file. You'll choose a new id for the imported copy.",
+  "workflows.import.pickFile": "Pick file…",
+  "workflows.import.jsonLabel": "Workflow JSON",
+  "workflows.import.jsonRequired": "JSON is required",
+  "workflows.import.idLabel": "New id (kebab-case)",
+  "workflows.import.idRequired": "Id is required",
+  "workflows.import.submit": "Import",
+  "workflows.import.success": "Imported",
+  "workflows.editor.export": "Export",
+  "workflows.editor.exportHint":
+    "Download this workflow as a JSON template you can share or version-control.",
   // v0.7.3 (B2): observability dashboard i18n. Note we don't
   // mention the storage path, JSONL, or any implementation
   // detail — the user just sees "tool calls" + "policy

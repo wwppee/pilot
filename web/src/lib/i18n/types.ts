@@ -1336,6 +1336,23 @@ export type Dict = {
   "wrappers.newCard.toolsLabel": string;
   "wrappers.newCard.submit": string;
   "nav.wrappers": string;
+  // v0.9.1 (template marketplace): export + import.
+  // The workflow list page has an Import button;
+  // the editor has an Export button. The round-trip
+  // is JSON — the user can save a workflow, share
+  // it, version-control it, and re-import it later.
+  "workflows.import.button": string;
+  "workflows.import.title": string;
+  "workflows.import.hint": string;
+  "workflows.import.pickFile": string;
+  "workflows.import.jsonLabel": string;
+  "workflows.import.jsonRequired": string;
+  "workflows.import.idLabel": string;
+  "workflows.import.idRequired": string;
+  "workflows.import.submit": string;
+  "workflows.import.success": string;
+  "workflows.editor.export": string;
+  "workflows.editor.exportHint": string;
   // v0.7.3 (B2): observability dashboard keys. No storage
   // path, no JSONL, no Zod field names — see user memory
   // "storage is a blind box".

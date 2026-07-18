@@ -1332,6 +1332,21 @@ const zh: Dict = {
   "wrappers.newCard.toolsLabel": "工具（逗号分隔）",
   "wrappers.newCard.submit": "创建",
   "nav.wrappers": "包装器",
+  // v0.9.1 (模板市场).
+  "workflows.import.button": "导入",
+  "workflows.import.title": "导入工作流",
+  "workflows.import.hint":
+    "在下方粘贴工作流 JSON 或选择文件。你需要给导入的副本选一个新 id。",
+  "workflows.import.pickFile": "选择文件…",
+  "workflows.import.jsonLabel": "工作流 JSON",
+  "workflows.import.jsonRequired": "JSON 必填",
+  "workflows.import.idLabel": "新 id（kebab-case）",
+  "workflows.import.idRequired": "id 必填",
+  "workflows.import.submit": "导入",
+  "workflows.import.success": "已导入",
+  "workflows.editor.export": "导出",
+  "workflows.editor.exportHint":
+    "把此工作流下载为 JSON 模板，可以分享或纳入版本控制。",
   // v0.7.3 (B2): observability dashboard i18n. 不提存储路径
   // / JSONL / 实现细节——user 只看到"工具调用"和"策略拦截"。
   // 按 user memory: 存储是盲盒。

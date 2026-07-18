@@ -46,6 +46,12 @@ export function WorkflowListView() {
   const t = useT();
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [creating, setCreating] = useState(false);
+  // v0.9.1: import dialog state. The dialog shows
+  // a file picker (or paste-a-JSON textarea) plus
+  // an id field. We POST the parsed payload + id
+  // to /workflows/import/:id and refresh on
+  // success.
+  const [importing, setImporting] = useState(false);
   // v0.7.1 (audit fix): the delete confirmation is now a
   // styled dialog (ConfirmDialog) instead of `window.confirm`.
   // The previous OS-native dialog didn't match the rest of
@@ -193,6 +199,20 @@ export function WorkflowListView() {
         >
           + {t("workflows.create")}
         </button>
+        {/* v0.9.1: Import button. Opens a hidden file
+            input; on file selection, parses the JSON
+            and POSTs to /workflows/import/:id. The
+            import modal asks for a new id (the
+            server returns 409 if the id is taken, so
+            we always let the user pick a new one). */}
+        <button
+          type="button"
+          className="btn secondary"
+          onClick={() => setImporting(true)}
+          data-testid="workflows-import"
+        >
+          {t("workflows.import.button")}
+        </button>
       </div>
 
       {state.kind === "loading" ? (
@@ -281,6 +301,22 @@ export function WorkflowListView() {
             announce(t("workflows.create") + ": " + newId);
             await reloadRef.current();
             // Navigate to the new workflow's editor.
+            if (typeof window !== "undefined") {
+              window.location.href = `/workflows/${encodeURIComponent(newId)}`;
+            }
+          }}
+        />
+      ) : null}
+      {/* v0.9.1: import dialog. After import we
+          navigate straight to the new editor so the
+          user can see what they just imported. */}
+      {importing ? (
+        <ImportDialog
+          onCancel={() => setImporting(false)}
+          onImported={async (newId) => {
+            setImporting(false);
+            announce(t("workflows.import.success") + ": " + newId);
+            await reloadRef.current();
             if (typeof window !== "undefined") {
               window.location.href = `/workflows/${encodeURIComponent(newId)}`;
             }
@@ -422,6 +458,152 @@ function NewWorkflowDialog({
             data-testid="workflows-new-create"
           >
             {t("workflows.create")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// v0.9.1: import dialog. The user pastes a workflow
+// JSON (or picks a file from disk — both code paths
+// feed the same parser) and supplies a new id.
+// We POST to /workflows/import/:id; on 409 the user
+// retries with a different id.
+function ImportDialog({
+  onCancel,
+  onImported,
+}: {
+  onCancel: () => void;
+  onImported: (newId: string) => void;
+}) {
+  const t = useT();
+  const [json, setJson] = useState("");
+  const [id, setId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    setJson(text);
+  }
+
+  async function submit() {
+    if (!id.trim()) {
+      setError(t("workflows.import.idRequired"));
+      return;
+    }
+    if (!json.trim()) {
+      setError(t("workflows.import.jsonRequired"));
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      // The export shape is what the importer
+      // expects — but the server's import endpoint
+      // takes a WorkflowInput (no metadata, no
+      // `format` / `exportedAt`). We strip those
+      // here so the user can paste either a raw
+      // WorkflowInput OR an exported file.
+      const parsed = JSON.parse(json) as Record<string, unknown>;
+      const input = {
+        name: typeof parsed.name === "string" ? parsed.name : "",
+        description:
+          typeof parsed.description === "string" ? parsed.description : "",
+        version: 1 as const,
+        nodes: Array.isArray(parsed.nodes) ? parsed.nodes : [],
+        edges: Array.isArray(parsed.edges) ? parsed.edges : [],
+      };
+      await api.importWorkflow(id, input as Parameters<typeof api.importWorkflow>[1]);
+      onImported(id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      data-testid="workflows-import-dialog"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="surface rounded-lg p-5 w-full max-w-2xl space-y-3">
+        <h2 className="text-lg font-semibold">
+          {t("workflows.import.title")}
+        </h2>
+        <p className="text-sm text-[var(--text-muted)]">
+          {t("workflows.import.hint")}
+        </p>
+        <div className="flex items-center gap-2">
+          <label className="btn small secondary cursor-pointer">
+            {t("workflows.import.pickFile")}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json,.json"
+              onChange={(e) => void onPickFile(e)}
+              className="hidden"
+              data-testid="workflows-import-file"
+            />
+          </label>
+        </div>
+        <label className="block text-sm space-y-1">
+          <span className="text-[var(--text-muted)]">
+            {t("workflows.import.jsonLabel")}
+          </span>
+          <textarea
+            value={json}
+            onChange={(e) => setJson(e.target.value)}
+            rows={6}
+            disabled={busy}
+            className="block w-full mt-1 px-2 py-1 text-xs font-mono bg-[var(--bg)] border border-[var(--border)] rounded"
+            placeholder='{"format":"pilot-workflow@1","name":"My template",...}'
+            data-testid="workflows-import-json"
+          />
+        </label>
+        <label className="block text-sm space-y-1">
+          <span className="text-[var(--text-muted)]">
+            {t("workflows.import.idLabel")}
+          </span>
+          <input
+            type="text"
+            value={id}
+            onChange={(e) => setId(e.target.value)}
+            placeholder="my-imported-template"
+            disabled={busy}
+            className="block w-full mt-1 px-2 py-1 text-sm font-mono bg-[var(--bg)] border border-[var(--border)] rounded"
+            data-testid="workflows-import-id"
+          />
+        </label>
+        {error ? (
+          <p className="text-sm text-[var(--error)]" role="alert">
+            {error}
+          </p>
+        ) : null}
+        <div className="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            className="btn small secondary"
+            onClick={onCancel}
+            disabled={busy}
+          >
+            {t("workflows.editor.cancel")}
+          </button>
+          <button
+            type="button"
+            className="btn primary small"
+            onClick={() => void submit()}
+            disabled={busy || !id.trim() || !json.trim()}
+            data-testid="workflows-import-submit"
+          >
+            {busy ? t("btn.saving") : t("workflows.import.submit")}
           </button>
         </div>
       </div>

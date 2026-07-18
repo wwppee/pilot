@@ -155,6 +155,38 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
   }, [state, t]);
 
   // Duplicate: load → new id → save.
+  // v0.9.1: export. Fetches the JSON template,
+  // converts to a Blob, and triggers a browser
+  // download. We don't need a busy state because
+  // the operation is one-shot and fast.
+  const onExport = useCallback(async () => {
+    if (state.kind !== "ok") return;
+    try {
+      const payload = await api.exportWorkflow(state.workflow.id);
+      const blob = new Blob([JSON.stringify(payload, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${state.workflow.id}.pilot-workflow.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setValidation({
+        kind: "error",
+        message:
+          e instanceof Error
+            ? e.message
+            : typeof e === "string"
+              ? e
+              : "export failed",
+      });
+    }
+  }, [state]);
+
   const duplicate = useCallback(async () => {
     if (state.kind !== "ok") return;
     const newId = `${state.workflow.id}-copy`;
@@ -396,6 +428,24 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
             data-testid="workflow-duplicate"
           >
             {t("workflows.editor.duplicate")}
+          </button>
+          {/* v0.9.1: Export button. Calls the
+              /workflows/:id/export endpoint and
+              triggers a browser download of the
+              resulting JSON. The download is a
+              normal `Content-Disposition: attachment`
+              response — we hit the API directly so
+              the file gets the right Content-Type
+              and the browser handles the save
+              dialog. */}
+          <button
+            type="button"
+            className="btn small secondary"
+            onClick={() => void onExport()}
+            data-testid="workflow-export"
+            title={t("workflows.editor.exportHint")}
+          >
+            {t("workflows.editor.export")}
           </button>
           <button
             type="button"
