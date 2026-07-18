@@ -1,5 +1,77 @@
 # Changelog
 
+### v0.8.8 — chat 智能升级: 6-intent 路由器 (3 → 6)
+
+Closes the chat-to-dashboard loop. v0.7.7 was a
+3-intent regex keyword matcher (errors / denied /
+summary); v0.8.2 added time-window keywords; v0.8.8
+grows the intent vocabulary to 6 (errors / denied /
+worst / success / rate / summary) and makes the
+matching bilingual (en + zh) so the dashboard's
+chat box works for both locales.
+
+**What's in this release**
+
+- **6-intent router** in
+  `buildChatReply(intent, summary, windowLabel)`:
+  - `errors` — "what's failing?" (per-tool fail
+    breakdown, top 5)
+  - `denied` — "what's being blocked?" (per-tool
+    policy-block breakdown)
+  - `worst` — "which tool is worst?" (the
+    highest-fail-rate tool with ≥5 calls, with the
+    fail-rate percent rendered)
+  - `success` — "how many succeeded?" (count +
+    success rate in one line)
+  - `rate` — "what's the rate?" (all three
+    per-outcome percentages at once — the "is the
+    system healthy?" intent)
+  - `summary` — fallback for unmatchable queries
+- **Specific-before-general ordering**: the rate
+  regex (`%` / `率` / `rate` / `percent`) is checked
+  before success, so "成功率" routes to `rate`, not
+  `success`. The worst regex ("最常 fail") is checked
+  before errors, so "最常 fail 的工具是哪个" routes to
+  `worst`, not `errors`. Both are regression-locked
+  by dedicated tests.
+- **Bilingual keywords**: each intent's regex
+  covers both en ("fail" / "error" / "success" /
+  "denied" / "worst" / "rate") and zh ("错误" /
+  "失败" / "成功" / "拦截" / "策略" / "最差" /
+  "率"). The user types in either language and gets
+  the right intent.
+- **`ChatIntent` type + `buildChatReply` helper**
+  factored out of the route handler so each intent
+  can be unit-tested in isolation (the route
+  handler is now a 30-line glue between the regex
+  router and the helper).
+
+**What's deliberately NOT in this release**
+
+- **LLM dispatcher**. v0.8.8 is the rule-based
+  router that gets the user 80% of the way there
+  with zero infrastructure. A real LLM dispatcher
+  (so the user can ask open-ended questions like
+  "compare this week to last week") would need an
+  API key + a runtime path — that lands in v0.9.x.
+- **Multi-intent queries** ("show me fails AND the
+  worst tool"). v0.8.8 is single-intent: the
+  first matching regex wins. v0.9.x can lift the
+  router to AND/OR composition if needed.
+
+**Stats**
+
+- root: **658/658** ✓ (was 648; +10 chat tests
+  covering all 6 intents + bilingual routing +
+  ordering regression guards)
+- web: **296/296** ✓ (no UI surface change — the
+  chat box already accepts arbitrary text; the
+  improvement is server-side)
+- i18n: 0 placeholder mismatches (no new keys;
+  the chat reply is a single string the server
+  formats in en)
+- tsc: clean (root + web)
+
 ### v0.8.7 — B2 observability 闭环: success / fail 实时记 + 失败率 4 卡片
 
 Closes the B2 observability loop. v0.7.3 only ever

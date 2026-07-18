@@ -1494,4 +1494,144 @@ describe("pilot server", () => {
       expect(res.statusCode).toBe(400);
     });
   });
+
+  // v0.8.8 (chat 智能升级): the chat endpoint
+  // grew from 3 intents (errors / denied /
+  // summary) to 6 (errors / denied / worst /
+  // success / rate / summary). We test the
+  // bilingual keyword routing + the per-intent
+  // reply shape via the public endpoint, which
+  // is more durable than mocking the regexes
+  // (the route is the contract).
+  describe("POST /observability/chat (v0.8.8 6-intent router)", () => {
+    const auth = () => ({ "x-pilot-token": handle.token });
+    // Seed a few records so the per-tool breakdown
+    // has data. We need: 1 success + 2 fail + 1
+    // denied for "bash" so the worstTool computation
+    // has ≥5 calls to qualify.
+    async function seedFixtures(): Promise<void> {
+      const rec = (tool: string, outcome: string, i: number) =>
+        handle.app.inject({
+          method: "POST",
+          url: "/observability/record",
+          headers: { ...auth(), "content-type": "application/json" },
+          payload: {
+            tool,
+            outcome,
+            reason: "",
+            errorSample: "",
+            context: {
+              timestamp: new Date(Date.now() - i * 1000).toISOString(),
+            },
+          },
+        });
+      for (let i = 0; i < 3; i++) await rec("bash", "success", i);
+      for (let i = 0; i < 2; i++) await rec("bash", "fail", 10 + i);
+      for (let i = 0; i < 1; i++) await rec("bash", "denied", 20 + i);
+      for (let i = 0; i < 5; i++) await rec("read", "success", 100 + i);
+    }
+
+    async function ask(message: string) {
+      const r = await handle.app.inject({
+        method: "POST",
+        url: "/observability/chat",
+        headers: { ...auth(), "content-type": "application/json" },
+        payload: { message },
+      });
+      return { status: r.statusCode, body: r.json() as { intent: string; text: string; window?: string } };
+    }
+
+    // Helper for the empty-message test that doesn't
+    // go through `ask` (because we want to assert
+    // the raw status code, not the parsed body).
+    const postRaw = (payload: object) =>
+      handle.app.inject({
+        method: "POST",
+        url: "/observability/chat",
+        headers: { ...auth(), "content-type": "application/json" },
+        payload,
+      });
+
+    it("routes 'errors' to the errors intent (en)", async () => {
+      await seedFixtures();
+      const r = await ask("what failed recently?");
+      expect(r.status).toBe(200);
+      expect(r.body.intent).toBe("errors");
+      expect(r.body.text).toContain("bash");
+    });
+
+    it("routes '错误' to the errors intent (zh)", async () => {
+      await seedFixtures();
+      const r = await ask("最近有什么错误？");
+      expect(r.status).toBe(200);
+      expect(r.body.intent).toBe("errors");
+    });
+
+    it("routes 'denied' to the denied intent (en)", async () => {
+      await seedFixtures();
+      const r = await ask("which tool was blocked by policy?");
+      expect(r.status).toBe(200);
+      expect(r.body.intent).toBe("denied");
+      expect(r.body.text).toContain("bash");
+    });
+
+    it("routes '拦截' to the denied intent (zh)", async () => {
+      await seedFixtures();
+      const r = await ask("哪些工具被策略拦截了？");
+      expect(r.status).toBe(200);
+      expect(r.body.intent).toBe("denied");
+    });
+
+    it("routes '最常 fail' to the worst intent (zh)", async () => {
+      await seedFixtures();
+      const r = await ask("哪个工具最常 fail？");
+      expect(r.status).toBe(200);
+      expect(r.body.intent).toBe("worst");
+      expect(r.body.text).toContain("bash");
+    });
+
+    it("routes 'success rate' to the rate intent (en)", async () => {
+      await seedFixtures();
+      const r = await ask("what's the success rate?");
+      expect(r.status).toBe(200);
+      expect(r.body.intent).toBe("rate");
+      // The rate reply shows all three percentages
+      // in one line — "success X%, fail Y%, denied Z%".
+      expect(r.body.text).toMatch(/success \d+%/);
+      expect(r.body.text).toMatch(/fail \d+%/);
+    });
+
+    it("routes '成功率' to the rate intent (zh, NOT success)", async () => {
+      // "成功率" contains "成功" which the success
+      // regex would also match. The rate regex must
+      // win because we check it first (it's higher
+      // in the if/else chain). This is a regression
+      // guard: re-ordering the router would break it.
+      await seedFixtures();
+      const r = await ask("成功率是多少？");
+      expect(r.status).toBe(200);
+      expect(r.body.intent).toBe("rate");
+    });
+
+    it("routes 'how many succeeded' to the success intent (en)", async () => {
+      await seedFixtures();
+      const r = await ask("how many succeeded?");
+      expect(r.status).toBe(200);
+      expect(r.body.intent).toBe("success");
+      expect(r.body.text).toMatch(/\d+ succeeded/);
+    });
+
+    it("routes unmatchable queries to the summary fallback", async () => {
+      await seedFixtures();
+      const r = await ask("hi there");
+      expect(r.status).toBe(200);
+      expect(r.body.intent).toBe("summary");
+      expect(r.body.text).toMatch(/call\(s\)/);
+    });
+
+    it("returns 400 on empty message", async () => {
+      const r = await postRaw({ message: "   " });
+      expect(r.statusCode).toBe(400);
+    });
+  });
 });

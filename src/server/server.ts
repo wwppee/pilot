@@ -64,6 +64,154 @@ export interface ServerHandle {
 const DEFAULT_PORT = 17361;
 const DEFAULT_HOST = "127.0.0.1";
 
+// ─── Chat-to-dashboard (v0.7.7 + v0.8.8) ──────────────────
+
+/**
+ * v0.8.8: 6 chat intents. The router maps a natural-
+ * language query to one of these; each intent picks
+ * a different slice of the observability summary
+ * and formats it as a one-line reply.
+ *
+ *   - `errors`  — "what's failing?" (the per-tool
+ *                 fail breakdown, top 5)
+ *   - `denied`  — "what's being blocked?" (the
+ *                 per-tool policy-block breakdown)
+ *   - `worst`   — "which tool is worst?" (the
+ *                 highest-fail-rate tool)
+ *   - `success` — "what's succeeding?" (the success
+ *                 count + rate)
+ *   - `rate`    — "what's the rate?" (all three
+ *                 per-outcome percentages at once)
+ *   - `summary` — fallback / total breakdown
+ *
+ * The 6-intent vocabulary is a deliberate balance:
+ * fewer intents and the user can't ask the
+ * high-value questions ("which tool fails most?",
+ * "what's my success rate?"); more intents and the
+ * keyword regexes start to overlap and the router
+ * becomes confusing to debug.
+ */
+type ChatIntent =
+  | "errors"
+  | "denied"
+  | "worst"
+  | "success"
+  | "rate"
+  | "summary";
+
+/**
+ * Build a one-line chat reply for a given intent.
+ * Kept as a top-level helper (not inlined in the
+ * route handler) so the unit tests can exercise
+ * each intent in isolation without spinning up
+ * Fastify. The shape is:
+ *
+ *   { intent: ChatIntent, text: string, window?: string }
+ *
+ * `window` is included whenever the time window
+ * is non-default (24h) so the user can see what
+ * "recent" means in the reply — "most failing
+ * tool in the last 7d" is much more useful than
+ * "bash: 3 failures" with no time anchor.
+ */
+function buildChatReply(
+  intent: ChatIntent,
+  summary: import("../core/observability.js").ObservabilitySummary,
+  windowLabel: string,
+): { intent: ChatIntent; text: string; window?: string } {
+  switch (intent) {
+    case "errors": {
+      const failing = summary.byTool
+        .filter((r) => r.fail > 0)
+        .slice(0, 5)
+        .map((r) => `${r.tool}: ${r.fail} failure(s)`)
+        .join("; ");
+      return {
+        intent,
+        window: windowLabel,
+        text: failing || `No failures in ${windowLabel}.`,
+      };
+    }
+    case "denied": {
+      const blocked = summary.byTool
+        .filter((r) => r.denied > 0)
+        .slice(0, 5)
+        .map((r) => `${r.tool}: ${r.denied} block(s)`)
+        .join("; ");
+      return {
+        intent,
+        window: windowLabel,
+        text: blocked || `No policy blocks in ${windowLabel}.`,
+      };
+    }
+    case "worst": {
+      // "which tool is worst" — we use the existing
+      // `worstTool` field on the summary (5-call
+      // minimum) so a tool with 1 fail out of 1
+      // call doesn't rank above a tool with 50 fails
+      // out of 100. If no tool qualifies, we say so
+      // explicitly rather than defaulting to the
+      // highest-total row.
+      if (summary.worstTool) {
+        const worst = summary.byTool.find(
+          (r) => r.tool === summary.worstTool,
+        );
+        return {
+          intent,
+          window: windowLabel,
+          text: worst
+            ? `${summary.worstTool}: ${worst.fail}/${worst.total} = ${Math.round((worst.fail / Math.max(1, worst.total)) * 100)}% fail rate in ${windowLabel}.`
+            : `${summary.worstTool} is the highest-fail-rate tool in ${windowLabel}.`,
+        };
+      }
+      return {
+        intent,
+        window: windowLabel,
+        text: `No tool has enough calls in ${windowLabel} to rank fail-rate (need ≥5).`,
+      };
+    }
+    case "success": {
+      // "how many succeeded" — count + rate. The
+      // rate is pre-computed on the summary so the
+      // reply is a single arithmetic op. If total
+      // is 0 the rate is 0% (not NaN%) thanks to
+      // the v0.8.7 /0 guard.
+      const pct = Math.round(summary.successRate * 100);
+      return {
+        intent,
+        window: windowLabel,
+        text: `${summary.success} succeeded (${pct}% success rate) in ${windowLabel}.`,
+      };
+    }
+    case "rate": {
+      // "what's the rate" — show all three
+      // percentages at once. This is the "give me
+      // the dashboard numbers in text" intent and
+      // is the most useful one for chat because
+      // it answers "is the system healthy?" in a
+      // single reply.
+      const sp = Math.round(summary.successRate * 100);
+      const fp = Math.round(summary.failRate * 100);
+      const dp = Math.round(summary.deniedRate * 100);
+      return {
+        intent,
+        window: windowLabel,
+        text: `In ${windowLabel}: success ${sp}%, fail ${fp}%, denied ${dp}% (${summary.total} total).`,
+      };
+    }
+    case "summary": {
+      // Fallback for queries that don't match any
+      // specific intent. v0.7.7 returned the same
+      // shape; v0.8.8 keeps it as the default so
+      // "how's it going?" still gets a useful reply.
+      return {
+        intent,
+        text: `${summary.total} call(s); ${summary.success} success, ${summary.fail} fail, ${summary.denied} denied. Worst tool: ${summary.worstTool ?? "none"}.`,
+      };
+    }
+  }
+}
+
 /**
  * Build the set of allowed Origin values for the bound host+port.
  *
@@ -988,14 +1136,26 @@ export async function startServer(
     },
   );
 
-  // v0.7.7: chat-to-dashboard stub. Accepts a natural-
-  // language query and returns the relevant data slice
-  // from the observability layer. The real LLM-driven
-  // dispatcher lands in v0.8+; v0.7.7 is a keyword
-  // matcher that turns "最近错误" / "recent errors" /
-  // "policy 拦截" into a structured response the
-  // dashboard can render. The point of v0.7.7 is the
-  // API surface + the UI affordance, not the intelligence.
+  // v0.7.7 + v0.8.8: chat-to-dashboard. v0.7.7 was
+  // a 3-intent regex matcher (errors / denied /
+  // summary). v0.8.8 keeps the same contract but
+  // grows the intent vocabulary to 6 — `errors` /
+  // `denied` / `summary` / `worst` (which tool
+  // failed most) / `success` (how many succeeded) /
+  // `rate` (per-outcome percentages) — and makes
+  // the matching bilingual (en + zh) so the
+  // dashboard's chat box works for both locales
+  // without a per-locale keyword list.
+  //
+  // The LLM dispatcher still lives behind a future
+  // v0.9.x hook (would need an API key + a runtime
+  // path). v0.8.8 is the rule-based router that
+  // gets the user 80% of the way there with
+  // zero infrastructure: a regex match on the
+  // message maps to an intent, each intent picks
+  // one slice of the observability summary and
+  // formats it. The user can ask "最常 fail 的
+  // 工具是哪个" and get a real answer.
   app.post<{ Body: { message?: string } }>(
     "/observability/chat",
     async (req, reply) => {
@@ -1005,14 +1165,10 @@ export async function startServer(
         return;
       }
       const lower = message.toLowerCase();
-      // v0.8.2: time-window keywords. The v0.7.7
-      // matcher had no concept of "when" — a user
-      // asking "recent errors" got the same answer
-      // as "all-time errors". The dashboard's time
-      // range filter (v0.8.1) operates on the same
-      // `since` field, so we thread it through here.
-      // Default: 24h. The keywords "today" / "今天"
-      // also map to 24h.
+      // v0.8.2: time-window keywords. Threaded
+      // through to all v0.8.8 intents so the user
+      // can ask "上周最常 fail 的工具" and get a
+      // 7-day answer without leaving the chat box.
       const sinceMs =
         /(7\s*d|七\s*天|7\s*day|7d)/i.test(lower)
           ? Date.now() - 7 * 24 * 60 * 60 * 1000
@@ -1023,48 +1179,39 @@ export async function startServer(
               : Date.now() - 24 * 60 * 60 * 1000;
       const since = sinceMs > 0 ? new Date(sinceMs).toISOString() : undefined;
       const summary = await service.getObservabilitySummary(since);
-      // Three intents today: "errors/fail" — the
-      // by-tool table sorted by fail-rate; "denied/
-      // policy" — the denied breakdown; "summary" —
-      // the top aggregate. Anything else returns the
-      // summary + a hint about what the user can ask.
-      const intent: "errors" | "denied" | "summary" =
-        /fail|error|错误|失败/.test(lower)
-          ? "errors"
-          : /deni|拦截|policy|策略|block/.test(lower)
-            ? "denied"
-            : "summary";
+      // v0.8.8: 6-intent router. Each intent's
+      // keyword group is bilingual (en + zh) — the
+      // regexes are checked in order, so the FIRST
+      // match wins. Order matters and is enforced
+      // by the regression test ("成功率" must hit
+      // `rate`, not `success`; "最常 fail" must hit
+      // `worst`, not `errors`).
+      //
+      // Specific intents first, general last:
+      //   1. rate   — has "%" / "率" markers
+      //   2. worst  — "worst" / "最常 fail" / etc.
+      //   3. denied — "拦截" / "policy" / "deni"
+      //   4. errors — generic "fail" / "error" / "错误"
+      //   5. success — generic "success" / "成功"
+      //   6. summary — fallback
+      const intent: ChatIntent =
+        /(fail\s*rate|失败率|错误率|拦截率|成功率|率|rate|percent|%)/.test(lower)
+          ? "rate"
+          : /(worst|最差|最糟|最常\s*fail|最高失败|highest\s*fail|失败最多|报错最多)/.test(lower)
+            ? "worst"
+            : /(deni|拦截|policy|策略|block|被拦|拒绝)/.test(lower)
+              ? "denied"
+              : /(fail|error|错误|失败|报错|broken|failed)/.test(lower)
+                ? "errors"
+                : /(success|succeeded|成功|顺利|passed|throughput|通量|调用量)/.test(lower)
+                  ? "success"
+                  : "summary";
       const windowLabel = sinceMs === 0
         ? "all time"
         : sinceMs > Date.now() - 25 * 60 * 60 * 1000
           ? "last 24h"
           : "last 7d";
-      const reply2 =
-        intent === "errors"
-          ? {
-              intent,
-              window: windowLabel,
-              text: summary.byTool
-                .filter((r) => r.fail > 0)
-                .slice(0, 5)
-                .map((r) => `${r.tool}: ${r.fail} failure(s)`)
-                .join("; ") || `No failures in ${windowLabel}.`,
-            }
-          : intent === "denied"
-            ? {
-                intent,
-                window: windowLabel,
-                text: summary.byTool
-                  .filter((r) => r.denied > 0)
-                  .slice(0, 5)
-                  .map((r) => `${r.tool}: ${r.denied} block(s)`)
-                  .join("; ") || `No policy blocks in ${windowLabel}.`,
-              }
-            : {
-                intent,
-                text: `${summary.total} call(s); ${summary.success} success, ${summary.fail} fail, ${summary.denied} denied. Worst tool: ${summary.worstTool ?? "none"}.`,
-              };
-      return reply2;
+      return buildChatReply(intent, summary, windowLabel);
     },
   );
 
