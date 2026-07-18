@@ -1498,6 +1498,7 @@ const en: Dict = {
     "Ask in plain English. Today: 'recent errors', 'policy blocks', or a free-form summary.",
   "observability.chat.placeholder": "What failed recently?",
   "observability.chat.ask": "Ask",
+  "observability.chat.clear": "Clear history",
   // v0.8.1: time-range filter on the observability
   // dashboard. The underlying API supported `since`
   // since v0.7.3 but the UI always queried all-time;

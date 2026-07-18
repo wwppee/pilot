@@ -1423,6 +1423,13 @@ export type Dict = {
   "observability.chat.hint": string;
   "observability.chat.placeholder": string;
   "observability.chat.ask": string;
+  // v0.9.6: multi-turn chat session. The
+  // dashboard's chat box now maintains a
+  // conversation history (max 50 entries);
+  // a trash button in the hint row clears
+  // it. The server is still stateless; the
+  // history is purely client-side state.
+  "observability.chat.clear": string;
   "observability.range.24h": string;
   "observability.range.7d": string;
   "observability.range.all": string;

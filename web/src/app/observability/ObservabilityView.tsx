@@ -19,7 +19,7 @@
  * success/fail counts are a bug.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useT } from "@/components/I18n";
 import { api } from "@/lib/pilot-browser";
@@ -355,30 +355,130 @@ function AggregateCard({
 // work today. The answer renders below the input as a
 // one-line "hero" reply — the dashboard's table stays
 // as the deep-dive surface.
+// v0.9.6: chat history shape. Each entry is
+// either the user's question or the assistant's
+// reply. We keep this purely client-side
+// (the server is still stateless — see v0.7.7's
+// design comment). The history is what the
+// ChatBox renders as a scrolling conversation
+// above the input; clicking the trash icon
+// clears it.
+interface ChatMessage {
+  role: "user" | "assistant";
+  text: string;
+  intent?: string;
+}
+
 function ChatBox({ t }: { t: (k: string, p?: Record<string, string | number>) => string }) {
+  // v0.9.6: multi-turn session. The list of
+  // {role, text, intent?} messages is the
+  // conversation history. We cap at 50
+  // entries so the panel doesn't grow without
+  // bound (a 30-message back-and-forth is
+  // already a long session; longer is
+  // unreadable on the dashboard).
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [message, setMessage] = useState("");
-  const [reply, setReply] = useState<{ intent: string; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const submit = useCallback(async () => {
-    if (!message.trim() || busy) return;
+    const trimmed = message.trim();
+    if (!trimmed || busy) return;
     setBusy(true);
+    // v0.9.6: append the user's question to
+    // the history immediately so the input
+    // doesn't lose the question while the
+    // request is in flight. The assistant
+    // reply is appended on success / error.
+    setMessages((prev) => [...prev, { role: "user", text: trimmed }]);
+    setMessage("");
     try {
-      const r = await api.observabilityChat(message);
-      setReply(r as { intent: string; text: string });
+      const r = await api.observabilityChat(trimmed);
+      const reply = r as { intent: string; text: string };
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", text: reply.text, intent: reply.intent },
+      ]);
+      // v0.9.6: auto-scroll the conversation
+      // to the bottom on new messages. We
+      // use a small setTimeout because the
+      // DOM update is asynchronous.
+      setTimeout(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop =
+            scrollRef.current.scrollHeight;
+        }
+      }, 0);
     } catch (e) {
-      setReply({
-        intent: "error",
-        text: e instanceof Error ? e.message : String(e),
-      });
+      const msg = e instanceof Error ? e.message : String(e);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", text: msg, intent: "error" },
+      ]);
     } finally {
       setBusy(false);
     }
   }, [message, busy]);
+  const clearHistory = useCallback(() => {
+    setMessages([]);
+  }, []);
   return (
     <div className="surface rounded-lg p-3 space-y-2">
-      <p className="text-xs text-[var(--text-muted)]">
-        {t("observability.chat.hint")}
-      </p>
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-[var(--text-muted)]">
+          {t("observability.chat.hint")}
+        </p>
+        {messages.length > 0 ? (
+          <button
+            type="button"
+            className="text-xs text-[var(--text-muted)] hover:text-[var(--error)]"
+            onClick={clearHistory}
+            data-testid="observability-chat-clear"
+            aria-label={t("observability.chat.clear")}
+          >
+            {t("observability.chat.clear")}
+          </button>
+        ) : null}
+      </div>
+      {/* v0.9.6: conversation history. We
+          render the messages as a vertical
+          list with role-aligned alignment
+          (user right, assistant left). The
+          container has a max-height so a long
+          session doesn't push the rest of
+          the dashboard off-screen. */}
+      {messages.length > 0 ? (
+        <div
+          ref={scrollRef}
+          className="space-y-1 max-h-48 overflow-y-auto border border-[var(--border)] rounded p-2 bg-[var(--bg)]"
+          data-testid="observability-chat-history"
+        >
+          {messages.map((m, i) => (
+            <div
+              key={i}
+              className={`text-xs ${
+                m.role === "user" ? "text-right" : "text-left"
+              }`}
+              data-testid={`observability-chat-msg-${i}`}
+            >
+              {m.role === "assistant" && m.intent ? (
+                <span className="text-[var(--text-muted)] mr-1">
+                  [{m.intent}]
+                </span>
+              ) : null}
+              <span
+                className={
+                  m.role === "user"
+                    ? "text-[var(--text)]"
+                    : "text-[var(--text-muted)]"
+                }
+              >
+                {m.text}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : null}
       <div className="flex items-center gap-2">
         <input
           type="text"
@@ -402,17 +502,6 @@ function ChatBox({ t }: { t: (k: string, p?: Record<string, string | number>) =>
           {busy ? "…" : t("observability.chat.ask")}
         </button>
       </div>
-      {reply ? (
-        <p
-          className="text-sm text-[var(--text)]"
-          data-testid="observability-chat-reply"
-        >
-          <span className="text-xs text-[var(--text-muted)] mr-1">
-            [{reply.intent}]
-          </span>
-          {reply.text}
-        </p>
-      ) : null}
     </div>
   );
 }

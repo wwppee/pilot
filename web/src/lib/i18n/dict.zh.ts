@@ -1407,6 +1407,7 @@ const zh: Dict = {
     "用自然语言提问。目前支持：'最近错误'、'策略拦截'，或自由形式摘要。",
   "observability.chat.placeholder": "最近哪些失败了？",
   "observability.chat.ask": "提问",
+  "observability.chat.clear": "清空对话",
   "observability.range.24h": "最近 24 小时",
   "observability.range.7d": "最近 7 天",
   "observability.range.all": "全部时间",

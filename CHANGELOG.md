@@ -1,5 +1,62 @@
 # Changelog
 
+### v0.9.6 — chat 多轮 session: history + clear button
+
+Closes the "the chat box only remembers the
+last reply" gap. v0.7.7 + v0.8.2 + v0.8.8 +
+v0.9.4 all stored the reply in a single
+`useState` slot — every new question
+overwrote the previous one. v0.9.6 adds a
+proper multi-turn session: a `messages`
+array, a scrollable history panel above
+the input, role-aligned alignment (user
+right / assistant left), and a "Clear
+history" button.
+
+**What's in this release**
+
+- **`<ChatMessage>` list** as the source of
+  truth. Each entry is `{ role, text, intent? }`.
+  The user appends their question immediately
+  on submit (so the input doesn't lose it
+  while the request is in flight); the
+  assistant's reply (or error) is appended
+  on completion.
+- **Scrollable history panel** above the
+  input. `max-h-48` so a long session doesn't
+  push the rest of the dashboard off-screen;
+  auto-scroll to the bottom on new messages
+  via `setTimeout(scrollTop = scrollHeight)`.
+- **"Clear history" button** in the hint row
+  (only visible when there are messages). One
+  click resets the session. The button is
+  visually muted (uses `text-[var(--text-muted)]`
+  not a red pill) so it's discoverable but
+  doesn't visually compete with the Ask
+  button.
+- **Stateless server** — the chat endpoint
+  is unchanged from v0.9.4. All session
+  state is client-side, which is fine
+  because (a) the dashboard already has the
+  history in React state, and (b) a future
+  LLM dispatcher can take the history as a
+  context input without a server-side
+  change.
+
+**Stats**
+
+- root: no changes (the server is
+  stateless — no v0.9.6 test was needed)
+- web: **297/297** ✓ (no new RTL tests —
+  the chat history is straightforward
+  state append / clear; the existing
+  observability dashboard test still
+  mounts the chat box and verifies the
+  input / submit flow)
+- i18n: 0 placeholder mismatches across ~1133+
+  shared keys (+1 new "Clear history" key)
+- tsc: clean (root + web)
+
 ### v0.9.5 — workflow visual edge editor (click handle → click target)
 
 Closes the "the only way to add an edge is the
