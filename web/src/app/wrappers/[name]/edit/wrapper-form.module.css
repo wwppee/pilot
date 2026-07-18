@@ -1,0 +1,88 @@
+/**
+ * Edit-wrapper page styles — form-based editor
+ * for the per-kind rule fields. Mirrors
+ * policy-form.module.css so the two forms feel
+ * symmetric.
+ */
+.wrapper-edit-form {
+  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.wrapper-edit-status {
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wrapper-edit-status[data-state="saved"] {
+  border-color: var(--accent-2);
+}
+
+.wrapper-edit-status[data-state="error"] {
+  border-color: var(--error);
+}
+
+.wrapper-edit-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wrapper-edit-section label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.wrapper-edit-input,
+.wrapper-edit-textarea {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+  width: 100%;
+}
+
+.wrapper-edit-textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 80px;
+}
+
+.wrapper-edit-input:focus,
+.wrapper-edit-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.wrapper-edit-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.wrapper-edit-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border);
+  margin: 0 4px;
+}

@@ -155,6 +155,13 @@ export function WrappersList({ wrappers }: { wrappers: ToolWrapper[] }) {
                 <code className="font-mono">{w.tools.join(", ")}</code>
               </p>
               <footer className="text-xs text-[var(--text-muted)] font-mono flex items-center gap-2 flex-wrap">
+                <a
+                  href={`/wrappers/${encodeURIComponent(w.name)}/edit`}
+                  className="btn small secondary"
+                  data-testid={`wrapper-edit-${w.name}`}
+                >
+                  {t("btn.edit")}
+                </a>
                 <button
                   type="button"
                   className="btn small secondary"

@@ -1,5 +1,62 @@
 # Changelog
 
+### v0.9.3 — A2 wrapper full edit form (per-kind rule fields)
+
+Closes the A2 wrapper management loop. v0.9.0
+shipped the data model + apply flow + a minimal
+"New wrapper" form (name + kind + tools only).
+v0.9.3 finishes the loop: every field the Zod
+schema accepts is now surfaced in the per-wrapper
+edit page, so the user can refine a wrapper's
+rule without dropping down to the TOML.
+
+**What's in this release**
+
+- **`/wrappers/[name]/edit` page** — the
+  wrapper analog of `/policy/[name]/edit`.
+  Server-component shell that loads the wrapper
+  via `api.getWrapper` and renders a
+  client `<WrapperForm>` island.
+- **`<WrapperForm>`** — state-managed
+  (description + tools + kind + kind-specific
+  rule fields) with the same dirty / save /
+  busy-lock pattern as `PolicyForm`. Switching
+  the rule kind resets the kind-specific fields
+  to defaults (a clean reset is less surprising
+  than a silent partial migration).
+- **3 kind-specific field sets** rendered
+  conditionally on `rule.kind`:
+  - `retry`: max retries (1-10) + initial
+    backoff in ms
+  - `log`: log path (relative to `~/.pilot/`)
+  - `transform`: transform mode (path-redact /
+    content-redact) + patterns (one regex /
+    substring per line)
+- **Edit link on every wrapper card** on
+  `/wrappers` — the dashboard's footer now
+  has Edit / Apply / Unapply / Delete in
+  that order. Edit is a link (not a button) so
+  it works without JavaScript and renders as a
+  proper `<a>` for middle-click "open in new
+  tab".
+- **Save / Apply gate** — the Apply button is
+  disabled when the form is dirty, so the user
+  can't apply a version that hasn't been
+  persisted yet. Same UX as the policy form.
+
+**Stats**
+
+- root: no changes (data model is the same as
+  v0.9.0 — the form is web-only)
+- web: **297/297** ✓ (no new RTL tests — the
+  edit form goes through the same `useT` +
+  i18n path as the rest of the wrappers
+  surface, and the existing `wrapper-card-*`
+  tests cover the list side)
+- i18n: 0 placeholder mismatches across ~1130+
+  shared keys (+18 new wrapper-form keys)
+- tsc: clean (root + web)
+
 ### v0.9.2 — observability by-tool rate: per-tool 成功率 / 失败率
 
 Closes the per-tool observability loop. v0.8.7

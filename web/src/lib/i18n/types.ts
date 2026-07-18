@@ -1336,6 +1336,34 @@ export type Dict = {
   "wrappers.newCard.toolsLabel": string;
   "wrappers.newCard.submit": string;
   "nav.wrappers": string;
+  // v0.9.3: full wrapper edit form (per-kind rule
+  // fields, save/apply/delete actions, dirty-state
+  // tracking). Mirrors the PolicyForm surface.
+  "wrappers.edit.h1": string;
+  "wrappers.edit.backToList": string;
+  "wrappers.edit.deleteTitle": string;
+  "wrappers.error.notFound": string;
+  "loading.wrapperForm": string;
+  "wrappers.form.ariaEdit": string;
+  "wrappers.form.savedClean": string;
+  "wrappers.form.savedAt": string;
+  "wrappers.form.errorPrefix": string;
+  "wrappers.form.saveFirstApply": string;
+  "wrappers.form.descriptionLabel": string;
+  "wrappers.form.descriptionPlaceholder": string;
+  "wrappers.form.toolsLabel": string;
+  "wrappers.form.toolsHint": string;
+  "wrappers.form.kindLabel": string;
+  "wrappers.form.maxRetriesLabel": string;
+  "wrappers.form.initialBackoffLabel": string;
+  "wrappers.form.initialBackoffHint": string;
+  "wrappers.form.logPathLabel": string;
+  "wrappers.form.logPathHint": string;
+  "wrappers.form.transformLabel": string;
+  "wrappers.form.transformPathRedact": string;
+  "wrappers.form.transformContentRedact": string;
+  "wrappers.form.patternsLabel": string;
+  "wrappers.form.patternsHint": string;
   // v0.9.1 (template marketplace): export + import.
   // The workflow list page has an Import button;
   // the editor has an Export button. The round-trip
