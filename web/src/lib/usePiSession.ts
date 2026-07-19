@@ -37,6 +37,18 @@ const PILOT_WS_BASE =
   process.env.NEXT_PUBLIC_PILOT_WS_URL ?? "ws://127.0.0.1:17361";
 const COMMAND_TIMEOUT_MS = 30_000;
 
+// v0.9.10: WebSocket auto-reconnect. agegr/pi-web uses
+// SSE which the browser auto-reconnects; pilot uses
+// WebSocket which doesn't. Without reconnect, a brief
+// server restart or network blip drops the user out
+// of /try mid-session. Backoff is exponential with a
+// cap; we give up after 5 attempts and surface a
+// "gave up" state so the user can manually retry
+// rather than the UI silently hanging on
+// "reconnecting" forever.
+const RECONNECT_BACKOFFS_MS = [1000, 2000, 4000, 8000, 16000];
+const RECONNECT_MAX_ATTEMPTS = RECONNECT_BACKOFFS_MS.length;
+
 export type PiStreamEvent = {
   kind: "event";
   event: {
@@ -66,6 +78,7 @@ export type PiConnectionState =
   | "fetching-token"
   | "connecting"
   | "connected"
+  | "reconnecting"
   | "disconnected"
   | "error";
 
@@ -76,6 +89,14 @@ export interface PiSession {
   state: PiConnectionState;
   /** Last error (transient — see `state` for status). */
   error: string | null;
+  /**
+   * v0.9.10: 1-based reconnect attempt counter.
+   * 0 when not reconnecting, increments to 1..5
+   * during backoff, and stays at the final value
+   * after the cap is hit. The /try status bar reads
+   * this to render "Reconnecting (3/5)…".
+   */
+  reconnectAttempt: number;
   /** Streaming events from pi, in arrival order. */
   events: PiStreamEvent[];
   /** Open a new WS connection. Idempotent. */
@@ -106,6 +127,10 @@ export function usePiSession(opts?: {
 }): PiSession {
   const [state, setState] = useState<PiConnectionState>("idle");
   const [error, setError] = useState<string | null>(null);
+  // v0.9.10: 0 when not reconnecting; 1..N while a
+  // backoff timer is pending or in flight. The status
+  // bar reads this to render "Reconnecting (3/5)…".
+  const [reconnectAttempt, setReconnectAttempt] = useState(0);
   const [events, setEvents] = useState<PiStreamEvent[]>([]);
 
   interface PendingCommand {
@@ -136,9 +161,33 @@ export function usePiSession(opts?: {
   // command. Server echoes the id back on the response so we can
   // match precisely (FIFO fallback for old bridges without id echo).
   const pendingRef = useRef<Map<string, PendingCommand>>(new Map());
+  // v0.9.10: when the user clicks Disconnect (or the
+  // component unmounts), we set this to true so the
+  // onclose handler knows the drop is intentional and
+  // should NOT trigger an auto-reconnect. Auto-reconnect
+  // is for "the network / server blinked" — never for
+  // "I clicked the button".
+  const userInitiatedDisconnectRef = useRef(false);
+  // v0.9.10: timer id for the pending backoff. We cancel
+  // it on a successful reconnect, on a new connect(),
+  // and on disconnect() so a stale timer never fires
+  // after the user has moved on.
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // v0.9.10: mirror of `reconnectAttempt` state.
+  // onclose reads it synchronously (no setState
+  // functional updater — those are forbidden inside
+  // strict-mode dev because they can be invoked
+  // twice). The state value still drives the UI;
+  // this ref just lets the handler compute "next
+  // attempt" without a round-trip through React.
+  const reconnectAttemptRef = useRef(0);
 
   const connect = useCallback(async () => {
     if (wsRef.current) return;
+    // v0.9.10: if we got here via a fresh user click on
+    // Connect after auto-reconnect gave up, clear the
+    // "gave up" state and reset the attempt counter.
+    setReconnectAttempt(0);
     setState("fetching-token");
     setError(null);
 
@@ -160,6 +209,11 @@ export function usePiSession(opts?: {
     const ws = new WebSocket(url, [`pilot-token-${token}`]);
 
     ws.onopen = () => {
+      // v0.9.10: a successful open resets the attempt
+      // counter. The status bar fades the
+      // "reconnecting" line and goes back to the
+      // steady "connected" state.
+      setReconnectAttempt(0);
       setState("connected");
     };
     ws.onclose = (ev) => {
@@ -170,7 +224,48 @@ export function usePiSession(opts?: {
         pending.reject(new Error(`socket closed (${ev.code} ${ev.reason})`));
       }
       pendingRef.current.clear();
-      setState("disconnected");
+
+      // v0.9.10: auto-reconnect. Two cases skip it:
+      //   1. The user clicked Disconnect (their intent).
+      //   2. We've already burned through
+      //      RECONNECT_MAX_ATTEMPTS.
+      // Otherwise schedule a backoff and let the
+      // timer fire connect() again.
+      if (userInitiatedDisconnectRef.current) {
+        userInitiatedDisconnectRef.current = false;
+        setState("disconnected");
+        return;
+      }
+      // Read the current attempt count from a ref
+      // rather than a state functional updater. The
+      // functional updater form is forbidden in
+      // strict-mode dev (it can be invoked twice
+      // and would cause double-fires of the side
+      // effects below). We advance the ref first,
+      // then commit both state updates in a single
+      // pass.
+      const nextAttempt = reconnectAttemptRef.current + 1;
+      reconnectAttemptRef.current = nextAttempt;
+      setReconnectAttempt(nextAttempt);
+      if (nextAttempt > RECONNECT_MAX_ATTEMPTS) {
+        // v0.9.10: give up. We leave reconnectAttempt
+        // pinned at the max value so the UI can show
+        // "Reconnect failed — click Connect" instead
+        // of hanging on "Reconnecting (6/5)".
+        setState("error");
+        setError("WebSocket reconnection failed after 5 attempts");
+        return;
+      }
+      setState("reconnecting");
+      // Clear any leftover timer (defensive — a stale
+      // timer would mean two connect()s race).
+      if (reconnectTimerRef.current !== null) {
+        clearTimeout(reconnectTimerRef.current);
+      }
+      reconnectTimerRef.current = setTimeout(() => {
+        reconnectTimerRef.current = null;
+        void connect();
+      }, RECONNECT_BACKOFFS_MS[nextAttempt - 1]);
     };
     ws.onerror = () => {
       setError("WebSocket error (see browser devtools)");
@@ -223,6 +318,14 @@ export function usePiSession(opts?: {
   }, []);
 
   const disconnect = useCallback(() => {
+    // v0.9.10: set the user-intent flag BEFORE
+    // closing so onclose sees it and skips reconnect.
+    userInitiatedDisconnectRef.current = true;
+    if (reconnectTimerRef.current !== null) {
+      clearTimeout(reconnectTimerRef.current);
+      reconnectTimerRef.current = null;
+    }
+    setReconnectAttempt(0);
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
@@ -273,8 +376,25 @@ export function usePiSession(opts?: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opts?.autoConnect]);
 
+  // v0.9.10: keep reconnectAttemptRef in sync with
+  // the state value. The ref is the synchronous
+  // source-of-truth for the next-attempt computation
+  // in onclose; the state is the source-of-truth for
+  // the UI.
+  useEffect(() => {
+    reconnectAttemptRef.current = reconnectAttempt;
+  }, [reconnectAttempt]);
+
   return useMemo(
-    () => ({ state, error, events, connect, disconnect, send }),
-    [state, error, events, connect, disconnect, send],
+    () => ({
+      state,
+      error,
+      reconnectAttempt,
+      events,
+      connect,
+      disconnect,
+      send,
+    }),
+    [state, error, reconnectAttempt, events, connect, disconnect, send],
   );
 }

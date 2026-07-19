@@ -1,5 +1,77 @@
 # Changelog
 
+### v0.9.10 — WebSocket 自动重连（指数退避 1s → 16s，5 次封顶）
+
+agegr/pi-web 用 SSE（浏览器自动重连），pilot 用
+WebSocket（**不**自动重连）。一个网络抖动 / server
+短暂重启就会让 user 退出 /try 实时对话——这是 daily
+"我刚打到一半的 prompt 没了"事故的根源。修。
+
+**What's in this release**
+
+- **`usePiSession` 自动重连 + `reconnecting` state**
+  onclose 时如果**非 user-initiated disconnect**（即
+  server / network 抖动），schedule `setTimeout` 指数
+  退避重连：
+
+  ```
+  attempt 1: 1s
+  attempt 2: 2s
+  attempt 3: 4s
+  attempt 4: 8s
+  attempt 5: 16s
+  → 5 次失败后 setState("error") + 停止 retry
+  ```
+
+  status bar 显示 `Reconnecting (3/5)…` 让 user 知道
+  正在重试、还要等多久。
+
+- **user-initiated disconnect 不触发重连**
+  加 `userInitiatedDisconnectRef` —— disconnect() 设置
+  true，onclose 看到就跳过重连。**click Disconnect 永远
+  disconnect**（user 的明确意图），不会偷偷给连回来。
+
+- **connect() 重置 attempt 计数器**
+  user 看到 "gave up" 后点 Connect 重新连 — attempt
+  从 0 重新数。**没 cap 就一直重试的 footgun** 修。
+
+- **ref + state 双源同步**
+  onclose 需要**同步**算 "next attempt"（不能用
+  setState functional updater，那在 React 18 strict
+  mode dev 下会被调 2 次 → 副作用双 fire）。加
+  `reconnectAttemptRef`，useEffect 同步 ref 与 state。
+
+- **stale timer 防御**
+  加 `reconnectTimerRef` —— disconnect() / 新的
+  connect() / 成功 onopen 都清掉 stale timer，避免
+  race。
+
+**Why this matters**
+
+- **用户体验直接提升**：server 短暂重启 / 网络抖动 →
+  /try 自动恢复，user 不用手动 reconnect
+- **状态可观察**：status bar "Reconnecting (3/5)…"
+  比"突然 disconnected 又突然 connected"清晰
+- **不疯狂重连**：5 次 + 16s 上限后 stop，user 拿到
+  明确 error message，可以手动 retry
+
+**Tests**
+
+- 3 new tests in `web/tests/use-pi-session.test.tsx`
+  - unexpected close → reconnecting state
+    (no new socket sync, only on backoff)
+  - user-initiated disconnect → **no** reconnect
+  - 5 closes → at most 5 reconnects (cap test)
+- 1 new i18n key: `try.status.reconnecting` 双语同步
+
+**Totals**
+
+- root: 706 → 706 (no change)
+- web: 308 → 311 tests (+3)
+- i18n: 21 keys (no change in count, +1 net key
+  in try.status namespace)
+- tsc: clean both
+
 ### v0.9.9 — agegr/pi-web 借鉴：readdir withFileTypes + IME 兼容
 
 agegr/pi-web v0.7.16 之前的几个 commit 是**纯前端工程

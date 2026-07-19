@@ -172,6 +172,7 @@ export type Dict = {
   "try.status.connecting": string;
   "try.status.connected": string;
   "try.status.disconnected": string;
+  "try.status.reconnecting": string;
   "try.status.errorUnknown": string;
   "try.action.connect": string;
   "try.action.disconnect": string;

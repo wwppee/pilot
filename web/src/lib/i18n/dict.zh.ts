@@ -99,6 +99,8 @@ const zh: Dict = {
   "try.status.connecting": "建立 WebSocket…",
   "try.status.connected": "已连接 — pi 正在后台运行",
   "try.status.disconnected": "已断开",
+  // v0.9.10: WS 自动重连
+  "try.status.reconnecting": "正在重连 ({attempt}/{max})…",
   "try.status.errorUnknown": "错误：未知",
   "try.action.connect": "连接",
   "try.action.disconnect": "断开",

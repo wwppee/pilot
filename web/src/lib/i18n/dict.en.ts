@@ -103,6 +103,10 @@ const en: Dict = {
   "try.status.connecting": "Opening WebSocket…",
   "try.status.connected": "Connected — pi is running in the background",
   "try.status.disconnected": "Disconnected",
+  // v0.9.10: WS auto-reconnect. The {attempt}/{max}
+  // placeholders let the user see how many retries
+  // are left before we give up.
+  "try.status.reconnecting": "Reconnecting ({attempt}/{max})…",
   "try.status.errorUnknown": "Error: unknown",
   "try.action.connect": "Connect",
   "try.action.disconnect": "Disconnect",

@@ -259,6 +259,12 @@ export default function TryPage() {
     switch (session.state) {
       case "idle":
         return "try.status.idle";
+      // v0.9.10: WS auto-reconnect. The status line
+      // appends the attempt count so the user can
+      // tell whether the brief disconnect is still
+      // being retried.
+      case "reconnecting":
+        return "try.status.reconnecting";
       case "fetching-token":
         return "try.status.fetchingToken";
       case "connecting":
@@ -372,7 +378,22 @@ export default function TryPage() {
           {session.state}
         </span>
         <span className="text-sm text-[var(--text-muted)]">
-          <T k={statusLabel} />
+          {/* v0.9.10: while reconnecting, the i18n string
+              carries {attempt}/{max} placeholders so the
+              user can see how many retries are left.
+              For every other state the placeholder-less
+              translation is used. */}
+          {session.state === "reconnecting" ? (
+            <T
+              k={statusLabel}
+              params={{
+                attempt: session.reconnectAttempt,
+                max: 5,
+              }}
+            />
+          ) : (
+            <T k={statusLabel} />
+          )}
         </span>
         <div className="flex-1" />
         {connected ? (
