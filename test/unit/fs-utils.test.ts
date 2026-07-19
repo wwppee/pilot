@@ -11,11 +11,11 @@
  * stale `.tmp` from a prior crash is cleaned up
  * before the new write.
  */
-import { mkdtemp, rm, stat, writeFile, readFile } from "node:fs/promises";
+import { mkdtemp, rm, stat, writeFile, readFile, mkdir, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { atomicWriteFile } from "../../src/core/fs-utils.js";
+import { atomicWriteFile, safeIsDirectory } from "../../src/core/fs-utils.js";
 
 let dir: string;
 
@@ -71,5 +71,74 @@ describe("atomicWriteFile", () => {
     await atomicWriteFile(file, "binary-content", "ascii");
     const got = await readFile(file, "utf-8");
     expect(got).toBe("binary-content");
+  });
+});
+
+// v0.9.9: cross-platform dirent-is-directory check.
+// Pre-v0.9.9 the O(n) `readdir(dir) + per-entry stat()`
+// pattern was the only one available; now that
+// `withFileTypes` is the default, callers still need a
+// safe way to handle the Windows symlink/junction
+// case where `Dirent.isDirectory()` lies.
+describe("safeIsDirectory (v0.9.9)", () => {
+  it("returns true for a real directory dirent", async () => {
+    const sub = join(dir, "real-dir");
+    await mkdir(sub);
+    const entries = (await import("node:fs/promises")).readdir(dir, {
+      withFileTypes: true,
+    });
+    const found = (await entries).find((e) => e.name === "real-dir");
+    expect(found).toBeTruthy();
+    expect(await safeIsDirectory(found!, dir)).toBe(true);
+  });
+
+  it("returns false for a regular file dirent", async () => {
+    const file = join(dir, "a-file.txt");
+    await writeFile(file, "x");
+    const entries = await (
+      await import("node:fs/promises")
+    ).readdir(dir, { withFileTypes: true });
+    const found = entries.find((e) => e.name === "a-file.txt");
+    expect(found).toBeTruthy();
+    expect(await safeIsDirectory(found!, dir)).toBe(false);
+  });
+
+  it("falls back to stat when a symlink points at a directory", async () => {
+    // POSIX-only: Windows symlinks need elevated
+    // privileges. Skip on non-POSIX hosts — the test
+    // still locks the "fallback path" semantics
+    // elsewhere.
+    if (process.platform === "win32") {
+      return;
+    }
+    const target = join(dir, "real-target");
+    await mkdir(target);
+    const link = join(dir, "alias-link");
+    await symlink(target, link, "dir");
+    const entries = await (
+      await import("node:fs/promises")
+    ).readdir(dir, { withFileTypes: true });
+    const found = entries.find((e) => e.name === "alias-link");
+    expect(found).toBeTruthy();
+    // On POSIX, Dirent.isDirectory() returns false for
+    // symlinks (even those pointing at dirs). The
+    // helper must fall back to stat and answer true.
+    expect(await safeIsDirectory(found!, dir)).toBe(true);
+  });
+
+  it("returns false when stat also fails (entry gone)", async () => {
+    // A string entry with no parent → no stat possible.
+    expect(await safeIsDirectory("just-a-name")).toBe(false);
+  });
+
+  it("returns false for a string entry pointing at a missing path", async () => {
+    // v0.9.9: a bare string entry + parent — if the
+    // path is gone, we treat it as "not a directory"
+    // rather than throw. The caller (the original
+    // `for (const entry of entries) { if (!s.isDirectory()) continue }`
+    // pattern) wants to skip it.
+    expect(
+      await safeIsDirectory("does-not-exist.txt", dir),
+    ).toBe(false);
   });
 });

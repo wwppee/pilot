@@ -496,6 +496,19 @@ function ChatBox({ t }: { t: (k: string, p?: Record<string, string | number>) =>
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={(e) => {
+            // v0.9.9: IME composition guard. When
+            // Chinese / Japanese / Korean users are
+            // typing via an IME, the IME owns the
+            // Enter key to commit a candidate. We
+            // must NOT also submit on Enter, or the
+            // candidate would land in the chat
+            // half-formed. agegr/pi-web (commit
+            // 01ae83a) added the same guard for
+            // Escape; the same fix shape applies
+            // here. `e.nativeEvent.isComposing` is
+            // the cross-browser signal for "an IME
+            // is consuming keystrokes".
+            if (e.nativeEvent.isComposing) return;
             if (e.key === "Enter") void submit();
           }}
           placeholder={t("observability.chat.placeholder")}

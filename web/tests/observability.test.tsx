@@ -14,11 +14,16 @@ vi.mock("@/lib/pilot-browser", () => ({
   api: {
     observabilitySummary: vi.fn(),
     toolCalls: vi.fn(),
+    // v0.9.9: added observabilityChat so the IME
+    // composition test can spy on whether the chat
+    // submit was triggered.
+    observabilityChat: vi.fn(),
   },
 }));
 import { api } from "@/lib/pilot-browser";
 const mockSummary = vi.mocked(api.observabilitySummary);
 const mockCalls = vi.mocked(api.toolCalls);
+const mockChat = vi.mocked(api.observabilityChat);
 
 function renderView() {
   return render(
@@ -398,5 +403,87 @@ describe("v0.7.3: <ObservabilityView>", () => {
     await waitFor(() => expect(mockCalls).toHaveBeenCalledTimes(1));
     fireEvent.click(row);
     await waitFor(() => expect(mockCalls).toHaveBeenCalledTimes(1));
+  });
+
+  // v0.9.9: IME composition guard on the chat input.
+  // The onKeyDown handler must early-return when
+  // `e.nativeEvent.isComposing` is true so the IME's
+  // Enter (commit candidate) doesn't double-fire as
+  // a chat submit. agegr/pi-web (commit 01ae83a)
+  // shipped the same fix. ChatBox only renders when
+  // summary.total > 0, so the mock needs at least
+  // one tool call to mount the input.
+  it("chat input does not submit while an IME is composing", async () => {
+    mockSummary.mockResolvedValue({
+      total: 3,
+      success: 2,
+      fail: 1,
+      denied: 0,
+      successRate: 0.67,
+      failRate: 0.33,
+      deniedRate: 0,
+      worstTool: null,
+      byTool: [],
+    });
+    renderView();
+    const input = (await screen.findByTestId(
+      "observability-chat-input",
+    )) as HTMLInputElement;
+    // v0.9.9: lock the IME-composition contract
+    // directly. The handler is the *only* thing we
+    // care about — the input value display is a
+    // React-controlled side effect that's noisy to
+    // assert against. We spy the chat submit by
+    // mocking api.observabilityChat (the same one
+    // already mocked for the chat-history tests)
+    // and assert it's NOT called after an Enter
+    // with isComposing: true.
+    //
+    // v0.9.9: we also assert the inverse — an
+    // Enter with isComposing: false DOES submit.
+    // That double-check makes the test fail loudly
+    // if someone later removes the IME guard
+    // entirely (the "false" case would break too,
+    // and the test would catch it).
+    mockChat.mockClear();
+    // v0.9.9: the submit handler reads the response
+    // shape, so a bare undefined mockResolvedValue
+    // would crash the React update path. Use a
+    // minimal valid response shape.
+    mockChat.mockResolvedValue({
+      intent: "summary",
+      reply: "",
+      window: "last 24h",
+    });
+
+    // v0.9.9 (refinement): the controlled input
+    // uses onChange which only updates state on
+    // "input" events. The native value setter is
+    // the React-recommended way to drive a
+    // controlled input from a test.
+    const nativeSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      "value",
+    )?.set;
+    nativeSetter?.call(input, "你好");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+
+    // 1. isComposing: true → must NOT submit.
+    // v0.9.9: `isComposing` is a KeyboardEventInit
+    // field (the React handler reads
+    // `e.nativeEvent.isComposing`, but
+    // testing-library's fireEvent spreads the init
+    // into the KeyboardEvent constructor). Passing
+    // it as a top-level key here matches what a real
+    // IME sends.
+    fireEvent.keyDown(input, { key: "Enter", isComposing: true });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(mockChat).not.toHaveBeenCalled();
+
+    // 2. isComposing: false (or absent) → must submit.
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() => {
+      expect(mockChat).toHaveBeenCalledTimes(1);
+    });
   });
 });

@@ -488,9 +488,35 @@ export default function TryPage() {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={(e) => {
+              // v0.9.9: IME composition guard. When the
+              // user is typing Chinese / Japanese /
+              // Korean via an IME, the browser routes
+              // Escape to the IME to cancel the
+              // candidate list. If we also fire on
+              // Escape (to stop pi), the user's IME
+              // session is interrupted AND pi stops
+              // — neither of which is what they asked
+              // for. `e.nativeEvent.isComposing` is the
+              // cross-browser signal for "an IME is
+              // open and consuming keystrokes".
+              if (e.nativeEvent.isComposing) return;
               if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
                 e.preventDefault();
                 void handleSend();
+                return;
+              }
+              if (e.key === "Escape" && sending) {
+                // v0.9.9: pressing Escape in the input
+                // box while pi is mid-run aborts the
+                // current turn. agegr/pi-web (commit
+                // 64bb2b6) shipped the same shortcut
+                // and IME users hit a daily footgun
+                // where Escape would fire mid-IME
+                // composition; we add the
+                // isComposing guard above to dodge
+                // that.
+                e.preventDefault();
+                void handleAbort();
               }
             }}
             disabled={!connected || sending}

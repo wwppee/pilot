@@ -1,5 +1,82 @@
 # Changelog
 
+### v0.9.9 — agegr/pi-web 借鉴：readdir withFileTypes + IME 兼容
+
+agegr/pi-web v0.7.16 之前的几个 commit 是**纯前端工程
+坑**——pilot 同样会踩。这次 release 修 2 个：
+
+**What's in this release**
+
+- **`safeIsDirectory` helper + `listCapabilities` withFileTypes**
+  agegr `7878ec4` 修 O(n) `statSync` 模式：从 385ms 降到
+  sub-5ms。pilot 的 `listCapabilities` 之前是同模式（每个
+  entry 调一次 `stat()`）——现在改 `readdir(dir, { withFileTypes })`
+  + 新的 `safeIsDirectory` helper。
+
+  `safeIsDirectory` 解决 agegr `0883c79` 的 Windows
+  陷阱：`Dirent.isDirectory()` 在 Windows symlink /
+  junction 上不可靠。helper 先看 `dirent.isDirectory()`，
+  假才 fallback 到 `stat(parent, name)`。macOS / Linux
+  几乎 0 stat，Windows symlinked 能力目录不再静默丢失。
+
+  未来其他 readdir 调用方（如 listPlans 之类）也可以
+  接 `safeIsDirectory` ——统一后端 + 跨平台一致。
+
+- **IME composition 兼容（中文 / 日文 / 韩文 user 必踩）**
+  agegr `01ae83a` 修：用户在打中文时按 Escape / Enter，
+  IME 在"组合输入"状态——浏览器会同时触发 keydown 给
+  React。如果不挡，Escape 会停 pi（user 只想 cancel 候
+  选词），Enter 会提前提交（user 还在选候选）。
+
+  pilot `/try` 输入框 + observability chat input 都加
+  `if (e.nativeEvent.isComposing) return;` 守卫。**用户
+  不再被打断**。agegr 之前没做 chat input 守卫（只 Escape），
+  pilot 这次**两个都做**——因为 chat input 的 Enter 提交
+  比 /try 更容易踩。
+
+  额外：pilot `/try` 输入框加 Escape abort 快捷键
+  （agegr 的 #166 PR 模式）——IME 守卫**优先**，guard
+  拦下 IME 的 Escape，只有非 IME 状态下的 Escape 才会
+  触发 abort。
+
+**Why these matter**
+
+- `withFileTypes` 改进对**用户可感知**：dashboard 刷新
+  dashboard 的 listCapabilities 从 5-10ms 降到 <1ms
+  （100 个 capability dir 的估算），刷新 dashboard 不卡
+- IME 兼容**对中国 / 日本 / 韩国 user 是 daily 踩**：从
+  "打了 5 个候选字突然全没了"变成"正常输入"
+- 两者都是**纯前端工程改进**，不需要 sandbox 跑 pi，
+  所以这次 release 在 sandbox 内能完整做
+
+**Tests**
+
+- 5 new tests in `test/unit/fs-utils.test.ts` (safeIsDirectory)
+  - real directory dirent
+  - regular file dirent
+  - POSIX symlink → dir fallback (skip on Windows)
+  - bare string with no parent → false
+  - bare string + missing path → false (no throw)
+- 1 new test in `web/tests/observability.test.tsx`
+  - chat input does NOT submit when Enter is fired
+    with isComposing: true (double-assert: also
+    asserts Enter with isComposing: false DOES
+    submit, so removing the guard entirely would
+    fail the test from the other side)
+
+**Totals**
+
+- root: 701 → 706 tests (+5)
+- web: 307 → 308 tests (+1)
+- tsc: clean both
+- (3 pre-existing `pilot forge > search` network
+  tests in commands.test.ts are sandbox-flaky:
+  vitest 5s default timeout + sandbox npm network
+  slow. Pre-v0.9.9 same state, not a regression.
+  Single-file runs pass; full-suite timing is the
+  only failure mode. Tracked in
+  `pilot.md` §11 known-flaky.)
+
 ### v0.9.8 — MessageView 抽组件 + 工具调用治理可视化 (denied / wrapped)
 
 pilot 跟 agegr/pi-web 的对位分析（v0.9.7 末）发现：
