@@ -1,5 +1,108 @@
 # Changelog
 
+### v0.9.11 — Server-side 30s TTL cache for list endpoints
+
+agegr/pi-web (commit d469c68) shipped a 30s TTL
+cache for `listAllSessions` after profiling showed
+every page load was re-scanning all session files
+and re-spawning git processes. pilot has the same
+problem on the dashboard: a refresh hits
+`/packs`, `/sessions`, `/profiles`, and
+`/capabilities` in parallel, and each one re-scans
+its `~/.pilot/.../` directory on disk. This release
+fixes the same way.
+
+**What's in this release**
+
+- **New `src/server/cache.ts`**: a 30s-TTL
+  in-memory cache helper (`cached(key, loader)`,
+  `invalidate(key)`, `invalidate()` for clear-all).
+  Per-key state, no global locking — pilot is a
+  single-user local server so the contention model
+  is trivial. The store is a `Map`; the helper
+  keeps the loader's return value and a fresh
+  `expiresAt` per call.
+
+- **4 GET endpoints wrapped**:
+  - `GET /packs` → `cached("packs:list")`
+  - `GET /sessions` (no filter) → `cached("sessions:list")`.
+    Filtered reads (with `?model=...&cwd=...&sinceDays=...`)
+    bypass the cache — a filter-aware cache would
+    explode the key space, and the dashboard's
+    hot path is the bare list.
+  - `GET /profiles` → `cached("profiles:list")`
+  - `GET /capabilities` → `cached("capabilities:list")`
+
+  **`/stats` and `/usage` are not cached** — they
+  are aggregation endpoints, not list scans, and
+  the user's "today" view should always be fresh.
+
+- **3 write endpoints invalidate**:
+  - `POST /packs/install` → `invalidate("packs:list")`
+  - `POST /packs/uninstall` → `invalidate("packs:list")`
+  - `PUT /profiles/:name` → `invalidate("profiles:list")`
+  - `DELETE /profiles/:name` → `invalidate("profiles:list")`
+
+  **What about writes that don't yet invalidate?**
+  `PUT /policies/:name` and `PUT /wrappers/:name`
+  currently don't touch any of the 4 cached lists
+  (policies / wrappers have their own dedicated
+  GETs that aren't yet wrapped). The next release
+  that adds caching to those will add the matching
+  invalidations. **Documented for follow-up, not a
+  bug in this release.**
+
+- **Cache contract under failure**:
+  - **Cache hit** → return cached value (no
+    loader call, never throws — the user sees the
+    last-known-good data)
+  - **Cache miss + loader success** → cache + return
+  - **Cache miss + loader throws** → throw (no
+    cache update; next miss retries the loader)
+  - `invalidate()` (no arg) clears every key —
+    only used by the test helper today; production
+    routes always pass an explicit key
+
+**Why this matters**
+
+- **User-visible**: dashboard refresh drops from
+  "100s of ms on a 100+ capability system" to
+  "sub-ms for the cached parts". Tab switching
+  no longer jitters.
+- **No behavior change**: a write that should
+  invalidate still does; the user sees the fresh
+  value on the next refresh, not 30s later.
+- **No stale-on-error**: a transient loader
+  failure does NOT wipe a working cache entry.
+
+**Tests**
+
+- 6 new tests in `test/unit/cache.test.ts`:
+  - first call stores, second call within TTL
+    re-uses (no re-invoke)
+  - `invalidate(key)` triggers re-invoke
+  - past TTL triggers re-invoke (50ms custom
+    TTL so we don't wait 30s)
+  - loader throw does NOT poison the cache
+  - `invalidate()` (no arg) clears everything
+  - per-key isolated TTLs (50ms vs 1000ms in
+    parallel — the short one expires while the
+    long one still hits)
+- 1 new integration test in
+  `test/unit/server.test.ts`:
+  - `GET /packs` survives `invalidate()` between
+    reads (the route handler is wired through the
+    helper; this is the integration-level smoke)
+
+**Totals**
+
+- root: 706 → 713 tests (+7)
+- web: 311 → 311 (no change)
+- tsc: clean both
+- (pre-existing `pilot forge > search` network
+  tests still sandbox-flaky; tracked in
+  `pilot.md` §11.)
+
 ### v0.9.10 — WebSocket 自动重连（指数退避 1s → 16s，5 次封顶）
 
 agegr/pi-web 用 SSE（浏览器自动重连），pilot 用

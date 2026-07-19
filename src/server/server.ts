@@ -35,6 +35,13 @@ import { VERSION } from "../core/version.js";
 import { readOrCreateToken, TOKEN_HEADER, verifyToken } from "./auth.js";
 import { CSRF_COOKIE, CSRF_HEADER, CsrfState } from "./csrf.js";
 import { PiRpcBridge } from "./pi-rpc-bridge.js";
+// v0.9.11: 30s TTL cache for the four read-only list
+// endpoints. agegr/pi-web (commit d469c68) shipped the
+// same fix — without it, the dashboard refresh
+// re-scans the on-disk state every time, which gets
+// visible as a sub-second jitter on a 100+
+// capabilities system.
+import { cached, invalidate } from "./cache.js";
 
 // ─── Server options ────────────────────────────────────────
 
@@ -512,7 +519,9 @@ export async function startServer(
     pid: process.pid,
   }));
 
-  app.get("/packs", async () => service.listPacks());
+  app.get("/packs", async () =>
+    cached("packs:list", () => service.listPacks()),
+  );
 
   app.get<{ Querystring: { q?: string } }>("/packs/search", async (req) => {
     const q = (req.query.q ?? "").trim();
@@ -639,6 +648,10 @@ export async function startServer(
       throw Object.assign(new Error("missing source"), { statusCode: 400 });
     }
     await service.installPack(source);
+    // v0.9.11: bust the cache so the next
+    // dashboard refresh shows the new pack list
+    // immediately, rather than up to 30s later.
+    invalidate("packs:list");
     return { ok: true };
   });
 
@@ -652,6 +665,7 @@ export async function startServer(
         throw Object.assign(new Error("missing name"), { statusCode: 400 });
       }
       await service.uninstallPack(name);
+      invalidate("packs:list");
       return { ok: true };
     },
   );
@@ -666,7 +680,16 @@ export async function startServer(
       const n = Number(req.query.sinceDays);
       if (Number.isFinite(n) && n > 0) filter.sinceDays = n;
     }
-    return service.listSessions(filter);
+    // v0.9.11: only cache the bare /sessions list
+    // (no filter). Filter combinations would
+    // explode into one cache key per (model × cwd
+    // × sinceDays) — the dashboard doesn't pass
+    // any, and the search endpoint (`/sessions/search`)
+    // is already separate. A filtered read is
+    // cheap; the bare list is the hot path.
+    const hasFilter = Object.keys(filter).length > 0;
+    if (hasFilter) return service.listSessions(filter);
+    return cached("sessions:list", () => service.listSessions(filter));
   });
 
   app.get<{ Querystring: { q?: string; case?: string } }>(
@@ -744,7 +767,9 @@ export async function startServer(
 
   app.get("/doctor", async () => service.runDoctor());
 
-  app.get("/capabilities", async () => service.listCapabilities());
+  app.get("/capabilities", async () =>
+    cached("capabilities:list", () => service.listCapabilities()),
+  );
 
   app.get<{ Params: { id: string } }>("/capabilities/:id", async (req) => {
     const cap = await service.getCapability(req.params.id);
@@ -758,7 +783,9 @@ export async function startServer(
 
   // ─── Profiles (v0.3.0-b) ─────────────────────────────
 
-  app.get("/profiles", async () => service.listProfiles());
+  app.get("/profiles", async () =>
+    cached("profiles:list", () => service.listProfiles()),
+  );
 
   app.get<{ Params: { name: string } }>("/profiles/:name", async (req) => {
     const profile = await service.getProfile(req.params.name);
@@ -774,6 +801,10 @@ export async function startServer(
       // The route is the source of name truth; we don't read name from body.
       const { name: _ignore, ...input } = req.body ?? {};
       const profile = await service.setProfile(req.params.name, input);
+      // v0.9.11: bust the profiles list cache
+      // (setProfile also mutates `~/.pilot/profiles/`,
+      // so the bare-list call must see the new entry).
+      invalidate("profiles:list");
       return profile;
     },
   );
@@ -783,6 +814,7 @@ export async function startServer(
     if (!deleted) {
       throw Object.assign(new Error("profile not found"), { statusCode: 404 });
     }
+    invalidate("profiles:list");
     return { ok: true };
   });
 
