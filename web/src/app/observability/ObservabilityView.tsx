@@ -73,6 +73,23 @@ export function ObservabilityView({ locale: _locale }: { locale: string }) {
   // 'tell me more' affordance.)
   const [detail, setDetail] = useState<ToolCallCardData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // v0.9.12: separate error state for the per-tool
+  // "expand" fetch. Pre-v0.9.12 the `expand()` handler
+  // wrote its fetch error to the same `error` state
+  // as the initial load — so a failed expand
+  // collapsed the entire dashboard to a single
+  // "Error: …" panel, hiding the summary cards the
+  // user had already loaded. (Same pattern as the
+  // pi-agent-dashboard "never blank" rule from
+  // v0.9.7 + the truncation-banner principle:
+  // a fetch failure should narrow the surface, not
+  // wipe it.) `expandError` is per-tool — clearing
+  // it on the next expand so the user doesn't see
+  // a stale error from a previous tool.
+  const [expandError, setExpandError] = useState<{
+    tool: string;
+    message: string;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   // v0.8.1: time-range filter. v0.7.3 only ever queried
   // "all time" — the user had to eyeball every record.
@@ -106,22 +123,51 @@ export function ObservabilityView({ locale: _locale }: { locale: string }) {
     void reload();
   }, [reload]);
 
+  // v0.9.12: extracted from `expand()` so the Retry
+  // button on the inline failure banner can re-run
+  // the fetch *without* the toggle-close branch.
+  // Pre-v0.9.12 the retry button called `expand()`
+  // again, which saw `expanded === tool` and
+  // collapsed the row — defeating the retry.
+  // v0.9.12 makes the retry explicitly a re-fetch.
+  const fetchCalls = useCallback(async (tool: string) => {
+    setExpanded(tool);
+    setExpandError(null);
+    setCalls([]);
+    try {
+      const c = await api.toolCalls({ toolName: tool, limit: 20 });
+      setCalls(c as ToolCallCardData[]);
+    } catch (e) {
+      setExpandError({
+        tool,
+        message: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }, []);
+
   const expand = useCallback(
     async (tool: string) => {
       if (expanded === tool) {
         setExpanded(null);
         setCalls([]);
+        setExpandError(null);
         return;
       }
-      setExpanded(tool);
-      try {
-        const c = await api.toolCalls({ toolName: tool, limit: 20 });
-        setCalls(c as ToolCallCardData[]);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
-      }
+      await fetchCalls(tool);
     },
-    [expanded],
+    [expanded, fetchCalls],
+  );
+
+  const retryExpand = useCallback(
+    async (tool: string) => {
+      // v0.9.12: same as `fetchCalls` but the
+      // semantic intent is "user clicked Retry" —
+      // we keep the expanded section open regardless
+      // of prior state. The fetch is what counts;
+      // the toggle is not relevant here.
+      await fetchCalls(tool);
+    },
+    [fetchCalls],
   );
 
   if (loading && !summary) {
@@ -275,7 +321,16 @@ export function ObservabilityView({ locale: _locale }: { locale: string }) {
                 row={row}
                 expanded={expanded === row.tool}
                 calls={calls}
+                // v0.9.12: only the row whose tool
+                // matches the failed expand gets the
+                // error — never the table as a whole.
+                expandError={
+                  expandError && expandError.tool === row.tool
+                    ? { message: expandError.message }
+                    : null
+                }
                 onToggle={() => void expand(row.tool)}
+                onRetry={() => void retryExpand(row.tool)}
                 onSelectDetail={(c) => setDetail(c)}
                 t={t}
               />
@@ -534,14 +589,26 @@ function ToolRow({
   row,
   expanded,
   calls,
+  expandError,
   onToggle,
+  onRetry,
   onSelectDetail,
   t,
 }: {
   row: Summary["byTool"][number];
   expanded: boolean;
   calls: ToolCallCardData[];
+  // v0.9.12: if a previous expand for this tool
+  // failed, the parent passes the error here so the
+  // inline banner can render. Only the matching
+  // tool's row shows it (parent filters by tool name).
+  expandError: { message: string } | null;
   onToggle: () => void;
+  // v0.9.12: re-runs the parent's `expand()` for
+  // this tool, which clears the error state at the
+  // start and re-fetches. Used by the inline retry
+  // button.
+  onRetry: () => void;
   // v0.8.5: when a record is clicked, the parent
   // opens the detail modal. We thread the call up
   // instead of using local state so the modal
@@ -601,7 +668,39 @@ function ToolRow({
       {expanded ? (
         <tr className="border-t border-[var(--border)] bg-[var(--bg)]">
           <td colSpan={6} className="p-3">
-            {calls.length === 0 ? (
+            {expandError ? (
+              // v0.9.12: inline failure banner. The
+              // dashboard stays rendered (the user
+              // doesn't lose the summary cards they
+              // already had on screen), and the retry
+              // button re-invokes the parent's
+              // `expand()` with the same tool name.
+              // After a successful retry the banner
+              // clears naturally (expandError is set
+              // to null at the start of every expand).
+              // The parent only passes expandError
+              // here when the failing tool matches
+              // this row, so we don't need to re-check.
+              <div
+                className="rounded p-3 bg-[color-mix(in_srgb,var(--error)_15%,transparent)] border border-[color-mix(in_srgb,var(--error)_30%,transparent)] space-y-2"
+                data-testid="observability-expand-error"
+              >
+                <p className="text-sm font-medium text-[var(--error)]">
+                  {t("observability.expand.error.title")}
+                </p>
+                <p className="text-xs font-mono text-[var(--text-muted)] break-words">
+                  {expandError.message}
+                </p>
+                <button
+                  type="button"
+                  className="btn small secondary"
+                  onClick={onRetry}
+                  data-testid="observability-expand-retry"
+                >
+                  {t("observability.expand.error.retry")}
+                </button>
+              </div>
+            ) : calls.length === 0 ? (
               <p className="text-xs text-[var(--text-muted)]">…</p>
             ) : (
               <ul className="space-y-2">

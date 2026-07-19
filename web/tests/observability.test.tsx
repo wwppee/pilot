@@ -486,4 +486,62 @@ describe("v0.7.3: <ObservabilityView>", () => {
       expect(mockChat).toHaveBeenCalledTimes(1);
     });
   });
+
+  // v0.9.12: "never blank" — a failed per-tool
+  // expand shows an inline banner with a Retry
+  // button, but the dashboard itself (summary
+  // cards, by-tool table, chat input) stays
+  // rendered. Pre-v0.9.12 the same failure wiped
+  // the whole dashboard to a single "Error: …"
+  // panel.
+  it("expand failure shows inline banner — dashboard stays rendered", async () => {
+    mockSummary.mockResolvedValue({
+      total: 1,
+      success: 0,
+      fail: 1,
+      denied: 0,
+      worstTool: "bash",
+      byTool: [
+        {
+          tool: "bash",
+          total: 1,
+          success: 0,
+          fail: 1,
+          denied: 0,
+          recentError: "boom",
+          lastSeen: "2026-07-18T00:00:00Z",
+        },
+      ],
+    });
+    // Make the per-tool expand throw.
+    mockCalls.mockRejectedValue(new Error("503 service unavailable"));
+    renderView();
+    // Wait for the summary to land first — the
+    // dashboard must already be on screen before
+    // the expand failure, otherwise the assertion
+    // "dashboard stays rendered" is vacuous.
+    await waitFor(() => {
+      expect(screen.getByText("Total calls")).toBeTruthy();
+    });
+    // Click the by-tool row to expand.
+    const row = await screen.findByTestId("observability-row-bash");
+    fireEvent.click(row);
+    // The inline banner appears (data-testid
+    // guard), and Retry fires api.toolCalls again.
+    const banner = await screen.findByTestId(
+      "observability-expand-error",
+    );
+    expect(banner).toBeTruthy();
+    // Dashboard did NOT collapse to a single error
+    // panel — the summary cards are still here.
+    expect(screen.getByText("Total calls")).toBeTruthy();
+    // The banner includes a Retry button that
+    // re-invokes the parent's expand().
+    const retry = screen.getByTestId("observability-expand-retry");
+    mockCalls.mockResolvedValueOnce([]);
+    fireEvent.click(retry);
+    await waitFor(() => {
+      expect(mockCalls).toHaveBeenCalledTimes(2);
+    });
+  });
 });

@@ -1,5 +1,87 @@
 # Changelog
 
+### v0.9.12 — "Never blank" observability expand error
+
+L2 事后层的小份。pilot 的 observability dashboard
+有个 footgun：**展开某工具的近期调用时，fetch
+失败会让整个 dashboard 消失**——summary cards /
+by-tool table / chat input 全没了，只剩一个 "Error:
+…" panel。agegr/pi-web (e75445f 模式) 的原则是
+"fetch 失败应该 narrow the surface, not wipe it"。
+v0.9.12 把 expand 错误从 dashboard-wide 提到
+inline banner，加 Retry 按钮。
+
+**The bug (v0.9.11 and earlier)**
+
+```ts
+const expand = async (tool: string) => {
+  ...
+  try {
+    const c = await api.toolCalls({ toolName: tool });
+    setCalls(c);
+  } catch (e) {
+    setError(e.message);  // ← global error → wipes dashboard
+  }
+};
+```
+
+`setError` 在 `if (error)` 早 return 里 —— 一旦
+expand 失败，user 已经加载的 summary cards 也跟着
+消失。**第一次 expand 失败 = user 失去全部 context**。
+
+**What's in this release**
+
+- **`expandError` state 独立于 `error`**
+  - `error` 保留给**初始 load**失败（dashboard 还
+    没渲染 → 显示 error 替代品合理）
+  - `expandError: { tool, message } | null` 专给
+    per-tool expand 失败 → 只在 expanded section
+    里显示 inline banner
+  - per-tool 状态：新 expand 自动清旧 error（避免
+    "展开 bash 失败，再展开 read 时还显示 bash 错误"
+    的 footgun）
+
+- **Inline banner 替代 dashboard wipe**
+  红色 tinted box，含：
+  - title: "Couldn't load recent calls for this tool"
+  - error message（font-mono，break-words，长 message
+    不溢出）
+  - **Retry** 按钮 → 重 fetch
+
+- **`fetchCalls` 抽 helper, `retryExpand` 独立 callback**
+  抽出 `fetchCalls(tool)` 让 `expand` (toggle) 和
+  `retryExpand` (always re-fetch) 共享 fetch 逻辑。
+  **关键 fix**：v0.9.12 第一次写时 retry 调 expand()，
+  看到 `expanded === tool` 走 toggle-close 路径 →
+  retry 把 row 收起 → 失败。`retryExpand` 是独立
+  callback，**永远 re-fetch** 不 toggle。
+
+- **3 new i18n keys** (`observability.expand.error.title` /
+  `retry` / `?`) 双语同步
+
+**Why this matters**
+
+- **dashboard 不再被单次 fetch 失败**清空 — user 保住
+  上下文
+- **Retry 按钮**让 user **不必手动刷新页面**恢复
+- per-tool 状态避免 "A 工具的错误盖 B 工具" 的 footgun
+
+**Tests**
+
+- 1 new test in `web/tests/observability.test.tsx`:
+  - expand 失败 → inline banner 出现 + dashboard
+    仍渲染 (summary cards 没消失)
+  - Retry 按钮 click → mockCalls 第二次调用
+- pre-v0.9.12 同样的 input 会让整个 dashboard 消失，
+  新的 banner+retry 路径锁住 "never blank" 行为
+
+**Totals**
+
+- root: 713 → 713 (no change)
+- web: 311 → 312 tests (+1)
+- i18n: +2 (expand.error.title / retry)
+- tsc: clean both
+
 ### v0.9.11 — Server-side 30s TTL cache for list endpoints
 
 agegr/pi-web (commit d469c68) shipped a 30s TTL

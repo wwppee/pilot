@@ -1398,6 +1398,9 @@ const zh: Dict = {
   "observability.fail": "失败",
   "observability.denied": "策略拦截",
   "observability.empty": "暂无工具调用记录。",
+  // v0.9.12: 内联错误提示，展开某工具时加载失败
+  "observability.expand.error.title": "无法加载该工具的近期调用",
+  "observability.expand.error.retry": "重试",
   "observability.empty.hint": "策略引擎评估调用后，记录会显示在这里。",
   "observability.worstTool": "失败率最高：{tool}",
   "observability.col.tool": "工具",

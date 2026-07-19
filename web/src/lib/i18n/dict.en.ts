@@ -1485,6 +1485,12 @@ const en: Dict = {
   "observability.fail": "Failed",
   "observability.denied": "Policy blocked",
   "observability.empty": "No tool calls recorded yet.",
+  // v0.9.12: inline failure banner for the per-tool
+  // "expand" fetch. Lives inside the expanded row
+  // — does NOT replace the dashboard.
+  "observability.expand.error.title":
+    "Couldn't load recent calls for this tool",
+  "observability.expand.error.retry": "Retry",
   "observability.empty.hint":
     "Calls will appear here as the policy engine evaluates them.",
   "observability.worstTool": "Highest fail-rate: {tool}",

@@ -1410,6 +1410,8 @@ export type Dict = {
   "observability.denied": string;
   "observability.empty": string;
   "observability.empty.hint": string;
+  "observability.expand.error.title": string;
+  "observability.expand.error.retry": string;
   "observability.worstTool": string;
   "observability.col.tool": string;
   "observability.col.total": string;
