@@ -438,6 +438,22 @@ export interface SessionTreeNode {
   timestamp?: string;
   /** Short text preview for display (truncated to ~100 chars). */
   preview?: string;
+  // v0.9.17: per-node affordance fields. Previously these were
+  // computed but only stored at the tree level (e.g. `models: Set`
+  // on SessionTree) — the dashboard had to bucket by hand. Storing
+  // them per node makes the tree row "self-describing": a `tool`
+  // row carries its tool name, an `assistant` row carries its model,
+  // a `toolResult` row carries its isError state. The downside is
+  // slightly larger payloads (~10 bytes/node), but session trees
+  // are bounded (~hundreds of nodes typical) so it's free.
+  /** Tool name when the node is a tool call or tool result (e.g. "bash", "read"). */
+  toolName?: string;
+  /** Model id when the node is an assistant message or a model_change entry. */
+  model?: string;
+  /** True when the entry is a tool result with `isError: true`. v0.9.17+ dashboards
+   * use this to render a red "✗" badge next to the row so the user can scan
+   * for failures without opening the message detail. */
+  isError?: boolean;
   children: SessionTreeNode[];
 }
 

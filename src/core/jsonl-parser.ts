@@ -206,6 +206,62 @@ function extractModel(data: unknown): string | undefined {
 }
 
 /**
+ * v0.9.17: best-effort extraction of the tool name from a session
+ * entry. Returns the name when the entry is a tool call OR a tool
+ * result; otherwise undefined (regular user/assistant messages
+ * have no tool name).
+ *
+ * The tool result case is the most useful for the dashboard:
+ * `/sessions/:id/tree` previously only carried `preview` like
+ * `read (error)` (built by `extractPreviewFromEntry`), which the
+ * UI then had to split. Returning the bare `toolName` per node
+ * lets `NodeRowView` show a colored chip + the error state
+ * independently.
+ *
+ * v3 (entry is `{type:"message", message:{role:"toolResult"|"bashExecution", toolName:"..."}}`)
+ * Legacy (pre-v0.4.2): tool calls stored under `data.toolName` /
+ * `data.tool_name` / `data.name` depending on the schema version.
+ */
+function extractToolNameFromEntry(entry: SessionEntry): string | undefined {
+  // v3 tool result
+  if (entry.type === "message" && entry.message) {
+    const msg = entry.message as Record<string, unknown>;
+    if (typeof msg["toolName"] === "string") return msg["toolName"];
+  }
+  // Legacy data payload
+  if (entry.data && typeof entry.data === "object") {
+    const data = entry.data as Record<string, unknown>;
+    if (typeof data["toolName"] === "string") return data["toolName"];
+    if (typeof data["tool_name"] === "string") return data["tool_name"];
+    if (typeof data["name"] === "string") return data["name"];
+  }
+  return undefined;
+}
+
+/**
+ * v0.9.17: best-effort extraction of the tool-result error flag.
+ * Returns `true` only when the entry is a tool result with
+ * `isError: true`. v0.9.17+ dashboards render a red `✗` badge so
+ * the user can scan for failures without opening the message
+ * detail. Other entry kinds return `false` (not an error).
+ *
+ * Only v3 `entry.message.isError` is checked today — the legacy
+ * `data.isError` field is best-effort kept (older sessions
+ * sometimes had it) but the dashboard relies on v3.
+ */
+function extractIsErrorFromEntry(entry: SessionEntry): boolean {
+  if (entry.type === "message" && entry.message) {
+    const msg = entry.message as Record<string, unknown>;
+    return msg["isError"] === true;
+  }
+  if (entry.data && typeof entry.data === "object") {
+    const data = entry.data as Record<string, unknown>;
+    return data["isError"] === true;
+  }
+  return false;
+}
+
+/**
  * Type guard: returns true if the entry's message is an assistant message.
  * Use this to narrow before reading `entry.message.usage`.
  */
@@ -275,17 +331,22 @@ export async function readSessionTree(
     entryById.set(entry.id, entry);
     const preview = extractPreviewFromEntry(entry);
     const displayType = displayTypeForEntry(entry);
+    const toolName = extractToolNameFromEntry(entry);
+    const model = extractModelFromEntry(entry);
+    const isError = extractIsErrorFromEntry(entry);
     const node: SessionTreeNode = {
       id: entry.id,
       type: displayType,
       ...(entry.timestamp !== undefined ? { timestamp: entry.timestamp } : {}),
       ...(preview !== undefined ? { preview } : {}),
+      ...(toolName !== undefined ? { toolName } : {}),
+      ...(model !== undefined ? { model } : {}),
+      ...(isError ? { isError: true } : {}),
       children: [],
     };
     nodes.set(entry.id, node);
 
-    const m = extractModelFromEntry(entry);
-    if (m) models.add(m);
+    if (model) models.add(model);
   }
 
   // Pass 2: link children to parents

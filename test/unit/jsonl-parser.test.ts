@@ -514,6 +514,73 @@ describe("v3 format (pi v3 JSONL)", () => {
     }
   });
 
+  // v0.9.17: per-node affordance fields. Previously the dashboard
+  // could only see `models` as a top-level Set and `preview` as
+  // a flat string like "read (error)". v0.9.17 attaches toolName,
+  // model, and isError to each node so the row can render a
+  // `bash` chip + a red ✗ badge without the dashboard having to
+  // re-parse the JSONL.
+  //
+  // The 4 cases below lock the three new fields independently:
+  //   - toolName on a tool result node
+  //   - model on an assistant node
+  //   - isError on a tool result with isError: true
+  //   - isError NOT set on a tool result with isError: false
+  it("readSessionTree attaches toolName to a tool result node", async () => {
+    const path = buildV3({ toolName: "bash" });
+    try {
+      const tree = await readSessionTree(path, "session");
+      const toolResult = tree.root.children[0]?.children[0];
+      expect(toolResult?.toolName).toBe("bash");
+      // Sanity: the bare "tool" type still wins (we don't override
+      // it with the tool name — the chip is a separate column).
+      expect(toolResult?.type).toBe("toolResult");
+    } finally {
+      rmSync(join(path, ".."), { recursive: true, force: true });
+    }
+  });
+
+  it("readSessionTree attaches model to an assistant node", async () => {
+    const path = buildV3({ model: "claude-opus-4-6" });
+    try {
+      const tree = await readSessionTree(path, "session");
+      const assistant = tree.root.children[0];
+      expect(assistant?.model).toBe("claude-opus-4-6");
+      // User node has no model — explicitly undefined, not empty
+      // string. The frontend can do `node.model && <chip>` safely.
+      expect(tree.root.model).toBeUndefined();
+    } finally {
+      rmSync(join(path, ".."), { recursive: true, force: true });
+    }
+  });
+
+  it("readSessionTree attaches isError: true to a failed tool result", async () => {
+    const path = buildV3({ toolName: "read", isError: true });
+    try {
+      const tree = await readSessionTree(path, "session");
+      const toolResult = tree.root.children[0]?.children[0];
+      expect(toolResult?.isError).toBe(true);
+    } finally {
+      rmSync(join(path, ".."), { recursive: true, force: true });
+    }
+  });
+
+  it("readSessionTree omits isError on a successful tool result", async () => {
+    // isError: false must NOT show up on the node. We use the
+    // `exactOptionalPropertyTypes` semantics: a successful result
+    // has `isError` undefined, not `isError: false`. This is the
+    // contract the dashboard reads — `node.isError && <Badge>`
+    // must not flash a red ✗ on every successful tool call.
+    const path = buildV3({ toolName: "read", isError: false });
+    try {
+      const tree = await readSessionTree(path, "session");
+      const toolResult = tree.root.children[0]?.children[0];
+      expect(toolResult?.isError).toBeUndefined();
+    } finally {
+      rmSync(join(path, ".."), { recursive: true, force: true });
+    }
+  });
+
   it("isAssistantEntry narrows correctly", async () => {
     const path = buildV3({ toolName: "read" });
     try {
