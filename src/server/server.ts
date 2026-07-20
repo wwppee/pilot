@@ -1030,7 +1030,14 @@ export async function startServer(
     return updated;
   });
 
-  app.get("/policies", async () => service.listPolicies());
+  // v0.9.13: 30s TTL cache (same pattern as the
+  // 4 list endpoints in v0.9.11). The /policies,
+  // /workflows, and /wrappers pages each do a
+  // bare list on mount; without the cache, every
+  // tab switch re-scans the relevant TOML dir.
+  app.get("/policies", async () =>
+    cached("policies:list", () => service.listPolicies()),
+  );
 
   app.get<{ Params: { name: string } }>("/policies/:name", async (req) => {
     const policy = await service.getPolicy(req.params.name);
@@ -1044,12 +1051,21 @@ export async function startServer(
     "/policies/:name",
     async (req) => {
       const { name: _name, ...input } = req.body;
-      return service.setPolicy(req.params.name, input as never);
+      const policy = await service.setPolicy(req.params.name, input as never);
+      // v0.9.13: setPolicy writes to
+      // `~/.pilot/policy/<name>.toml`, so the
+      // bare-list cache is stale until invalidated.
+      invalidate("policies:list");
+      return policy;
     },
   );
 
   app.delete<{ Params: { name: string } }>("/policies/:name", async (req) => {
     const removed = await service.deletePolicy(req.params.name);
+    // v0.9.13: deletePolicy mutates `~/.pilot/policy/`,
+    // so the bare-list cache (and any single-policy
+    // cache we add later) must be invalidated.
+    invalidate("policies:list");
     return { removed };
   });
 
@@ -1061,7 +1077,9 @@ export async function startServer(
   // client does "duplicate" by load + modify-id + save, so
   // there's no /duplicate endpoint here.
 
-  app.get("/workflows", async () => service.listWorkflows());
+  app.get("/workflows", async () =>
+    cached("workflows:list", () => service.listWorkflows()),
+  );
 
   app.get<{ Params: { id: string } }>("/workflows/:id", async (req, reply) => {
     if (!isValidWorkflowId(req.params.id)) {
@@ -1092,6 +1110,10 @@ export async function startServer(
         ...req.body,
         id: req.params.id,
       });
+      // v0.9.13: saveWorkflow mutates
+      // `~/.pilot/workflows/<id>/`, so the bare-list
+      // cache is stale until invalidated.
+      invalidate("workflows:list");
       return saved;
     } catch (e) {
       const msg = e instanceof Error ? e.message : "save failed";
@@ -1160,6 +1182,12 @@ export async function startServer(
         ...req.body,
         id: req.params.id,
       });
+      // v0.9.13: import persists a new workflow
+      // (or overwrites one), so the list cache is
+      // stale. The "exists? 409" branch above
+      // doesn't touch disk and doesn't need to
+      // invalidate.
+      invalidate("workflows:list");
       return saved;
     } catch (e) {
       const msg = e instanceof Error ? e.message : "import failed";
@@ -1222,6 +1250,10 @@ export async function startServer(
         return;
       }
       const removed = await service.deleteWorkflow(req.params.id);
+      // v0.9.13: deleteWorkflow mutates
+      // `~/.pilot/workflows/<id>/`. The "404 if missing"
+      // branch above doesn't touch disk.
+      invalidate("workflows:list");
       return { removed };
     },
   );
@@ -1351,7 +1383,9 @@ export async function startServer(
   // v0.9.0 ships the schema + CRUD + apply (which
   // writes a no-op stub extension so the apply / unapply
   // flow is observable end-to-end).
-  app.get("/wrappers", async () => service.listWrappers());
+  app.get("/wrappers", async () =>
+    cached("wrappers:list", () => service.listWrappers()),
+  );
 
   app.get<{ Params: { name: string } }>("/wrappers/:name", async (req, reply) => {
     const w = await service.getWrapper(req.params.name);
@@ -1384,6 +1418,10 @@ export async function startServer(
       });
       return;
     }
+    // v0.9.13: setWrapper persists to
+    // `~/.pilot/wrappers/<name>.toml`, so the
+    // bare-list cache is stale.
+    invalidate("wrappers:list");
     return service.setWrapper(req.params.name, parsed.data);
   });
 
@@ -1395,6 +1433,9 @@ export async function startServer(
         await reply.code(404).send({ error: "wrapper not found" });
         return;
       }
+      // v0.9.13: deleteWrapper mutates the wrappers
+      // dir. The 404 branch above doesn't touch disk.
+      invalidate("wrappers:list");
       return { removed: true };
     },
   );

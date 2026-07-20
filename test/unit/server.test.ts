@@ -2007,4 +2007,83 @@ describe("pilot server", () => {
       expect(Array.isArray(r2.json())).toBe(true);
     });
   });
+
+  // v0.9.13: 30s TTL cache for /policies, /workflows,
+  // /wrappers. Same pattern as the 4 list endpoints
+  // in v0.9.11. We verify the wiring by counting the
+  // number of distinct list values returned across
+  // two reads with an explicit `invalidate()` in
+  // between — without invalidate, the second read
+  // would re-use the cached value (a *reference*
+  // equality check, which would work if Fastify's
+  // res.json() preserved the cached reference, but
+  // it does not — so we fall back to asserting the
+  // state via `_peekAge` from the cache module).
+  describe("v0.9.13: list-endpoint caching (policies / workflows / wrappers)", () => {
+    it("GET /policies re-uses the cache until invalidate()", async () => {
+      const { invalidate, _peekAge } = await import(
+        "../../src/server/cache.js"
+      );
+      invalidate("policies:list");
+      const r1 = await handle.app.inject({
+        method: "GET",
+        url: "/policies",
+        headers: { "x-pilot-token": handle.token },
+      });
+      expect(r1.statusCode).toBe(200);
+      // The cache is now warm.
+      expect(_peekAge("policies:list")).not.toBeNull();
+      const r2 = await handle.app.inject({
+        method: "GET",
+        url: "/policies",
+        headers: { "x-pilot-token": handle.token },
+      });
+      expect(r2.statusCode).toBe(200);
+      // After invalidate, the next read re-invokes
+      // the loader — we verify by clearing the
+      // key, asserting the read still works, and
+      // the cache is warm again afterwards.
+      invalidate("policies:list");
+      expect(_peekAge("policies:list")).toBeNull();
+      const r3 = await handle.app.inject({
+        method: "GET",
+        url: "/policies",
+        headers: { "x-pilot-token": handle.token },
+      });
+      expect(r3.statusCode).toBe(200);
+      expect(_peekAge("policies:list")).not.toBeNull();
+    });
+
+    it("DELETE /policies/:name invalidates the list cache", async () => {
+      const { invalidate, _peekAge } = await import(
+        "../../src/server/cache.js"
+      );
+      // Warm the cache via a list read.
+      await handle.app.inject({
+        method: "GET",
+        url: "/policies",
+        headers: { "x-pilot-token": handle.token },
+      });
+      expect(_peekAge("policies:list")).not.toBeNull();
+      // Delete a non-existent policy. The route
+      // returns { removed: false } but does NOT
+      // touch disk (deletePolicy's "missing" path
+      // is a no-op early return). The invalidation
+      // we added fires unconditionally AFTER the
+      // service call — so even a "removed: false"
+      // delete will clear the cache. This is a
+      // design choice: the list is small and the
+      // cost of an over-aggressive invalidate is
+      // one extra disk scan, which is cheaper than
+      // tracking "did we actually mutate?" inside
+      // the route handler.
+      const r = await handle.app.inject({
+        method: "DELETE",
+        url: "/policies/never-existed",
+        headers: { "x-pilot-token": handle.token },
+      });
+      expect(r.statusCode).toBe(200);
+      expect(_peekAge("policies:list")).toBeNull();
+    });
+  });
 });

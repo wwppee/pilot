@@ -1,5 +1,99 @@
 # Changelog
 
+### v0.9.13 — 30s TTL cache for /policies, /workflows, /wrappers
+
+v0.9.11 给 dashboard 的 4 个 list endpoint（`/packs`,
+`/sessions`, `/profiles`, `/capabilities`）加了 30s
+TTL cache。**v0.9.13 把同样的修法扩展到 pilot 自己的
+3 个 CRUD list endpoint**（`/policies`, `/workflows`,
+`/wrappers`）。pre-v0.9.13 切到 `/policies` 标签页就
+re-scan 整个 `~/.pilot/policy/` 目录 → `/workflows`
+→ re-scan `~/.pilot/workflows/` → 用户在 3 个 tab
+间跳几次就 jittter 一连串。
+
+**What's in this release**
+
+- **3 GET endpoints wrapped** in `cached()`:
+  - `GET /policies` → `cached("policies:list")`
+  - `GET /workflows` → `cached("workflows:list")`
+  - `GET /wrappers` → `cached("wrappers:list")`
+  - Same 30s TTL, same throw-not-poison semantics
+    as v0.9.11's 4 endpoints.
+
+- **6 write routes invalidate**:
+  - `PUT /policies/:name` → `policies:list`
+    (setPolicy writes `~/.pilot/policy/<name>.toml`)
+  - `DELETE /policies/:name` → `policies:list`
+    (deletePolicy unlinks the TOML)
+  - `PUT /workflows/:id` → `workflows:list`
+    (saveWorkflow writes the workflow dir)
+  - `POST /workflows/import/:id` → `workflows:list`
+    (import persists; the 409 collision branch
+    above it doesn't touch disk and doesn't
+    invalidate)
+  - `DELETE /workflows/:id` → `workflows:list`
+    (the 404 branch above it doesn't touch disk)
+  - `PUT /wrappers/:name` → `wrappers:list`
+    (setWrapper writes the wrapper TOML)
+  - `DELETE /wrappers/:name` → `wrappers:list`
+    (the 404 branch above it doesn't touch disk)
+
+- **What about apply / unapply?** The
+  `POST /policies/:name/apply` and
+  `POST /wrappers/:name/apply` endpoints write to
+  `~/.pilot/extensions/` (generated stubs), not to
+  `~/.pilot/policy/` or `~/.pilot/wrappers/`. So
+  the list cache is **not** invalidated by apply —
+  the list still describes what the user has saved
+  to disk, regardless of which generated extensions
+  currently exist. Correct behavior, no change
+  needed.
+
+**Why this matters**
+
+- **/policies, /workflows, /wrappers pages no longer
+  re-scan on tab switch** — sub-ms for the cached
+  parts, same user-visible improvement as v0.9.11
+  on the dashboard.
+
+**Tests**
+
+- 2 new tests in `test/unit/server.test.ts`:
+  - `GET /policies` re-uses the cache until
+    `invalidate()`; after invalidate, the next
+    read re-warms.
+  - `DELETE /policies/:name` (even on a
+    "removed: false" non-existent name) clears
+    the cache. The route invalidates after the
+    service call (the missing case is a no-op on
+    disk, but the cost of an over-aggressive
+    invalidate is one extra scan — cheaper than
+    tracking "did we actually mutate?" inside
+    the route handler).
+
+**Why I missed `PUT /policies/:name` initially**
+
+- v0.9.13's first run had a failing lifecycle test
+  ("create policy → list → 0 policies, expected 1").
+  The `PUT` route wrote the TOML but did NOT
+  invalidate the cache; the next `list` read
+  served the now-stale "0 policies". I caught it
+  in the integration test (not the unit cache
+  test, because the unit test doesn't exercise
+  the full write-then-read cycle). **Lesson**:
+  whenever you add a write-side cache invalidation
+  check, also verify a *write* invalidation works.
+  The cache unit test only verifies that the
+  helper's API is correct; it does NOT verify
+  the route actually calls `invalidate()` on
+  every relevant write.
+
+**Totals**
+
+- root: 713 → 715 tests (+2)
+- web: 312 → 312 (no change)
+- tsc: clean both
+
 ### v0.9.12 — "Never blank" observability expand error
 
 L2 事后层的小份。pilot 的 observability dashboard
