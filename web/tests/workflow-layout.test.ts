@@ -17,7 +17,10 @@ import { describe, expect, it } from "vitest";
 // which was a code smell — tests of pure functions
 // shouldn't depend on a JSX module. They now import
 // from `./layout` directly.
-import { autoLayout, computeLayout } from "../src/app/workflows/[id]/layout";
+import {
+  autoLayout,
+  computeLayout,
+} from "../src/app/workflows/[id]/workflow-layout";
 import type { Workflow, WorkflowNode, WorkflowEdge } from "../src/lib/types";
 
 function makeNode(

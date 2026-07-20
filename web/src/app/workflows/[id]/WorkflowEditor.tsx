@@ -34,7 +34,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/pilot-browser";
 import { useT } from "@/components/I18n";
 import { ConfirmDialog } from "../ConfirmDialog";
-import { autoLayout } from "./layout";
+import { autoLayout } from "./workflow-layout";
 // v0.8.9: the three sub-components of the editor body
 // (StepsPanel, NodeCard, PreviewPanel) extracted to their
 // own files. The editor owns only the state machine + the
@@ -91,7 +91,16 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
   const [validation, setValidation] = useState<
     | { kind: "idle" }
     | { kind: "ok" }
-    | { kind: "issues"; issues: Array<{ severity: "error" | "warning"; code: string; message: string; nodeId?: string; edgeId?: string }> }
+    | {
+        kind: "issues";
+        issues: Array<{
+          severity: "error" | "warning";
+          code: string;
+          message: string;
+          nodeId?: string;
+          edgeId?: string;
+        }>;
+      }
     | { kind: "error"; message: string }
   >({ kind: "idle" });
 
@@ -146,9 +155,11 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
       // v0.8.9: dropped setAnnouncement (live region is
       // empty by default). Future v0.8.10+ error-toast can
       // re-surface here.
-      void (t("workflows.editor.saveFailed") +
+      void (
+        t("workflows.editor.saveFailed") +
         ": " +
-        (e instanceof Error ? e.message : String(e)));
+        (e instanceof Error ? e.message : String(e))
+      );
     } finally {
       setSaving(false);
     }
@@ -230,8 +241,10 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
     } catch (e) {
       // v0.8.9: dropped setAnnouncement (live region is
       // empty by default).
-      void (t("workflows.editor.runFailed") +
-        (e instanceof Error ? e.message : String(e)));
+      void (
+        t("workflows.editor.runFailed") +
+        (e instanceof Error ? e.message : String(e))
+      );
     } finally {
       setRunning(false);
     }
@@ -615,9 +628,7 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
                 data-testid={`workflow-validation-issue-${i}`}
               >
                 <span
-                  className={`pill ${
-                    iss.severity === "error" ? "warn" : "ok"
-                  }`}
+                  className={`pill ${iss.severity === "error" ? "warn" : "ok"}`}
                 >
                   {iss.severity === "error"
                     ? t("workflows.editor.validateErrorBadge")
@@ -626,9 +637,7 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
                 <span className="font-mono text-[var(--text-muted)]">
                   {iss.code}
                 </span>
-                <span className="flex-1 text-[var(--text)]">
-                  {iss.message}
-                </span>
+                <span className="flex-1 text-[var(--text)]">{iss.message}</span>
               </li>
             ))}
           </ul>
@@ -647,4 +656,3 @@ export function WorkflowEditor({ workflowId }: { workflowId: string }) {
     </div>
   );
 }
-

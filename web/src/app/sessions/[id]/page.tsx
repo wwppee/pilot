@@ -17,7 +17,8 @@
  */
 import Link from "next/link";
 import { headers } from "next/headers";
-import { api } from "@/lib/pilot";
+import { notFound } from "next/navigation";
+import { api, PilotApiError } from "@/lib/pilot";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/types";
 import type {
@@ -50,6 +51,13 @@ async function load(id: string): Promise<{
     const session = sessions.find((s) => s.id === id) ?? null;
     return { tree, session, snapshot, info, error: null };
   } catch (e) {
+    if (e instanceof PilotApiError && e.status === 404) {
+      // v0.9.15: bail to the app's not-found.tsx. Without
+      // this, the page rendered an inline "no data" surface
+      // with HTTP 200, which broke SEO + refresh state +
+      // error monitoring.
+      notFound();
+    }
     return {
       tree: null,
       session: null,

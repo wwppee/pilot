@@ -2,6 +2,7 @@
  * /capabilities/[id] — single Capability detail (read-only).
  */
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { api } from "@/lib/pilot";
 import type { Capability } from "@/lib/types";
 
@@ -23,6 +24,16 @@ export default async function CapabilityDetailPage({ params }: PageProps) {
     }
   }
 
+  // v0.9.15: was rendering an inline "not found" surface with
+  // HTTP 200, which broke SEO + refresh state + error monitoring
+  // (the user couldn't tell from the URL bar that the resource
+  // was missing). Now we route to the app's not-found.tsx so the
+  // page returns 404. The inline "not found" surface is removed
+  // since it's unreachable once notFound() throws.
+  if (!cap && !error) {
+    notFound();
+  }
+
   return (
     <div className="space-y-6">
       <div className="text-xs text-[var(--text-muted)]">
@@ -36,11 +47,6 @@ export default async function CapabilityDetailPage({ params }: PageProps) {
       )}
 
       {cap && <Detail cap={cap} />}
-      {!cap && !error && (
-        <div className="surface rounded-lg p-4 text-sm text-[var(--text-muted)] italic">
-          Capability <code className="kbd">{decoded}</code> not found.
-        </div>
-      )}
     </div>
   );
 }

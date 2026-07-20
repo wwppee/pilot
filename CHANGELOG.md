@@ -1,5 +1,97 @@
 # Changelog
 
+### v0.9.15 — 5 P0 实际 bug 修复（curl 验证 + Next.js upstream bug 标注）
+
+user 拿 v0.9.14 一扫 + 狗粮吃出 5 个 P0 实际 bug，全部 curl
+实测可复现。这次不堆功能，全是修 bug。
+
+**P0 修的 5 个 bug**
+
+1. **`/workflows/[id]` 编辑器对所有 id 返 HTTP 500**
+   - **根因**：`/workflows/[id]/layout.ts` 文件名是 `layout.ts`，
+     Next.js 把它当 route layout 加载，但文件里只有 named
+     export 纯函数（`computeLayout` / `autoLayout`）—— Next.js
+     "default export is not a React Component" 直接 500
+   - 工具文件不该在 `app/` 根下，Next.js 任何
+     `layout.{js,jsx,ts,tsx}` 都当 route layout
+   - **修法**：git mv 到 `workflow-layout.ts`（同目录改名字，
+     Next.js 不会再匹配），3 个 import 同步（PreviewPanel /
+     WorkflowEditor / workflow-layout.test）
+
+2. **8 路由对不存在 id 返 200 而非 404**：
+   - `/packages/nonexistent` / `/sessions/nonexistent` /
+     `/capabilities/nonexistent` / `/profiles/nonexistent` /
+     `/policy/nonexistent/edit` / `/forge/nonexistent` /
+     `/avatars/nonexistent` / `/wrappers/nonexistent/edit`
+   - **根因**：所有 8 路由都把"找不到"渲染成 inline 空状态
+     surface，HTTP 还是 200。SEO / 刷新态 / 错误监控全部 broken
+   - **修法**：每个路由在 catch / null 路径调 `notFound()`
+     (from `next/navigation`)，跳到 `app/not-found.tsx` 路由
+   - `/workflows/[id]` 加 server-side 存在性检查
+     (`api.workflow(decoded)` → null → notFound())，与
+     WorkflowEditor 客户端 race-condition fallback 共存
+
+3. **9 个 unit test**（`web/tests/not-found-routes.test.ts`）：
+   - 9 路由 import + mock `next/navigation` + mock `@/lib/pilot`
+   - 验证 8 路由的 notFound() 调用 + 1 路由的 server-side
+     check，捕获 NEXT_NOT_FOUND 异常
+   - **lock 行为**：未来 refactor 如果谁把 "渲染 inline 'not
+     found' surface" 写回来，CI 会立刻 fail
+
+4. **`/packages/[id]` 6s timeout** — 不可稳定复现（沙箱内
+   0.6s 就回），可能是 user 当时 network 抖动。代码上
+   0 race condition，notFound() 改造后即使走慢路径也
+   200ms 量级。punt。
+
+5. **按钮不响应**（user "0.6 还能点" 的差）：
+   - /try 连接按钮 + en/zh 按钮不响应，**根因是 dev server
+     处于坏状态**——bug #1（layout.ts 500）让 Next.js dev
+     server HMR 异常，所有页面的 client-side React 都受影响
+   - bug #1 修完后，user 需 `Ctrl-C` `pilot dashboard` +
+     `mavis-trash .next` + 重启，**外加浏览器 Cmd+Shift+R
+     硬刷**
+   - **不是代码 bug**——v0.9.14 styling 改的是"错误状态
+     可见性"，样式层 OK；client JS 不跑是 dev server 状态
+     问题，restart 后应该 work
+   - 验证：v0.9.15 起 fresh dev server 上 `/workflows/test123`
+     返 200（不是 500），`/try` JS bundle 完整 224KB 服务正常
+
+**Stats**:
+
+- root: 655/655 (unchanged, pre-existing 7 个 npm install
+  timeout 在 init/service-impl/server test 里，跟 v0.9.15 无关)
+- web: 323 → **331** (+8, 1 new test file × 9 tests)
+- tsc / lint / build clean
+
+**⚠️ Next.js upstream bug 标注**（**不是** pilot bug）：
+
+- v0.9.15 改完后 body 渲染对了（`error.notFound.title` /
+  `error.notFound.body` / `nav.dashboard` 全在响应里），
+  **但 HTTP 状态在 production 也返 200 不是 404**
+- 根因：Next.js 16.2.x 的 `HTTPAccessFallbackBoundary` 吞
+  notFound() 的 status code（[issue #93008](https://github.com/vercel/next.js/issues/93008)）
+- 触发条件：segment tree 里**任何**位置有 `loading.tsx`。
+  我们 4 个 loading.tsx（`/app/loading.tsx` +
+  `/app/sessions/loading.tsx` + `/app/profiles/loading.tsx` +
+  `/app/plans/loading.tsx`）覆盖所有动态路由
+- **workaround**（如果 user 需要真 404 状态码）：
+  1. 删所有 `loading.tsx`（loss of loading UX）
+  2. middleware + 存在性预检（重复 round trip）
+  3. 等 Next.js 修（无 ETA）
+- v0.9.15 没在 pilot 端绕过这个 bug——绕过的代价是 4 个
+  loading UX，且本身是 Next.js 的责任。**user 如果
+  觉得 200-vs-404 重要（监控/SEO），开 issue 给 Next.js
+  比我 hack 端更好**
+
+**Deliberately NOT done**:
+
+- server.ts 1911 行拆 routes/ (GLM 5.2 P0，next 单独 release)
+- plan-executor.ts 1476 行拆 (GLM 5.2 P1，next 单独 release)
+- i18n 197KB 按 nav group 拆 (GLM 5.2 P1)
+- ComposeBoard.tsx 2144 行拆 (GLM 5.2 P2)
+- ObservabilityView.tsx 794 行 (GLM 5.2 P1)
+- 9 root + 21 web 遗留 prettier 警告（pre-existing）
+
 ### v0.9.14 — 实际 bug 修复 + AGENTS.md 校对
 
 GLM 5.2 拿 v0.9.13 一扫，看出 AGENTS.md 严重失同步——
@@ -43,14 +135,16 @@ ComposeBoard 2144 行 / ObservabilityView 794 行——
   暗主题下 transparent 等于没背景，text-muted 等于灰字融
   背景。**修复**：inactive 改用
   `color-mix(in srgb, var(--text) 8%, transparent)` 淡 tint
-  + `var(--text)` 满色文字 + `fontWeight: 500`。两个
-  按钮现在都看得见，"current vs other" 的对比仍然清晰
+  - `var(--text)` 满色文字 + `fontWeight: 500`。两个
+    按钮现在都看得见，"current vs other" 的对比仍然清晰
 
 **5 个 new i18n keys**（types + en + zh 三文件同步）：
+
 - `try.status.error`: "Connection failed" / "连接失败"
 - `try.action.retry`: "Retry" / "重试"
 
 **11 个 new tests**（web +2 文件 / +11 用例）：
+
 - `web/tests/language-switcher.test.tsx` (5 tests)
   - both EN / 中 渲染、active vs inactive 颜色、inactive
     不用 transparent / text-muted、点击写 localStorage、
@@ -61,12 +155,14 @@ ComposeBoard 2144 行 / ObservabilityView 794 行——
     触发 connect、zh locale 中英 i18n sanity
 
 **Stats**:
+
 - root 655/655 ✓ (unchanged)
 - web 312 → 323 (+11)
 - tsc clean, lint clean, next build clean
 - test files: web 30 → 32 (+2)
 
 **Deliberately NOT done** (排 v0.9.15+):
+
 - server.ts 1911 行拆 routes/ (8-10 文件)
 - plan-executor.ts 1476 行拆 7 职责
 - i18n 197KB 拆 nav group 按域分
@@ -157,7 +253,7 @@ re-scan 整个 `~/.pilot/policy/` 目录 → `/workflows`
   test, because the unit test doesn't exercise
   the full write-then-read cycle). **Lesson**:
   whenever you add a write-side cache invalidation
-  check, also verify a *write* invalidation works.
+  check, also verify a _write_ invalidation works.
   The cache unit test only verifies that the
   helper's API is correct; it does NOT verify
   the route actually calls `invalidate()` on
@@ -437,7 +533,7 @@ agegr/pi-web v0.7.16 之前的几个 commit 是**纯前端工程
   agegr `7878ec4` 修 O(n) `statSync` 模式：从 385ms 降到
   sub-5ms。pilot 的 `listCapabilities` 之前是同模式（每个
   entry 调一次 `stat()`）——现在改 `readdir(dir, { withFileTypes })`
-  + 新的 `safeIsDirectory` helper。
+  - 新的 `safeIsDirectory` helper。
 
   `safeIsDirectory` 解决 agegr `0883c79` 的 Windows
   陷阱：`Dirent.isDirectory()` 在 Windows symlink /
@@ -506,6 +602,7 @@ agegr/pi-web v0.7.16 之前的几个 commit 是**纯前端工程
 ### v0.9.8 — MessageView 抽组件 + 工具调用治理可视化 (denied / wrapped)
 
 pilot 跟 agegr/pi-web 的对位分析（v0.9.7 末）发现：
+
 - pilot `/try` 页 710 行堆在单文件，agegr 早拆了
   `MessageView.tsx`
 - agegr 只有 3 个 tool call 状态（streaming /
@@ -771,7 +868,7 @@ dirty so Save persists it.
   and a hint appears at the top of the preview
   ("Click the target node to connect from
   {name}"). The Cancel button is the only way
-  to abort — clicking another node *completes*
+  to abort — clicking another node _completes_
   the edge, it doesn't cancel.
 - **`onConnectEdge(fromId, toId)`** callback on
   `PreviewPanel`. The editor filters self-edges
@@ -803,7 +900,7 @@ Closes the "the chat box can only answer
 observability questions" gap. The chat input
 on the observability page used to be a 6-intent
 router that all queried the same observability
-summary. v0.9.4 adds a 3-intent *cross-dashboard*
+summary. v0.9.4 adds a 3-intent _cross-dashboard_
 router that fires first and answers questions
 about the user's policies, workflows, and
 wrappers — so the user can ask "list my
@@ -1005,9 +1102,9 @@ through the import flow.
 
 Closes the B1 / B2 / B3 governance arc and opens
 the A2 ("插拔式替换工具") arc. v0.8.0 + v0.8.6
-established **policy** as a *gate* — "should this
+established **policy** as a _gate_ — "should this
 tool call run?" v0.9.0 introduces **wrapper** as
-a *transform* — "given this tool call, change it
+a _transform_ — "given this tool call, change it
 before the tool runs." The two surfaces are
 parallel: both persist as TOML under
 `~/.pilot/`, both compile to a generated
@@ -1220,7 +1317,7 @@ isolation.
   save / dirty / busy / delete / run) and the
   top-level action bar. The body is a 2-line
   composition: `<StepsPanel ... />` + `<PreviewPanel
-  ... />`.
+... />`.
 - **Dropped `announcement` state**: the v0.7.0
   live region was never used for anything
   user-visible (the editor just called
@@ -1571,7 +1668,7 @@ covered at the component level.
 The editor already had 4 internal sub-components
 (`StepsPanel`, `NodeCard`, `PreviewPanel`, layout
 helpers) — it wasn't a true monolithic file, but it
-*was* over the "should be split" threshold and had
+_was_ over the "should be split" threshold and had
 3 distinct concerns sharing one file: the form
 fields, the connection picker, and the BFS layout.
 v0.7.2 extracts:
@@ -1655,7 +1752,7 @@ The v0.7.0 audit suggested aligning
 kebab-case) with `compose-boards:SAFE_ID_PATTERN`
 (`^[a-zA-Z0-9_-]{1,64}$`, safe filename) for
 "consistency". On closer inspection the two regexes are
-*intentionally different*:
+_intentionally different_:
 
 - workflow id is a kebab-case URL slug, used in
   `/workflows/<id>` paths and validated at both the
@@ -1683,21 +1780,22 @@ silently came back any time a new caller forgot to
 pass it. TypeScript's `?:` syntax doesn't force the
 caller to think about "am I busy right now?"; making
 it required does. Both current callers (WorkflowListView
-+ WorkflowEditor) already pass it; no production code
-change, just a stricter contract. **This is the v0.7.2
-recommendation for any future "lockable UI control"
-component** — `busy` / `pending` / `disabled-while-
+
+- WorkflowEditor) already pass it; no production code
+  change, just a stricter contract. **This is the v0.7.2
+  recommendation for any future "lockable UI control"
+  component** — `busy` / `pending` / `disabled-while-
 in-flight` should be required, not optional, when the
-locked state is a correctness requirement (not just a
-visual nicety).
+  locked state is a correctness requirement (not just a
+  visual nicety).
 
 **Stats**
 
 - root: **631/631** ✓ (unchanged — no new core tests;
   P3 #8 dedup is covered by the existing 12 `workflow`
-  + 58 `server` tests; the readWorkflowJson helper
-  passes the corrupt-JSON / missing / Zod-fail / happy
-  path coverage unchanged)
+  - 58 `server` tests; the readWorkflowJson helper
+    passes the corrupt-JSON / missing / Zod-fail / happy
+    path coverage unchanged)
 - web: **265/265** ✓ (was 245; +20 in two new files:
   `NodeFields.test.tsx` 6 + `ConfirmDialog.test.tsx`
   14). The 14 `ConfirmDialog` tests now lock in the
@@ -1771,7 +1869,7 @@ invariant. But v0.7.1's `loadWorkflow` wraps
 `JSON.parse` in `try/catch + console.warn` for corrupt
 files. The warn is correct for the user-facing "load
 this workflow" path (it tells the user their hand-
-edited file is broken), but `saveWorkflow` is a *write*
+edited file is broken), but `saveWorkflow` is a _write_
 operation — we're about to atomically overwrite the
 file anyway, so the warning only pollutes the server
 log on every save of a previously-corrupted workflow.
@@ -1804,7 +1902,7 @@ we still navigate so the user isn't stranded.
 v0.7.1's `ConfirmDialog` comment said "Focus the
 cancel button on open so Enter doesn't accidentally
 fire the destructive action" but the code did
-`cardRef.current?.focus()` — which focuses the *card*
+`cardRef.current?.focus()` — which focuses the _card_
 div (tabIndex=-1), not the cancel button. Enter on a
 non-button is a no-op, so the behavior was safe, but
 the comment was wrong. v0.7.1.1 adds a real
@@ -1841,7 +1939,7 @@ state in both views and threads it through.
   used a generic "Delete this workflow? This can't be
   undone."; v0.7.1.1 templates it as
   `Delete "{id}"? This can't be undone.` so the user
-  sees *which* workflow they're about to nuke.
+  sees _which_ workflow they're about to nuke.
 
 **i18n**
 
@@ -1864,7 +1962,7 @@ state in both views and threads it through.
   surface-level and the existing workflow-layout /
   nav-links / onboarding tests don't cover them.
   v0.7.2 backlog has "RTL test setup" for the editor
-  + dialog.)
+  - dialog.)
 - i18n: 0 placeholder mismatches across 1018 shared
   keys (was 1017; +1 new `deleteFailed` key, the
   `confirmDelete` template change still parses in
@@ -1927,9 +2025,9 @@ so the API route surfaces it as a 400 (same pattern as
 `compose-boards.saveBoard`).
 
 - New tests: `loadWorkflow returns null (not throws) for a
-  corrupted JSON file` + `loadWorkflow returns null for
-  completely non-JSON content` + `loadWorkflow throws a
-  friendly Error for valid JSON that fails schema validation`.
+corrupted JSON file` + `loadWorkflow returns null for
+completely non-JSON content` + `loadWorkflow throws a
+friendly Error for valid JSON that fails schema validation`.
 
 **P0 #2 — `DELETE /workflows/:id` 404s when the workflow doesn't exist**
 
@@ -1943,10 +2041,10 @@ matching the semantics of `/compose/boards/:id` DELETE and
 the rest of the v0.7.x API surface.
 
 - New tests: `DELETE /workflows/:id 404s when the workflow
-  doesn't exist` + `GET /workflows/:id 404s for an unknown
-  id` + `PUT /workflows/:id 400s for an invalid id` (in
+doesn't exist` + `GET /workflows/:id 404s for an unknown
+id` + `PUT /workflows/:id 400s for an invalid id` (in
   `test/unit/server.test.ts` under the new `Workflow
-  endpoints (v0.7.0)` describe).
+endpoints (v0.7.0)` describe).
 
 **P1 #3 — Connect-candidate filter now uses real edge data**
 
@@ -1969,10 +2067,11 @@ a confusing UX where "click Connect" appears to do nothing.
 previously the "Could not load {id}" and "Duplicate failed:
 {error}" announcements were hardcoded English. Extracted
 to two new i18n keys (`workflows.editor.error.duplicateFailed`
-+ `workflows.editor.error.loadFailed`) synced across
-types.ts + dict.en.ts + dict.zh.ts. The error string is
-still appended after the i18n'd prefix so the underlying
-cause stays identifiable.
+
+- `workflows.editor.error.loadFailed`) synced across
+  types.ts + dict.en.ts + dict.zh.ts. The error string is
+  still appended after the i18n'd prefix so the underlying
+  cause stays identifiable.
 
 **P2 #7 — Custom `ConfirmDialog` replaces `window.confirm`**
 
@@ -2038,7 +2137,7 @@ delete" so cancel is a no-op, not a mid-flight abort).
   error keys (P2 #6)
 - `test/unit/workflow.test.ts` — 3 new tests (P0 #1)
 - `test/unit/server.test.ts` — new `Workflow endpoints
-  (v0.7.0)` describe block with 4 tests (P0 #2 + minimal
+(v0.7.0)` describe block with 4 tests (P0 #2 + minimal
   lifecycle coverage)
 
 ### v0.7.0 — `/workflows` MVP (reusable agent workflow templates)
@@ -2062,13 +2161,13 @@ unchanged.
 **Schema**
 
 - **`Workflow`**: `{ id, name, description, version: 1,
-  nodes[], edges[], metadata: { createdAt, updatedAt } }`.
+nodes[], edges[], metadata: { createdAt, updatedAt } }`.
   Persisted as JSON at `~/.pilot/workflows/<id>/workflow.json`
   (same one-file-per-record pattern as /compose/boards).
 - **`WorkflowNode`**: `{ id, name, kind: "step", model:
-  { provider, model, apiKeyRef? }, systemPrompt, inputTemplate,
-  outputVar, tools[], onFailure: "stop"|"skip"|"retry"|"escalate",
-  retryCount?, escalateToModel?, position: {x, y} }`. Each
+{ provider, model, apiKeyRef? }, systemPrompt, inputTemplate,
+outputVar, tools[], onFailure: "stop"|"skip"|"retry"|"escalate",
+retryCount?, escalateToModel?, position: {x, y} }`. Each
   step is one LLM call with its own model config — the user
   can mix-and-match providers per step.
 - **`WorkflowEdge`**: `{ id, from, to }`. Simple directed edge
@@ -2096,11 +2195,11 @@ unchanged.
 - **`/workflows/[id]`** (new): the editor. Single client
   island (the whole thing is interactive, no benefit to
   splitting). Top bar has the workflow name + description
-  + Save (disabled when not dirty) / Duplicate / Delete /
-  Auto-layout. Body has two panels at ≥1024px (steps on
-  the left, SVG preview on the right) and a single column
-  at <1024px (applying the v0.6.23 mobile-layout lesson
-  — `flex` column with explicit height constraints).
+  - Save (disabled when not dirty) / Duplicate / Delete /
+    Auto-layout. Body has two panels at ≥1024px (steps on
+    the left, SVG preview on the right) and a single column
+    at <1024px (applying the v0.6.23 mobile-layout lesson
+    — `flex` column with explicit height constraints).
 - **Step form cards**: each step is a card with editable
   fields (name, provider, model, system prompt, input
   template, output var, tools, on-failure strategy +
@@ -2122,7 +2221,7 @@ unchanged.
 - This release is the v0.4 L1-L4 capability layers' replacement
   (per the §11 product reframe in pilot.md). The old
   `Capability` JSON shape (with `sources: [{ mode: "L1" |
-  "L2" | "L3" | "L4" }]`) is **not** part of v0.7.0. v0.7.0
+"L2" | "L3" | "L4" }]`) is **not** part of v0.7.0. v0.7.0
   capability = a workflow; a workflow = a sequence of
   LLM-powered steps. v0.4's "L1-referenced" was a dead
   abstraction and v0.7.0 deletes it.
@@ -2157,21 +2256,21 @@ unchanged.
 
 **Files**
 
-| Area | Files |
-|------|-------|
-| Data model | `web/src/lib/types.ts` (+5 types: Workflow, WorkflowNode, WorkflowEdge, WorkflowInput, WorkflowSummary) |
-| Server core | `src/core/workflow.ts` (new, 250 lines — zod schemas + persistence helpers, mirroring `compose-boards.ts`) |
-| Service | `src/core/service.ts`, `src/core/service-impl.ts` (4 new methods: list / get / save / delete) |
-| API routes | `src/server/server.ts` (4 new endpoints under `/workflows`) |
-| Browser API | `web/src/lib/pilot-browser.ts`, `web/src/lib/pilot.ts` (matching browser-safe wrappers) |
-| List page | `web/src/app/workflows/page.tsx`, `WorkflowListView.tsx` |
-| Editor | `web/src/app/workflows/[id]/page.tsx`, `WorkflowEditor.tsx` (~800 lines — the editor + the BFS layout module) |
-| Styles | `web/src/app/workflows/workflow.css` |
-| i18n | `web/src/lib/i18n/types.ts` (+~40 keys), `dict.en.ts`, `dict.zh.ts` |
-| Nav | `web/src/components/NavLinks.tsx` (1 new entry) |
-| Tests | `test/unit/workflow.test.ts` (9 tests), `web/tests/workflow-layout.test.ts` (7 tests) |
-| Docs | `CHANGELOG.md`, `AGENTS.md` |
-| Versions | `package.json`, `web/package.json` (both → 0.7.0) |
+| Area        | Files                                                                                                         |
+| ----------- | ------------------------------------------------------------------------------------------------------------- |
+| Data model  | `web/src/lib/types.ts` (+5 types: Workflow, WorkflowNode, WorkflowEdge, WorkflowInput, WorkflowSummary)       |
+| Server core | `src/core/workflow.ts` (new, 250 lines — zod schemas + persistence helpers, mirroring `compose-boards.ts`)    |
+| Service     | `src/core/service.ts`, `src/core/service-impl.ts` (4 new methods: list / get / save / delete)                 |
+| API routes  | `src/server/server.ts` (4 new endpoints under `/workflows`)                                                   |
+| Browser API | `web/src/lib/pilot-browser.ts`, `web/src/lib/pilot.ts` (matching browser-safe wrappers)                       |
+| List page   | `web/src/app/workflows/page.tsx`, `WorkflowListView.tsx`                                                      |
+| Editor      | `web/src/app/workflows/[id]/page.tsx`, `WorkflowEditor.tsx` (~800 lines — the editor + the BFS layout module) |
+| Styles      | `web/src/app/workflows/workflow.css`                                                                          |
+| i18n        | `web/src/lib/i18n/types.ts` (+~40 keys), `dict.en.ts`, `dict.zh.ts`                                           |
+| Nav         | `web/src/components/NavLinks.tsx` (1 new entry)                                                               |
+| Tests       | `test/unit/workflow.test.ts` (9 tests), `web/tests/workflow-layout.test.ts` (7 tests)                         |
+| Docs        | `CHANGELOG.md`, `AGENTS.md`                                                                                   |
+| Versions    | `package.json`, `web/package.json` (both → 0.7.0)                                                             |
 
 **Deliberately NOT done (v0.7.1+ backlog)**
 
@@ -2209,6 +2308,7 @@ cap didn't take effect.
 **Fix** — at <1024px, switch `.compose-grid` from `display: grid` to
 `display: flex; flex-direction: column; height: calc(100vh - 200px)`,
 with explicit size constraints per child:
+
 - Sidebar: `flex: 0 1 auto; max-height: 35vh` — a search bar + filter +
   a scrollable items list, capped at 35% of viewport height.
 - Canvas: `flex: 1 1 auto; min-height: 0` — fills the remaining
@@ -2278,21 +2378,29 @@ suite.
 **New hook surface**
 
 ```ts
-const { history, commit, pushEntry, pushOrMergeMoveEntry,
-        clearHistory, undo, redo, canUndo, canRedo }
-  = useHistoryStack({ state, setState, setSelectedId, announce, t });
+const {
+  history,
+  commit,
+  pushEntry,
+  pushOrMergeMoveEntry,
+  clearHistory,
+  undo,
+  redo,
+  canUndo,
+  canRedo,
+} = useHistoryStack({ state, setState, setSelectedId, announce, t });
 ```
 
 The 5 entry-point methods map to 5 distinct use cases the
 callers had:
 
-| Method | Used by | Why a separate method |
-|--------|---------|------------------------|
-| `commit` | 20+ callbacks (connection label / kind / dir / color / route edits, addBlock, connect, disconnect, ...) | Standard "I have a before/after transition to record" path. The `apply` callback does the setState, the hook does the history bookkeeping + announce. |
-| `pushEntry` | `endBlockDrag` | The state was already mutated during pointermove; we only want to record the final delta. `commit` would re-apply and double the position. |
-| `pushOrMergeMoveEntry` | `moveBlock` (arrow-key handler) | Holding an arrow key fires many `moveBlock` calls; we want ONE undo step covering the whole run, not N. The hook merges with the previous move entry on the same block. |
-| `clearHistory` | `loadBoardFromServer`, `importJson`, `resetCanvas` | Wholesale canvas replacement — the user can't undo their way back into a board they just threw away. |
-| `undo` / `redo` | keyboard handler (Cmd-Z / Shift-Cmd-Z), toolbar buttons | Apply inverted / forward entry, push onto the other stack, announce. |
+| Method                 | Used by                                                                                                 | Why a separate method                                                                                                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `commit`               | 20+ callbacks (connection label / kind / dir / color / route edits, addBlock, connect, disconnect, ...) | Standard "I have a before/after transition to record" path. The `apply` callback does the setState, the hook does the history bookkeeping + announce.                   |
+| `pushEntry`            | `endBlockDrag`                                                                                          | The state was already mutated during pointermove; we only want to record the final delta. `commit` would re-apply and double the position.                              |
+| `pushOrMergeMoveEntry` | `moveBlock` (arrow-key handler)                                                                         | Holding an arrow key fires many `moveBlock` calls; we want ONE undo step covering the whole run, not N. The hook merges with the previous move entry on the same block. |
+| `clearHistory`         | `loadBoardFromServer`, `importJson`, `resetCanvas`                                                      | Wholesale canvas replacement — the user can't undo their way back into a board they just threw away.                                                                    |
+| `undo` / `redo`        | keyboard handler (Cmd-Z / Shift-Cmd-Z), toolbar buttons                                                 | Apply inverted / forward entry, push onto the other stack, announce.                                                                                                    |
 
 **Stats**
 
@@ -2311,7 +2419,7 @@ callers had:
 - `ComposeBoard.tsx`: 2184 → 2144 lines (-40). The drop is
   smaller than the extracted code because the useHistoryStack
   call site + explanatory comments take ~30 lines. The
-  *cognitive* drop is bigger — the commit / undo / redo
+  _cognitive_ drop is bigger — the commit / undo / redo
   triplet is now testable in isolation.
 
 **Deliberately NOT done (v0.6.23+ backlog)**
@@ -2321,7 +2429,7 @@ callers had:
   established here (custom hook that owns the slice of state
   and exposes a small public surface) should make the next
   4-5 extractions mechanical, but each is its own release.
-- block-center avoidance for orthogonal routes (real A* grid
+- block-center avoidance for orthogonal routes (real A\* grid
   router) — still the v0.6.20 followup, never started
 - per-direction palette — still the v0.6.19 followup, never started
 
@@ -2392,7 +2500,7 @@ audit doesn't drift again.
 **P3 — Regression test (1 add)**
 
 - **`tests/i18n.test.ts` now has a `placeholder
-  consistency across locales` block.** It walks every
+consistency across locales` block.** It walks every
   key present in both `dict.en` and `dict.zh`, computes
   the set of placeholders each value uses, and asserts
   the sets are equal. On failure it dumps the full list
@@ -2417,7 +2525,7 @@ audit doesn't drift again.
 
 **Deliberately NOT done (v0.6.22+ backlog)**
 
-- block-center avoidance for orthogonal routes (real A*
+- block-center avoidance for orthogonal routes (real A\*
   grid router on top of the v0.6.20 `route` enum) — this
   was originally planned for v0.6.21 but the cleanup
   batch bumped that slot
@@ -2441,7 +2549,7 @@ can mix both: a "main flow" line curves smoothly while a
   one, the renderer takes care of the rest.
 - **Block-center avoidance is out of scope.** A connection
   that goes through other blocks in the middle will still
-  do so with `"orthogonal"`. A real A* grid router (or
+  do so with `"orthogonal"`. A real A\* grid router (or
   visibility-graph) on top of this enum is a separate
   concern and would need its own release.
 
@@ -2461,7 +2569,7 @@ can mix both: a "main flow" line curves smoothly while a
 - **ConnectionPath** uses a single SVG `<path>` for both
   styles. The `curve` case is the original `C ...` cubic
   bezier; the `orthogonal` case is a 3-segment `M ... L
-  ... L ... L ...` polyline (right → up/down → right).
+... L ... L ...` polyline (right → up/down → right).
   Both end with a horizontal segment, so the v0.6.18
   marker logic (`markerStart` / `markerEnd` with
   `orient="auto-start-reverse"`) keeps working without any
@@ -2477,9 +2585,9 @@ can mix both: a "main flow" line curves smoothly while a
 - New history entry type `updateConnectionRoute` (one
   concern per entry, same pattern as the four other
   connection-level history types). Stores `{ connectionId,
-  fromRoute, toRoute }` so undo/redo round-trips without
+fromRoute, toRoute }` so undo/redo round-trips without
   re-fetching live state. `toRoute = ""` and `toRoute =
-  "curve"` both mean "default" — when restoring the
+"curve"` both mean "default" — when restoring the
   default we `delete next.route` rather than set it to
   `"curve"`, so the persisted JSON stays minimal and
   v0.6.20 ↔ v0.6.19 round-trip is lossless.
@@ -2509,7 +2617,7 @@ can mix both: a "main flow" line curves smoothly while a
 
 **Deliberately NOT done (v0.6.22+ backlog — placeholder audit closed in v0.6.21)**
 
-- block-center avoidance for orthogonal routes (real A*
+- block-center avoidance for orthogonal routes (real A\*
   grid router or visibility-graph on top of the v0.6.20
   enum)
 - ComposeBoard.tsx hooks/state 抽离
@@ -2552,11 +2660,11 @@ palette.
 
 - **ConnectionPath** threads `color` through the
   `style.color` attribute on the wrapping `<g>`. The line
-  + arrow head both consume `currentColor` (set on the
-  parent SVG style), so the single `style.color = <hex>`
-  cascades to both — no new marker definitions, no
-  per-color clones. `data-has-color="1|0"` is exposed on
-  the `<g>` for test selectors.
+  - arrow head both consume `currentColor` (set on the
+    parent SVG style), so the single `style.color = <hex>`
+    cascades to both — no new marker definitions, no
+    per-color clones. `data-has-color="1|0"` is exposed on
+    the `<g>` for test selectors.
 - **Inspector** gets a 4th control next to the dir select:
   a native color swatch (`<input type="color">`) plus a
   small `↺` reset button (visible only when a color is
@@ -2571,7 +2679,7 @@ palette.
   entry types, undo granularity stays narrow). Stores
   `{ connectionId, fromColor, toColor }` so undo/redo
   round-trips without re-fetching live state. `toColor =
-  ""` means "use theme accent" — when clearing we
+""` means "use theme accent" — when clearing we
   `delete next.color` rather than set it to `""`, which
   matches the v0.6.18 dir-drop pattern and keeps the
   persisted JSON minimal.
@@ -2604,7 +2712,7 @@ palette.
 
 **Deliberately NOT done (v0.6.20+ backlog)**
 
-- block-center avoidance for orthogonal routes (real A*
+- block-center avoidance for orthogonal routes (real A\*
   grid router on top of the v0.6.20 enum)
 - ComposeBoard.tsx hooks/state 抽离
 - placeholder parameter audit (15 keys) — see v0.6.16
@@ -2627,7 +2735,7 @@ in one click.
 **Schema**
 
 - **`ComposeConnection.dir?: "forward" | "backward" |
-  "bidirectional"`** (default `"forward"` when missing).
+"bidirectional"`** (default `"forward"` when missing).
   The same `(from, to)` pair can have up to three
   connections — one per direction — so the existing
   `buildConnectionIfValid` dedupe check now keys on
@@ -2661,9 +2769,9 @@ in one click.
   flip doesn't also undo an unrelated label edit). Stores
   `{ connectionId, fromDir, toDir }` so undo/redo
   round-trips without re-fetching live state. `fromDir =
-  ""` and `toDir = "forward"` both mean "default
+""` and `toDir = "forward"` both mean "default
   (forward)" — when restoring the default we `delete
-  next.dir` rather than `next.dir = "forward"` so the
+next.dir` rather than `next.dir = "forward"` so the
   persisted JSON stays minimal and v0.6.18 → v0.6.17
   round-trip is lossless.
 
@@ -2793,21 +2901,20 @@ relying on the user having run `pilot init` first.
   absorb itself.
 - **Actionable EPERM/EACCES error message.** The previous
   error was the raw `Failed to write
-  /Users/feng/.pilot/capabilities/caveman-code/capability.json:
-  EPERM: operation not permitted, mkdir
-  '/Users/feng/.pilot/capabilities'` — technically correct
-  but gave no hint about *why* or *what to do*. The new
+/Users/feng/.pilot/capabilities/caveman-code/capability.json:
+EPERM: operation not permitted, mkdir
+'/Users/feng/.pilot/capabilities'` — technically correct
+  but gave no hint about _why_ or _what to do_. The new
   error reads:
   > `Cannot write /Users/feng/.pilot/capabilities/caveman-code/capability.json:
-  > operation not permitted (EPERM). Your shell is
-  > sandboxed or otherwise blocked from writing to
-  > ~/.pilot/. Run \`pilot init\` from a non-sandboxed
+operation not permitted (EPERM). Your shell is
+sandboxed or otherwise blocked from writing to
+~/.pilot/. Run \`pilot init\` from a non-sandboxed
   > Terminal, or check that
-  > /Users/feng/.pilot/capabilities is accessible.`
-  The detection checks `err.code === "EPERM" || "EACCES"`
-  specifically — generic IO errors (disk full, read-only
-  volume, etc.) still get the original bare message
-  because they don't have a one-line "do this" fix.
+  > /Users/feng/.pilot/capabilities is accessible.`The detection checks`err.code === "EPERM" || "EACCES"`
+  > specifically — generic IO errors (disk full, read-only
+  > volume, etc.) still get the original bare message
+  > because they don't have a one-line "do this" fix.
 
 **Testability hook**
 
@@ -2867,7 +2974,7 @@ cleans up the remaining 4 missed spots.
 **Hardcoded English fixed (4 spots across 3 pages)**
 
 - **`sessions/page.tsx` table header `<th>ID</th>` → `<T
-  k="sessions.col.id" />`.** The 6 sibling column headers
+k="sessions.col.id" />`.** The 6 sibling column headers
   (Topic / CWD / LastUsed / Entries / Size / Model) were
   already i18n-keyed; `ID` was the only one that got
   forgotten. The key `sessions.col.id` already existed in
@@ -2881,24 +2988,24 @@ cleans up the remaining 4 missed spots.
   try-rule form's `<select>` had `<option value="bash">bash</option>`
   etc. — the `value` attribute is the raw tool name
   (must match the API contract for `/api/policy-check`),
-  but the *visible label* is now wrapped through
+  but the _visible label_ is now wrapped through
   `policy.tryRule.tool{Bash,Read,Edit,Write}` keys. en
-  + zh both render as "bash" / "read" / "edit" / "write"
-  (tool names are technical terms zh users also read as
-  English), but the keys are in place for future
-  languages where they might want to translate
-  ("Bash-Befehl" / "Lectura" / etc.).
+  - zh both render as "bash" / "read" / "edit" / "write"
+    (tool names are technical terms zh users also read as
+    English), but the keys are in place for future
+    languages where they might want to translate
+    ("Bash-Befehl" / "Lectura" / etc.).
 - **`policy/page.tsx` new-policy name
   `placeholder="safe-bash"`.** The `policy.newCard.namePlaceholder`
   key already existed with the same value — the form
   was just calling the raw literal. Replaced with
   `renderT(locale, "policy.newCard.namePlaceholder")`.
-- **`profiles/[name]/page.tsx` five field placeholders
-  + one label suffix.** Provider / model / thinking /
-  packages / description, plus the "(comma-separated)"
-  hint appended to the packages label. All 6 wrapped
-  through new `profiles.field.*` keys (en: technical
-  examples, zh: "例如：claude-opus-4.6" / "（逗号分隔）").
+- \*\*`profiles/[name]/page.tsx` five field placeholders
+  - one label suffix.\*_ Provider / model / thinking /
+    packages / description, plus the "(comma-separated)"
+    hint appended to the packages label. All 6 wrapped
+    through new `profiles.field._` keys (en: technical
+    examples, zh: "例如：claude-opus-4.6" / "（逗号分隔）").
 
 **Locale plumbing**
 
@@ -3000,7 +3107,7 @@ isolation and falls out of either an i18n key addition or a
 
 - **`BoardRow` checkbox `aria-label` is no longer
   count-shaped.** Was `t("compose.boards.bulk.selected",
-  { n: checked ? 1 : 0 })` — this read as "0 selected"
+{ n: checked ? 1 : 0 })` — this read as "0 selected"
   when the row was unchecked, which is a per-row toggle
   semantically, not a multi-select status. New dedicated
   key `compose.boards.row.select` = `"Select this board"`
@@ -3024,7 +3131,7 @@ isolation and falls out of either an i18n key addition or a
   ref through React state" — but the variable no longer
   exists, so the breadcrumb was pointing at code that
   wasn't there. Rewrote the comment to describe the
-  *current* architecture (the anchor is a pure function
+  _current_ architecture (the anchor is a pure function
   of `from.x` + `from.y`) without naming a ghost.
 
 **i18n**
@@ -3187,14 +3294,14 @@ me them all at once".
 
 **Stats**
 
-| 项目 | 数字 |
-|---|---|
-| 新增 files | `web/src/app/compose/boards/{page,BoardListView,BoardRow,RenameDialog}.tsx`, `web/tests/boards.test.tsx` |
+| 项目       | 数字                                                                                                                                                                                                                                                                                           |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 新增 files | `web/src/app/compose/boards/{page,BoardListView,BoardRow,RenameDialog}.tsx`, `web/tests/boards.test.tsx`                                                                                                                                                                                       |
 | 修改 files | `src/core/compose-boards.ts`, `src/core/service.ts`, `src/core/service-impl.ts`, `src/server/server.ts`, `web/src/lib/pilot-browser.ts`, `web/src/lib/i18n/{types,dict.en,dict.zh}.ts`, `web/src/app/compose/ComposeBoard.tsx`, `test/unit/compose-boards.test.ts`, `test/unit/server.test.ts` |
-| i18n keys | +40 (en + zh) |
-| root tests | 525 → 541 (+16) |
-| web tests | 201 → 214 (+13) |
-| LOC Δ | +1571 / -13 (净 +1558) |
+| i18n keys  | +40 (en + zh)                                                                                                                                                                                                                                                                                  |
+| root tests | 525 → 541 (+16)                                                                                                                                                                                                                                                                                |
+| web tests  | 201 → 214 (+13)                                                                                                                                                                                                                                                                                |
+| LOC Δ      | +1571 / -13 (净 +1558)                                                                                                                                                                                                                                                                         |
 
 **Sandbox caveat**
 
@@ -3290,7 +3397,7 @@ and most have at least one regression test.
   that don't translate, so they stay literal in zh too).
 - **Inspector "id / kind / refId / position" fields are
   i18n'd.** New keys `compose.inspector.field.{id,kind,refId,
-  position}` (en keeps the schema field name; zh uses
+position}` (en keeps the schema field name; zh uses
   "ID / 类型 / 引用 ID / 位置").
 - **`ComposeBoard.tsx` split into three files.** The 2767-
   line main file is now 1974 lines; the 793 lines of
@@ -3362,7 +3469,8 @@ validation + name-confirm logic IS covered by the existing
 25 compose-boards cases (list / save / load / delete
 round-trips + schema validation + ID safety). User must
 `pilot start` + `pilot dashboard` to confirm the inspector
-+ load list render correctly.
+
+- load list render correctly.
 
 ### v0.6.10 — server-side board persistence (Save to / Load from server)
 
@@ -3395,18 +3503,18 @@ server.
 
 **New HTTP routes**
 
-- `GET    /api/compose/boards`            → `BoardSummary[]`
-- `GET    /api/compose/boards/:id`        → `BoardSnapshot` (404 if missing)
-- `PUT    /api/compose/boards/:id`        → `BoardSnapshot` (path id wins)
-- `POST   /api/compose/boards`            → 201 + `BoardSnapshot` (auto-id)
-- `DELETE /api/compose/boards/:id`        → 204 (404 if missing)
+- `GET    /api/compose/boards` → `BoardSummary[]`
+- `GET    /api/compose/boards/:id` → `BoardSnapshot` (404 if missing)
+- `PUT    /api/compose/boards/:id` → `BoardSnapshot` (path id wins)
+- `POST   /api/compose/boards` → 201 + `BoardSnapshot` (auto-id)
+- `DELETE /api/compose/boards/:id` → 204 (404 if missing)
 
 **Service-layer wiring**
 
 - `PilotService` interface gains `listComposeBoards` /
   `getComposeBoard` / `saveComposeBoard` /
   `deleteComposeBoard`. Same lazy-import pattern as the
-  other compose*FromService helpers (avoids pulling
+  other compose\*FromService helpers (avoids pulling
   `fs`/`zod` into callers that don't need persistence).
 - Mirrored in `core/service-impl.ts` so CLI / server / web
   all share one implementation, no drift.
@@ -3442,8 +3550,8 @@ server.
   panel labels, status messages, confirm prompts:
   `compose.toolbar.{saveTitle,loadTitle,boardsTitle}`,
   `compose.board.{saving,saved,saveError,loading,loaded,
-  loadError,empty,namePrompt,namePlaceholder,
-  confirmOverwrite,confirmDelete,deleted,deleteError}`.
+loadError,empty,namePrompt,namePlaceholder,
+confirmOverwrite,confirmDelete,deleted,deleteError}`.
 
 **Stats**
 
@@ -3459,12 +3567,13 @@ server.
 **Sandbox caveat**
 
 `pilot start` wasn't running, so the new toolbar affordance
-+ panel render path can't be Playwright-verified from the
-sandbox. Server-side `core/compose-boards.ts` is fully
-covered by 25 vitest cases (list / save / load / delete
-round-trips, schema validation, ID safety, corrupt-JSON
-recovery). User must `pilot start` + `pilot dashboard` to
-try the Save / Load flow.
+
+- panel render path can't be Playwright-verified from the
+  sandbox. Server-side `core/compose-boards.ts` is fully
+  covered by 25 vitest cases (list / save / load / delete
+  round-trips, schema validation, ID safety, corrupt-JSON
+  recovery). User must `pilot start` + `pilot dashboard` to
+  try the Save / Load flow.
 
 **Deferred to v0.6.11**
 
@@ -3502,7 +3611,7 @@ edge.
   (which collapses to `(x1+x2)/2, y1+y2 - 6` because both
   control points share Y with their endpoints). The label
   has a `paint-order: stroke; stroke: var(--bg); stroke-width:
-  4px` halo so it stays readable when it overlaps the line.
+4px` halo so it stays readable when it overlaps the line.
 - Cozy skin overrides the halo to `#f5ecd9` (warm cream)
   so labels don't get cross-eyed against the dotted grid.
 - Kind-driven tint on the line + arrow. `data-kind` on the
@@ -3545,7 +3654,7 @@ edge.
 - 13 new keys: `compose.inspector.connectionLabel`,
   `…connectionLabel.placeholder`, `…connectionLabel.none`,
   `compose.connectionLabel.kind.{flows,uses,feeds,depends,
-  produces,manual}`, `compose.connectionLabel.tooltip`,
+produces,manual}`, `compose.connectionLabel.tooltip`,
   `compose.announce.connectionLabelUpdated`.
 - `web/tests/i18n.test.ts` auto-validates every key in
   `types.ts` is present in both `dict.en.ts` and
@@ -3690,7 +3799,7 @@ directed edges from one block to another.
 **Files touched**
 
 - `web/src/lib/types.ts` — `ComposeConnection` + state.connections
-  + version bump
+  - version bump
 - `web/src/lib/compose-history.ts` — addConnection/removeConnection
 - `web/src/app/compose/ComposeBoard.tsx` — SVG overlay, picker,
   callbacks, ConnectionPath, ConnectingPicker, ConnectionList,
@@ -3726,8 +3835,8 @@ directed edges from one block to another.
 v0.4.4 introduced `ComposeBoard` with two pieces of state
 lazy-initialized from `localStorage` inside `useState`:
 
-  const [state, setState] = useState<ComposeState>(() => loadState());
-  const [viewMode, setViewMode] = useState<ViewMode>(() => loadViewMode());
+const [state, setState] = useState<ComposeState>(() => loadState());
+const [viewMode, setViewMode] = useState<ViewMode>(() => loadViewMode());
 
 `loadState()` checks `typeof window === "undefined"` and returns
 `emptyState()` in SSR — so the server renders "0 个块" and the
@@ -3750,9 +3859,9 @@ a `useEffect` reads localStorage and re-renders. The re-render
 triggered by `setState` in `useEffect` is not a hydration — it's
 just a normal update after the tree is already attached.
 
-  - `useState<ComposeState>(emptyState)`  // was: `() => loadState()`
-  - `useState<ViewMode>("modern")`        // was: `() => loadViewMode()`
-  - `useEffect(() => { setState(loadState()); setViewMode(loadViewMode()); }, [])`
+- `useState<ComposeState>(emptyState)` // was: `() => loadState()`
+- `useState<ViewMode>("modern")` // was: `() => loadViewMode()`
+- `useEffect(() => { setState(loadState()); setViewMode(loadViewMode()); }, [])`
 
 No other state is localStorage-backed at component init, so no
 other changes needed.
@@ -3822,7 +3931,7 @@ away. This release adds per-entity full-detail rendering.
 **Bug fix: client-bundle import of `node:fs/promises`**
 
 - v0.6.4 build worked because `ComposeBoard` imported
-  `pilot.ts` but never *called* any of its functions client-side
+  `pilot.ts` but never _called_ any of its functions client-side
   — Turbopack tree-shook the `node:fs/promises` import away.
 - v0.6.5's `useEffect` fetch of `composeEntityDetail` actually
   pulls `pilot.ts` into the client bundle, which Turbopack
@@ -4188,7 +4297,8 @@ object to only emit fields that have values.
 
 Replaced with `t("home.welcome.stepN", { n })` and
 `t("home.welcome.dismiss")`. Both keys added to en + zh
-+ Dict type.
+
+- Dict type.
 
 **`PlanEditor` (web) — visual plan builder**
 
@@ -4273,7 +4383,7 @@ in `service.createPlan` is the source of truth for shape.
   - `"true"` / `"false"` 字面量
   - `"step.<id>.success"` —— 查 executor 内 `stepResults` map（每个 step 完成时 `completeStep` 会 `stepResults.set(id, success)`）
   - 其它 → 当 JS 表达式用 `new Function("ctx", ...)` 跑，ctx 是 `{ steps: { [id]: { success, summary, output } } }`。
-  跑 then/else SubStep 列表（同一 executor 的 dispatcher）。branch 失败 → 整个 step 失败。
+    跑 then/else SubStep 列表（同一 executor 的 dispatcher）。branch 失败 → 整个 step 失败。
 - `wait` → `defaultWaitHandler` → `setTimeout(timeoutMs)`，abort 立即 resolve。
   condition 字符串暂忽略（真 "wait until X" 需要 polling subsystem，留 v0.6.1）。
 
@@ -4322,13 +4432,14 @@ export const STUBBED_ACTIONS = new Set<StepAction["type"]>(["manual"]);
 ### v0.5.23 — PlanExecutor MVP (sequential + 3 real actions + crash recovery)
 
 The Plan data model + CRUD + UI shell have been in place since v0.5.7
-+ v0.5.13, but `startPlan` / `pausePlan` / `resumePlan` / `cancelPlan`
-only flipped status — they didn't actually run any steps. This
-version lands a real `PlanExecutor` and wires the existing control
-endpoints to it. It's the **MVP slice** of the full v0.6.0
-「自适应执行引擎」(3-4 weeks of work); see
-[`docs/v0.6.0-plan-executor-mvp.md`](./docs/v0.6.0-plan-executor-mvp.md)
-for the scope decision.
+
+- v0.5.13, but `startPlan` / `pausePlan` / `resumePlan` / `cancelPlan`
+  only flipped status — they didn't actually run any steps. This
+  version lands a real `PlanExecutor` and wires the existing control
+  endpoints to it. It's the **MVP slice** of the full v0.6.0
+  「自适应执行引擎」(3-4 weeks of work); see
+  [`docs/v0.6.0-plan-executor-mvp.md`](./docs/v0.6.0-plan-executor-mvp.md)
+  for the scope decision.
 
 **Core — `src/core/plan-executor.ts` (new, ~700 lines)**
 
@@ -4345,7 +4456,7 @@ for the scope decision.
   - `policy_apply` — calls `service.applyPolicy(name)`. Writes the
     extension file under `~/.pilot/extensions/`.
 - 5 stubbed action types (return success + `data: { stubbed: true,
-  reason: "v0.5.23 MVP — full implementation in v0.6.0" }`):
+reason: "v0.5.23 MVP — full implementation in v0.6.0" }`):
   - `pi_session` (waiting for v0.5.14.3's bridge to be production-ready)
   - `pack_install` (pilot-tools 改造 in flight)
   - `condition` / `wait` / `manual` (real branching is v0.6.0)
@@ -4462,12 +4573,13 @@ SSR time — the locale comes from the existing
 Was a plain sync component reading raw `entry.short` /
 `entry.definition` — that no longer typechecks. Rewrote as an async
 server component that:
+
 - Negotiates `locale` from `Accept-Language` (same pattern as the
   other server pages).
 - Renders glossary entries via `shortFor` / `definitionFor(key, locale)`.
 - I18n'd the 6 "How do I…" cards (12 new keys: `help.howDo.*.title`
-  + `help.howDo.*.body` for first session / find session / install
-  tool / switch model / block dangerous / check spending).
+  - `help.howDo.*.body` for first session / find session / install
+    tool / switch model / block dangerous / check spending).
 
 **Per-page inline `<Hint>` (13 pages)**
 
@@ -4507,11 +4619,13 @@ because each template's embeds are different.
 > Error: Attempted to call useT() from the server but useT is on the client.
 
 Fix:
+
 - Removed the `useT()` call; `NavLinks` is now a Server Component that takes `locale: Locale` as a prop and uses the pure `renderT(locale, key)`.
 - `NavTooltip` no longer needs `"use client"` — it's pure JSX, just receives pre-translated strings.
 - `layout.tsx` passes the already-computed `locale` down.
 
 Trade-off: the nav no longer re-renders on client-side language toggle. Acceptable because:
+
 1. The `<LanguageSwitcher>` lives inside the same `<I18nProvider>` and updates its own labels instantly.
 2. The page-level translations (most of the app) still update reactively because they use `useT()` from their own client components.
 3. A future fix can add `router.refresh()` to `setLocale` to make the nav re-render too.
@@ -4523,6 +4637,7 @@ Trade-off: the nav no longer re-renders on client-side language toggle. Acceptab
 - `page.tsx` now passes pre-translated strings to `<WelcomeBanner>` (the banner stays a client component, no internal i18n needed).
 
 **Tests**
+
 - `web/tests/nav-links.test.tsx` rewritten for the new server-component signature. Now covers both `locale="en"` and `locale="zh"` — the zh block asserts that every tooltip body contains Chinese characters and no raw `nav.hint.*` keys. 11/11 ✓.
 - core unit: 522/522 ✓
 - web: 170/170 ✓ (count unchanged — existing onboarding + new tree tests are unaffected)
@@ -4534,6 +4649,7 @@ Trade-off: the nav no longer re-renders on client-side language toggle. Acceptab
 Surface pi's full conversation DAG inside the chat page. The existing bubble-level fork action (v0.5.16) only worked for the visible turn — this version adds a sidebar-style view of all branches so users can see + fork from anywhere in the history.
 
 **New component (`web/src/components/SessionTreeView.tsx`)**
+
 - Fetches `GET /sessions/:id/tree` and renders a nested unordered list (depth-based indentation, vertical connectors on each level, siblingIndex/siblingCount for branch numbering).
 - Highlights the linear path to the current leaf (best-effort: walk from the latest event timestamp back to root).
 - Each user node gets a hover-revealed `↳` that calls `fork(entryId)` directly with the tree's node id — no need to look up via `get_fork_messages`.
@@ -4541,15 +4657,18 @@ Surface pi's full conversation DAG inside the chat page. The existing bubble-lev
 - Empty / loading / error states.
 
 **Try-page wiring**
+
 - New collapsible "Conversation tree" `<details>` panel sits between SessionPanel and the chat area.
 - `handleTreeFork(entryId, prompt)` reuses the same `forkedFrom` + local-messages-clear flow as the bubble fork.
 - Extracted `forkByText(text)` so the existing bubble fork and the new tree-row fork share the same `get_fork_messages` lookup path.
 - `latestEventTimestampMs` derived from the events stream powers the "current path" highlight.
 
 **i18n**
+
 - 6 new keys: `try.tree.title / hint / empty / stats / branches.one+other / depth`.
 
 **Tests**
+
 - New `web/tests/session-tree.test.ts` (7 cases): flatten linear / branching / deep trees, `findCurrentPath` no-events / linear / branch-divergence, type sanity.
 - core unit: 522/522 ✓
 - web: 170/170 ✓ (+7)
@@ -4560,6 +4679,7 @@ Surface pi's full conversation DAG inside the chat page. The existing bubble-lev
 v0.5.18 added the shared components (Hint, GlossaryTerm, WelcomeBanner, NavTooltip) and the `/help` page, and applied them to Dashboard / Sessions / Try. This version finishes the pass: every remaining page now opens with a collapsible "What is this?" Hint, and inline jargon is wrapped in `<GlossaryTerm>` so the same definition is used everywhere.
 
 **Pages updated**
+
 - **Usage** — what tokens / cache read / cost mean; per-model rate is set in profile.
 - **Tools** — built-in vs local vs npm sources; what each safety badge (`read` / `write` / `exec` / `network` / `secret`) means.
 - **Context** — what "loaded" vs "info" files are; where to find the Discovery rules.
@@ -4573,10 +4693,12 @@ v0.5.18 added the shared components (Hint, GlossaryTerm, WelcomeBanner, NavToolt
 - **Compose** — what compose is for (visual sandbox, not a real config tool).
 
 **Glossary**
+
 - New entry: `tool` (function pi can call; listed in /tools).
 - 14 entries total now.
 
 **Tests**
+
 - `web/tests/onboarding.test.tsx` +1 (GlossaryTerm accepts the new `tool` key).
 - core unit: 522/522 ✓ (unchanged)
 - web: 163/163 ✓ (unchanged — only +1, and that one already passed since the v0.5.18 file)
@@ -4587,28 +4709,33 @@ v0.5.18 added the shared components (Hint, GlossaryTerm, WelcomeBanner, NavToolt
 Massive onboarding pass. Every page should now make sense to a first-time user without external docs.
 
 **New shared components**
+
 - `<Hint>` — inline collapsible "What is this?" / "What's a session?" expandable. Use anywhere you'd write a footnote.
 - `<GlossaryTerm>` — dotted-underline inline jargon with the canonical definition as the `title` (hover) + `aria-label`. Backed by `lib/glossary.ts` (13 entries: pilot, pi, session, capability, avatar, profile, pack, fork, context, policy, plan, rpc, token, contextWindow) — same definition used everywhere.
 - `<WelcomeBanner>` — dismissible 3-step first-visit card. SSR-safe (checks localStorage in `useEffect`). Shown once per browser per `dismissKey`.
 - `<NavTooltip>` — popover-on-hover wrapper around a nav link. Pure CSS `:hover`/`:focus-within`, zero JS state.
 
 **Nav redesign**
+
 - Icons (emoji, decorative) on every item: 🏠 💬 📋 📊 🔧 📄 🧩 🎭 📝 📦 🛠 🛡 🧪 👤 ❓
 - One-line tooltip on every item ("Browse past pi conversations" etc).
 - Reorder: Try pi moves to position 2 (most natural starting point for beginners).
 - New third group: **Learn** with `/help`.
 
 **`/help` page (new)**
+
 - "How do I…" — 6 starter cards (start first session, find past session, install a tool, etc).
 - "Glossary" — full 13-term list with id anchors so other pages can deep-link.
 - "Architecture" — one-paragraph explainer of pilot / pi / WS bridge / RPC.
 
 **Per-page improvements (v0.5.18 ships Dashboard / Sessions / Try; remaining pages in v0.5.19)**
+
 - **Dashboard**: WelcomeBanner on top; StatCards gain inline `?` GlossaryTerm on Sessions + Tokens (`title=` definitions on hover).
 - **Sessions**: top-of-page `<Hint summary="What's a session?">` paragraph.
 - **Try**: top-of-page `<Hint summary="What is this page?">` paragraph explaining Connect / Fork / Rename / Clone + the `<GlossaryTerm term="rpc">RPC</GlossaryTerm>` link.
 
 **Tests**
+
 - New `web/tests/onboarding.test.tsx` (8 cases): Hint expand/collapse, GlossaryTerm canonical text + title + aria-label, every glossary key has non-empty short + definition.
 - Updated `web/tests/nav-links.test.tsx` (now 16): three groups, 15 items, Learn → /help, Inspect order includes Try pi at position 2.
 - core unit: 522/522 ✓ (unchanged)
@@ -4629,6 +4756,7 @@ Two issues from a phone-sized viewport test:
    - **Page height** uses `100dvh` on mobile (handles mobile browser chrome) and `100vh` on desktop.
 
 **Tests**
+
 - `web/tests/chat-stream.test.ts` +2 (now 8): user-role events filtered, helper is the canonical source.
 - `web/tests/overflow-menu.test.tsx` (new, 3 cases): trigger renders, item click invokes callback, disabled disables.
 - core unit: 522/522 ✓ (unchanged)
@@ -4640,19 +4768,23 @@ Two issues from a phone-sized viewport test:
 Wire pi's session tree into the `/try` chat UI. The page already streamed messages, but until now you couldn't see or control the tree.
 
 **New components**
+
 - `web/src/components/SessionPanel.tsx` — header strip showing current session name (clickable to inline rename via `set_session_name`), message count (with `.one`/`.other` plural keys), and a Clone button (`clone()` — copies the current branch into a new session file).
 - `web/src/components/BubbleActions.tsx` — hover-revealed "Fork from here" trigger on every user bubble. Opens a confirm panel before invoking `fork(entryId)`, since forking creates a new session file.
 
 **Wiring (`web/src/app/try/page.tsx`)**
+
 - `get_state` is called on connect + after every mutation (`prompt`, `rename`, `clone`, `fork`). Pi doesn't emit public `session_forked` / `session_switched` events, so polling-on-mutation is the simplest reliable sync.
 - `fork` flow: click → `get_fork_messages()` → match the bubble's text against `entryId` → `fork(entryId)` → clear local user bubbles → re-fetch state. The header shows `↳ Forked from "<oldName>"` until the user sends a new message in the new branch.
 - `clone` flow: capture name, clear bubbles, `clone()`, re-fetch state.
 - `rename` flow: click name → inline edit (Enter saves, Esc cancels) → `set_session_name(name)` → re-fetch.
 
 **i18n**
+
 - 15 new keys (`try.session.*`): title, unnamed, rename + placeholder + save/cancel, clone + hint, messageCount.one/other, forkedFrom, forkHere, forkConfirm, forkButton, forkCancel, cloneOk. en + zh.
 
 **Tests**
+
 - New `web/tests/try-session.test.tsx` (9 cases): unnamed rendering, name + count, singular/plural, forkedFrom indicator, onClone callback, onRename trim, BubbleActions disabled / confirm / cancel.
 - core unit: 522/522 ✓ (unchanged)
 - web: 148/148 ✓ (+9)
@@ -4663,11 +4795,13 @@ Wire pi's session tree into the `/try` chat UI. The page already streamed messag
 Replace the v0.5.14 `/playground` page (raw JSON event log) with a real chat interface for talking to pi from the browser. Rename to `/try` ("试玩" / "Try pi") to match what the page actually does.
 
 **New module (`web/src/lib/chat-stream.ts`)**
+
 - `ChatMessage` / `ContentBlock` model — `{ role, blocks: text | thinking | toolCall[], status }` — independent of pi's SDK types so the web bundle stays light.
 - `reduceStream(events)` — pure reducer that turns pi's `AgentEvent` stream into a `ChatMessage[]`. Handles `text_delta` / `thinking_delta` accumulation, `toolcall_start/end` + `tool_execution_start/update/end` lifecycle, `message_end` status flip.
 - `userMessage(text)` — synthesize a local user bubble for display (pi doesn't emit a `message_start` for the prompt we sent).
 
 **Rewritten page (`web/src/app/try/page.tsx`)**
+
 - Real chat layout: user bubbles on the right (accent color), assistant bubbles on the left (surface-2), auto-scroll.
 - Per-block rendering: text, thinking (collapsible), tool calls (collapsible, with args + result + error indicator).
 - Status pill + Connect/Disconnect/New session/Abort buttons in a single header row.
@@ -4675,11 +4809,13 @@ Replace the v0.5.14 `/playground` page (raw JSON event log) with a real chat int
 - Raw event stream collapsed into a "Developer details" `<details>` panel — devs can still see the bridge events without cluttering the chat.
 
 **Renames**
+
 - Route `/playground` → `/try` (URL).
 - Nav label "Playground" / "试玩" → "Try pi" / "试玩 pi".
 - All i18n keys `playground.*` → `try.*` (en + zh). 7 new chat-specific keys (`try.chat.emptyConnected`, `try.thinking`, `try.streaming`, `try.tool.executing`, `try.tool.result`, `try.tool.error`, `try.tool.args`, `try.developerDetails`, `try.developerDetailsHint`).
 
 **Tests**
+
 - New `web/tests/chat-stream.test.ts` (6 cases): text delta accumulation; thinking + text in separate blocks; tool call lifecycle (`start`/`update`/`end`); streaming status flip; unknown / lifecycle events ignored; `userMessage()` shape.
 - core unit: 522/522 ✓ (unchanged)
 - web: 139/139 ✓ (+6)
@@ -4691,12 +4827,15 @@ Replace the v0.5.14 `/playground` page (raw JSON event log) with a real chat int
 Two small follow-ups from v0.5.14 review.
 
 **Web (`web/src/app/playground/page.tsx`)**
+
 - **P1** The `<textarea>` placeholder was a literal `"playground.prompt.placeholder"` string, showing the raw i18n key to users. Now uses `useT()` to translate the key — matches the `<T k="..." />` pattern used everywhere else on the page. Both en (`e.g. "List the files in the current directory"`) and zh (`例如："列出当前目录的文件"`) values render correctly.
 
 **Tests (`test/unit/pi-rpc-bridge.test.ts`)**
+
 - **P2** Drop the three `// eslint-disable-next-line @typescript-eslint/no-explicit-any` directives. The `no-explicit-any` rule isn't actually enabled (we use `any` nowhere else), so the disable directives were unused and triggered `--max-warnings 0` lint failure. Replace `(bridge as any).rpc = ...` with the structural `(bridge as unknown as { rpc: RpcClient }).rpc = ...` cast — same effect, no rule needed.
 
 **Stats**
+
 - core unit: 522/522 ✓ (unchanged)
 - web: 133/133 ✓ (unchanged)
 - bridge unit: 5/5 ✓ (unchanged — all 5 still pass with the new cast)
@@ -4708,13 +4847,16 @@ Two small follow-ups from v0.5.14 review.
 Bug复查发现 v0.5.14.1 的 P0#1 修复不完整：客户端 `usePiSession.onmessage` 没有真正按 id 匹配，仍然走 FIFO fallback。修了。
 
 **Web (`web/src/lib/usePiSession.ts`)**
+
 - **P0#1** Fix id matching. The previous `if (!pending)` branch unconditionally fell through to FIFO by command-type — the id-based lookup was missing entirely. Now: if `msg.id` is present and the pending map has it, look up directly; otherwise fall back to FIFO. Two concurrent `prompt` calls now route correctly.
 - Type `PiCommandResponse` gains `id?: string` on both success and failure variants.
 
 **Server (`src/server/server.ts`)**
+
 - **Defensive** Change `socket.once("close", ...)` to `socket.on("close", ...)` at the WS route. `@types/ws` doesn't always declare `.once()` on its `WebSocket` type (depends on the version installed), and `.on()` is functionally equivalent here (the socket is already closed by the time the callback runs).
 
 **Tests**
+
 - New `web/tests/use-pi-session.test.tsx` (4 cases): two in-flight same-type commands route by id; FIFO fallback when response has no id; error response rejects the right Promise; 30s timeout fires (`vi.useFakeTimers`).
 - core unit: 522/522 ✓ (unchanged)
 - web: 133/133 ✓ (+4)
@@ -4724,30 +4866,37 @@ Bug复查发现 v0.5.14.1 的 P0#1 修复不完整：客户端 `usePiSession.onm
 Address the 12-item bug report from a self-audit of the v0.5.14 WebSocket bridge. No new features; all changes are correctness / robustness / i18n hygiene.
 
 **Server (`src/server/pi-rpc-bridge.ts`)**
+
 - **P0#1** Echo the request `id` in every `kind: "response"` so the browser can match by id instead of FIFO by command type. Without this, two in-flight commands of the same type (e.g. `prompt` + `abort`) would deadlock.
 - **P1#3** Add a `default` arm to the dispatch switch that returns `{success: false, error: "unknown command: <type>"}` instead of falling through silently.
 - **P1#5** Decode `Buffer | ArrayBuffer | Buffer[]` raw payloads before `JSON.parse` — the bridge's `socket.on("message", cb)` callback receives typed arrays depending on the WS frame, and `JSON.parse(Buffer)` throws. Tests cover both Buffer and string inputs.
 - **Refactor** Move the constructor-registered listener callback into a private `onMessage(raw)` method so the dispatch logic is unit-testable without spawning pi. The constructor only registers the listener.
 
 **Server (`src/server/server.ts`)**
+
 - **P1#4** New `onClose` hook on the WebSocket route iterates `liveBridges` and calls `bridge.close()` on every active bridge when the server shuts down. Without this, a SIGTERM leaves orphan `pi --mode rpc` subprocesses.
 
 **Web (`web/src/lib/usePiSession.ts`)**
+
 - **P0#1** `sendCommand()` now matches pending requests by response id first, falling back to FIFO by command type for backwards compat. Adds a `PendingCommand.timeoutId` field and a 30s `setTimeout` so a hung server doesn't pin a React effect forever.
 - **P2#8** `safeStringify(payload)` wraps `JSON.stringify` in `try/catch` and returns a `{kind: "raw", payload}` envelope on failure so the playground event log still shows something useful for cyclic structures.
 
 **Web (`web/src/app/api/pi/token/route.ts`)**
+
 - **P1#6** Reject non-localhost requests with 403. Parse `x-forwarded-for` first hop (real client IP behind a reverse proxy), allow `127.0.0.1` / `::1` / `localhost` / empty host. The endpoint already required same-origin but a `fetch()` from an injected script could still steal the token.
 
 **Web (`web/src/app/playground/page.tsx`)**
+
 - **P2#7** Replace all hardcoded English strings with `<T>` calls. Adds 23 new i18n keys (`playground.*`).
 - **P2#10** Use `${type}-${counter}` as React list keys instead of array indices — preserves scroll position when events are prepended in the log.
 - **P2#8** Use the shared `safeStringify` helper to avoid event-log crashes on cyclic payloads.
 
 **Web (`web/src/app/sessions/[id]/page.tsx`)**
+
 - Replace hardcoded `$${info.totalCost.toFixed(4)}` with `renderT(locale, "currency.usd", {amount})` so cost display respects locale.
 
 **Tests**
+
 - core unit: **522/522** ✓ (+5 in `test/unit/pi-rpc-bridge.test.ts`)
 - web: **129/129** ✓ (unchanged)
 - integration smoke: 2/2 skipped by `npm run test:offline` (unchanged)
@@ -4757,24 +4906,29 @@ Address the 12-item bug report from a self-audit of the v0.5.14 WebSocket bridge
 Pilot server now proxies pi's typed RPC protocol over WebSocket. Browser tabs can `usePiSession()` to spawn a fresh `pi --mode rpc` subprocess and exchange commands + events.
 
 **Server**
+
 - `src/server/pi-rpc-bridge.ts` (new): wraps `@earendil-works/pi-coding-agent`'s `RpcClient`. Auto-resolves pi's CLI path (`npm root -g` first, `which pi` fallback). Each WS connection gets a fresh RpcClient.
 - `src/server/server.ts`: `GET /api/pi/ws` route registered with `@fastify/websocket`. Auth via `Sec-WebSocket-Protocol: pilot-token-<TOKEN>` (browsers can't add custom headers to WS). The global `onRequest` hook skips the token check for `Upgrade: websocket` requests so the bridge can validate the subprotocol itself.
 - New `@fastify/websocket@11.3.0` + `@types/ws` dev dep.
 
 **Web**
+
 - `app/api/pi/token/route.ts` (new): exposes the pilot server token to same-origin JS. Used by `usePiSession` to authenticate the WS handshake.
 - `lib/usePiSession.ts` (new): client-side hook. Fetches token, opens WS, splits incoming messages into events (`{kind: "event"}`) and command responses (`{kind: "response", command, success, data}`). Pending requests matched by command-type FIFO since server doesn't echo ids.
 - `app/playground/page.tsx` (new): interactive demo — Connect / Send prompt / Abort / New session / Disconnect, with scrolling event log.
 
 **i18n**
+
 - 1 new key: `nav.playground` (en + zh).
 
 **Tests**
+
 - core unit: 38/38 ✓ (unchanged)
 - web: 129/129 ✓ (nav updated to 14 items / 9 Inspect)
 - integration smoke (new): `test/integration/pi-rpc-bridge.smoke.test.ts` — 2 tests (bad token rejected, valid token gets a `get_state` response). Skipped by `npm run test:offline`.
 
 **E2E verified**
+
 - Open `ws://127.0.0.1:17361/api/pi/ws` with subprotocol `pilot-token-<tok>` → server validates token → spawns pi → bridges events + responses.
 - `get_state` returns full session state (`{model, thinkingLevel, isStreaming, ...}`) in ~600ms over local WS.
 
@@ -4838,7 +4992,6 @@ Round 2 of the v0.5.11 audit. Closes the remaining 6 P1 + 6 P2 items and adds a 
 
 ## [0.4.0](https://github.com/wwppee/pilot/compare/v0.3.10...v0.4.0) (2026-07-02)
 
-
 ### Features
 
-* add CI + release badges to README ([04425e8](https://github.com/wwppee/pilot/commit/04425e899260aa9985270c012f156bcde0578e5c))
+- add CI + release badges to README ([04425e8](https://github.com/wwppee/pilot/commit/04425e899260aa9985270c012f156bcde0578e5c))

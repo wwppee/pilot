@@ -10,17 +10,20 @@
  * a 200-line state object from a server component to a
  * client island would just be ceremony.
  *
- * The page is route-protected by the server: if the
- * workflow id doesn't exist or the file is corrupt, the
- * server's GET /workflows/:id returns 404 / 500 and this
- * page renders an error state. We don't catch the error
- * here because the user can still navigate to /workflows
- * and start over.
+ * v0.9.15: notFound() in the server component so a missing
+ * id routes to the app's not-found.tsx (was returning 200
+ * with the editor's "not found" inline state, breaking
+ * SEO + refresh state + error monitoring). The client-side
+ * `notFound` state inside WorkflowEditor stays as a defensive
+ * fallback for the "workflow existed on initial load but
+ * was deleted while the user was editing" race condition.
  */
 
 import { headers } from "next/headers";
+import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { negotiateLocale } from "@/lib/i18n";
+import { api } from "@/lib/pilot";
 import { WorkflowEditor } from "./WorkflowEditor";
 
 export async function generateMetadata({
@@ -52,5 +55,12 @@ export default async function WorkflowEditorPage({
 }) {
   const { id } = await params;
   const decoded = decodeURIComponent(id);
+  // v0.9.15: server-side existence check. The editor's
+  // useEffect also calls api.workflow() and renders an
+  // inline "not found" surface if it returns null — that
+  // path is now defensive (race condition: workflow gets
+  // deleted between this check and the client mount).
+  const wf = await api.workflow(decoded);
+  if (!wf) notFound();
   return <WorkflowEditor workflowId={decoded} />;
 }

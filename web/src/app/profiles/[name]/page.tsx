@@ -2,6 +2,7 @@
  * /profiles/[name] — read-only profile detail with edit form.
  */
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { api } from "@/lib/pilot";
 import { saveProfileForm, deleteProfileForm } from "@/lib/actions";
@@ -26,16 +27,19 @@ export default async function ProfileDetailPage({
   const decoded = decodeURIComponent(name);
 
   let profile: Profile | null = null;
-  let error: string | null = null;
   try {
     profile = await api.profile(decoded);
   } catch (e) {
+    // v0.9.15: was rendering an inline "not found" surface
+    // with HTTP 200, breaking SEO + refresh state + error
+    // monitoring. Now we route to the app's not-found.tsx so
+    // the page returns 404. Non-404 errors fall through to
+    // the parent error boundary (was the previous behavior).
     const msg = (e as Error).message;
     if (msg.includes("404") || msg.includes("not found")) {
-      error = "not found";
-    } else {
-      error = msg;
+      notFound();
     }
+    throw e;
   }
 
   let acceptLanguage: string | null = null;
@@ -81,16 +85,6 @@ export default async function ProfileDetailPage({
           style={{ color: "var(--error)" }}
         >
           {sp.error}
-        </div>
-      )}
-
-      {error === "not found" && (
-        <div className="surface rounded-lg p-4 text-sm text-[var(--error)]">
-          <RichT
-            locale={locale}
-            k="profiles.notFound"
-            values={{ name: <code className="kbd">{decoded}</code> }}
-          />
         </div>
       )}
 

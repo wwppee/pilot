@@ -14,8 +14,12 @@
  * "use server" actions live in /actions.ts; the
  * form is a client island that calls
  * api.setWrapper directly.
+ *
+ * v0.9.15: 404s now route to the app's not-found.tsx
+ * (was rendering inline "not found" with HTTP 200).
  */
 import { Suspense } from "react";
+import { notFound } from "next/navigation";
 import { api, PilotApiError } from "../../../../lib/pilot";
 import type { ToolWrapper } from "../../../../lib/types";
 import { T } from "@/components/I18n";
@@ -36,6 +40,10 @@ async function loadWrapper(name: string): Promise<{
     const wrapper = await api.getWrapper(name);
     return { wrapper, error: null };
   } catch (e) {
+    if (e instanceof PilotApiError && e.status === 404) {
+      // v0.9.15: bail to app's not-found.tsx.
+      notFound();
+    }
     return {
       wrapper: null,
       error:
@@ -75,6 +83,9 @@ export default async function EditWrapperPage({ params }: PageProps) {
           </pre>
         </section>
       ) : !wrapper ? (
+        // v0.9.15: loadWrapper's 404 branch already calls
+        // notFound(). This is the defensive fallback for the
+        // "API returned 200 with wrapper=null" edge case.
         <section className="surface rounded-lg p-4 card empty">
           <p>
             <T k="wrappers.error.notFound" />

@@ -20,7 +20,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { computeLayout, truncate } from "./layout";
+import { computeLayout, truncate } from "./workflow-layout";
 import type { Workflow } from "@/lib/types";
 
 export interface PreviewPanelProps {
@@ -33,10 +33,7 @@ export interface PreviewPanelProps {
    * new (x, y) up so the editor can mutate + mark
    * dirty.
    */
-  onNodeMove: (
-    nodeId: string,
-    position: { x: number; y: number },
-  ) => void;
+  onNodeMove: (nodeId: string, position: { x: number; y: number }) => void;
   // v0.9.5: visual edge editor callback.
   // PreviewPanel reports a "this user wants to
   // connect from `fromId` to `toId`" intent
@@ -161,8 +158,8 @@ export function PreviewPanel({
           <span>
             {t("workflows.editor.connectModeHint", {
               name:
-                workflow.nodes.find((n) => n.id === connectSource)
-                  ?.name ?? connectSource,
+                workflow.nodes.find((n) => n.id === connectSource)?.name ??
+                connectSource,
             })}
           </span>
           <button
@@ -297,9 +294,7 @@ export function PreviewPanel({
                       ? "var(--accent-2)"
                       : "var(--accent)"
                 }
-                strokeWidth={
-                  isConnectSource || isConnectTarget ? 2.5 : 1.5
-                }
+                strokeWidth={isConnectSource || isConnectTarget ? 2.5 : 1.5}
                 strokeDasharray={isConnectSource ? "4 2" : undefined}
               />
               <text
@@ -350,9 +345,7 @@ export function PreviewPanel({
                 style={{ cursor: "crosshair" }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  setConnectSource((cur) =>
-                    cur === n.id ? null : n.id,
-                  );
+                  setConnectSource((cur) => (cur === n.id ? null : n.id));
                 }}
               />
             </g>

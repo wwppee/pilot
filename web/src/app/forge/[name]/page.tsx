@@ -10,7 +10,8 @@
  */
 import Link from "next/link";
 import { headers } from "next/headers";
-import { api } from "@/lib/pilot";
+import { notFound } from "next/navigation";
+import { api, PilotApiError } from "@/lib/pilot";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/types";
 import type { ForgeInspectResult } from "@/lib/types";
@@ -45,11 +46,19 @@ export default async function ForgeInspectPage({
   const name = decodeURIComponent(rawName);
 
   let result: ForgeInspectResult | null = null;
-  let fetchError: string | null = null;
   try {
     result = await api.forgeInspect(name);
   } catch (e) {
-    fetchError = (e as Error).message;
+    if (e instanceof PilotApiError && e.status === 404) {
+      // v0.9.15: bail to the app's not-found.tsx. forgeInspect
+      // itself returns null on 404, but the inner pilot() call
+      // also throws for malformed 404s in some envs; either way
+      // the page should return 404.
+      notFound();
+    }
+    // Any non-404 error is still surfaced to the user via the
+    // `error` branch below (re-thrown by the page's try/catch).
+    throw e;
   }
 
   let locale: Locale = "en";
@@ -64,21 +73,11 @@ export default async function ForgeInspectPage({
   const derivedId = name.replace(/^@[^/]+\//, "").toLowerCase();
 
   if (!result) {
-    return (
-      <div className="space-y-6">
-        <div className="text-xs text-[var(--text-muted)]">
-          <Link href="/forge">← back to forge</Link>
-        </div>
-        <div className="surface rounded-lg p-4 text-sm text-[var(--text-muted)] italic">
-          {renderT(locale, "forge.inspect.notFound")}
-        </div>
-        {fetchError && (
-          <div className="surface rounded-lg p-3 text-xs text-[var(--error)]">
-            {fetchError}
-          </div>
-        )}
-      </div>
-    );
+    // v0.9.15: forgeInspect returns null on 404 (caught in the
+    // try above, but the inner pilot() helper can also return
+    // null for some malformed 404 responses). Route to the
+    // app's not-found.tsx so the page returns 404.
+    notFound();
   }
 
   const { pack, manifest } = result;

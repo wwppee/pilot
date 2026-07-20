@@ -8,7 +8,8 @@
  */
 import Link from "next/link";
 import { headers } from "next/headers";
-import { api } from "@/lib/pilot";
+import { notFound } from "next/navigation";
+import { api, PilotApiError } from "@/lib/pilot";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/types";
 import type { AvatarApplyReport, AvatarDiff, DiffStatus } from "@/lib/types";
@@ -44,7 +45,13 @@ export default async function AvatarDetailPage({
   let diff: AvatarDiff | null = null;
   try {
     diff = await api.avatarDiff(cwd);
-  } catch {
+  } catch (e) {
+    // v0.9.15: bail to the app's not-found.tsx on 404. Without
+    // this, the page rendered an inline "Avatar not found" with
+    // HTTP 200, breaking SEO + refresh state + error monitoring.
+    if (e instanceof PilotApiError && e.status === 404) {
+      notFound();
+    }
     diff = null;
   }
 
@@ -57,16 +64,11 @@ export default async function AvatarDetailPage({
   }
 
   if (!diff) {
-    return (
-      <div className="space-y-6">
-        <div className="text-xs text-[var(--text-muted)]">
-          <Link href="/avatars">← back to avatars</Link>
-        </div>
-        <div className="surface rounded-lg p-4 text-sm text-[var(--text-muted)] italic">
-          Avatar not found.
-        </div>
-      </div>
-    );
+    // v0.9.15: avatarDiff returns null on 404 (caught in the
+    // try above, but the inner pilot() helper can also throw
+    // PilotApiError(status=404) for some malformed 404 responses;
+    // either way the page should return 404).
+    notFound();
   }
 
   // Parse the apply report from the URL (set by applyAvatarForm).

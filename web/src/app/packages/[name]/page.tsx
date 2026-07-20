@@ -12,7 +12,8 @@
  */
 import Link from "next/link";
 import { headers } from "next/headers";
-import { api } from "@/lib/pilot";
+import { notFound } from "next/navigation";
+import { api, PilotApiError } from "@/lib/pilot";
 import { installPackForm, uninstallPackForm } from "@/lib/actions";
 import { UninstallButton } from "@/components/UninstallButton";
 import { negotiateLocale, renderT } from "@/lib/i18n";
@@ -39,6 +40,13 @@ export default async function PackageDetailPage({
   try {
     pack = await api.packInfo(decoded);
   } catch (e) {
+    if (e instanceof PilotApiError && e.status === 404) {
+      // v0.9.15: bail to the app's not-found.tsx. Without
+      // this, the page rendered a near-empty surface with
+      // HTTP 200, breaking SEO + refresh state + error
+      // monitoring.
+      notFound();
+    }
     error = (e as Error).message;
   }
 

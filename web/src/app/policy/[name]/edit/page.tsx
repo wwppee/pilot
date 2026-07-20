@@ -7,9 +7,16 @@
  * patterns, etc). The form itself stays in policy-form.module.css
  * because it owns textarea + form layout that doesn't belong in
  * the shared design tokens.
+ *
+ * v0.9.15: 404s now route to the app's not-found.tsx so the
+ * page returns 404 instead of 200 with an inline "not found"
+ * surface (the latter broke SEO + refresh state + error
+ * monitoring — user couldn't tell from the URL bar that the
+ * resource was missing).
  */
 
 import { Suspense } from "react";
+import { notFound } from "next/navigation";
 import { api, PilotApiError } from "../../../../lib/pilot";
 import type { ToolPolicy } from "../../../../lib/types";
 import { T } from "@/components/I18n";
@@ -30,6 +37,11 @@ async function loadPolicy(name: string): Promise<{
     const policy = await api.policy(name);
     return { policy, error: null };
   } catch (e) {
+    if (e instanceof PilotApiError && e.status === 404) {
+      // v0.9.15: bail out to the app's not-found.tsx.
+      // notFound() throws so this never returns.
+      notFound();
+    }
     return {
       policy: null,
       error:
@@ -69,6 +81,10 @@ export default async function EditPolicyPage({ params }: PageProps) {
           </pre>
         </section>
       ) : !policy ? (
+        // v0.9.15: notFound() in loadPolicy() already covers the
+        // 404 case, so this branch only fires if the API returned
+        // a non-error response with `policy === null` (shouldn't
+        // happen in practice, but keep a defensive fallback).
         <section className="surface rounded-lg p-4 card empty">
           <p>
             <T k="policy.error.notFound" />
