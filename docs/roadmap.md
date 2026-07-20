@@ -863,6 +863,31 @@ Pi 内部可用 13 个 LLM 工具（通过 `pilot-tools` extension）：
 | **[`docs/retired/roadmap-v1.0.md`](./retired/roadmap-v1.0.md)**         | 已作废的 v3 终极版宏图（保留为 audit trail）                      |
 | **[`docs/retired/macro-spec-audit.md`](./retired/macro-spec-audit.md)** | 作废文档审计记录                                                  |
 
+## 2026-07-20 校准 (47)
+
+**v0.9.15.1 已发** — 按钮点击无反应根因修复。
+
+v0.9.15 修了 5 个 curl 测的 P0，但 user 反馈"好些按钮
+直接没反应"（语言切换 + /try Connect + 其它）没真正解决。
+v0.9.15.1 挖 2 个共同根因：
+
+| 根因                                                                                              | 症状                                                                                                        | 修法                                                                                                                                |
+| ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Next.js 16 Turbopack 把 127.0.0.1 当 cross-origin → block `/_next/webpack-hmr`                    | dev mode HMR 静默 fail，client 不完整 hydrate，所有 event handler 都不绑                                    | `web/next.config.ts` 加 `allowedDevOrigins: ["127.0.0.1", "localhost", "0.0.0.0"]`                                                  |
+| I18nProvider useEffect mount 时 `setLocaleState` 覆盖 SSR 的 `initialLocale` → hydration mismatch | React 18 StrictMode dev 下 hydration recovery 阶段状态变化会丢弃部分事件绑定（无 console error，静默 fail） | cookie 同步 + layout 读 cookie 优先 + 删 I18nProvider mount 恢复（改 storage 事件跨 tab 同步）+ `<html>` `suppressHydrationWarning` |
+
+**user 验证**: 语言切换双向 + /try Connect 按钮均恢复正常。
+
+**Stats**: root 655/655, web 332/332 (unchanged), 4 文件改动 +60/-15
+
+**Defer v0.9.16+**:
+
+- server.ts 1911 行拆 routes/ (GLM 5.2 P0)
+- plan-executor.ts 1476 行拆 (GLM 5.2 P1)
+- i18n 197KB 按 nav group 拆 (GLM 5.2 P1)
+- ComposeBoard.tsx 2144 行拆 (GLM 5.2 P2)
+- ObservabilityView.tsx 794 行 (GLM 5.2 P1)
+
 ## 2026-07-20 校准 (46)
 
 **v0.9.15 已发** — 5 P0 实际 bug 修复（user 用 curl 实测挑刺）：

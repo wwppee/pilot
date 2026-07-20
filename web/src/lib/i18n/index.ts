@@ -103,7 +103,21 @@ export function writeStoredLocale(locale: Locale): void {
   try {
     window.localStorage.setItem("pilot-locale", locale);
   } catch {
-    // ignore
+    // localStorage may throw in private mode / disabled storage.
+  }
+  // v0.9.15.1: also write a cookie so the server-rendered
+  // layout (which can't read localStorage) can pick up the
+  // user's persisted locale on the next request. Without
+  // this, SSR uses Accept-Language while the client has
+  // already switched — a hydration mismatch that, in
+  // React 18 StrictMode dev, can break event handler
+  // binding (button clicks fire nothing). The cookie is
+  // a year-long mirror; localStorage remains the source
+  // of truth client-side.
+  try {
+    document.cookie = `pilot-locale=${locale};path=/;max-age=31536000;SameSite=Lax`;
+  } catch {
+    // ignore — cookie write blocked (e.g. third-party context)
   }
 }
 

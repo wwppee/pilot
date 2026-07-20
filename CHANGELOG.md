@@ -1,5 +1,51 @@
 # Changelog
 
+### v0.9.15.1 — 按钮点击无反应根因（I18nProvider hydration + Next.js 16 跨域）
+
+v0.9.15 修了 5 个 curl 实测的 P0，但 user 反馈"好些按钮
+直接没反应"（语言切换 + /try Connect + 其它）没真正解决。
+v0.9.15.1 挖了根因并修。
+
+**P0 根因（2 个共同作用）**
+
+1. **Next.js 16 Turbopack 跨域阻断 HMR**
+   - dev server 监听 `127.0.0.1:17371`，但 Turbopack 默认
+     把 `127.0.0.1` 视为 cross-origin → block `/_next/webpack-hmr`
+   - HMR 被 block 静默 fail，client-side React 不会完整
+     hydrate，所有 event handler 都不绑
+   - 视觉上"页面正常 + 按钮看得见 + 点击无反应"
+   - **修法**：`web/next.config.ts` 加 `allowedDevOrigins: ["127.0.0.1", "localhost", "0.0.0.0"]`
+
+2. **I18nProvider hydration mismatch → React StrictMode
+   dev 下事件绑定丢失**
+   - `I18nProvider` 的 useEffect 在 mount 时读 localStorage
+     并 `setLocaleState` 覆盖 server 传的 `initialLocale`
+   - 这导致 React hydration 后立即 re-render 整棵子树
+   - 在 React 18 StrictMode dev 下，hydration recovery 阶段
+     状态变化会**丢弃部分事件绑定**（无 console error，
+     静默 fail）
+   - **修法**（3 个改动）：
+     - `web/src/lib/i18n/index.ts`: `writeStoredLocale` 同步
+       写 `document.cookie=pilot-locale=...; SameSite=Lax`
+     - `web/src/app/layout.tsx`: server-side 用 `cookies()`
+       读 `pilot-locale` 优先于 `Accept-Language`，让 SSR
+       跟 client 首次 render 一致
+     - `web/src/components/I18n.tsx`: 删 mount-time localStorage
+       恢复（不再需要——SSR 已经用了对的 locale），改为
+       监听 `storage` 事件做跨 tab 同步
+     - `<html>` 加 `suppressHydrationWarning`（防御性，
+       `lang` 属性 + font CSS 可能在首 paint 不一致）
+
+**Stats**:
+
+- root: 655/655 ✓
+- web: 332/332 ✓ (33 files, tsc/lint/build clean)
+- 4 文件改动, +60/-15 行
+
+**user 验证**: 语言切换双向（EN↔中）+ /try Connect
+按钮（点击后 connect → 状态从 idle → connected → UI
+从单按钮态切到完整 session 操作态）均恢复。
+
 ### v0.9.15 — 5 P0 实际 bug 修复（curl 验证 + Next.js upstream bug 标注）
 
 user 拿 v0.9.14 一扫 + 狗粮吃出 5 个 P0 实际 bug，全部 curl

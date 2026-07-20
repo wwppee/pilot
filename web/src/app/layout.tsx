@@ -2,10 +2,10 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 import { Outfit, JetBrains_Mono } from "next/font/google";
 import { api } from "@/lib/pilot";
-import { negotiateLocale, type Locale, translate } from "@/lib/i18n";
+import { negotiateLocale, LOCALES, type Locale, translate } from "@/lib/i18n";
 import { I18nProvider, T } from "@/components/I18n";
 import { NavLinks } from "@/components/NavLinks";
 import { renderT } from "@/lib/i18n";
@@ -78,9 +78,21 @@ export default async function RootLayout({
     /* headers() not available in static generation */
   }
 
-  // Negotiate locale: Accept-Language header takes priority.
-  // The I18nProvider's client-side effect will override this with
-  // localStorage["pilot-locale"] if the user has explicitly chosen.
+  // Negotiate locale:
+  //   1. `pilot-locale` cookie (v0.9.15.1) — set by writeStoredLocale
+  //      on every user toggle. Reading the cookie here means SSR
+  //      and the client's first render agree, so there's no
+  //      hydration mismatch (which in React 18 StrictMode dev
+  //      can break event handler binding — see I18n.tsx).
+  //   2. Accept-Language header — first visit, no preference yet.
+  //   3. "en" — default.
+  let cookieLocale: string | undefined;
+  try {
+    const c = await cookies();
+    cookieLocale = c.get("pilot-locale")?.value;
+  } catch {
+    /* cookies() not available in static generation */
+  }
   let acceptLanguage: string | null = null;
   try {
     const h = await headers();
@@ -88,7 +100,11 @@ export default async function RootLayout({
   } catch {
     /* headers() not available in static generation */
   }
-  const locale: Locale = negotiateLocale(acceptLanguage);
+  const fromCookie = cookieLocale as Locale | undefined;
+  const locale: Locale =
+    fromCookie && LOCALES.includes(fromCookie)
+      ? fromCookie
+      : negotiateLocale(acceptLanguage);
 
   // Pre-render static strings server-side so we don't depend on the
   // client provider for SSR output (avoids layout shift).
@@ -101,6 +117,17 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
+      // v0.9.15.1: suppressHydrationWarning on the html
+      // element. The `lang` attribute is set from the
+      // server-rendered locale but the client may update
+      // `document.documentElement.lang` directly in
+      // I18nProvider's setLocale, and Next.js's font CSS
+      // variables can differ between SSR + CSR at the
+      // very first paint. Telling React not to warn about
+      // these two attribute deltas is the canonical way
+      // to keep a server-rendered `lang` + client-side
+      // locale toggle in sync.
+      suppressHydrationWarning
       className={`${outfit.variable} ${jetbrainsMono.variable}`}
     >
       <body>

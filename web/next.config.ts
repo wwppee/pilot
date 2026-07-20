@@ -15,6 +15,24 @@ const config: NextConfig = {
     root: here,
   },
 
+  // v0.9.15.1: Next.js 16's `allowedDevOrigins` gate. The pilot
+  // dashboard runs the browser at 127.0.0.1:17371 and the dev
+  // server on the same host, but Next.js 16's default security
+  // policy treats `127.0.0.1` as a separate origin from `localhost`
+  // and blocks the HMR / RSC fetch with:
+  //
+  //   "Blocked cross-origin request to Next.js dev resource
+  //    /_next/webpack-hmr from 127.0.0.1"
+  //
+  // The visible symptom is: the page renders fine but client-side
+  // event handlers don't bind (no JS errors in the console — HMR
+  // is just silently blocked). Clicking buttons does nothing
+  // because the React tree never finished hydrating.
+  //
+  // Workaround: explicitly allow the loopback host. Production
+  // builds are unaffected (this gate only fires in dev mode).
+  allowedDevOrigins: ["127.0.0.1", "localhost", "0.0.0.0"],
+
   // Browser → Next.js proxy is implemented as a route handler at
   // /app/api/pilot/[...path]/route.ts (v0.4.7+). It reads the
   // pilot token from the file system server-side and forwards the

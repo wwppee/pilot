@@ -4,16 +4,18 @@
  * <I18nProvider> + <T> + useT()
  *
  * Client-side runtime for the i18n system. Layout is a server component
- * (it can read Accept-Language), but the user-visible language toggle
- * is interactive — so the toggle + the reactive re-render of `<T>` lives
- * in this client island.
+ * (it can read cookies + Accept-Language), but the user-visible language
+ * toggle is interactive — so the toggle + the reactive re-render of
+ * `<T>` lives in this client island.
  *
- * Flow:
- *   server: layout.tsx reads Accept-Language → passes initialLocale to
- *           <I18nProvider initialLocale="zh">
- *   client: <I18nProvider> reads localStorage["pilot-locale"] on mount
- *           (overriding the server-provided initial if user has chosen
- *           explicitly); exposes setLocale() via context.
+ * Flow (v0.9.15.1):
+ *   server: layout.tsx reads the `pilot-locale` cookie (set by
+ *           writeStoredLocale on every user toggle) → falls back to
+ *           Accept-Language → passes initialLocale to <I18nProvider>
+ *   client: <I18nProvider> initial render matches SSR (no mismatch).
+ *           setLocale() updates state + writes BOTH localStorage
+ *           AND the cookie so the next SSR matches.
+ *           Cross-tab sync: window 'storage' event.
  *   anywhere: <T k="..." params={...} /> renders the current locale,
  *             or useT() returns the t function for inline strings.
  */
@@ -27,13 +29,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import {
-  format,
-  readStoredLocale,
-  translate,
-  writeStoredLocale,
-  type Locale,
-} from "../lib/i18n";
+import { format, translate, writeStoredLocale, type Locale } from "../lib/i18n";
 
 interface I18nContextValue {
   locale: Locale;
@@ -62,20 +58,33 @@ interface I18nProviderProps {
 
 export function I18nProvider({ initialLocale, children }: I18nProviderProps) {
   // First render: use the server-provided locale (no flicker).
-  // After mount: read localStorage and switch if the user has chosen.
+  // The server reads the `pilot-locale` cookie set by
+  // writeStoredLocale() (v0.9.15.1), so SSR and the client's
+  // first render agree — no hydration mismatch, no broken
+  // event handlers in React 18 StrictMode dev.
   const [locale, setLocaleState] = useState<Locale>(initialLocale);
 
   useEffect(() => {
-    const stored = readStoredLocale();
-    if (stored && stored !== locale) {
-      setLocaleState(stored);
-      // Sync the html lang attribute for assistive tech + browser font fallback.
-      if (typeof document !== "undefined") {
-        document.documentElement.lang = stored;
-      }
-    }
-    // We only want to run this on mount; intentionally empty deps.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // v0.9.15.1: cross-tab sync only. SSR now matches the
+    // user's persisted locale (via cookie), so we no longer
+    // need to re-read localStorage on mount — that path was
+    // the hydration-mismatch source. Listen for the browser's
+    // `storage` event so an EN/zh switch in one tab updates
+    // other tabs. Functional updater avoids capturing `locale`
+    // in the closure.
+    const handleStorage = (e: StorageEvent) => {
+      const next = e.newValue;
+      if (e.key !== "pilot-locale" || !next) return;
+      setLocaleState((prev) => {
+        if (next === prev) return prev;
+        if (typeof document !== "undefined") {
+          document.documentElement.lang = next;
+        }
+        return next as Locale;
+      });
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
   const setLocale = useCallback((next: Locale) => {
