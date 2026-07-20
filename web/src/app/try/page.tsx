@@ -23,11 +23,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePiSession } from "@/lib/usePiSession";
 import { T, useI18n, useT } from "@/components/I18n";
-import {
-  reduceStream,
-  userMessage,
-  type ChatMessage,
-} from "@/lib/chat-stream";
+import { reduceStream, userMessage, type ChatMessage } from "@/lib/chat-stream";
 import {
   SessionPanel,
   emptySessionState,
@@ -273,8 +269,16 @@ export default function TryPage() {
         return "try.status.connected";
       case "disconnected":
         return "try.status.disconnected";
+      // v0.9.14: error state used to pass `session.error`
+      // (e.g. "token fetch failed: 503") as the i18n key.
+      // The translator would render the literal string,
+      // but with `text-muted` styling the user couldn't
+      // see anything had happened. Now we return a
+      // proper i18n key for the category and render the
+      // actual error message in a separate prominent
+      // element below.
       case "error":
-        return session.error ?? "try.status.errorUnknown";
+        return "try.status.error";
     }
   })();
 
@@ -328,6 +332,17 @@ export default function TryPage() {
                     <T k="try.session.clone" />
                   </OverflowMenuItem>
                 </>
+              ) : session.state === "error" ? (
+                // v0.9.14: mobile menu mirrors the desktop
+                // status strip — show Retry when in error
+                // state, Connect for all other non-connected
+                // states. Previously the user on mobile had
+                // to figure out the desktop "Connect" button
+                // to retry, which was especially confusing
+                // when the click appeared to do nothing.
+                <OverflowMenuItem onClick={session.connect}>
+                  <T k="try.action.retry" />
+                </OverflowMenuItem>
               ) : (
                 <OverflowMenuItem
                   onClick={session.connect}
@@ -365,19 +380,48 @@ export default function TryPage() {
       </header>
 
       {/* Status strip — desktop only (mobile overflow menu covers it). */}
-      <section className="hidden sm:flex surface rounded-lg p-3 items-center gap-3 flex-wrap">
+      <section
+        className="hidden sm:flex surface rounded-lg p-3 items-center gap-3 flex-wrap"
+        // v0.9.14: error state uses red border + tint so the
+        // strip visually screams "something is wrong". Previously
+        // the error path was identical styling to the idle path
+        // (muted text, neutral pill) and the user couldn't tell
+        // anything had happened after a failed connect attempt.
+        style={
+          session.state === "error"
+            ? {
+                borderColor: "var(--error)",
+                background:
+                  "color-mix(in srgb, var(--error) 8%, var(--surface))",
+              }
+            : undefined
+        }
+        role={session.state === "error" ? "alert" : undefined}
+      >
         <span
           className="pill"
           style={{
             background: connected
               ? "color-mix(in srgb, var(--accent-2) 18%, transparent)"
-              : "color-mix(in srgb, var(--text-muted) 12%, transparent)",
-            color: connected ? "var(--accent-2)" : "var(--text-muted)",
+              : session.state === "error"
+                ? "color-mix(in srgb, var(--error) 18%, transparent)"
+                : "color-mix(in srgb, var(--text-muted) 12%, transparent)",
+            color: connected
+              ? "var(--accent-2)"
+              : session.state === "error"
+                ? "var(--error)"
+                : "var(--text-muted)",
           }}
         >
           {session.state}
         </span>
-        <span className="text-sm text-[var(--text-muted)]">
+        <span
+          className="text-sm"
+          style={{
+            color:
+              session.state === "error" ? "var(--error)" : "var(--text-muted)",
+          }}
+        >
           {/* v0.9.10: while reconnecting, the i18n string
               carries {attempt}/{max} placeholders so the
               user can see how many retries are left.
@@ -393,6 +437,14 @@ export default function TryPage() {
             />
           ) : (
             <T k={statusLabel} />
+          )}
+          {/* v0.9.14: render the actual error message
+              verbatim after the category. Previously the
+              error string was passed as an i18n key and
+              rendered through <T>, which kept the muted
+              styling and made failures invisible. */}
+          {session.state === "error" && session.error && (
+            <span className="ml-2 font-medium">— {session.error}</span>
           )}
         </span>
         <div className="flex-1" />
@@ -422,6 +474,19 @@ export default function TryPage() {
               <T k="try.action.disconnect" />
             </button>
           </>
+        ) : session.state === "error" ? (
+          // v0.9.14: dedicated Retry button in place of
+          // Connect when we're in the error state. The
+          // user has a clear "what's next" affordance
+          // instead of being left staring at a "no
+          // response" status.
+          <button
+            type="button"
+            onClick={session.connect}
+            className="btn danger"
+          >
+            <T k="try.action.retry" />
+          </button>
         ) : (
           <button
             type="button"

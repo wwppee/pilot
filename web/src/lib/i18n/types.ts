@@ -174,6 +174,13 @@ export type Dict = {
   "try.status.disconnected": string;
   "try.status.reconnecting": string;
   "try.status.errorUnknown": string;
+  // v0.9.14: generic error prefix shown in the status strip
+  // when usePiSession enters the `error` state. The actual
+  // error message from `session.error` is rendered as plain
+  // text immediately after this prefix so the user sees both
+  // "what kind of state" and "what went wrong".
+  "try.status.error": string;
+  "try.action.retry": string;
   "try.action.connect": string;
   "try.action.disconnect": string;
   "try.action.send": string;

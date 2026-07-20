@@ -859,3 +859,24 @@ Pi 内部可用 13 个 LLM 工具（通过 `pilot-tools` extension）：
 | **[`docs/v0.4.2-dev-plan.md`](./v0.4.2-dev-plan.md)** | v0.4.2 具体实施（已被实际发布覆盖，仅作 audit） |
 | **[`docs/retired/roadmap-v1.0.md`](./retired/roadmap-v1.0.md)** | 已作废的 v3 终极版宏图（保留为 audit trail） |
 | **[`docs/retired/macro-spec-audit.md`](./retired/macro-spec-audit.md)** | 作废文档审计记录 |
+
+## 2026-07-20 校准 (45)
+
+**v0.9.14 已发** — user dogfooding 撞了 2 个 P0 实际 bug，**外加 GLM 5.2 audit 拿 v0.9.13 一扫看出我自己挖的坑**（AGENTS.md 严重失同步）：
+
+| 修了什么 | 实际撞的 bug / debt |
+|---|---|
+| **AGENTS.md 校对** | 自己的 self-rule（"每次 release → 校测试数"）连续 20+ release 没执行。§1.1 / §6.1 测试数从 v0.8.5 的 541/214 → 实际 655/312。Last updated 2026-07-17 → 2026-07-20。新增 §10.20-§10.22 三条 v0.9.14 教训 |
+| **`/try` 连接按钮错误可视化** | user 报"点连接没反应"——实际 click 有响应，但 usePiSession 进 `error` 状态后错误消息被当成 i18n key 走 `text-muted` 小字。改成：状态条红框 + 红 tint + `role="alert"` + 错误消息原文 + Retry 按钮（移动端 overflow menu 同步） |
+| **LanguageSwitcher 暗主题可见性** | inactive 按钮 `transparent` + `--text-muted` = 暗主题下消失。改成 `color-mix(--text 8%, transparent)` 淡 tint + `--text` 满色 + 500 weight |
+
+**Stats**: root 655/655, web 312 → 323 (+11), tsc/lint/build clean, 2 new test files, 5 new i18n keys (3 个 +0 个 placeholder)
+
+**Defer 到 v0.9.15+**:
+- server.ts 1911 行拆 routes/ (8-10 文件)
+- plan-executor.ts 1476 行拆 7 职责
+- i18n 197KB 按 nav group 拆域
+- ComposeBoard.tsx 2144 行（最大单文件，独立 hooks 抽）
+- ObservabilityView.tsx 794 行（趁还没变第二个 ComposeBoard）
+- cache.ts Map 上限保护
+- 9 root + 21 web 遗留 prettier 警告（pre-existing，v0.9.14 没引入也没修）

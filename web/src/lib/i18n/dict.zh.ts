@@ -102,6 +102,9 @@ const zh: Dict = {
   // v0.9.10: WS 自动重连
   "try.status.reconnecting": "正在重连 ({attempt}/{max})…",
   "try.status.errorUnknown": "错误：未知",
+  // v0.9.14: 错误状态可视化
+  "try.status.error": "连接失败",
+  "try.action.retry": "重试",
   "try.action.connect": "连接",
   "try.action.disconnect": "断开",
   "try.action.send": "发送",
@@ -1365,7 +1368,8 @@ const zh: Dict = {
   "wrappers.form.logPathHint": "审计日志写入位置。父目录自动创建。",
   "wrappers.form.transformLabel": "改写模式",
   "wrappers.form.transformPathRedact": "改写路径（把 .env 改成 .env.redacted）",
-  "wrappers.form.transformContentRedact": "改写内容（把匹配子串替换为 [REDACTED]）",
+  "wrappers.form.transformContentRedact":
+    "改写内容（把匹配子串替换为 [REDACTED]）",
   "wrappers.form.patternsLabel": "模式（每行一个，正则或子串）",
   "wrappers.form.patternsHint": "合法时按正则匹配，否则按子串匹配。",
   // v0.9.1 (模板市场).

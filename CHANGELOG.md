@@ -1,5 +1,80 @@
 # Changelog
 
+### v0.9.14 — 实际 bug 修复 + AGENTS.md 校对
+
+GLM 5.2 拿 v0.9.13 一扫，看出 AGENTS.md 严重失同步——
+它自己定的"每次新 release → 回写新教训"已经 20+
+个 release 没执行，**§1.1 / §6.1 的测试数停在 v0.8.5
+的 541/214**，实际已是 655/312。user 拿这事一问我自己
+心也虚了：AGENTS.md 是"agent 入职文档"，自己定的
+规则自己没守，user 没理由信。GLM 5.2 还指出 server.ts
+1911 行 / plan-executor.ts 1476 行 / i18n 197KB /
+ComposeBoard 2144 行 / ObservabilityView 794 行——
+这些都是真债，但**这次没拆**。user 报的 2 个 P0
+实际 bug（连接按钮没反应 + en/zh 按钮看不到）
+比拆文件更疼，先修 bug + 校 AGENTS.md；server.ts
+等大拆分别排在 v0.9.15+。
+
+**P0 修了 3 个 user 实际能撞的问题**
+
+- **AGENTS.md 测试数 + 日期同步**（用户要求"先读这文件"，
+  但内容是 5 个版本前的）：§1.1 / §6.1 从 541/214 → 655/312；
+  core 文件 ~50 → ~65；Last updated 2026-07-17 (v0.8.5) →
+  2026-07-20 (v0.9.14)；新增 §10.20-§10.22 三条 v0.9.14 教训
+  （AGENTS self-rule 失守 / error 状态走 text-muted /
+  暗主题 inactive 按钮可见性）
+- **/try 连接按钮"无反应"**：usePiSession 进入 `error`
+  状态时，旧代码把 `session.error` 字符串（"token fetch
+  failed: 503"）当 i18n key 传给 `<T>`，渲染出的
+  "原文"用 `text-muted` 小字显示——user 实际点了有反应，
+  但视觉上完全看不到。**修复**：
+  - statusLabel 改返 `try.status.error` 真正的 i18n key
+    ("Connection failed" / "连接失败")
+  - 错误消息原文用 `<span>` + `var(--error)` 颜色
+    紧接 category 渲染（"Connection failed — token
+    fetch failed: 503"）
+  - 状态条整个换红框 + 红 tint 背景 + `role="alert"`
+    (a11y) — 视觉上明显"出事了"
+  - Connect 按钮在 error 状态换成 **Retry 按钮**（红
+    底），user 有明确下一步动作
+  - 移动端 overflow menu 同步加 Retry 项（不止桌面）
+- **en/zh 按钮不可见**：LanguageSwitcher 的 inactive
+  按钮用 `background: transparent` + `color: var(--text-muted)`——
+  暗主题下 transparent 等于没背景，text-muted 等于灰字融
+  背景。**修复**：inactive 改用
+  `color-mix(in srgb, var(--text) 8%, transparent)` 淡 tint
+  + `var(--text)` 满色文字 + `fontWeight: 500`。两个
+  按钮现在都看得见，"current vs other" 的对比仍然清晰
+
+**5 个 new i18n keys**（types + en + zh 三文件同步）：
+- `try.status.error`: "Connection failed" / "连接失败"
+- `try.action.retry`: "Retry" / "重试"
+
+**11 个 new tests**（web +2 文件 / +11 用例）：
+- `web/tests/language-switcher.test.tsx` (5 tests)
+  - both EN / 中 渲染、active vs inactive 颜色、inactive
+    不用 transparent / text-muted、点击写 localStorage、
+    zh 初始 locale active / inactive 翻转
+- `web/tests/try-error-state.test.tsx` (6 tests)
+  - 错误 category i18n key 渲染、错误消息原文渲染、
+    role="alert" a11y、Retry 按钮替代 Connect、点击
+    触发 connect、zh locale 中英 i18n sanity
+
+**Stats**:
+- root 655/655 ✓ (unchanged)
+- web 312 → 323 (+11)
+- tsc clean, lint clean, next build clean
+- test files: web 30 → 32 (+2)
+
+**Deliberately NOT done** (排 v0.9.15+):
+- server.ts 1911 行拆 routes/ (8-10 文件)
+- plan-executor.ts 1476 行拆 7 职责
+- i18n 197KB 拆 nav group 按域分
+- ComposeBoard.tsx 2144 行拆 hooks
+- ObservabilityView.tsx 794 行（趁还没变第二个 ComposeBoard）
+- cache.ts Map 上限保护
+- 9 root + 21 web 遗留 prettier 警告（pre-existing 不是我引入的）
+
 ### v0.9.13 — 30s TTL cache for /policies, /workflows, /wrappers
 
 v0.9.11 给 dashboard 的 4 个 list endpoint（`/packs`,

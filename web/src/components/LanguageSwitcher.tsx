@@ -6,6 +6,18 @@
  * Reads/writes localStorage["pilot-locale"] via the I18nProvider context.
  * Marked aria-current="true" on the active option so screen readers
  * announce the current language.
+ *
+ * v0.9.14: inactive button visibility. The previous version used
+ * `background: transparent` + `color: var(--text-muted)` for the
+ * non-selected locale, which was effectively invisible on the
+ * dark theme (transparent on dark bg + dim muted text = the
+ * inactive option disappeared). User reading the header only saw
+ * the active button and assumed there was nothing to switch to.
+ *
+ * Fix: give the inactive button a subtle text-tinted background
+ * and use `--text` (not `--text-muted`) for the foreground. The
+ * accent / non-accent contrast still reads as "current vs other"
+ * but the inactive option stays visible.
  */
 
 import { useI18n } from "./I18n";
@@ -37,9 +49,15 @@ export function LanguageSwitcher() {
             lang={code}
             className="px-2 py-1 transition-colors"
             style={{
-              background: active ? "var(--accent)" : "transparent",
-              color: active ? "var(--bg)" : "var(--text-muted)",
-              fontWeight: active ? 600 : 400,
+              // v0.9.14: subtle text-tinted bg + full --text
+              // color for inactive. Previously `transparent` +
+              // `--text-muted` made the non-active option
+              // disappear on dark themes (user feedback).
+              background: active
+                ? "var(--accent)"
+                : "color-mix(in srgb, var(--text) 8%, transparent)",
+              color: active ? "var(--bg)" : "var(--text)",
+              fontWeight: active ? 600 : 500,
             }}
           >
             {LABELS[code]}

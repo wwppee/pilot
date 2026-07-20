@@ -108,6 +108,12 @@ const en: Dict = {
   // are left before we give up.
   "try.status.reconnecting": "Reconnecting ({attempt}/{max})…",
   "try.status.errorUnknown": "Error: unknown",
+  // v0.9.14: error display in the status strip.
+  // `try.status.error` is the prefix; the actual
+  // error message is rendered verbatim so the user
+  // sees both the category and the reason.
+  "try.status.error": "Connection failed",
+  "try.action.retry": "Retry",
   "try.action.connect": "Connect",
   "try.action.disconnect": "Disconnect",
   "try.action.send": "Send",
@@ -474,7 +480,8 @@ const en: Dict = {
   "policy.form.toolRules.removeTool": "Remove",
   "policy.form.toolRules.toolNameLabel": "Tool",
   "policy.form.toolRules.toolNamePlaceholder": "bash",
-  "policy.form.toolRules.toolNameAriaLabel": "Tool name for per-tool rule row {n}",
+  "policy.form.toolRules.toolNameAriaLabel":
+    "Tool name for per-tool rule row {n}",
   "policy.form.toolRules.field.deny.label": "deny (override)",
   "policy.form.toolRules.field.requireApproval.label":
     "requireApproval (override)",
@@ -1374,8 +1381,7 @@ const en: Dict = {
   // announcement, so the button label just needs to be
   // short + the hint explains that runtime is staged.
   "workflows.editor.run": "Run",
-  "workflows.editor.runHint":
-    "Run this workflow. Runtime lands in v0.7.6+.",
+  "workflows.editor.runHint": "Run this workflow. Runtime lands in v0.7.6+.",
   "workflows.editor.runFailed": "Run failed: ",
   // v0.8.10: structural validation. The "ok"
   // case is the only fully positive feedback;
@@ -1404,8 +1410,7 @@ const en: Dict = {
   "wrappers.apply": "Apply",
   "wrappers.unapply": "Unapply",
   "wrappers.delete": "Delete",
-  "wrappers.applyOk":
-    "✓ Stub extension written to {path} ({bytes} bytes).",
+  "wrappers.applyOk": "✓ Stub extension written to {path} ({bytes} bytes).",
   "wrappers.applyFailed": "Apply failed",
   "wrappers.unapplyOk": "Extension removed.",
   "wrappers.unapplyNotApplied": "Extension was not applied.",
@@ -1439,7 +1444,8 @@ const en: Dict = {
   "wrappers.form.descriptionLabel": "Description",
   "wrappers.form.descriptionPlaceholder": "What this wrapper does",
   "wrappers.form.toolsLabel": "Tools (comma-separated)",
-  "wrappers.form.toolsHint": "Tool names this wrapper applies to (e.g. bash, write).",
+  "wrappers.form.toolsHint":
+    "Tool names this wrapper applies to (e.g. bash, write).",
   "wrappers.form.kindLabel": "Rule kind",
   "wrappers.form.maxRetriesLabel": "Max retries (1-10)",
   "wrappers.form.initialBackoffLabel": "Initial backoff (ms)",
@@ -1448,7 +1454,8 @@ const en: Dict = {
   "wrappers.form.logPathHint":
     "Where the audit log is written. The parent dir is auto-created.",
   "wrappers.form.transformLabel": "Transform mode",
-  "wrappers.form.transformPathRedact": "Rewrite path (mask .env → .env.redacted)",
+  "wrappers.form.transformPathRedact":
+    "Rewrite path (mask .env → .env.redacted)",
   "wrappers.form.transformContentRedact":
     "Rewrite content (replace matched substrings with [REDACTED])",
   "wrappers.form.patternsLabel": "Patterns (one per line, regex or substring)",
