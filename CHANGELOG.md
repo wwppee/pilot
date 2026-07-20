@@ -1,5 +1,63 @@
 # Changelog
 
+### v0.9.16 — server.ts 1911 行拆 13 routes 文件 + 3 helper module
+
+GLM 5.2 审计挖出的 P0 大债终于关：`src/server/server.ts` 从 1911
+行降到 266 行（-86%），87 个 route 拆到 13 个 `src/server/routes/<resource>.ts`
+文件，3 个纯函数抽到独立 module（`chat.ts` / `cors.ts` / `range.ts`）。
+server.ts 现在只剩 startup / shutdown / auth hooks / WebSocket bootstrap
++ 14 行 `registerXxxRoutes` 调用。
+
+**改了什么**：
+
+- 13 个 `src/server/routes/<resource>.ts` 文件：
+  `health` / `packs` / `avatars` / `sessions` / `capabilities` / `profiles` /
+  `stats` / `compose` / `policies` / `workflows` / `wrappers` /
+  `observability` / `plans` / `pi`
+- 每个 routes file 接受 `(app: FastifyInstance, service: PilotService)`，
+  内部用 `app.get/post/put/delete` 直接注册 — 不用 fastify plugin 模式
+- 3 个纯函数抽到独立 module（无 Fastify 依赖）：
+  - `src/server/chat.ts` — `ChatIntent` type + `buildChatReply` +
+    `matchCrossDashboardIntent` + `buildCrossDashboardReply`
+  - `src/server/cors.ts` — `allowedOriginsFor` (loopback alias helper)
+  - `src/server/range.ts` — `parseRange` (`?range=` 解析)
+- `isValidWorkflowId` 跟 `routes/workflows.ts` 一起搬；
+  `assertBoardId` 跟 `routes/compose.ts` 一起搬 — 闭包共享的
+  helper 不进 `routes/shared/`，跟最近的 caller 在同文件
+- 13 个 routes 文件每个顶部都写明 route 列表 + cache 契约
+  （"X read goes through cache key Y, X write invalidates Y"），
+  拆完 1 个 release 就能看见 cache key 全图，不用 grep
+
+**没改什么**（关键）：
+
+- 87 个 route handler 行为**完全一致**（`app.inject()` 测试验证
+  byte-equal：99 个 server test + 6 个 cache test 全过，未改动任何 test）
+- auth / CSRF hook 不变（仍在 server.ts 内，全局唯一）
+- WebSocket `/api/pi/ws` 行为不变（route + onClose 一起搬进
+  `routes/pi.ts`，`liveBridges` Set 仍由 server.ts 拥有并传入）
+
+**stats**：
+
+- `src/server/server.ts`: 1911 → 266 行 (-86%)
+- root tests: 715 → 744 (+29, 新增 3 个新 module test 文件)
+- web tests: 332 (无变化)
+- tsc / format / lint / tests / build 全过
+
+**v0.9.14 / v0.9.15 / v0.9.15.1 数字补**：
+
+- v0.9.14 校对时 AGENTS.md 写 655/312, 实际 v0.9.15.1 已涨到 715/332
+  (memory §10.46 教训 #1 再次出现: counts 必须看 stdout, 不能脑算)
+- v0.9.16 校对后真实数 744/332
+
+**deferred 关闭 1 项**：
+
+- server.ts 1911 行拆 routes/ (GLM 5.2 audit P0) ✓ 关闭
+- 仍 deferred: plan-executor 1476 行 / i18n 197KB 拆域 / ComposeBoard
+  2144 行 / ObservabilityView 794 行 / cache Map 上限保护 /
+  9 root + 21 web 遗留 prettier warnings
+- Next.js 16.2.x `HTTPAccessFallbackBoundary` 吞 notFound() status
+  (upstream, issue #93008, 不在 pilot 端 hack)
+
 ### v0.9.15.1 — 按钮点击无反应根因（I18nProvider hydration + Next.js 16 跨域）
 
 v0.9.15 修了 5 个 curl 实测的 P0，但 user 反馈"好些按钮

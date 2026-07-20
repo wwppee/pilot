@@ -863,6 +863,45 @@ Pi 内部可用 13 个 LLM 工具（通过 `pilot-tools` extension）：
 | **[`docs/retired/roadmap-v1.0.md`](./retired/roadmap-v1.0.md)**         | 已作废的 v3 终极版宏图（保留为 audit trail）                      |
 | **[`docs/retired/macro-spec-audit.md`](./retired/macro-spec-audit.md)** | 作废文档审计记录                                                  |
 
+## 2026-07-20 校准 (48)
+
+**v0.9.16 已发** — server.ts 1911 行拆 13 routes/ 文件 + 3 helper module。
+
+GLM 5.2 audit P0 关闭：单文件最大风险点解除。
+
+| 改了什么                                                                   | 改之前                            | 改之后                                 |
+| -------------------------------------------------------------------------- | --------------------------------- | -------------------------------------- |
+| server.ts 行数                                                             | 1911                              | 266 (-86%)                             |
+| routes 拆到独立文件                                                        | 0 (全在 server.ts)                | 13 (`src/server/routes/<resource>.ts`) |
+| 纯函数抽到独立 module (chat / cors / range)                                | 0                                 | 3                                      |
+| 闭包 helper 跟最近 caller 一起搬 (isValidWorkflowId / assertBoardId)       | 在 server.ts 闭包                 | 跟 routes/workflows.ts / routes/compose.ts 一起 |
+| cache 契约 + invalidate 全图可见性                                         | grep 50+ 路由                     | 13 个 routes file 头部注释 1 处即得    |
+
+**Stats**: root 715/715 → 744/744 (+29, 新 3 个 module test files),
+web 332/332 (unchanged), tsc / format / lint / tests / build 全过
+
+**v0.9.14 / v0.9.15 / v0.9.15.1 数字补**：
+
+- v0.9.14 校对时 AGENTS.md 写 655/312, 实际 v0.9.15.1 已涨到 715/332
+- v0.9.16 校对后真实数 744/332
+- 教训: counts 必须看 stdout, 不能脑算（v0.9.14 §10.20 第二次失守）
+
+**Defer v0.9.17+** (GLM 5.2 audit 5 项大拆, 4 项未动):
+
+- plan-executor.ts 1476 行拆 (P1, `src/core/plan-executor.ts`)
+- i18n 197KB 按 nav group 拆域 (P1, `web/src/lib/i18n/dict.{en,zh}.ts`)
+- ComposeBoard.tsx 2144 行拆 (P2, 最大单文件, `web/src/app/compose/ComposeBoard.tsx`)
+- ObservabilityView.tsx 794 行拆 (P1, `web/src/app/observability/ObservabilityView.tsx`)
+- cache.ts Map 上限保护 (P2, 内存炸防护)
+- 9 root + 21 web 遗留 prettier warnings
+
+**Defer 到 v0.9.16+ (upstream)**:
+
+- Next.js 16.2.x `HTTPAccessFallbackBoundary` 吞 notFound() status
+  (issue #93008, 4 个 loading.tsx 触发, 不在 pilot 端 hack)
+
+---
+
 ## 2026-07-20 校准 (47)
 
 **v0.9.15.1 已发** — 按钮点击无反应根因修复。

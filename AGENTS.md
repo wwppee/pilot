@@ -19,7 +19,7 @@
 
 - pilot 是什么：pi-coding-agent 的 management plane（CLI + Web UI）—— **不拦截 pi runtime**
 - 仓库：`github.com/wwppee/pilot`（npm 名 `pilot`）
-- 当前版本：v0.9.13
+- 当前版本：v0.9.16
 - 沙盒限制：可能不能 `git push` / `npm publish` / 起 `pilot start`（见 §9）
 
 ---
@@ -32,8 +32,8 @@
 | ------------ | -------------------------------------------------------------- |
 | `src/`       | Node CLI + Fastify server，~65 core files，ESM                 |
 | `web/`       | Next.js 16 app router，~20 routes + ~30 components（103 文件） |
-| `test/unit/` | root vitest 测试（655 个 / 42 文件）                           |
-| `web/tests/` | web vitest 测试（312 个 / 30 文件）                            |
+| `test/unit/` | root vitest 测试（744 个 / 46 文件）                           |
+| `web/tests/` | web vitest 测试（332 个 / 33 文件）                            |
 | `docs/`      | roadmap / design / archive                                     |
 | `scripts/`   | release.sh + helper scripts                                    |
 
@@ -253,10 +253,10 @@ export async function generateMetadata(): Promise<Metadata> {
 ### 6.1 vitest 测试范围
 
 ```bash
-# root tests (655 个 / 42 文件, 排除 integration + commands)
+# root tests (744 个 / 46 文件, 排除 integration + commands)
 cd / && npx vitest run --exclude '**/commands.test.ts'
 
-# web tests (312 个 / 30 文件)
+# web tests (332 个 / 33 文件)
 cd web && npx vitest run
 ```
 
@@ -626,6 +626,20 @@ with urllib.request.urlopen(req, timeout=30) as r:
 - "当前 vs 非当前" 的视觉对比应该让 user 一眼能区分"哪个是当前"，但**也要让 user 看见"还有别的选项"**
 - 反例：完全靠 "有 accent 色 vs 没 accent 色" 区分，inactive 项直接消失
 
+### 10.23 server.ts 单文件 1911 行（v0.9.16 教训）
+
+**症状**：`src/server/server.ts` 1911 行单文件，混了 87 个 route + 5 个 helper + 2 个 hook + WebSocket 桥。任何 route 修改都涉及全文件，git blame 跨 50+ commit。
+
+**实际**：GLM 5.2 审计的 P0 大债。改一个 route handler 要在 1900 行里定位上下文；cache 契约（哪个 key 被谁 invalidate）散在 50+ 路由里没有局部真相；`isValidWorkflowId` 之类的 boundary helper 是 `app.addHook` 之前的闭包，被 compose 跟 workflow 共享 — 拆文件时这种隐藏依赖先识别。
+
+**防**：
+
+- **单文件 > 1000 行就该按"资源族"拆 routes/**（一个 resource family 一个 registerXxxRoutes(app, service)）
+- **拆之前先做小步验证**：抽 1-2 个纯函数（无 closure 依赖）→ 改 server.ts import → 跑完整 server test → 99 个 inject test 行为不变再继续
+- **行为不变的硬标准**：现有 server.test.ts 跑出来跟拆之前 byte-equal（同一组 test pass, 同一组 mock 配置），不是 "看起来跑得过"
+- **闭包共享的 helper** 跟最近的 routes file 一起搬（`isValidWorkflowId` → `routes/workflows.ts`, `assertBoardId` → `routes/compose.ts`），不要建 `routes/shared/` 这种 over-abstract 的"统一" 目录
+- **"registerXxxRoutes" 模式** 比 fastify plugin 简单：直接 `app.get(...)`，不绕 `app.register(...)`
+
 ### 10.19 dependsOn no-op 写 true
 
 **症状**：`areDependsOnSatisfied` 返 `true` 是 no-op
@@ -701,6 +715,6 @@ sed -i '' 's/"version": "0.6.X"/"version": "0.6.Y"/' package.json web/package.js
 
 ---
 
-**Last updated**: 2026-07-20 (v0.9.14 实际 bug 修复 + AGENTS.md 重对数)
+**Last updated**: 2026-07-20 (v0.9.16 server.ts 拆 routes/ + AGENTS.md 重对数)
 
 **Maintainer**: 每次新 release 后回写新教训到对应章节。
