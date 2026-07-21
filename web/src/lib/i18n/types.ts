@@ -88,6 +88,38 @@ export type Dict = {
   "settings.comingSoon.title": string;
   "settings.comingSoon.body": string;
   "settings.comingSoon.routes": string;
+  // v1.0.2: Capability Hub page copy. The /hub route absorbs
+  // /packages /forge /capabilities /tools; the key names below
+  // follow the new surface (Hub) rather than the legacy four
+  // so the i18n keys don't have to change again in v1.0.2.1
+  // when the security classification lands.
+  "hub.subtitle.idle": string;
+  "hub.subtitle.search": string;
+  "hub.section.searchResults": string;
+  "hub.section.installed": string;
+  "hub.section.capabilities": string;
+  "hub.installedCount": string;
+  "hub.capCount": string;
+  "hub.search.placeholder": string;
+  "hub.search.submit": string;
+  "hub.search.empty.title": string;
+  "hub.search.empty.hint": string;
+  "hub.installed.empty.title": string;
+  "hub.installed.empty.hint": string;
+  "hub.capabilities.empty.title": string;
+  "hub.capabilities.empty.hint": string;
+  "hub.capabilities.empty.hintForge": string;
+  "hub.footer.legacy": string;
+  // v1.0.2: per-row action labels (install / uninstall / view).
+  "hub.action.install": string;
+  "hub.action.uninstall": string;
+  "hub.action.view": string;
+  // v1.0.2: list-row metadata (description fallback, version,
+  // author). These are mostly data-driven — the i18n keys
+  // here are the human labels around them.
+  "hub.row.version": string;
+  "hub.row.author": string;
+  "hub.row.installed": string;
   // v0.5.18: /help page.
   "help.h1": string;
   "help.subtitle": string;
