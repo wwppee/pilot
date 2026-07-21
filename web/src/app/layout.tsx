@@ -11,6 +11,7 @@ import { NavLinks } from "@/components/NavLinks";
 import { renderT } from "@/lib/i18n";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { ActiveProfileBadge } from "@/components/ActiveProfileBadge";
+import { Satellite } from "lucide-react";
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -155,12 +156,24 @@ export default async function RootLayout({
                   // clicking the brand and landing on a redirect
                   // is a small UX papercut — a real <Link href>
                   // skips the redirect hop and keeps history clean.
+                  //
+                  // v2.0.0: replace the 🛰 emoji with a Lucide
+                  // `Satellite` icon. Lucide renders as SVG and
+                  // inherits `currentColor`, so the brand glyph
+                  // matches the Insight nav link visually and
+                  // scales cleanly on retina.
                   href="/insight"
-                  className="text-lg font-semibold tracking-tight"
+                  className="text-lg font-semibold tracking-tight inline-flex items-center gap-2"
                   style={{ color: "var(--text)" }}
                   aria-label={brandAria}
                 >
-                  🛰 <T k="brand.name" />
+                  <Satellite
+                    size={18}
+                    strokeWidth={1.75}
+                    aria-hidden="true"
+                    style={{ color: "var(--accent)" }}
+                  />
+                  <T k="brand.name" />
                 </Link>
                 <NavLinks currentPath={currentPath} locale={locale} />
                 <div className="ml-auto flex items-center gap-3">

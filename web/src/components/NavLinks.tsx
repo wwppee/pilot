@@ -1,32 +1,38 @@
 /**
- * <NavLinks> — v1.0.1: 7-module navigation.
+ * <NavLinks> — v2.0.0: 7-module navigation, lucide-react icons.
  *
- * v0.5.x → v0.9.x used a 3-group layout (Inspect / Manage / Learn) with
- * 17 entries inherited from the pre-Phase-1 product surface. The legacy
- * 19-entry nav was the thing user flagged in the 2026-07-21 product
- * pivot ("19 入口臃肿"), so v1.0.1 collapses it to 7 modules.
+ * v1.0.1 collapsed 19 entries into 7 modules with emoji icons.
+ * v2.0.0 replaces the emoji with `lucide-react` SVG icons —
+ * the same library `pilot-webui-redesign` references. SVG
+ * icons render at any size, inherit `currentColor` for theme
+ * state, and align crisply on a 1px grid; emoji are
+ * inconsistent across platforms and rendered as bitmap
+ * glyphs that don't match the rest of the Dark Sci-Fi Tech
+ * direction.
  *
- * Why 7: the v1.0.0 README restated the product as
- * "AI Agent 能力管理层 (Agent Capability Management Layer)" with 7
- * core modules — Hub / Workflow / Policy & Security / Insight /
- * Sessions / Context / Settings. This component is the in-browser
- * mirror of that 7-module model. The 3-group split (Inspect/Manage/
- * Learn) is gone: with only 7 items, group labels are visual noise.
+ * The 7 module → icon mapping follows the
+ * `pilot-webui-redesign` index page so users transitioning
+ * from the design doc to the live dashboard see familiar
+ * visuals. (Reference uses the CDN UMD build; we use
+ * `lucide-react` because Next.js bundles it cleanly.)
  *
- * Why server-rendered: v0.5.21 moved this to a Server Component and
- * takes `locale` as a prop (so we can use the pure `renderT(locale, k)`
- * without pulling `useT()` into a server context). Trade-off documented
- * inline below — nav doesn't re-render on client-side language toggle,
- * which matches v0.5.21 behaviour and is fine for now.
- *
- * The "active" highlight compares against `currentPath` with prefix
- * matching so `/hub/some-package` still highlights the Hub link.
- * Special case: `href === "/"` only matches the literal "/" path,
- * never a prefix.
+ * Server-rendered — same v0.5.21 caveat as before: the nav
+ * doesn't re-render on client-side language toggle. The
+ * LanguageSwitcher is unaffected.
  */
 
 import { renderT, type Locale } from "@/lib/i18n";
 import { NavTooltip } from "./NavTooltip";
+import {
+  Package,
+  Workflow,
+  Shield,
+  Satellite,
+  ScrollText,
+  FileText,
+  Settings as SettingsIcon,
+  type LucideIcon,
+} from "lucide-react";
 
 type LabelKey =
   | "nav.hub"
@@ -49,7 +55,8 @@ type HintKey =
 interface NavItem {
   href: string;
   labelKey: LabelKey;
-  icon: string;
+  /** Lucide icon component, rendered at 14×14 in the link. */
+  Icon: LucideIcon;
   /** i18n key for the hover tooltip body. */
   hintKey: HintKey;
 }
@@ -60,56 +67,56 @@ interface NavItem {
  * Context sit in the middle because they are 1:1 carries from the
  * old nav (no merge ambiguity).
  *
- * The icons are emoji placeholders — the visual refresh (which
- * uses the Dark Sci-Fi Tech tokens in `colors_and_type.css`) is
- * scoped to a later release; v1.0.1 is code-structure-only.
- *
- * Exported (not just module-private) so the nav-links test can
- * pin the order. The pre-v1.0.1 test exported `NAV_GROUPS` for
- * the same reason; v1.0.1 just renames it to the flat shape
- * the new nav actually has.
+ * Icons (v2.0.0):
+ *   - Hub         → Package         (npm-pack shape)
+ *   - Workflow    → Workflow        (flow symbol; not Workflow from "compose" which was 🧪)
+ *   - PolicySafe  → Shield          (gate / block / allow)
+ *   - Insight     → Satellite       (monitoring; same as brand logo)
+ *   - Sessions    → ScrollText      (history list)
+ *   - Context     → FileText        (loaded file)
+ *   - Settings    → Settings        (gear)
  */
 export const NAV_ITEMS: readonly NavItem[] = [
   {
     href: "/hub",
     labelKey: "nav.hub",
-    icon: "📦",
+    Icon: Package,
     hintKey: "nav.hint.hub",
   },
   {
     href: "/workflow",
     labelKey: "nav.workflow",
-    icon: "🌀",
+    Icon: Workflow,
     hintKey: "nav.hint.workflow",
   },
   {
     href: "/policy",
     labelKey: "nav.policySafe",
-    icon: "🛡",
+    Icon: Shield,
     hintKey: "nav.hint.policySafe",
   },
   {
     href: "/insight",
     labelKey: "nav.insight",
-    icon: "🛰️",
+    Icon: Satellite,
     hintKey: "nav.hint.insight",
   },
   {
     href: "/sessions",
     labelKey: "nav.sessions",
-    icon: "📋",
+    Icon: ScrollText,
     hintKey: "nav.hint.sessions",
   },
   {
     href: "/context",
     labelKey: "nav.context",
-    icon: "📄",
+    Icon: FileText,
     hintKey: "nav.hint.context",
   },
   {
     href: "/settings",
     labelKey: "nav.settings",
-    icon: "⚙️",
+    Icon: SettingsIcon,
     hintKey: "nav.hint.settings",
   },
 ];
@@ -134,16 +141,23 @@ export function NavLinks({
       role="navigation"
       aria-label={t("nav.ariaLabel")}
     >
-      {NAV_ITEMS.map((item) => (
-        <NavTooltip
-          key={item.href}
-          href={item.href}
-          label={t(item.labelKey)}
-          icon={item.icon}
-          hint={t(item.hintKey)}
-          active={isActive(item.href)}
-        />
-      ))}
+      {NAV_ITEMS.map((item) => {
+        const active = isActive(item.href);
+        return (
+          <NavTooltip
+            key={item.href}
+            href={item.href}
+            label={t(item.labelKey)}
+            // v2.0.0: instantiate the lucide component as
+            // an element so NavTooltip can render it inline.
+            // We pass `size=14` to match the emoji visual
+            // weight (14px glyph on a 14px-tall link row).
+            icon={<item.Icon size={14} strokeWidth={1.75} />}
+            hint={t(item.hintKey)}
+            active={active}
+          />
+        );
+      })}
     </nav>
   );
 }
