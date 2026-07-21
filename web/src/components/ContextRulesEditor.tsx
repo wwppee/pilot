@@ -12,8 +12,10 @@
 "use client";
 
 import { useState } from "react";
+import { Settings2 } from "lucide-react";
 import { T } from "./I18n";
 import { renderT, type Locale } from "@/lib/i18n";
+import { PageHeader } from "./PageHeader";
 
 interface ContextRules {
   filenames: string[];
@@ -103,14 +105,11 @@ export function ContextRulesEditor({
 
   return (
     <div className="space-y-6 context-page">
-      <header>
-        <h1 className="hub-h1">
-          <T k="context.editRules.h1" />
-        </h1>
-        <p className="hub-subtitle">
-          <T k="context.editRules.subtitle" />
-        </p>
-      </header>
+      <PageHeader
+        icon={<Settings2 size={20} strokeWidth={1.75} />}
+        title={<T k="context.editRules.h1" />}
+        subtitle={<T k="context.editRules.subtitle" />}
+      />
 
       <div className="context-editor">
         <Field

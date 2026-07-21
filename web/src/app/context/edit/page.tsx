@@ -14,9 +14,11 @@
  */
 import { headers } from "next/headers";
 import Link from "next/link";
+import { FileText } from "lucide-react";
 import { api } from "@/lib/pilot";
 import { T } from "@/components/I18n";
 import { negotiateLocale, renderT } from "@/lib/i18n";
+import { PageHeader } from "@/components/PageHeader";
 import { ContextEditor } from "@/components/ContextEditor";
 
 export const dynamic = "force-dynamic";
@@ -75,15 +77,14 @@ export default async function ContextEditPage({
 
   return (
     <div className="space-y-6 context-page">
-      <header>
-        <h1 className="hub-h1">
-          <T k="context.edit.h1" />
-        </h1>
-        <p className="hub-subtitle">{subtitle}</p>
-        <p className="context-path" aria-label="path">
-          {ref.path}
-        </p>
-      </header>
+      <PageHeader
+        icon={<FileText size={20} strokeWidth={1.75} />}
+        title={<T k="context.edit.h1" />}
+        subtitle={subtitle}
+      />
+      <p className="context-path" aria-label="path">
+        {ref.path}
+      </p>
 
       <ContextEditor
         initialContent={content}
