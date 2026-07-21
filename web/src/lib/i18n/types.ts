@@ -172,6 +172,24 @@ export type Dict = {
   // v1.1.1: link from the read-only DiscoveryRules panel
   // on /context to the editable /context/edit-rules page.
   "context.discovery.edit": string;
+  // v2.0.6: gateway cards on /workflow and /settings. Each
+  // module page is a 3-card grid linking to the legacy
+  // sub-surfaces (Compose / Plans / Workflows, and
+  // Profiles / Avatars / Help). The title / desc pair is
+  // what the card shows; the page itself just renders a
+  // gateway.
+  "workflow.sub.compose.title": string;
+  "workflow.sub.compose.desc": string;
+  "workflow.sub.plans.title": string;
+  "workflow.sub.plans.desc": string;
+  "workflow.sub.workflows.title": string;
+  "workflow.sub.workflows.desc": string;
+  "settings.sub.profiles.title": string;
+  "settings.sub.profiles.desc": string;
+  "settings.sub.avatars.title": string;
+  "settings.sub.avatars.desc": string;
+  "settings.sub.help.title": string;
+  "settings.sub.help.desc": string;
   // v1.0.4: Hub Tools section copy. The toggle in
   // <HubToolRow> writes ~/.pilot/tools-state.json via
   // POST /tools/:name/toggle.
