@@ -339,6 +339,21 @@ export interface PilotService {
     content: string,
   ): Promise<{ mtime: string; ref: ProjectContextRef } | null>;
 
+  // v1.1.1: read + write the user-editable context discovery
+  // rules. Stored in ~/.pilot/context-rules.json (not in pi's
+  // settings.json). The defaults are the v0.5.8 hardcoded
+  // values; a missing file = defaults.
+  readContextRules(): Promise<{
+    filenames: string[];
+    searchPaths: string[];
+    infoFiles: string[];
+  }>;
+  writeContextRules(rules: {
+    filenames: string[];
+    searchPaths: string[];
+    infoFiles: string[];
+  }): Promise<{ mtime: string; rules: { filenames: string[]; searchPaths: string[]; infoFiles: string[] } }>;
+
   // ─── Compose catalog (v0.4.4) ──────────────────────────
 
   /**

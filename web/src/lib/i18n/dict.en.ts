@@ -108,6 +108,16 @@ const en: Dict = {
   "context.edit.save": "Save",
   "context.edit.revert": "Revert",
   "context.row.edit": "edit",
+  // v1.1.1: discovery rules editor.
+  "context.editRules.h1": "Edit discovery rules",
+  "context.editRules.subtitle": "Tune how Pilot finds AGENTS.md / CLAUDE.md / README.md in your project.",
+  "context.editRules.filenames.label": "Filenames (priority order)",
+  "context.editRules.filenames.hint": "The first match wins. Default: AGENTS.md > AGENTS.MD > CLAUDE.md > CLAUDE.MD.",
+  "context.editRules.searchPaths.label": "Search paths",
+  "context.editRules.searchPaths.hint": "Where Pilot looks, in order. Use agentDir / cwd / ancestor.",
+  "context.editRules.infoFiles.label": "Informational files",
+  "context.editRules.infoFiles.hint": "Files surfaced for visibility but not loaded into pi's prompt. Default: README.md / .cursor/rules / CONTRIBUTING.md.",
+  "context.discovery.edit": "edit →",
   // v1.0.4: Hub Tools section.
   "hub.section.tools": "Tools",
   "hub.toolsCount": "{n} tool{s}",

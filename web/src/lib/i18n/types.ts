@@ -156,6 +156,22 @@ export type Dict = {
   "context.edit.revert": string;
   // v1.0.3: per-row action link in the /context list.
   "context.row.edit": string;
+  // v1.1.1: context discovery rules editor. /context/edit-rules
+  // shows three textareas (filenames / searchPaths / infoFiles),
+  // each parsed as a JSON string[]. The page is the
+  // editable counterpart of the "How discovery works"
+  // panel on /context.
+  "context.editRules.h1": string;
+  "context.editRules.subtitle": string;
+  "context.editRules.filenames.label": string;
+  "context.editRules.filenames.hint": string;
+  "context.editRules.searchPaths.label": string;
+  "context.editRules.searchPaths.hint": string;
+  "context.editRules.infoFiles.label": string;
+  "context.editRules.infoFiles.hint": string;
+  // v1.1.1: link from the read-only DiscoveryRules panel
+  // on /context to the editable /context/edit-rules page.
+  "context.discovery.edit": string;
   // v1.0.4: Hub Tools section copy. The toggle in
   // <HubToolRow> writes ~/.pilot/tools-state.json via
   // POST /tools/:name/toggle.

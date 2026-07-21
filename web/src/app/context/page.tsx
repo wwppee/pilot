@@ -150,9 +150,24 @@ function DiscoveryRules() {
     <details className="surface rounded-lg overflow-hidden group">
       <summary className="px-4 py-2 cursor-pointer select-none surface-2 hover:bg-[var(--surface)] flex items-baseline gap-3">
         <span className="text-[var(--text-muted)] text-xs">▸</span>
-        <span className="section-h2 !mb-0 !text-[var(--text)] !normal-case !tracking-normal !text-sm">
+        <span className="section-h2 !mb-0 !text-[var(--text)] !normal-case !tracking-normal !text-sm flex-1">
           <T k="context.discovery.h2" />
         </span>
+        {/* v1.1.1: link to the rules editor. Sits inside the
+            <summary> so the click target is the whole row
+            (not just the link) — clicking the link still
+            toggles the panel, which is mildly surprising
+            but standard <details> behaviour. The link's
+            own click also navigates, so the experience is
+            "click edit → navigate" or "click anywhere else
+            → toggle the panel". */}
+        <Link
+          href="/context/edit-rules"
+          className="hub-link text-xs"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <T k="context.discovery.edit" />
+        </Link>
       </summary>
       <div className="px-4 py-3 text-xs text-[var(--text-muted)] space-y-3">
         <div>

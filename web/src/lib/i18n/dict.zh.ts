@@ -107,6 +107,16 @@ const zh: Dict = {
   "context.edit.save": "保存",
   "context.edit.revert": "还原",
   "context.row.edit": "编辑",
+  // v1.1.1: 发现规则编辑器。
+  "context.editRules.h1": "编辑发现规则",
+  "context.editRules.subtitle": "调整 Pilot 在项目中找 AGENTS.md / CLAUDE.md / README.md 的方式。",
+  "context.editRules.filenames.label": "文件名(按优先级)",
+  "context.editRules.filenames.hint": "首个匹配胜出。默认: AGENTS.md > AGENTS.MD > CLAUDE.md > CLAUDE.MD。",
+  "context.editRules.searchPaths.label": "搜索路径",
+  "context.editRules.searchPaths.hint": "Pilot 查找的目录, 按顺序。 用 agentDir / cwd / ancestor。",
+  "context.editRules.infoFiles.label": "参考文件",
+  "context.editRules.infoFiles.hint": "只显示给用户看, 不进 pi 提示词的文件。 默认: README.md / .cursor/rules / CONTRIBUTING.md。",
+  "context.discovery.edit": "编辑 →",
   // v1.0.4: Hub Tools 部分。
   "hub.section.tools": "工具",
   "hub.toolsCount": "{n} 个工具",

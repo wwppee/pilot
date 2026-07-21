@@ -43,6 +43,7 @@ import {
   readContextFile,
   writeContextFile,
 } from "./project-context.js";
+import { readContextRules, writeContextRules } from "./context-rules.js";
 import { listAllSessions, sortByRecent } from "./sessions.js";
 import { deriveSnapshot } from "./session-snapshot.js";
 import { deriveTemplate } from "./session-template.js";
@@ -215,6 +216,12 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
     readContextFile: (cwd, path) => readContextFile(cwd, path, home),
     writeContextFile: (cwd, path, content) =>
       writeContextFile(cwd, path, content, home),
+
+    // v1.1.1: read + write discovery rules. Pass-through
+    // to context-rules.ts; the file lives at
+    // ~/.pilot/context-rules.json.
+    readContextRules: () => readContextRules(home),
+    writeContextRules: (rules) => writeContextRules(rules, home),
 
     listComposeEntities: () => listComposeEntitiesFromService(home),
     getComposeEntityDetail: (kind, id) =>

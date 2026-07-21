@@ -381,6 +381,33 @@ export const api = {
       body: JSON.stringify({ cwd, path, content }),
     }),
 
+  // v1.1.1: read / write the discovery rules. Same shape
+  // on GET and POST; the write endpoint validates that
+  // each list is a non-empty string array.
+  readContextRules: () =>
+    pilot<{
+      filenames: string[];
+      searchPaths: string[];
+      infoFiles: string[];
+    }>("/context-rules"),
+  writeContextRules: (rules: {
+    filenames: string[];
+    searchPaths: string[];
+    infoFiles: string[];
+  }) =>
+    pilot<{
+      mtime: string;
+      rules: {
+        filenames: string[];
+        searchPaths: string[];
+        infoFiles: string[];
+      };
+    }>(`/context-rules`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(rules),
+    }),
+
   profiles: () => pilot<Profile[]>("/profiles"),
   profile: (name: string) => pilot<Profile>(`/profiles/${encodeName(name)}`),
   // v0.4.12: active profile pointer — "管了就能用" path closer

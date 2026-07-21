@@ -119,4 +119,38 @@ export function registerStatsRoutes(
     if (!result) return reply.code(404).send({ error: "not writable" });
     return result;
   });
+
+  // v1.1.1: read / write the discovery rules. Same JSON
+  // shape on GET and POST; the write handler validates
+  // that each of the three lists is a non-empty string
+  // array (see context-rules.ts).
+  app.get("/context-rules", async () => service.readContextRules());
+
+  app.post<{
+    Body: {
+      filenames?: unknown;
+      searchPaths?: unknown;
+      infoFiles?: unknown;
+    };
+  }>("/context-rules", async (req, reply) => {
+    const { filenames, searchPaths, infoFiles } = req.body ?? {};
+    if (
+      !Array.isArray(filenames) ||
+      !Array.isArray(searchPaths) ||
+      !Array.isArray(infoFiles)
+    ) {
+      return reply.code(400).send({
+        error: "filenames, searchPaths, infoFiles must be string[]",
+      });
+    }
+    try {
+      return await service.writeContextRules({
+        filenames: filenames as string[],
+        searchPaths: searchPaths as string[],
+        infoFiles: infoFiles as string[],
+      });
+    } catch (e) {
+      return reply.code(400).send({ error: (e as Error).message });
+    }
+  });
 }
