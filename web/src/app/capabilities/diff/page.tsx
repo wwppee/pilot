@@ -53,7 +53,7 @@ export default async function CapabilityDiffPage({ searchParams }: PageProps) {
       </div>
 
       <header>
-        <h1 className="text-2xl font-bold mb-1">{t("capdiff.h1")}</h1>
+        <h1 className="hub-h1">{t("capdiff.h1")}</h1>
         <p className="text-[var(--text-muted)] text-sm">
           {t("capdiff.subtitle")}
         </p>

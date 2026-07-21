@@ -49,7 +49,7 @@ export default async function PackagesPage({ searchParams }: SearchPageProps) {
   return (
     <div className="space-y-8">
       <header>
-        <h1 className="text-2xl font-bold mb-1">
+        <h1 className="hub-h1">
           <T k="packages.h1" />
         </h1>
         <p className="text-[var(--text-muted)] text-sm">

@@ -59,7 +59,7 @@ export default async function ContextPage({
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold mb-1">
+        <h1 className="hub-h1">
           <T k="context.h1" />
         </h1>
         <p className="subtitle">{subtitle}</p>

@@ -90,7 +90,7 @@ export default async function PolicyPage() {
   return (
     <div className="space-y-8">
       <header>
-        <h1 className="text-2xl font-bold mb-1">
+        <h1 className="hub-h1">
           <T k="policy.h1" />
         </h1>
         <p className="subtitle">

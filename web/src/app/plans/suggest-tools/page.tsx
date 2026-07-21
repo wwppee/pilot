@@ -47,7 +47,7 @@ export default function SuggestToolsPage() {
       </div>
 
       <header>
-        <h1 className="text-2xl font-bold mb-1">{t("plans.suggest.title")}</h1>
+        <h1 className="hub-h1">{t("plans.suggest.title")}</h1>
         <p className="text-[var(--text-muted)] text-sm">
           {t("plans.suggest.subtitle")}
         </p>

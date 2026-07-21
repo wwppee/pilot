@@ -61,7 +61,7 @@ export default async function PlansPage({ searchParams }: PageProps) {
     <div className="space-y-6">
       <header className="flex items-baseline justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold mb-1">
+          <h1 className="hub-h1">
             <T k="plans.h1" />
           </h1>
           <p className="text-[var(--text-muted)] text-sm">

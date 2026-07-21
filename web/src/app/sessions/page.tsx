@@ -41,7 +41,7 @@ export default async function SessionsPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold mb-1">
+        <h1 className="hub-h1">
           <T k="sessions.h1" />
         </h1>
         <p className="text-[var(--text-muted)] text-sm mb-3">{subtitle}</p>

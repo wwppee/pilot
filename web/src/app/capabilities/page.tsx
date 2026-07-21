@@ -31,7 +31,7 @@ export default async function CapabilitiesPage() {
 
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold mb-1">
+          <h1 className="hub-h1">
             <T k="capabilities.h1" />
           </h1>
           <p className="text-[var(--text-muted)] text-sm">

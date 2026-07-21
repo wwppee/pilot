@@ -65,7 +65,7 @@ export default async function NewPlanPage({ searchParams }: PageProps) {
       </div>
 
       <header>
-        <h1 className="text-2xl font-bold mb-1">
+        <h1 className="hub-h1">
           <T k="plans.new.h1" />
         </h1>
         <p className="text-[var(--text-muted)] text-sm">
