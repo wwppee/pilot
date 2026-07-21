@@ -8,6 +8,7 @@
 
 import Link from "next/link";
 import { headers } from "next/headers";
+import { BarChart3 } from "lucide-react";
 import { api } from "@/lib/pilot";
 export const dynamic = "force-dynamic";
 import { T } from "@/components/I18n";
@@ -15,6 +16,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { RichT } from "@/components/RichT";
 import { Hint } from "@/components/Hint";
 import { GlossaryTerm } from "@/components/GlossaryTerm";
+import { PageHeader } from "@/components/PageHeader";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { UsageReport } from "@/lib/types";
 
@@ -69,12 +71,11 @@ export default async function UsagePage({
     <div className="space-y-6">
       <header className="flex items-end justify-between">
         <div>
-          <h1 className="hub-h1">
-            <T k="usage.h1" />
-          </h1>
-          <p className="text-[var(--text-muted)] text-sm">
-            <T k="usage.subtitle" />
-          </p>
+          <PageHeader
+            icon={<BarChart3 size={20} strokeWidth={1.75} />}
+            title={<T k="usage.h1" />}
+            subtitle={<T k="usage.subtitle" />}
+          />
         </div>
         <nav
           className="flex gap-1 text-xs"

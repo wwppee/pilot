@@ -9,6 +9,7 @@
 import Link from "next/link";
 export const dynamic = "force-dynamic";
 import { headers } from "next/headers";
+import { ListChecks } from "lucide-react";
 import { api } from "@/lib/pilot";
 import type { Plan, PlanStatus, PlanStrategy } from "@/lib/types";
 import { T } from "@/components/I18n";
@@ -16,6 +17,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Hint } from "@/components/Hint";
 import { RichT } from "@/components/RichT";
 import { GlossaryTerm } from "@/components/GlossaryTerm";
+import { PageHeader } from "@/components/PageHeader";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 
 interface PageProps {
@@ -61,12 +63,11 @@ export default async function PlansPage({ searchParams }: PageProps) {
     <div className="space-y-6">
       <header className="flex items-baseline justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="hub-h1">
-            <T k="plans.h1" />
-          </h1>
-          <p className="text-[var(--text-muted)] text-sm">
-            <T k="plans.subtitle" />
-          </p>
+          <PageHeader
+            icon={<ListChecks size={20} strokeWidth={1.75} />}
+            title={<T k="plans.h1" />}
+            subtitle={<T k="plans.subtitle" />}
+          />
         </div>
         <div className="flex items-center gap-2">
           <Link href="/plans/suggest-tools" className="btn secondary">

@@ -18,6 +18,7 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { ScrollText } from "lucide-react";
 import { api, PilotApiError } from "@/lib/pilot";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/types";
@@ -123,7 +124,8 @@ export default async function SessionTreePage({ params }: PageProps) {
       </div>
 
       <header className="surface rounded-lg p-4">
-        <h1 className="text-lg font-bold">
+        <h1 className="text-lg font-bold flex items-center gap-2">
+          <ScrollText size={16} strokeWidth={1.75} aria-hidden="true" />
           <code className="kbd">{tree.id}</code>
         </h1>
         <div className="text-xs text-[var(--text-muted)] mt-2 grid grid-cols-2 sm:grid-cols-4 gap-3">
