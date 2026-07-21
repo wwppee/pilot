@@ -11,6 +11,12 @@
  * and the security-classification UI land in v1.0.2.1; the
  * /tools enable/disable switch lands in v1.0.4.
  *
+ * v1.1.11: the search bar also queries `forgeSearch` and merges
+ * with `packSearch` (deduped by name). From the user POV it's
+ * just "one search → all installable hits" — the npm-vs-forge
+ * distinction stays an implementation detail (per the
+ * "technical details are a blind box" principle).
+ *
  * Layout follows the v0.9-era page pattern (server-rendered
  * <header> + section grid), but the visual surface pulls from
  * the `pilot-webui-redesign` Dark Sci-Fi Tech tokens (cyan
@@ -55,23 +61,41 @@ export default async function HubPage({
     s: "",
   });
 
-  // Load four lists in parallel. Each is best-effort: if the
+  // Load five things in parallel. Each is best-effort: if the
   // server is down / a particular endpoint 404s, that section
   // renders an empty state but the rest of the page still works.
   // v1.0.4: added listTools() for the Tools section.
-  const [packsResult, capsResult, searchResult, toolsResult] =
+  // v1.1.11: also query forgeSearch() and merge with packSearch()
+  // — both are npm-side searches, but forgeSearch is biased
+  // toward packs good for "absorption". We dedupe by name so a
+  // pack that ranks on both sides only shows once.
+  const [packsResult, capsResult, packSearchResult, forgeSearchResult, toolsResult] =
     await Promise.allSettled([
       api.packs(),
       api.listCapabilities(),
       q ? api.packSearch(q) : Promise.resolve([] as Pack[]),
+      q ? api.forgeSearch(q) : Promise.resolve([] as Pack[]),
       api.listTools(),
     ]);
 
   const packs: Pack[] = packsResult.status === "fulfilled" ? packsResult.value : [];
   const caps: Capability[] =
     capsResult.status === "fulfilled" ? capsResult.value : [];
-  const searchHits: Pack[] =
-    searchResult.status === "fulfilled" ? searchResult.value : [];
+  const packSearchHits: Pack[] =
+    packSearchResult.status === "fulfilled" ? packSearchResult.value : [];
+  const forgeSearchHits: Pack[] =
+    forgeSearchResult.status === "fulfilled" ? forgeSearchResult.value : [];
+  // Dedupe by name — packSearch and forgeSearch both hit npm
+  // (forgeSearch is just a different ranking); we'd rather not
+  // render the same pack twice. Insertion order: packSearch first
+  // (the broader set), then forgeSearch fills in any gaps.
+  const seen = new Set<string>();
+  const searchHits: Pack[] = [];
+  for (const p of [...packSearchHits, ...forgeSearchHits]) {
+    if (seen.has(p.name)) continue;
+    seen.add(p.name);
+    searchHits.push(p);
+  }
   const tools: ToolInventoryItem[] =
     toolsResult.status === "fulfilled" ? toolsResult.value : [];
 
