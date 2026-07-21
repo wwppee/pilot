@@ -15,6 +15,7 @@
  */
 
 import { headers } from "next/headers";
+import Link from "next/link";
 import { api } from "@/lib/pilot";
 export const dynamic = "force-dynamic";
 import { T } from "@/components/I18n";
@@ -117,6 +118,7 @@ export default async function ContextPage({
               loaded
               loadedTitle={loadedTitle}
               infoTitle={infoTitle}
+              cwd={cwd}
             />
           )}
           {info.length > 0 && (
@@ -126,6 +128,7 @@ export default async function ContextPage({
               refs={info}
               loadedTitle={loadedTitle}
               infoTitle={infoTitle}
+              cwd={cwd}
             />
           )}
         </>
@@ -189,6 +192,7 @@ function ContextSection({
   loaded,
   loadedTitle,
   infoTitle,
+  cwd,
 }: {
   title: string;
   subtitle: string;
@@ -196,6 +200,7 @@ function ContextSection({
   loaded?: boolean;
   loadedTitle: string;
   infoTitle: string;
+  cwd: string;
 }) {
   return (
     <div className="surface rounded-lg overflow-hidden">
@@ -233,6 +238,20 @@ function ContextSection({
               <div className="flex items-baseline gap-3 text-xs text-[var(--text-muted)] flex-shrink-0">
                 <span className="tabular-nums">{formatBytes(r.bytes)}</span>
                 <span>{new Date(r.mtime).toLocaleDateString()}</span>
+                {/* v1.0.3: every discovered file is now editable
+                    in-browser. Loaded files get the full editor
+                    (read+write); informational files open a
+                    read-only preview. Click target uses the
+                    "edit" link in the row's action column rather
+                    than wrapping the whole <li> — keeps hover
+                    styling on the row and makes the click target
+                    explicit for keyboard users. */}
+                <Link
+                  href={`/context/edit?path=${encodeURIComponent(r.path)}&cwd=${encodeURIComponent(cwd)}`}
+                  className="hub-link"
+                >
+                  <T k="context.row.edit" />
+                </Link>
               </div>
             </div>
             <div className="mt-1.5 ml-5 text-xs text-[var(--text-muted)] line-clamp-2">

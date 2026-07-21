@@ -171,3 +171,61 @@ async function loadFirstContextFromDir(
 
 /** Re-export for test convenience. */
 export const __test__ = { PI_CONTEXT_FILENAMES };
+
+// ─── Read / write (v1.0.3) ──────────────────────────────────
+
+/**
+ * v1.0.3: read the content of a discovered context file.
+ *
+ * `path` must be in the list returned by `discoverProjectContext(cwd)` —
+ * we cross-check to prevent path traversal (a `/context/file?path=/etc/passwd`
+ * would otherwise succeed). Returns `null` if the path isn't part of the
+ * discovered set.
+ *
+ * The "discover then cross-check" pattern is intentional: we re-run
+ * discovery each call rather than trust a stored list, so if the user
+ * creates AGENTS.md between calls, the new file is immediately readable.
+ */
+export async function readContextFile(
+  cwd: string,
+  path: string,
+  home?: string,
+): Promise<{ content: string; ref: ProjectContextRef } | null> {
+  const refs = await discoverProjectContext(cwd, home);
+  const ref = refs.find((r) => r.path === path);
+  if (!ref) return null;
+  try {
+    const content = await readFile(path, "utf-8");
+    return { content, ref };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * v1.0.3: write the content of a discovered, *loaded* context file.
+ *
+ * Only files where `loaded === true` (i.e. canonical AGENTS.md /
+ * CLAUDE.md and their .MD uppercase variant) are writable.
+ * Informational files (README.md / .cursor/rules / CONTRIBUTING.md)
+ * are read-only through this endpoint — they're surfaced in the
+ * dashboard for visibility but Pilot doesn't author them.
+ *
+ * Returns the new mtime on success, or `null` if the path isn't
+ * writable (not discovered, or informational-only). Throws if the
+ * write itself fails (permission denied, disk full, etc.).
+ */
+export async function writeContextFile(
+  cwd: string,
+  path: string,
+  content: string,
+  home?: string,
+): Promise<{ mtime: string; ref: ProjectContextRef } | null> {
+  const refs = await discoverProjectContext(cwd, home);
+  const ref = refs.find((r) => r.path === path);
+  if (!ref || !ref.loaded) return null;
+  const { writeFile } = await import("node:fs/promises");
+  await writeFile(path, content, "utf-8");
+  const s = await stat(path);
+  return { mtime: s.mtime.toISOString(), ref };
+}

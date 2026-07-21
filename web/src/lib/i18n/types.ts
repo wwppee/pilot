@@ -120,6 +120,22 @@ export type Dict = {
   "hub.row.version": string;
   "hub.row.author": string;
   "hub.row.installed": string;
+  // v1.0.3: context-file editor copy. /context/edit?path=…&cwd=…
+  // renders an editable textarea (loaded files) or read-only
+  // preview (informational files) plus save / revert controls.
+  "context.edit.h1": string;
+  "context.edit.subtitle": string;
+  "context.edit.noPath": string;
+  "context.edit.notFound": string;
+  "context.edit.back": string;
+  "context.edit.readonly": string;
+  "context.edit.saving": string;
+  "context.edit.savedAt": string;
+  "context.edit.unsaved": string;
+  "context.edit.save": string;
+  "context.edit.revert": string;
+  // v1.0.3: per-row action link in the /context list.
+  "context.row.edit": string;
   // v0.5.18: /help page.
   "help.h1": string;
   "help.subtitle": string;

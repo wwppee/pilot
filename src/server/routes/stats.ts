@@ -62,4 +62,40 @@ export function registerStatsRoutes(
     const cwd = req.query.cwd ?? process.cwd();
     return service.discoverProjectContext(cwd);
   });
+
+  // v1.0.3: read a discovered context file. Path must
+  // belong to the discovery whitelist (enforced inside
+  // service.readContextFile). Returns 404 if the path
+  // isn't part of the discovered set, 400 if the body
+  // is malformed.
+  app.get<{ Querystring: { cwd?: string; path?: string } }>(
+    "/context/file",
+    async (req, reply) => {
+      const cwd = req.query.cwd ?? process.cwd();
+      const path = req.query.path;
+      if (!path) return reply.code(400).send({ error: "path is required" });
+      const result = await service.readContextFile(cwd, path);
+      if (!result) return reply.code(404).send({ error: "not found" });
+      return result;
+    },
+  );
+
+  // v1.0.3: write a discovered, *loaded* context file.
+  // Informational files (README.md etc.) are read-only
+  // through this endpoint. Whitelist is re-checked on
+  // every call. Returns 404 if the path isn't writable
+  // (not discovered, or informational-only).
+  app.post<{
+    Body: { cwd?: string; path?: string; content?: unknown };
+  }>("/context/file", async (req, reply) => {
+    const cwd = req.body?.cwd ?? process.cwd();
+    const path = req.body?.path;
+    const content = req.body?.content;
+    if (!path || typeof content !== "string") {
+      return reply.code(400).send({ error: "path and content are required" });
+    }
+    const result = await service.writeContextFile(cwd, path, content);
+    if (!result) return reply.code(404).send({ error: "not writable" });
+    return result;
+  });
 }

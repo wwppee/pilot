@@ -313,6 +313,22 @@ export interface PilotService {
   /** Project context files visible from `cwd` (mirrors pi's discovery). */
   discoverProjectContext(cwd: string): Promise<ProjectContextRef[]>;
 
+  // v1.0.3: read + write a discovered context file. The path
+  // must be one the discovery function returned — both
+  // operations re-run discovery to enforce the whitelist.
+  // `readContextFile` is allowed for both loaded and
+  // informational files; `writeContextFile` only allows
+  // loaded files (AGENTS.md / CLAUDE.md family).
+  readContextFile(
+    cwd: string,
+    path: string,
+  ): Promise<{ content: string; ref: ProjectContextRef } | null>;
+  writeContextFile(
+    cwd: string,
+    path: string,
+    content: string,
+  ): Promise<{ mtime: string; ref: ProjectContextRef } | null>;
+
   // ─── Compose catalog (v0.4.4) ──────────────────────────
 
   /**

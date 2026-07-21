@@ -948,3 +948,108 @@ a:focus-visible[data-active="true"] {
   font-family: var(--font-mono);
   font-size: 0.8125rem;
 }
+
+/* ─── v1.0.3: Context page (Dark Sci-Fi Tech direction) ────────────
+ *
+ * Same token family as .hub-* (cyan + 4 state). Kept in the
+ * same globals.css rather than a per-page module so the
+ * surface stays self-contained and the redesign is a drop-in
+ * for the legacy /context surface.
+ *
+ * /context/edit is a textarea + status row + actions row.
+ * The textarea is the same dark surface as the hub rows, with
+ * a cyan focus ring matching the search bar.
+ */
+
+.context-page {
+  max-width: 960px;
+}
+
+.context-path {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--color-dim);
+  margin-top: 0.5rem;
+  word-break: break-all;
+}
+
+.context-error {
+  color: var(--state-error);
+  font-size: 0.875rem;
+}
+
+.context-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.context-editor-banner {
+  padding: 0.625rem 0.875rem;
+  background: rgba(var(--state-info-rgb), 0.1);
+  border: 1px solid rgba(var(--state-info-rgb), 0.3);
+  border-radius: var(--radius-md);
+  color: var(--state-info);
+  font-size: 0.8125rem;
+}
+
+.context-editor-textarea {
+  width: 100%;
+  min-height: 480px;
+  padding: 1rem;
+  background: var(--color-surface);
+  color: var(--color-foreground);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  resize: vertical;
+  outline: 0;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.context-editor-textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: var(--glow-primary);
+}
+.context-editor-textarea:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.context-editor-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.context-editor-status {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.context-editor-saved {
+  color: var(--state-success);
+}
+.context-editor-dirty {
+  color: var(--state-warning);
+}
+.context-editor-error {
+  color: var(--state-error);
+  font-family: var(--font-mono);
+}
+
+.context-editor-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.context-edit-footer {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}

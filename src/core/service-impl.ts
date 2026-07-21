@@ -38,7 +38,11 @@ import {
   readActiveProfile,
   writeActiveProfile,
 } from "./profile-state.js";
-import { discoverProjectContext } from "./project-context.js";
+import {
+  discoverProjectContext,
+  readContextFile,
+  writeContextFile,
+} from "./project-context.js";
 import { listAllSessions, sortByRecent } from "./sessions.js";
 import { deriveSnapshot } from "./session-snapshot.js";
 import { deriveTemplate } from "./session-template.js";
@@ -196,6 +200,14 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
 
     listTools: () => listToolInventory(home),
     discoverProjectContext: (cwd) => discoverProjectContext(cwd, home),
+
+    // v1.0.3: read + write context files. Whitelist-enforced
+    // by re-running discoverProjectContext inside each
+    // implementation (see project-context.ts for the cross-
+    // check). Pass-through wrappers.
+    readContextFile: (cwd, path) => readContextFile(cwd, path, home),
+    writeContextFile: (cwd, path, content) =>
+      writeContextFile(cwd, path, content, home),
 
     listComposeEntities: () => listComposeEntitiesFromService(home),
     getComposeEntityDetail: (kind, id) =>

@@ -345,6 +345,28 @@ export const api = {
     return pilot<ProjectContextRef[]>(`/context?${params}`);
   },
 
+  // v1.0.3: read + write a discovered context file. Both
+  // operations re-enforce the discovery whitelist on the
+  // server side; the client just surfaces the result.
+  readContextFile: (cwd: string | undefined, path: string) => {
+    const params = new URLSearchParams();
+    if (cwd) params.set("cwd", cwd);
+    params.set("path", path);
+    return pilot<{ content: string; ref: ProjectContextRef }>(
+      `/context/file?${params}`,
+    );
+  },
+  writeContextFile: (
+    cwd: string | undefined,
+    path: string,
+    content: string,
+  ) =>
+    pilot<{ mtime: string; ref: ProjectContextRef }>(`/context/file`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ cwd, path, content }),
+    }),
+
   profiles: () => pilot<Profile[]>("/profiles"),
   profile: (name: string) => pilot<Profile>(`/profiles/${encodeName(name)}`),
   // v0.4.12: active profile pointer — "管了就能用" path closer
