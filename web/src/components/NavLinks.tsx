@@ -1,72 +1,50 @@
 /**
- * <NavLinks> — server-rendered nav with icons + tooltips + 3 groups.
+ * <NavLinks> — v1.0.1: 7-module navigation.
  *
- * v0.5.21: rewrote as a Server Component. The v0.5.18 version called
- * `useT()` (a client hook) without `"use client"` — that compiled
- * fine but crashed `next build` at static-generation time with
- * "useT() from the server but useT is on the client". The fix:
- * take `locale` as a prop, use the pure server `renderT(locale, key)`.
+ * v0.5.x → v0.9.x used a 3-group layout (Inspect / Manage / Learn) with
+ * 17 entries inherited from the pre-Phase-1 product surface. The legacy
+ * 19-entry nav was the thing user flagged in the 2026-07-21 product
+ * pivot ("19 入口臃肿"), so v1.0.1 collapses it to 7 modules.
  *
- * Trade-off: the nav no longer re-renders on client-side language
- * toggle. The LanguageSwitcher is unaffected (it reads from the
- * I18nProvider context directly). To make the nav re-render on
- * language change we'd need a full page refresh — out of scope
- * for this fix.
+ * Why 7: the v1.0.0 README restated the product as
+ * "AI Agent 能力管理层 (Agent Capability Management Layer)" with 7
+ * core modules — Hub / Workflow / Policy & Security / Insight /
+ * Sessions / Context / Settings. This component is the in-browser
+ * mirror of that 7-module model. The 3-group split (Inspect/Manage/
+ * Learn) is gone: with only 7 items, group labels are visual noise.
  *
- * Three semantic groups:
+ * Why server-rendered: v0.5.21 moved this to a Server Component and
+ * takes `locale` as a prop (so we can use the pure `renderT(locale, k)`
+ * without pulling `useT()` into a server context). Trade-off documented
+ * inline below — nav doesn't re-render on client-side language toggle,
+ * which matches v0.5.21 behaviour and is fine for now.
  *
- *   - **Inspect** (read-only views): Dashboard / Try / Sessions /
- *     Usage / Tools / Context / Capabilities / Avatars / Plans
- *   - **Manage** (write actions): Packages / Forge / Policy /
- *     Compose / Profiles
- *   - **Learn** (onboarding): Help
- *
- * Group labels visible only when there's room (sm:); the bullet
- * separator stays for visual chunking. Tooltips use pure CSS
- * `:hover` / `:focus-within` so the nav stays zero-JS-state.
+ * The "active" highlight compares against `currentPath` with prefix
+ * matching so `/hub/some-package` still highlights the Hub link.
+ * Special case: `href === "/"` only matches the literal "/" path,
+ * never a prefix.
  */
 
 import { renderT, type Locale } from "@/lib/i18n";
 import { NavTooltip } from "./NavTooltip";
 
 type LabelKey =
-  | "nav.dashboard"
-  | "nav.packages"
+  | "nav.hub"
+  | "nav.workflow"
+  | "nav.policySafe"
+  | "nav.insight"
   | "nav.sessions"
-  | "nav.usage"
-  | "nav.tools"
   | "nav.context"
-  | "nav.policy"
-  | "nav.wrappers"
-  | "nav.compose"
-  | "nav.workflows"
-  | "nav.profiles"
-  | "nav.capabilities"
-  | "nav.forge"
-  | "nav.avatars"
-  | "nav.plans"
-  | "nav.try"
-  | "nav.help"
-  | "nav.observability";
+  | "nav.settings";
 
 type HintKey =
-  | "nav.hint.dashboard"
-  | "nav.hint.try"
+  | "nav.hint.hub"
+  | "nav.hint.workflow"
+  | "nav.hint.policySafe"
+  | "nav.hint.insight"
   | "nav.hint.sessions"
-  | "nav.hint.usage"
-  | "nav.hint.tools"
   | "nav.hint.context"
-  | "nav.hint.capabilities"
-  | "nav.hint.avatars"
-  | "nav.hint.plans"
-  | "nav.hint.packages"
-  | "nav.hint.forge"
-  | "nav.hint.policy"
-  | "nav.hint.compose"
-  | "nav.hint.workflows"
-  | "nav.hint.profiles"
-  | "nav.hint.help"
-  | "nav.hint.observability";
+  | "nav.hint.settings";
 
 interface NavItem {
   href: string;
@@ -76,156 +54,65 @@ interface NavItem {
   hintKey: HintKey;
 }
 
-interface NavGroup {
-  labelKey: "nav.groupInspect" | "nav.groupManage" | "nav.groupLearn";
-  items: readonly NavItem[];
-}
-
 /**
- * Three semantic groups. "Inspect" leads with the Dashboard
- * (default landing) and follows the read order. "Manage" leads
- * with Packages (most common write). "Learn" hosts onboarding.
+ * The 7 core modules. Order matters: most-used first (Hub, Workflow,
+ * Insight), administrative / config last (Settings). Sessions and
+ * Context sit in the middle because they are 1:1 carries from the
+ * old nav (no merge ambiguity).
+ *
+ * The icons are emoji placeholders — the visual refresh (which
+ * uses the Dark Sci-Fi Tech tokens in `colors_and_type.css`) is
+ * scoped to a later release; v1.0.1 is code-structure-only.
+ *
+ * Exported (not just module-private) so the nav-links test can
+ * pin the order. The pre-v1.0.1 test exported `NAV_GROUPS` for
+ * the same reason; v1.0.1 just renames it to the flat shape
+ * the new nav actually has.
  */
-export const NAV_GROUPS: readonly NavGroup[] = [
+export const NAV_ITEMS: readonly NavItem[] = [
   {
-    labelKey: "nav.groupInspect",
-    items: [
-      {
-        href: "/",
-        labelKey: "nav.dashboard",
-        icon: "🏠",
-        hintKey: "nav.hint.dashboard",
-      },
-      {
-        href: "/try",
-        labelKey: "nav.try",
-        icon: "💬",
-        hintKey: "nav.hint.try",
-      },
-      {
-        href: "/sessions",
-        labelKey: "nav.sessions",
-        icon: "📋",
-        hintKey: "nav.hint.sessions",
-      },
-      {
-        href: "/usage",
-        labelKey: "nav.usage",
-        icon: "📊",
-        hintKey: "nav.hint.usage",
-      },
-      {
-        href: "/tools",
-        labelKey: "nav.tools",
-        icon: "🔧",
-        hintKey: "nav.hint.tools",
-      },
-      {
-        href: "/context",
-        labelKey: "nav.context",
-        icon: "📄",
-        hintKey: "nav.hint.context",
-      },
-      {
-        href: "/capabilities",
-        labelKey: "nav.capabilities",
-        icon: "🧩",
-        hintKey: "nav.hint.capabilities",
-      },
-      {
-        href: "/avatars",
-        labelKey: "nav.avatars",
-        icon: "🎭",
-        hintKey: "nav.hint.avatars",
-      },
-      {
-        href: "/plans",
-        labelKey: "nav.plans",
-        icon: "📝",
-        hintKey: "nav.hint.plans",
-      },
-    ],
+    href: "/hub",
+    labelKey: "nav.hub",
+    icon: "📦",
+    hintKey: "nav.hint.hub",
   },
   {
-    labelKey: "nav.groupManage",
-    items: [
-      {
-        href: "/packages",
-        labelKey: "nav.packages",
-        icon: "📦",
-        hintKey: "nav.hint.packages",
-      },
-      {
-        href: "/forge",
-        labelKey: "nav.forge",
-        icon: "🛠",
-        hintKey: "nav.hint.forge",
-      },
-      {
-        href: "/policy",
-        labelKey: "nav.policy",
-        icon: "🛡",
-        hintKey: "nav.hint.policy",
-      },
-      // v0.9.0: wrappers dashboard sits next to
-      // policy in the Manage group because the two
-      // surfaces are parallel (gate vs transform).
-      {
-        href: "/wrappers",
-        labelKey: "nav.wrappers",
-        icon: "🧰",
-        hintKey: "nav.hint.policy",
-      },
-      {
-        href: "/compose",
-        labelKey: "nav.compose",
-        icon: "🧪",
-        hintKey: "nav.hint.compose",
-      },
-      {
-        href: "/profiles",
-        labelKey: "nav.profiles",
-        icon: "👤",
-        hintKey: "nav.hint.profiles",
-      },
-      // v0.7.0: workflows nav entry. Lives next to /profiles
-      // because both are "user-curated" content (vs. /compose
-      // which is "live canvas state"). The icon is a flow
-      // symbol — distinct from /compose (test tube) and
-      // /profiles (person) so the three are easy to tell apart
-      // at a glance in the nav.
-      {
-        href: "/workflows",
-        labelKey: "nav.workflows",
-        icon: "🌀",
-        hintKey: "nav.hint.workflows",
-      },
-      // v0.7.3 (B2): observability — a dashboard page for
-      // tool-call outcomes. Lives in the "Inspect" group
-      // because it's a read-only view of records, not a
-      // write action. The 🛰️ icon reads as "monitoring" and
-      // is visually distinct from the flow / test-tube /
-      // person icons in the same group.
-      {
-        href: "/observability",
-        labelKey: "nav.observability",
-        icon: "🛰️",
-        hintKey: "nav.hint.observability",
-      },
-    ],
+    href: "/workflow",
+    labelKey: "nav.workflow",
+    icon: "🌀",
+    hintKey: "nav.hint.workflow",
   },
   {
-    labelKey: "nav.groupLearn",
-    items: [
-      {
-        href: "/help",
-        labelKey: "nav.help",
-        icon: "❓",
-        hintKey: "nav.hint.help",
-      },
-    ],
+    href: "/policy",
+    labelKey: "nav.policySafe",
+    icon: "🛡",
+    hintKey: "nav.hint.policySafe",
   },
-] as const;
+  {
+    href: "/insight",
+    labelKey: "nav.insight",
+    icon: "🛰️",
+    hintKey: "nav.hint.insight",
+  },
+  {
+    href: "/sessions",
+    labelKey: "nav.sessions",
+    icon: "📋",
+    hintKey: "nav.hint.sessions",
+  },
+  {
+    href: "/context",
+    labelKey: "nav.context",
+    icon: "📄",
+    hintKey: "nav.hint.context",
+  },
+  {
+    href: "/settings",
+    labelKey: "nav.settings",
+    icon: "⚙️",
+    hintKey: "nav.hint.settings",
+  },
+];
 
 export function NavLinks({
   currentPath,
@@ -243,43 +130,19 @@ export function NavLinks({
 
   return (
     <nav
-      className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm"
+      className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-sm"
       role="navigation"
       aria-label={t("nav.ariaLabel")}
     >
-      {NAV_GROUPS.map((group, gi) => (
-        <div
-          key={group.labelKey}
-          className="flex flex-wrap items-baseline gap-x-3"
-          role="group"
-          aria-label={t(group.labelKey)}
-        >
-          <span className="sr-only">{t(group.labelKey)}</span>
-          <span
-            aria-hidden="true"
-            className="hidden sm:inline text-[10px] uppercase tracking-wide text-[var(--text-muted)]"
-          >
-            {t(group.labelKey)}
-          </span>
-          {group.items.map((item) => (
-            <NavTooltip
-              key={item.href}
-              href={item.href}
-              label={t(item.labelKey)}
-              icon={item.icon}
-              hint={t(item.hintKey)}
-              active={isActive(item.href)}
-            />
-          ))}
-          {gi < NAV_GROUPS.length - 1 && (
-            <span
-              aria-hidden="true"
-              className="hidden sm:inline text-[var(--text-muted)] opacity-40 select-none"
-            >
-              •
-            </span>
-          )}
-        </div>
+      {NAV_ITEMS.map((item) => (
+        <NavTooltip
+          key={item.href}
+          href={item.href}
+          label={t(item.labelKey)}
+          icon={item.icon}
+          hint={t(item.hintKey)}
+          active={isActive(item.href)}
+        />
       ))}
     </nav>
   );

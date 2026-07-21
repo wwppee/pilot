@@ -149,7 +149,13 @@ export default async function RootLayout({
             >
               <div className="mx-auto max-w-6xl px-6 py-3 flex items-center gap-6">
                 <Link
-                  href="/"
+                  // v1.0.1: brand link now points to /insight.
+                  // The root `/` 308-redirects to /insight via
+                  // next.config.ts (see "redirects()" there), but
+                  // clicking the brand and landing on a redirect
+                  // is a small UX papercut — a real <Link href>
+                  // skips the redirect hop and keeps history clean.
+                  href="/insight"
                   className="text-lg font-semibold tracking-tight"
                   style={{ color: "var(--text)" }}
                   aria-label={brandAria}

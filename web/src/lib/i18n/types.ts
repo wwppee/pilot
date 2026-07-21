@@ -46,6 +46,48 @@ export type Dict = {
   "nav.capabilities": string;
   "nav.avatars": string;
   "nav.plans": string;
+  // v1.0.1: 7-module navigation. The legacy 19 entries above
+  // stay in the type for back-compat (other files may still
+  // reference them), but NavLinks no longer reads them. New
+  // 7 keys: Hub / Workflow / PolicySafe / Insight / Sessions
+  // / Context / Settings. PolicySafe = old `nav.policy` value
+  // generalised to "策略安全" (includes wrappers). Sessions
+  // and Context are 1:1 with their old keys.
+  "nav.hub": string;
+  "nav.workflow": string;
+  "nav.policySafe": string;
+  "nav.insight": string;
+  "nav.settings": string;
+  // v1.0.1: per-module h1 + subtitle strings. Each new page
+  // (/hub, /workflow, /insight, /settings) gets a `h1` (big
+  // title) and `subtitle` (one-line purpose) — matching the
+  // pattern already used by /policy /sessions /context.
+  "hub.h1": string;
+  "hub.subtitle": string;
+  "workflow.h1": string;
+  "workflow.subtitle": string;
+  "insight.h1": string;
+  "insight.subtitle": string;
+  "settings.h1": string;
+  "settings.subtitle": string;
+  // v1.0.1: each new module page shows a "coming soon" panel
+  // pointing at the legacy routes that will redirect into it
+  // once v1.0.2 (Hub) / v1.0.4 (/context /tools enable) land.
+  // The {routes} placeholder in `*.comingSoon.body` is a free
+  // string ("/packages, /forge, …") — the actual code badge list
+  // is rendered by the page component, not interpolated from i18n.
+  "hub.comingSoon.title": string;
+  "hub.comingSoon.body": string;
+  "hub.comingSoon.routes": string;
+  "workflow.comingSoon.title": string;
+  "workflow.comingSoon.body": string;
+  "workflow.comingSoon.routes": string;
+  "insight.comingSoon.title": string;
+  "insight.comingSoon.body": string;
+  "insight.comingSoon.routes": string;
+  "settings.comingSoon.title": string;
+  "settings.comingSoon.body": string;
+  "settings.comingSoon.routes": string;
   // v0.5.18: /help page.
   "help.h1": string;
   "help.subtitle": string;
@@ -117,6 +159,16 @@ export type Dict = {
   "nav.hint.workflows": string;
   "nav.hint.profiles": string;
   "nav.hint.help": string;
+  // v1.0.1: 7-module nav hints. Same shape as the legacy
+  // `nav.hint.*` keys — short single-sentence tooltip body
+  // shown on hover/focus. Sessions/Context reuse the legacy
+  // keys (`nav.hint.sessions`, `nav.hint.context`); the 4
+  // new modules get new keys.
+  "nav.hint.hub": string;
+  "nav.hint.workflow": string;
+  "nav.hint.policySafe": string;
+  "nav.hint.insight": string;
+  "nav.hint.settings": string;
   "home.welcome.title": string;
   "home.welcome.intro": string;
   "home.welcome.step1.label": string;

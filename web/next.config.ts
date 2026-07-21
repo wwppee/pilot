@@ -56,6 +56,55 @@ const config: NextConfig = {
   ...(process.env.NEXT_OUTPUT_STANDALONE === "1"
     ? { output: "standalone" as const }
     : {}),
+
+  // v1.0.1: legacy-route → 7-module redirects.
+  //
+  // Pre-v1.0.1 the nav exposed 19 entries (Dashboard / Packages /
+  // Sessions / Usage / Tools / Context / Policy / Compose /
+  // Workflows / Profiles / Forge / Capabilities / Avatars /
+  // Plans / Try / Help / Wrappers / Observability + the
+  // grouped split). v1.0.1 collapses this to 7 modules
+  // (Hub / Workflow / Policy & Security / Insight / Sessions
+  // / Context / Settings). To keep existing browser
+  // bookmarks / shared links working, every legacy path
+  // permanent-redirects (308) into the matching module route.
+  //
+  // Permanent + Next.js matches the whole prefix so deep links
+  // like `/policy/safe-bash/edit` keep their tail when they
+  // land in `/policy` (the prefix is enough; the suffix
+  // survives because we don't rewrite the path).
+  async redirects() {
+    return [
+      // ── Hub: 包 / Forge / 能力 / 工具 / Try ─────────────
+      { source: "/packages", destination: "/hub", permanent: true },
+      { source: "/packs", destination: "/hub", permanent: true },
+      { source: "/forge", destination: "/hub", permanent: true },
+      { source: "/capabilities", destination: "/hub", permanent: true },
+      { source: "/capability", destination: "/hub", permanent: true },
+      { source: "/tools", destination: "/hub", permanent: true },
+      { source: "/tool", destination: "/hub", permanent: true },
+      { source: "/try", destination: "/hub", permanent: true },
+      // ── Workflow: 编排 / 计划 / 工作流 ─────────────────
+      { source: "/compose", destination: "/workflow", permanent: true },
+      { source: "/plans", destination: "/workflow", permanent: true },
+      { source: "/workflows", destination: "/workflow", permanent: true },
+      // ── Policy & Security: wrappers 并入 policy ───────
+      { source: "/wrappers", destination: "/policy", permanent: true },
+      // ── Insight: 可观测性 / 用量 ───────────────────────
+      { source: "/observability", destination: "/insight", permanent: true },
+      { source: "/usage", destination: "/insight", permanent: true },
+      // ── Settings: profile / avatar / help ──────────────
+      { source: "/profiles", destination: "/settings", permanent: true },
+      { source: "/profile", destination: "/settings", permanent: true },
+      { source: "/avatars", destination: "/settings", permanent: true },
+      { source: "/avatar", destination: "/settings", permanent: true },
+      { source: "/help", destination: "/settings", permanent: true },
+      // ── / (Dashboard) → /insight ───────────────────────
+      // 旧"概览"页内容是今日消耗 + 最近活动, 跟新洞察模块
+      // 重叠。完整 root 跳 /insight 替代 404 兜底。
+      { source: "/", destination: "/insight", permanent: true },
+    ];
+  },
 };
 
 export default config;

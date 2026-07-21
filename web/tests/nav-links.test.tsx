@@ -1,83 +1,75 @@
 /**
- * nav-links.test.tsx — coverage for the v0.4.14 grouped nav.
+ * nav-links.test.tsx — coverage for the v1.0.1 7-module nav.
  *
- * Asserts that:
- *   - Three groups (Inspect + Manage + Learn) render with
- *     `role="group"` and `aria-label`
- *   - All 16 items still appear (no routes lost during the refactor)
+ * v0.5.x → v0.9.x: 3 groups (Inspect / Manage / Learn) + 18 entries.
+ * v1.0.1: 7 flat items (Hub / Workflow / Policy & Security / Insight
+ *         / Sessions / Context / Settings).
+ *
+ * The 3-group layout is gone — with only 7 items, group labels were
+ * visual noise. The legacy test asserted `role="group"` containers
+ * and group-item counts; the new test asserts the flat list, the
+ * order, and the active-link behaviour that actually matters to
+ * keyboard / screen-reader users.
+ *
+ * What we still lock:
+ *   - 7 items render in the documented order
+ *   - Every item has a translated label (not a raw key)
+ *   - Every item has a tooltip with a non-empty i18n'd hint
  *   - Active link gets `aria-current="page"`
- *   - sr-only + visible group labels coexist
- *   - Every nav item has a tooltip with an i18n'd hint
- *
- * v0.5.21: NavLinks was rewritten as a Server Component that takes
- * `locale` as a prop. We pass `"en"` in these tests and assert
- * against the translated English labels. The zh test below uses
- * `"zh"` and asserts against the Chinese labels — guarantees the
- * hint + label keys are wired through correctly in both locales.
+ *   - Prefix matching: `/sessions/abc` highlights the `/sessions` link
+ *   - Special case: there's no root `/` link in v1.0.1 (the brand
+ *     logo in <header> handles that), so the "exact /" case from
+ *     the legacy test is gone
  */
 
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { NavLinks, NAV_GROUPS } from "../src/components/NavLinks";
+import { NavLinks, NAV_ITEMS } from "../src/components/NavLinks";
 
-describe("NavLinks (v0.5.21 server component, en)", () => {
-  it("renders three role=group containers with aria-labels", () => {
-    const { container } = render(<NavLinks currentPath="/" locale="en" />);
-    const groups = container.querySelectorAll('[role="group"]');
-    expect(groups.length).toBe(3);
-
-    const inspect = container.querySelector(
-      '[role="group"][aria-label="Inspect"]',
-    );
-    const manage = container.querySelector(
-      '[role="group"][aria-label="Manage"]',
-    );
-    const learn = container.querySelector('[role="group"][aria-label="Learn"]');
-    expect(inspect).not.toBeNull();
-    expect(manage).not.toBeNull();
-    expect(learn).not.toBeNull();
+describe("NavLinks (v1.0.1 server component, en)", () => {
+  it("renders the 7 module items in the documented order", () => {
+    expect(NAV_ITEMS.map((i) => i.href)).toEqual([
+      "/hub",
+      "/workflow",
+      "/policy",
+      "/insight",
+      "/sessions",
+      "/context",
+      "/settings",
+    ]);
   });
 
-  it("includes all 18 nav items (10 Inspect + 7 Manage + 1 Learn)", () => {
-    // v0.7.0: Workflows added → 16 (9+6+1).
-    // v0.7.3 (B2): Observability added to Inspect → 17 (10+6+1).
-    // v0.9.0: Wrappers added to Manage → 18 (10+7+1).
-    const totalItems = NAV_GROUPS.reduce((n, g) => n + g.items.length, 0);
-    expect(totalItems).toBe(18);
-    const allHrefs = NAV_GROUPS.flatMap((g) => g.items.map((i) => i.href));
-    expect(allHrefs).toContain("/");
-    expect(allHrefs).toContain("/forge");
-    expect(allHrefs).toContain("/capabilities");
-    expect(allHrefs).toContain("/profiles");
-    expect(allHrefs).toContain("/wrappers");
-    expect(allHrefs).toContain("/workflows");
-    expect(allHrefs).toContain("/avatars");
-    expect(allHrefs).toContain("/plans");
-    expect(allHrefs).toContain("/help");
-    expect(allHrefs).toContain("/observability");
+  it("renders 7 nav items, no group containers", () => {
+    const { container } = render(<NavLinks currentPath="/hub" locale="en" />);
+    // No `role="group"` containers — the v1.0.1 nav is flat.
+    expect(container.querySelectorAll('[role="group"]').length).toBe(0);
+    // 7 nav <a> elements, one per module.
+    const links = container.querySelectorAll("nav a");
+    expect(links.length).toBe(7);
+  });
+
+  it("uses the new v1.0.1 label keys (no legacy nav.dashboard etc.)", () => {
+    // Lock the exact labelKey set so adding a new module forces
+    // a test re-baseline (same idea as the legacy "bump 16 → 17
+    // → 18" comment in v0.7.x).
+    expect(NAV_ITEMS.map((i) => i.labelKey).sort()).toEqual([
+      "nav.context",
+      "nav.hub",
+      "nav.insight",
+      "nav.policySafe",
+      "nav.sessions",
+      "nav.settings",
+      "nav.workflow",
+    ]);
   });
 
   it("marks the active link with aria-current=page", () => {
-    render(<NavLinks currentPath="/profiles" locale="en" />);
-    // 'Profiles' is the en label for nav.profiles.
-    const active = screen.getByText("Profiles").closest("a");
+    render(<NavLinks currentPath="/policy" locale="en" />);
+    const active = screen.getByText("Policy & Security").closest("a");
     expect(active?.getAttribute("aria-current")).toBe("page");
 
-    const dashboard = screen.getByText("Dashboard").closest("a");
-    expect(dashboard?.getAttribute("aria-current")).toBeNull();
-  });
-
-  it("marks the dashboard active only on exact '/'", () => {
-    const { rerender } = render(
-      <NavLinks currentPath="/sessions" locale="en" />,
-    );
-    expect(
-      screen.getByText("Dashboard").closest("a")?.getAttribute("aria-current"),
-    ).toBeNull();
-    rerender(<NavLinks currentPath="/" locale="en" />);
-    expect(
-      screen.getByText("Dashboard").closest("a")?.getAttribute("aria-current"),
-    ).toBe("page");
+    const hub = screen.getByText("Hub").closest("a");
+    expect(hub?.getAttribute("aria-current")).toBeNull();
   });
 
   it("marks nested paths active (e.g. /sessions/abc is in /sessions)", () => {
@@ -87,91 +79,44 @@ describe("NavLinks (v0.5.21 server component, en)", () => {
   });
 
   it("renders a tooltip for every nav item, with i18n'd hint", () => {
-    const { container } = render(<NavLinks currentPath="/" locale="en" />);
+    const { container } = render(<NavLinks currentPath="/hub" locale="en" />);
     const tooltips = container.querySelectorAll('[role="tooltip"]');
-    // v0.7.0: 16 items (added Workflows). v0.7.3 (B2): 17
-    // items (added Observability). Bumping this number is
-    // the canonical signal that a nav item was added — it
-    // forces the test to be re-baselined rather than
-    // silently passing.
-    expect(tooltips.length).toBe(18);
-    // Spot-check: every tooltip body is non-empty (not a raw key).
+    // 7 tooltips, one per module. Hard-coded so adding an
+    // 8th item forces a re-baseline.
+    expect(tooltips.length).toBe(7);
     for (const t of tooltips) {
       const text = t.textContent ?? "";
       expect(text.length).toBeGreaterThan(0);
       expect(text).not.toMatch(/^nav\.hint\./); // raw key would fail
     }
   });
-
-  it("Inspect group contains 9 items in the order Dashboard → Plans", () => {
-    const inspectGroup = NAV_GROUPS.find(
-      (g) => g.labelKey === "nav.groupInspect",
-    )!;
-    expect(inspectGroup.items.map((i) => i.labelKey)).toEqual([
-      "nav.dashboard",
-      "nav.try",
-      "nav.sessions",
-      "nav.usage",
-      "nav.tools",
-      "nav.context",
-      "nav.capabilities",
-      "nav.avatars",
-      "nav.plans",
-    ]);
-  });
-
-  it("Manage group contains 8 items (Packages, Forge, Policy, Wrappers, Compose, Profiles, Workflows, Observability)", () => {
-    // v0.7.0 added Workflows. v0.7.3 (B2) added
-    // Observability. Order matters here — the test pins
-    // the exact sequence so an accidental reorder
-    // surfaces as a failure.
-    const manageGroup = NAV_GROUPS.find(
-      (g) => g.labelKey === "nav.groupManage",
-    )!;
-    expect(manageGroup.items.map((i) => i.labelKey)).toEqual([
-      "nav.packages",
-      "nav.forge",
-      "nav.policy",
-      "nav.wrappers",
-      "nav.compose",
-      "nav.profiles",
-      "nav.workflows",
-      "nav.observability",
-    ]);
-  });
-
-  it("Learn group contains Help", () => {
-    const learnGroup = NAV_GROUPS.find((g) => g.labelKey === "nav.groupLearn")!;
-    expect(learnGroup.items.map((i) => i.labelKey)).toEqual(["nav.help"]);
-  });
 });
 
-describe("NavLinks (v0.5.21 server component, zh)", () => {
+describe("NavLinks (v1.0.1 server component, zh)", () => {
   it("renders translated labels in zh", () => {
-    render(<NavLinks currentPath="/" locale="zh" />);
+    render(<NavLinks currentPath="/hub" locale="zh" />);
     // zh labels per dict.zh.ts.
-    expect(screen.getByText("概览")).toBeTruthy(); // nav.dashboard
-    expect(screen.getByText("试玩 pi")).toBeTruthy(); // nav.try
+    expect(screen.getByText("能力中心")).toBeTruthy(); // nav.hub
+    expect(screen.getByText("工作流")).toBeTruthy(); // nav.workflow
+    expect(screen.getByText("策略安全")).toBeTruthy(); // nav.policySafe
+    expect(screen.getByText("洞察")).toBeTruthy(); // nav.insight
     expect(screen.getByText("会话")).toBeTruthy(); // nav.sessions
-    expect(screen.getByText("帮助")).toBeTruthy(); // nav.help
+    expect(screen.getByText("上下文")).toBeTruthy(); // nav.context
+    expect(screen.getByText("设置")).toBeTruthy(); // nav.settings
   });
 
   it("renders zh tooltips (not raw keys)", () => {
-    const { container } = render(<NavLinks currentPath="/" locale="zh" />);
+    const { container } = render(<NavLinks currentPath="/hub" locale="zh" />);
     const tooltips = container.querySelectorAll('[role="tooltip"]');
-    // v0.7.0: 16 items. v0.7.3 (B2): 17 items. See the en
-    // test for why this is hard-coded rather than computed
-    // from NAV_GROUPS.
-    expect(tooltips.length).toBe(18);
+    expect(tooltips.length).toBe(7);
     for (const t of tooltips) {
       const text = t.textContent ?? "";
-      // Every hint is non-empty Chinese / English phrase, not a key.
       expect(text).not.toMatch(/^nav\.hint\./);
     }
-    // At least one tooltip should contain Chinese characters.
     const allText = Array.from(tooltips)
       .map((t) => t.textContent ?? "")
       .join(" ");
+    // At least one tooltip should contain Chinese characters.
     expect(allText).toMatch(/[\u4e00-\u9fff]/);
   });
 });
