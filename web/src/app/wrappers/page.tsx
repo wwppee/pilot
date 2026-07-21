@@ -22,9 +22,11 @@
  * to apply.
  */
 import { Suspense } from "react";
+import { Settings2 } from "lucide-react";
 import { api, PilotApiError } from "../../lib/pilot";
 import { T } from "@/components/I18n";
 import { SkeletonCard } from "@/components/Skeleton";
+import { PageHeader } from "@/components/PageHeader";
 import { WrappersList } from "./WrappersList";
 import { NewWrapperCard } from "./NewWrapperCard";
 
@@ -47,21 +49,11 @@ async function loadWrappers() {
 export default async function WrappersPage() {
   return (
     <div className="space-y-6">
-      <header>
-        {/* v1.1.2: switch to the reference Dark Sci-Fi Tech
-            header (.hub-h1 + .hub-subtitle) so the legacy
-            /wrappers surface matches /hub /insight /workflow.
-            /wrappers is preserved as a deep-link target —
-            next.config.ts redirects /wrappers to /policy, but
-            the in-place page still renders when a user lands
-            here directly from an old bookmark. */}
-        <h1 className="hub-h1">
-          <T k="wrappers.h1" />
-        </h1>
-        <p className="hub-subtitle">
-          <T k="wrappers.subtitle" />
-        </p>
-      </header>
+      <PageHeader
+        icon={<Settings2 size={20} strokeWidth={1.75} />}
+        title={<T k="wrappers.h1" />}
+        subtitle={<T k="wrappers.subtitle" />}
+      />
       <Suspense
         fallback={
           <div className="space-y-3">

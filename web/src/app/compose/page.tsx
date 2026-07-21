@@ -14,12 +14,14 @@
 
 import { Suspense } from "react";
 import { headers } from "next/headers";
+import { Workflow } from "lucide-react";
 import { api, PilotApiError } from "../../lib/pilot";
 import type { ComposeCatalog } from "../../lib/types";
 import { T } from "@/components/I18n";
 import { Hint } from "@/components/Hint";
 import { RichT } from "@/components/RichT";
 import { GlossaryTerm } from "@/components/GlossaryTerm";
+import { PageHeader } from "@/components/PageHeader";
 import { negotiateLocale, type Locale } from "@/lib/i18n";
 import ComposeBoard from "./ComposeBoard";
 import "./compose.css";
@@ -55,12 +57,11 @@ export default async function ComposePage() {
 
   return (
     <main>
-      <h1>
-        <T k="compose.h1" />
-      </h1>
-      <p className="subtitle">
-        <T k="compose.subtitle" />
-      </p>
+      <PageHeader
+        icon={<Workflow size={20} strokeWidth={1.75} />}
+        title={<T k="compose.h1" />}
+        subtitle={<T k="compose.subtitle" />}
+      />
 
       <div className="mb-2">
         <Hint summary={<T k="compose.hint.summary" />}>

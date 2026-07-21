@@ -9,12 +9,14 @@
  */
 import Link from "next/link";
 import { headers } from "next/headers";
+import { Hammer } from "lucide-react";
 import { api } from "@/lib/pilot";
 import { EmptyState } from "@/components/EmptyState";
 import { Hint } from "@/components/Hint";
 import { RichT } from "@/components/RichT";
 import { T } from "@/components/I18n";
 import { GlossaryTerm } from "@/components/GlossaryTerm";
+import { PageHeader } from "@/components/PageHeader";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/types";
 import type { Pack } from "@/lib/types";
@@ -58,10 +60,11 @@ export default async function ForgePage({ searchParams }: PageProps) {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="hub-h1">
-          {renderT(locale, "forge.h1")}
-        </h1>
-        <p className="text-[var(--text-muted)] text-sm">{subtitle}</p>
+        <PageHeader
+        icon={<Hammer size={20} strokeWidth={1.75} />}
+        title={renderT(locale, "forge.h1")}
+        subtitle={subtitle}
+      />
       </header>
 
       <div className="mb-2">

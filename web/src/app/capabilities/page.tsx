@@ -4,6 +4,7 @@
 import Link from "next/link";
 export const dynamic = "force-dynamic";
 import { headers } from "next/headers";
+import { Puzzle } from "lucide-react";
 import { api } from "@/lib/pilot";
 import { AutoRefresh, LivePulse } from "@/components/AutoRefresh";
 import { T } from "@/components/I18n";
@@ -11,6 +12,7 @@ import { RichT } from "@/components/RichT";
 import { EmptyState } from "@/components/EmptyState";
 import { Hint } from "@/components/Hint";
 import { GlossaryTerm } from "@/components/GlossaryTerm";
+import { PageHeader } from "@/components/PageHeader";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { Capability } from "@/lib/types";
 
@@ -29,22 +31,23 @@ export default async function CapabilitiesPage() {
     <div className="space-y-6">
       <AutoRefresh intervalMs={15_000} />
 
-      <header className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="hub-h1">
-            <T k="capabilities.h1" />
-          </h1>
-          <p className="text-[var(--text-muted)] text-sm">
-            <T k="capabilities.subtitle" params={{ n: list.length }} />
-          </p>
+          <PageHeader
+            icon={<Puzzle size={20} strokeWidth={1.75} />}
+            title={<T k="capabilities.h1" />}
+            subtitle={
+              <T k="capabilities.subtitle" params={{ n: list.length }} />
+            }
+          />
         </div>
-        <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
+        <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] pt-3">
           <LivePulse live />
           <span>
             <T k="capabilities.refreshHint" />
           </span>
         </div>
-      </header>
+      </div>
 
       <div className="mb-2">
         <Hint summary={<T k="capabilities.hint.summary" />}>
