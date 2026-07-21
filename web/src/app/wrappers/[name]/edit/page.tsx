@@ -62,7 +62,12 @@ export default async function EditWrapperPage({ params }: PageProps) {
   return (
     <div className="space-y-6">
       <header className="flex items-baseline justify-between gap-3">
-        <h1 className="text-2xl font-bold">
+        {/* v1.1.2: switch to reference Dark Sci-Fi Tech header
+            (.hub-h1). Same as /hub /insight /workflow. The
+            <code> chip below the title keeps the wrapper
+            name in mono so the visual hierarchy reads
+            "title + named resource". */}
+        <h1 className="hub-h1">
           <T k="wrappers.edit.h1" /> <code className="kbd">{decoded}</code>
         </h1>
         <a

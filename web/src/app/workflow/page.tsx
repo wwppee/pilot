@@ -21,10 +21,10 @@ export default function WorkflowPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold mb-1">
+        <h1 className="hub-h1">
           <T k="workflow.h1" />
         </h1>
-        <p className="subtitle">
+        <p className="hub-subtitle">
           <T k="workflow.subtitle" />
         </p>
       </header>

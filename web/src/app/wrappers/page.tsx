@@ -48,10 +48,17 @@ export default async function WrappersPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold mb-1">
+        {/* v1.1.2: switch to the reference Dark Sci-Fi Tech
+            header (.hub-h1 + .hub-subtitle) so the legacy
+            /wrappers surface matches /hub /insight /workflow.
+            /wrappers is preserved as a deep-link target —
+            next.config.ts redirects /wrappers to /policy, but
+            the in-place page still renders when a user lands
+            here directly from an old bookmark. */}
+        <h1 className="hub-h1">
           <T k="wrappers.h1" />
         </h1>
-        <p className="subtitle">
+        <p className="hub-subtitle">
           <T k="wrappers.subtitle" />
         </p>
       </header>
