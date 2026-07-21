@@ -8,7 +8,11 @@
  *     search response)
  *   - "Uninstall" if the row came from the installed list
  *
- * The action is a plain HTML <form> POST to the matching
+ * v2.0.8: the whole row is a <Link> to /hub/[name] (the
+ * pack detail page). The action button is its own <button>
+ * inside the link; e.stopPropagation() keeps the row click
+ * from also triggering the link navigation.
+ * * The action is a plain HTML <form> POST to the matching
  * `/api/pilot/packs/install` or `/packs/uninstall` endpoint
  * via the Next.js proxy at `/api/pilot/[...path]` — same
  * server-side pattern as the legacy /packages page (v0.4.7+).
@@ -18,6 +22,7 @@
  */
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { T } from "./I18n";
 import { renderT, type Locale } from "@/lib/i18n";
@@ -75,7 +80,17 @@ export function HubPackRow({
   }
 
   return (
-    <div className={`hub-row ${isInstalled ? "hub-row--installed" : "hub-row--hit"}`}>
+    // v2.0.8: each row is a clickable <Link> to the
+    // pack detail page (/hub/[name]). The install /
+    // uninstall button is its own <button> inside the
+    // link; e.stopPropagation() in the click handler
+    // prevents the row's click from also firing the
+    // link's navigation, so the action button stays
+    // self-contained.
+    <Link
+      href={`/hub/${encodeURIComponent(pack.name)}`}
+      className={`hub-row hub-row--link ${isInstalled ? "hub-row--installed" : "hub-row--hit"}`}
+    >
       <div className="hub-row-main">
         <div className="hub-row-name">
           {pack.name}
@@ -117,13 +132,22 @@ export function HubPackRow({
         <button
           type="button"
           className={`hub-btn ${isInstalled ? "hub-btn--danger" : "hub-btn--primary"}`}
-          onClick={handleClick}
+          onClick={(e) => {
+            // v2.0.8: stop the click from bubbling up to the
+            // <Link> wrapper. Without this, clicking the
+            // button would also navigate to the detail page,
+            // which is surprising. The button is its own
+            // action; the link is the row's other affordance.
+            e.stopPropagation();
+            e.preventDefault();
+            void handleClick();
+          }}
           disabled={pending}
           aria-busy={pending}
         >
           {pending ? "…" : actionLabel}
         </button>
       </div>
-    </div>
+    </Link>
   );
 }

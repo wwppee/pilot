@@ -130,6 +130,14 @@ const zh: Dict = {
   "settings.sub.avatars.desc": "项目快照 + diff + apply。 跨机器重放工作状态。",
   "settings.sub.help.title": "帮助",
   "settings.sub.help.desc": "术语表 + 新手指引。 悬停带下划线的术语。",
+  // v2.0.8: pack 详情页。
+  "hub.detail.back": "回到能力中心",
+  "hub.detail.noDescription": "(无描述)",
+  "hub.detail.version": "版本",
+  "hub.detail.kind": "类型",
+  "hub.detail.homepage": "主页",
+  "hub.detail.source": "源",
+  "hub.detail.action": "操作",
   // v1.0.4: Hub Tools 部分。
   "hub.section.tools": "工具",
   "hub.toolsCount": "{n} 个工具",

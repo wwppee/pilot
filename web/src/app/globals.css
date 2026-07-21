@@ -1462,3 +1462,78 @@ a:focus-visible[data-active="true"] {
   color: var(--color-primary);
   transform: translateX(2px);
 }
+
+/* ─── v2.0.8: Hub detail page ─────────────────────────────────────
+ *
+ * /hub/[name] shows a pack's metadata in a key/value card
+ * plus the install/uninstall control (reused from
+ * <HubPackRow>). The card is a flat surface with a thin
+ * border — keeps focus on the row control at the bottom
+ * rather than on a busy detail layout.
+ */
+
+.hub-detail-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.hub-detail-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.875rem;
+}
+.hub-detail-key {
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  min-width: 5rem;
+}
+.hub-detail-val {
+  color: var(--color-foreground);
+}
+.hub-detail-mono {
+  font-family: var(--font-mono);
+}
+.hub-detail-code {
+  font-size: 0.75rem;
+  background: var(--color-surface-tertiary);
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-sm);
+}
+
+.hub-detail-section {
+  margin-top: 1.5rem;
+}
+.hub-detail-section-h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: 0.75rem;
+}
+
+/* Make HubPackRow (which is now a <Link>) feel like a
+ * clickable row rather than a passive card. The hover
+ * border-color + arrow shift signal "this is a link" even
+ * when the install button is the visual focus. */
+.hub-row--link {
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+}
+.hub-row--link:hover {
+  border-color: var(--color-primary);
+  background: var(--color-surface-secondary);
+}

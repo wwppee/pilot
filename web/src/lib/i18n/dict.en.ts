@@ -131,6 +131,14 @@ const en: Dict = {
   "settings.sub.avatars.desc": "Project snapshots + diff + apply. Replay a working state across machines.",
   "settings.sub.help.title": "Help",
   "settings.sub.help.desc": "Glossary + how-tos for beginners. Hover any underlined term.",
+  // v2.0.8: pack detail page.
+  "hub.detail.back": "Back to Hub",
+  "hub.detail.noDescription": "(no description provided)",
+  "hub.detail.version": "Version",
+  "hub.detail.kind": "Kind",
+  "hub.detail.homepage": "Homepage",
+  "hub.detail.source": "Source",
+  "hub.detail.action": "Action",
   // v1.0.4: Hub Tools section.
   "hub.section.tools": "Tools",
   "hub.toolsCount": "{n} tool{s}",

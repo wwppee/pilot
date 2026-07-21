@@ -190,6 +190,15 @@ export type Dict = {
   "settings.sub.avatars.desc": string;
   "settings.sub.help.title": string;
   "settings.sub.help.desc": string;
+  // v2.0.8: pack detail page (/hub/[name]). Shown when a
+  // user clicks a row in the Hub list.
+  "hub.detail.back": string;
+  "hub.detail.noDescription": string;
+  "hub.detail.version": string;
+  "hub.detail.kind": string;
+  "hub.detail.homepage": string;
+  "hub.detail.source": string;
+  "hub.detail.action": string;
   // v1.0.4: Hub Tools section copy. The toggle in
   // <HubToolRow> writes ~/.pilot/tools-state.json via
   // POST /tools/:name/toggle.
