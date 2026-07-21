@@ -11,12 +11,14 @@
 import Link from "next/link";
 export const dynamic = "force-dynamic";
 import { headers } from "next/headers";
+import { ScrollText } from "lucide-react";
 import { api } from "@/lib/pilot";
 import type { SessionInfo } from "@/lib/types";
 import { T } from "@/components/I18n";
 import { EmptyState } from "@/components/EmptyState";
 import { RichT } from "@/components/RichT";
 import { Hint } from "@/components/Hint";
+import { PageHeader } from "@/components/PageHeader";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 
 export default async function SessionsPage() {
@@ -40,12 +42,12 @@ export default async function SessionsPage() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="hub-h1">
-          <T k="sessions.h1" />
-        </h1>
-        <p className="text-[var(--text-muted)] text-sm mb-3">{subtitle}</p>
-        <Hint summary={<T k="sessions.hint.summary" />}>
+      <PageHeader
+        icon={<ScrollText size={20} strokeWidth={1.75} />}
+        title={<T k="sessions.h1" />}
+        subtitle={subtitle}
+      />
+      <Hint summary={<T k="sessions.hint.summary" />}>
           <RichT
             locale={locale}
             k="sessions.hint.body"
@@ -55,7 +57,6 @@ export default async function SessionsPage() {
             }}
           />
         </Hint>
-      </header>
 
       <div className="space-y-4">
         {sessions.length === 0 ? (

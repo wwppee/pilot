@@ -16,6 +16,7 @@
 
 import { headers } from "next/headers";
 import Link from "next/link";
+import { FileText } from "lucide-react";
 import { api } from "@/lib/pilot";
 export const dynamic = "force-dynamic";
 import { T } from "@/components/I18n";
@@ -23,6 +24,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { RichT } from "@/components/RichT";
 import { Hint } from "@/components/Hint";
 import { GlossaryTerm } from "@/components/GlossaryTerm";
+import { PageHeader } from "@/components/PageHeader";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { ProjectContextRef } from "@/lib/types";
 
@@ -58,12 +60,11 @@ export default async function ContextPage({
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="hub-h1">
-          <T k="context.h1" />
-        </h1>
-        <p className="subtitle">{subtitle}</p>
-      </header>
+      <PageHeader
+        icon={<FileText size={20} strokeWidth={1.75} />}
+        title={<T k="context.h1" />}
+        subtitle={subtitle}
+      />
 
       <div className="mb-2">
         <Hint summary={<T k="context.hint.summary" />}>

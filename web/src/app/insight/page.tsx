@@ -20,10 +20,12 @@
  *     for the SessionTreeExplorer)
  */
 import { headers } from "next/headers";
+import { Satellite } from "lucide-react";
 import { api } from "@/lib/pilot";
 import { T } from "@/components/I18n";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 import type { SessionInfo, StatsReport, UsageReport } from "@/lib/types";
+import { PageHeader } from "@/components/PageHeader";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -132,14 +134,11 @@ export default async function InsightPage() {
 
   return (
     <div className="space-y-8 insight-page">
-      <header>
-        <h1 className="hub-h1">
-          <T k="insight.h1" />
-        </h1>
-        <p className="hub-subtitle">
-          <T k="insight.subtitle" />
-        </p>
-      </header>
+      <PageHeader
+        icon={<Satellite size={20} strokeWidth={1.75} />}
+        title={<T k="insight.h1" />}
+        subtitle={<T k="insight.subtitle" />}
+      />
 
       {/* Today — 4 stat cards in a grid */}
       <section className="insight-stats" aria-label="Today">

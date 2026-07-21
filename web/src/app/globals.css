@@ -1328,3 +1328,27 @@ a:focus-visible[data-active="true"] {
   text-align: right;
   color: var(--color-muted);
 }
+
+/* ─── v2.0.3: PageHeader icon ─────────────────────────────────────
+ *
+ * The icon in the page header matches the nav-link icon for
+ * the same module. Size 24 + accent color + slight glow on
+ * hover (like the nav link). The icon is always
+ * `aria-hidden` (set in the component); the title text is
+ * the accessible label.
+ */
+
+.page-header-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary-glow);
+}
+.page-header-icon svg {
+  width: 20px;
+  height: 20px;
+}

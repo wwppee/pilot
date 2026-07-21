@@ -14,19 +14,18 @@
  *   - help (existing /help) as fourth tab
  */
 import { T } from "@/components/I18n";
+import { Settings as SettingsIcon } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 export const dynamic = "force-dynamic";
 
 export default function SettingsPage() {
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="hub-h1">
-          <T k="settings.h1" />
-        </h1>
-        <p className="hub-subtitle">
-          <T k="settings.subtitle" />
-        </p>
-      </header>
+      <PageHeader
+        icon={<SettingsIcon size={20} strokeWidth={1.75} />}
+        title={<T k="settings.h1" />}
+        subtitle={<T k="settings.subtitle" />}
+      />
 
       <div className="surface rounded-lg p-6 text-sm text-[var(--text-muted)]">
         <p className="mb-3">

@@ -15,19 +15,18 @@
  *   - template marketplace (Phase 5)
  */
 import { T } from "@/components/I18n";
+import { Workflow } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 export const dynamic = "force-dynamic";
 
 export default function WorkflowPage() {
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="hub-h1">
-          <T k="workflow.h1" />
-        </h1>
-        <p className="hub-subtitle">
-          <T k="workflow.subtitle" />
-        </p>
-      </header>
+      <PageHeader
+        icon={<Workflow size={20} strokeWidth={1.75} />}
+        title={<T k="workflow.h1" />}
+        subtitle={<T k="workflow.subtitle" />}
+      />
 
       <div className="surface rounded-lg p-6 text-sm text-[var(--text-muted)]">
         <p className="mb-3">

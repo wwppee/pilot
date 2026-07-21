@@ -25,6 +25,8 @@ import { createPolicyForm } from "@/lib/actions";
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
+import { Shield } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
 import { negotiateLocale, renderT } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
@@ -89,14 +91,11 @@ export default async function PolicyPage() {
 
   return (
     <div className="space-y-8">
-      <header>
-        <h1 className="hub-h1">
-          <T k="policy.h1" />
-        </h1>
-        <p className="subtitle">
-          <T k="policy.subtitle" />
-        </p>
-      </header>
+      <PageHeader
+        icon={<Shield size={20} strokeWidth={1.75} />}
+        title={<T k="policy.h1" />}
+        subtitle={<T k="policy.subtitle" />}
+      />
 
       <div className="mb-2">
         <Hint summary={<T k="policy.hint.summary" />}>

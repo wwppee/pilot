@@ -20,6 +20,7 @@
 
 import Link from "next/link";
 import { headers } from "next/headers";
+import { Package } from "lucide-react";
 import { api } from "@/lib/pilot";
 import { T } from "@/components/I18n";
 import { EmptyState } from "@/components/EmptyState";
@@ -29,6 +30,7 @@ import { HubSearchBar } from "@/components/HubSearchBar";
 import { HubPackRow } from "@/components/HubPackRow";
 import { HubCapabilityRow } from "@/components/HubCapabilityRow";
 import { HubToolRow } from "@/components/HubToolRow";
+import { PageHeader } from "@/components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -79,12 +81,11 @@ export default async function HubPage({
 
   return (
     <div className="space-y-8 hub-page">
-      <header>
-        <h1 className="hub-h1">
-          <T k="hub.h1" />
-        </h1>
-        <p className="hub-subtitle">{subtitle}</p>
-      </header>
+      <PageHeader
+        icon={<Package size={20} strokeWidth={1.75} />}
+        title={<T k="hub.h1" />}
+        subtitle={subtitle}
+      />
 
       {/* Search bar — form GET round-trip is the canonical
           "shareable URL" pattern; we don't use client-side
