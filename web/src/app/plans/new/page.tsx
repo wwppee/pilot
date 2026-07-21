@@ -15,7 +15,9 @@
  */
 import Link from "next/link";
 import { headers } from "next/headers";
+import { ListChecks } from "lucide-react";
 import { T } from "@/components/I18n";
+import { PageHeader } from "@/components/PageHeader";
 import { PlanEditor } from "@/components/PlanEditor";
 import { api } from "@/lib/pilot";
 import { negotiateLocale } from "@/lib/i18n";
@@ -64,14 +66,11 @@ export default async function NewPlanPage({ searchParams }: PageProps) {
         </Link>
       </div>
 
-      <header>
-        <h1 className="hub-h1">
-          <T k="plans.new.h1" />
-        </h1>
-        <p className="text-[var(--text-muted)] text-sm">
-          <T k="plans.new.subtitle" />
-        </p>
-      </header>
+      <PageHeader
+        icon={<ListChecks size={20} strokeWidth={1.75} />}
+        title={<T k="plans.new.h1" />}
+        subtitle={<T k="plans.new.subtitle" />}
+      />
 
       {sp.error && (
         <div

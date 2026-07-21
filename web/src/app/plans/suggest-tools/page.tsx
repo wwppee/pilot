@@ -13,6 +13,7 @@
  */
 import { useState } from "react";
 import Link from "next/link";
+import { Wand2 } from "lucide-react";
 import { browserApi } from "@/lib/pilot-browser";
 import type { PlanToolSuggestion } from "@/lib/types";
 import { useT } from "@/components/I18n";
@@ -47,7 +48,10 @@ export default function SuggestToolsPage() {
       </div>
 
       <header>
-        <h1 className="hub-h1">{t("plans.suggest.title")}</h1>
+        <h1 className="hub-h1 flex items-center gap-2">
+          <Wand2 size={20} strokeWidth={1.75} aria-hidden="true" />
+          {t("plans.suggest.title")}
+        </h1>
         <p className="text-[var(--text-muted)] text-sm">
           {t("plans.suggest.subtitle")}
         </p>

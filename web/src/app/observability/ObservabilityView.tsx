@@ -1,5 +1,7 @@
 "use client";
 
+import { Satellite } from "lucide-react";
+
 /**
  * v0.7.3 (B2): observability dashboard. Renders three things:
  *   1. The top aggregate card (total + fail + denied) so the
@@ -184,7 +186,7 @@ export function ObservabilityView({ locale: _locale }: { locale: string }) {
     return (
       <div className="space-y-4">
         <header className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">{t("observability.title")}</h1>
+          <h1 className="hub-h1 flex items-center gap-2"><Satellite size={20} strokeWidth={1.75} aria-hidden="true" />{t("observability.title")}</h1>
         </header>
         <div className="surface rounded-lg p-6 text-sm text-center space-y-2">
           <p className="font-semibold text-[var(--text)]">
@@ -203,7 +205,7 @@ export function ObservabilityView({ locale: _locale }: { locale: string }) {
       <ChatBox t={t} />
       <DetailModal detail={detail} onClose={() => setDetail(null)} />
       <header className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-2xl font-semibold">{t("observability.title")}</h1>
+        <h1 className="hub-h1 flex items-center gap-2"><Satellite size={20} strokeWidth={1.75} aria-hidden="true" />{t("observability.title")}</h1>
         <div className="flex items-center gap-2">
           {/* v0.8.1: time-range filter. v0.7.3 always queried
               all-time; this surfaces the same `since` filter

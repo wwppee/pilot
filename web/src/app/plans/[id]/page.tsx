@@ -16,6 +16,7 @@
  */
 import Link from "next/link";
 import { headers } from "next/headers";
+import { ListChecks } from "lucide-react";
 import { api } from "@/lib/pilot";
 import type { Plan, PlanEvent, StepAction } from "@/lib/types";
 import { T } from "@/components/I18n";
@@ -163,7 +164,8 @@ export default async function PlanDetailPage({
           {/* Header */}
           <header className="surface rounded-lg p-4">
             <div className="flex items-baseline justify-between flex-wrap gap-2">
-              <h1 className="text-xl font-bold">
+              <h1 className="text-xl font-bold flex items-center gap-2">
+                <ListChecks size={18} strokeWidth={1.75} aria-hidden="true" />
                 <T k="plans.detail.h1" params={{ id: plan.id }} />
               </h1>
               <PlanStatusPill kind="plan" value={plan.status} t={t} />
