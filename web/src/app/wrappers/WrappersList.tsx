@@ -1,13 +1,26 @@
 "use client";
 
 /**
- * v0.9.0: Wrappers list — read-only view of every
- * wrapper, with apply / unapply / delete actions.
- * Mirrors PolicyList's structure (same CRUD
- * surface, different resource) so the two
- * dashboards feel symmetric.
+ * v2.0.9: Wrappers list — read-only view of every wrapper
+ * with apply / unapply / delete actions.
+ *
+ * Pre-v2.0.9 this used the v0.9.0 `.card-grid` /
+ * `.card-hover` / `.btn small secondary` legacy classes.
+ * v2.0.9 re-skins the list to the same `.hub-row` /
+ * `.hub-btn` / `.hub-pill` family as the rest of the
+ * 7-module surface so a user moving from Hub → Wrappers
+ * sees one visual language.
+ *
+ * Behaviour is unchanged: Apply / Unapply / Delete / Edit,
+ * optimistic UI for Apply (set isApplied locally), full
+ * reload on Delete (the row genuinely leaves the list).
+ *
+ * The "applied" pill uses `--state-success`; the "not
+ * applied" pill uses `--state-warning`. Both are from the
+ * strict 1-primary + 4-state palette.
  */
 import { useState } from "react";
+import { Edit, Power, PowerOff, Trash2 } from "lucide-react";
 import { api } from "@/lib/pilot-browser";
 import type { ToolWrapper } from "@/lib/types";
 import { useT } from "@/components/I18n";
@@ -16,21 +29,15 @@ export function WrappersList({ wrappers }: { wrappers: ToolWrapper[] }) {
   const t = useT();
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  // Track which wrapper has a generated extension
-  // on disk. We optimistically mark it as "applied"
-  // after a successful applyWrapper call, and clear
-  // it on unapply.
+  // Track which wrapper has a generated extension on
+  // disk. Optimistic — set after apply, cleared on unapply.
   const [applied, setApplied] = useState<Set<string>>(new Set());
 
   if (wrappers.length === 0) {
     return (
-      <section className="surface rounded-lg p-4 card empty">
-        <p className="font-semibold">
-          {t("wrappers.empty.title")}
-        </p>
-        <p className="text-sm text-[var(--text-muted)] mt-1">
-          {t("wrappers.empty.body")}
-        </p>
+      <section className="wrappers-empty">
+        <p className="font-semibold">{t("wrappers.empty.title")}</p>
+        <p className="wrappers-empty-body">{t("wrappers.empty.body")}</p>
       </section>
     );
   }
@@ -85,9 +92,6 @@ export function WrappersList({ wrappers }: { wrappers: ToolWrapper[] }) {
     setMessage(null);
     try {
       await api.deleteWrapper(name);
-      // Reload by triggering a full-page refresh —
-      // simplest path for a delete op that removes
-      // the row from the list.
       window.location.reload();
     } catch (e) {
       setMessage(
@@ -99,101 +103,114 @@ export function WrappersList({ wrappers }: { wrappers: ToolWrapper[] }) {
     }
   }
 
+  const isFailed = (m: string) =>
+    m.includes(t("wrappers.applyFailed")) ||
+    m.includes(t("wrappers.deleteFailed")) ||
+    m.includes(t("wrappers.unapplyFailed"));
+
   return (
-    <section>
-      <h2 className="section-h2">
+    <section className="wrappers-list-section">
+      <h2 className="wrappers-list-h2">
         {t("wrappers.h1")} ({wrappers.length})
       </h2>
       {message ? (
         <p
-          className={`text-xs mb-2 ${
-            message.includes(t("wrappers.applyFailed")) ||
-            message.includes(t("wrappers.deleteFailed")) ||
-            message.includes(t("wrappers.unapplyFailed"))
-              ? "text-[var(--error)]"
-              : "text-[var(--accent-2)]"
+          className={`wrappers-message ${
+            isFailed(message) ? "wrappers-message--error" : "wrappers-message--ok"
           }`}
         >
           {message}
         </p>
       ) : null}
-      <div className="card-grid">
+      <ul className="hub-list">
         {wrappers.map((w) => {
           const isApplied = applied.has(w.name);
           const isBusy = busy === w.name;
           return (
-            <article
-              key={w.name}
-              className="surface rounded-lg p-4 space-y-2 card-hover"
-              data-testid={`wrapper-card-${w.name}`}
-            >
-              <header className="flex items-baseline justify-between">
-                <h3 className="font-semibold font-mono">{w.name}</h3>
-                {isApplied ? (
-                  <span className="pill ok">
-                    {t("wrappers.card.applied")}
-                  </span>
-                ) : (
-                  <span className="pill warn">
-                    {t("wrappers.card.notApplied")}
-                  </span>
-                )}
-              </header>
-              {w.description ? (
-                <p className="hint">{w.description}</p>
-              ) : null}
-              <p className="text-xs">
-                <span className="text-[var(--text-muted)]">
-                  {t("wrappers.card.kind")}
-                </span>{" "}
-                <code className="font-mono">{w.rule.kind}</code>
-              </p>
-              <p className="text-xs">
-                <span className="text-[var(--text-muted)]">
-                  {t("wrappers.card.tools")}
-                </span>{" "}
-                <code className="font-mono">{w.tools.join(", ")}</code>
-              </p>
-              <footer className="text-xs text-[var(--text-muted)] font-mono flex items-center gap-2 flex-wrap">
-                <a
-                  href={`/wrappers/${encodeURIComponent(w.name)}/edit`}
-                  className="btn small secondary"
-                  data-testid={`wrapper-edit-${w.name}`}
-                >
-                  {t("btn.edit")}
-                </a>
-                <button
-                  type="button"
-                  className="btn small secondary"
-                  onClick={() => void onApply(w.name)}
-                  disabled={isBusy}
-                  data-testid={`wrapper-apply-${w.name}`}
-                >
-                  {t("wrappers.apply")}
-                </button>
-                <button
-                  type="button"
-                  className="btn small secondary"
-                  onClick={() => void onUnapply(w.name)}
-                  disabled={isBusy}
-                  data-testid={`wrapper-unapply-${w.name}`}
-                >
-                  {t("wrappers.unapply")}
-                </button>
-                <button
-                  type="button"
-                  className="btn small secondary"
-                  onClick={() => void onDelete(w.name)}
-                  disabled={isBusy}
-                  data-testid={`wrapper-delete-${w.name}`}
-                >
-                  {t("wrappers.delete")}
-                </button>
-              </footer>
-            </article>
+            <li key={w.name} className="hub-list-item">
+              <div
+                className={`hub-row ${
+                  isApplied ? "hub-row--installed" : ""
+                }`}
+                data-testid={`wrapper-card-${w.name}`}
+              >
+                <div className="hub-row-main">
+                  <div className="hub-row-name">
+                    {w.name}
+                    {isApplied ? (
+                      <span className="hub-pill hub-pill--success">
+                        {t("wrappers.card.applied")}
+                      </span>
+                    ) : (
+                      <span className="hub-pill hub-pill--warning">
+                        {t("wrappers.card.notApplied")}
+                      </span>
+                    )}
+                  </div>
+                  {w.description && (
+                    <div className="hub-row-desc">{w.description}</div>
+                  )}
+                  <div className="hub-row-meta">
+                    <span className="hub-row-meta-item">
+                      {t("wrappers.card.kind")}:{" "}
+                      <code className="hub-row-meta-mono">{w.rule.kind}</code>
+                    </span>
+                    <span className="hub-row-meta-item">
+                      {t("wrappers.card.tools")}:{" "}
+                      <code className="hub-row-meta-mono">
+                        {w.tools.join(", ")}
+                      </code>
+                    </span>
+                  </div>
+                </div>
+                <div className="hub-row-actions">
+                  <a
+                    href={`/wrappers/${encodeURIComponent(w.name)}/edit`}
+                    className="hub-btn hub-btn--ghost"
+                    data-testid={`wrapper-edit-${w.name}`}
+                  >
+                    <Edit size={14} strokeWidth={1.75} />
+                    {t("btn.edit")}
+                  </a>
+                  {!isApplied ? (
+                    <button
+                      type="button"
+                      className="hub-btn hub-btn--primary"
+                      onClick={() => void onApply(w.name)}
+                      disabled={isBusy}
+                      data-testid={`wrapper-apply-${w.name}`}
+                    >
+                      <Power size={14} strokeWidth={1.75} />
+                      {t("wrappers.apply")}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="hub-btn hub-btn--ghost"
+                      onClick={() => void onUnapply(w.name)}
+                      disabled={isBusy}
+                      data-testid={`wrapper-unapply-${w.name}`}
+                    >
+                      <PowerOff size={14} strokeWidth={1.75} />
+                      {t("wrappers.unapply")}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="hub-btn hub-btn--danger"
+                    onClick={() => void onDelete(w.name)}
+                    disabled={isBusy}
+                    data-testid={`wrapper-delete-${w.name}`}
+                  >
+                    <Trash2 size={14} strokeWidth={1.75} />
+                    {t("wrappers.delete")}
+                  </button>
+                </div>
+              </div>
+            </li>
           );
         })}
-      </div>
+      </ul>
     </section>
   );
 }
