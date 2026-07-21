@@ -2,17 +2,29 @@
 
 /* Pilot design tokens — kept here so we don't pull in a separate theme file. */
 :root {
-  --bg: #0b0d10;
-  --surface: #14171c;
-  --surface-2: #1c2128;
-  --text: #e6e7e9;
-  --text-muted: #8a9099;
-  --accent: #79c0ff;
-  --accent-2: #56d364;
-  --warn: #f0b400;
-  --error: #ff6b6b;
-  --hitl: #9c5fbb; /* HITL / requireApproval purple */
-  --border: #2a3038;
+  /* v2.0.1: re-tinted to the `pilot-webui-redesign` Dark
+   * Sci-Fi Tech palette. The legacy values were a GitHub-
+   * blue / near-black scheme; the new values are cyan
+   * (#00d4ff) + 4 state colors on a slightly cooler near-
+   * black. Every existing class that uses `var(--accent)`
+   * / `var(--bg)` / etc. automatically picks up the new
+   * palette — no per-component migration needed.
+   *
+   * The new tokens (--color-*, --state-*) added in v1.0.2
+   * remain canonical for new code; this change is purely
+   * about re-tinting the legacy aliases so the entire app
+   * reads as one palette. */
+  --bg: #0a0c10;
+  --surface: #12151c;
+  --surface-2: #1a1e28;
+  --text: #e8eaf0;
+  --text-muted: #6b7280;
+  --accent: #00d4ff;
+  --accent-2: #00ff88;
+  --warn: #ffaa00;
+  --error: #ff4466;
+  --hitl: #a855f7; /* HITL / requireApproval — now matches --state-info */
+  --border: #1e2330;
 
   /* ─── Session tree node types (v0.5.8+) ───────────────── */
   /* Each `SessionTreeNode.type` resolves to one of these. Filter chips
