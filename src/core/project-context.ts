@@ -45,13 +45,18 @@ export interface ProjectContextRef {
 
 // ─── Discovery ──────────────────────────────────────────────
 
-/** Filenames pi searches for, in priority order. */
-const PI_CONTEXT_FILENAMES = [
-  "AGENTS.md",
-  "AGENTS.MD",
-  "CLAUDE.md",
-  "CLAUDE.MD",
-];
+/**
+ * v1.1.1.1 (= v2.0.5): the canonical "v0.5.8" filename
+ * priority list is now the **fallback** when the user has no
+ * `~/.pilot/context-rules.json`. The live `filenames` list
+ * is read at the top of `discoverProjectContext` from
+ * `readContextRules()` — see below. `DEFAULT_CONTEXT_RULES`
+ * is the import that the runner falls back to when the
+ * helper bails (we never directly use the const anymore,
+ * it's the static-shape sentinel for tests / tooltips).
+ */
+import { DEFAULT_CONTEXT_RULES } from "./context-rules.js";
+void DEFAULT_CONTEXT_RULES;
 
 /**
  * Discover project context files visible from `cwd`.
@@ -72,9 +77,21 @@ export async function discoverProjectContext(
   const refs: ProjectContextRef[] = [];
   const seen = new Set<string>();
 
+  // v1.1.1.1 (= v2.0.5): load the user's rules before the
+  // walk. The hardcoded v0.5.8 constants are now fallbacks —
+  // the user's overrides in ~/.pilot/context-rules.json take
+  // precedence. Reading once at the top of the function
+  // (rather than per-iteration) means a `getcwd` swap or
+  // a hot-reload of the file shows up next call but not
+  // mid-walk, which is the right granularity.
+  const { readContextRules } = await import("./context-rules.js");
+  const rules = await readContextRules(home);
+  // `infoFiles` is sourced from the rules; the other two
+  // (filenames, searchPaths) are read in the helper below.
+
   // 1. Agent dir (global) — only the first matching filename
   const agentDir = piAgentDir(home);
-  const agentRef = await loadFirstContextFromDir(agentDir);
+  const agentRef = await loadFirstContextFromDir(agentDir, rules.filenames);
   if (agentRef) {
     refs.push({ ...agentRef, location: `~`, loaded: true });
     seen.add(agentRef.path);
@@ -88,7 +105,7 @@ export async function discoverProjectContext(
     if (currentDir !== resolve(cwd)) {
       // Skip the cwd itself here — handled below
     }
-    const ref = await loadFirstContextFromDir(currentDir);
+    const ref = await loadFirstContextFromDir(currentDir, rules.filenames);
     if (ref && !seen.has(ref.path)) {
       ancestor.unshift({
         ...ref,
@@ -104,12 +121,17 @@ export async function discoverProjectContext(
   }
   refs.push(...ancestor);
 
-  // 3. Informational-only files (just in cwd, not loaded by pi)
-  const info: Array<{ name: string; label: string }> = [
-    { name: "README.md", label: "README" },
-    { name: ".cursor/rules", label: ".cursor/rules" },
-    { name: "CONTRIBUTING.md", label: "CONTRIBUTING" },
-  ];
+  // 3. Informational-only files (just in cwd, not loaded by pi).
+  // v1.1.1.1 (= v2.0.5): read the user-editable list from
+  // ~/.pilot/context-rules.json. The hardcoded `info` array
+  // below is now the **fallback** when the rules file is
+  // missing. The same `rules` value is sourced from
+  // context-rules.ts (imported above) so filenames / search
+  // paths / info files all come from one place.
+  const { infoFiles } = rules;
+  const info: Array<{ name: string; label: string }> = infoFiles.map(
+    (name) => ({ name, label: name }),
+  );
   for (const f of info) {
     const path = join(cwd, f.name);
     if (seen.has(path)) continue;
@@ -160,8 +182,9 @@ function previewText(s: string): string {
  */
 async function loadFirstContextFromDir(
   dir: string,
+  filenames: readonly string[],
 ): Promise<Omit<ProjectContextRef, "loaded" | "location"> | null> {
-  for (const name of PI_CONTEXT_FILENAMES) {
+  for (const name of filenames) {
     const path = join(dir, name);
     const ref = await tryRef(path, name, dir);
     if (ref) return ref;
@@ -169,8 +192,15 @@ async function loadFirstContextFromDir(
   return null;
 }
 
-/** Re-export for test convenience. */
-export const __test__ = { PI_CONTEXT_FILENAMES };
+/** Re-export for test convenience. The const itself is no
+ *  longer read inside `loadFirstContextFromDir`; the value
+ *  is sourced from `~/.pilot/context-rules.json` per call.
+ *  Kept for any out-of-tree tests that import it. */
+export const __test__ = {
+  get PI_CONTEXT_FILENAMES() {
+    return DEFAULT_CONTEXT_RULES.filenames;
+  },
+};
 
 // ─── Read / write (v1.0.3) ──────────────────────────────────
 
