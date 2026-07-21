@@ -105,11 +105,24 @@ const BUILT_INS: BuiltInDef[] = [
  * from `~/.pi/agent/npm/package.json`. Project-local extensions under
  * `~/.pi/agent/extensions/*.ts` (and `.pi/extensions/`) are scanned
  * with `extension-scanner.ts` to extract real `pi.registerTool()` calls.
+ *
+ * v1.0.4: layered on top of `tools-state.ts` — each tool's
+ * `enabled` field is `inventory.enabled AND (state[name] ?? true)`.
+ * Built-ins are inventory-enabled by definition; npm extensions
+ * are inventory-enabled when their package is installed. The
+ * state file lets the user toggle individual tools off without
+ * uninstalling the package.
  */
 export async function listToolInventory(
   home?: string,
 ): Promise<ToolInventoryItem[]> {
   const out: ToolInventoryItem[] = [];
+
+  // v1.0.4: read the per-tool enable/disable override once
+  // at the top so we can apply it to every entry. Missing
+  // file → no overrides, all tools keep their inventory default.
+  const { readToolsState } = await import("./tools-state.js");
+  const state = await readToolsState(home);
 
   // 1. Built-ins — always available, always enabled
   for (const b of BUILT_INS) {
@@ -118,7 +131,9 @@ export async function listToolInventory(
       source: "built-in",
       safety: b.safety,
       description: b.description,
-      enabled: true,
+      // v1.0.4: built-ins are inventory-enabled; respect the
+      // state override if the user explicitly disabled one.
+      enabled: state[b.name] !== false,
       installed: true,
     });
   }
@@ -132,7 +147,10 @@ export async function listToolInventory(
       safety: "exec", // conservative default; refine when AST scan finds real tools
       description: pkg.description ?? `npm package ${pkg.name}@${pkg.version}`,
       packageName: pkg.name,
-      enabled: pkg.enabled,
+      // v1.0.4: AND the inventory's package-enabled flag with
+      // the per-tool state override. Default-true if the
+      // override entry is missing.
+      enabled: pkg.enabled && state[pkg.name] !== false,
       installed: true,
     });
   }
@@ -156,7 +174,9 @@ export async function listToolInventory(
         source: "extension",
         safety: m.safety,
         description: `Registered by extension: ${m.source}`,
-        enabled: true,
+        // v1.0.4: project-local extensions also respect the
+        // user override.
+        enabled: state[m.name] !== false,
         installed: true,
         ...(m.extensionFile ? { extensionFile: m.extensionFile } : {}),
       });

@@ -136,6 +136,23 @@ export type Dict = {
   "context.edit.revert": string;
   // v1.0.3: per-row action link in the /context list.
   "context.row.edit": string;
+  // v1.0.4: Hub Tools section copy. The toggle in
+  // <HubToolRow> writes ~/.pilot/tools-state.json via
+  // POST /tools/:name/toggle.
+  "hub.section.tools": string;
+  "hub.toolsCount": string;
+  "hub.tools.empty.title": string;
+  "hub.tools.empty.hint": string;
+  "hub.tool.safety.read": string;
+  "hub.tool.safety.write": string;
+  "hub.tool.safety.exec": string;
+  "hub.tool.safety.network": string;
+  "hub.tool.safety.secret": string;
+  "hub.tool.source.built-in": string;
+  "hub.tool.source.npm": string;
+  "hub.tool.source.extension": string;
+  "hub.tool.enabled": string;
+  "hub.tool.disabled": string;
   // v0.5.18: /help page.
   "help.h1": string;
   "help.subtitle": string;

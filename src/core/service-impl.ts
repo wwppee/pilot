@@ -60,6 +60,7 @@ import {
 } from "./avatar.js";
 import { aggregateStats } from "./stats.js";
 import { listToolInventory } from "./tool-inventory.js";
+import { setToolEnabled } from "./tools-state.js";
 import {
   appendPlanEvent,
   listPlanEvents,
@@ -199,6 +200,12 @@ export function createService(opts: CreateServiceOptions = {}): PilotService {
     getUsage: (range) => aggregateUsage(range, home),
 
     listTools: () => listToolInventory(home),
+
+    // v1.0.4: per-tool enable/disable. Pass-through to
+    // tools-state.setToolEnabled. The state file is the
+    // single source of truth for overrides; listToolInventory
+    // re-reads it on every call so the UI sees fresh state.
+    setToolEnabled: (name, enabled) => setToolEnabled(name, enabled, home),
     discoverProjectContext: (cwd) => discoverProjectContext(cwd, home),
 
     // v1.0.3: read + write context files. Whitelist-enforced

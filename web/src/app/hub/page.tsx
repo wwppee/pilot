@@ -24,10 +24,11 @@ import { api } from "@/lib/pilot";
 import { T } from "@/components/I18n";
 import { EmptyState } from "@/components/EmptyState";
 import { negotiateLocale, renderT } from "@/lib/i18n";
-import type { Capability, Pack } from "@/lib/types";
+import type { Capability, Pack, ToolInventoryItem } from "@/lib/types";
 import { HubSearchBar } from "@/components/HubSearchBar";
 import { HubPackRow } from "@/components/HubPackRow";
 import { HubCapabilityRow } from "@/components/HubCapabilityRow";
+import { HubToolRow } from "@/components/HubToolRow";
 
 export const dynamic = "force-dynamic";
 
@@ -52,20 +53,25 @@ export default async function HubPage({
     s: "",
   });
 
-  // Load three lists in parallel. Each is best-effort: if the
+  // Load four lists in parallel. Each is best-effort: if the
   // server is down / a particular endpoint 404s, that section
   // renders an empty state but the rest of the page still works.
-  const [packsResult, capsResult, searchResult] = await Promise.allSettled([
-    api.packs(),
-    api.listCapabilities(),
-    q ? api.packSearch(q) : Promise.resolve([] as Pack[]),
-  ]);
+  // v1.0.4: added listTools() for the Tools section.
+  const [packsResult, capsResult, searchResult, toolsResult] =
+    await Promise.allSettled([
+      api.packs(),
+      api.listCapabilities(),
+      q ? api.packSearch(q) : Promise.resolve([] as Pack[]),
+      api.listTools(),
+    ]);
 
   const packs: Pack[] = packsResult.status === "fulfilled" ? packsResult.value : [];
   const caps: Capability[] =
     capsResult.status === "fulfilled" ? capsResult.value : [];
   const searchHits: Pack[] =
     searchResult.status === "fulfilled" ? searchResult.value : [];
+  const tools: ToolInventoryItem[] =
+    toolsResult.status === "fulfilled" ? toolsResult.value : [];
 
   const subtitle = q
     ? renderT(locale, "hub.subtitle.search", { q, n: searchHits.length })
@@ -161,6 +167,33 @@ export default async function HubPage({
             {caps.map((c) => (
               <li key={c.id} className="hub-list-item">
                 <HubCapabilityRow cap={c} locale={locale} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* v1.0.4: Tools section. Each tool is a single row
+          with a toggle (built-ins can be disabled but not
+          uninstalled; npm tools toggle both display and
+          pi-runtime registration via the state override). */}
+      <section className="hub-section" aria-label="Tools">
+        <h2 className="hub-section-h2">
+          <T k="hub.section.tools" />
+          <span className="hub-section-count">
+            {renderT(locale, "hub.toolsCount", { n: tools.length })}
+          </span>
+        </h2>
+        {tools.length === 0 ? (
+          <EmptyState
+            title={renderT(locale, "hub.tools.empty.title")}
+            hint={renderT(locale, "hub.tools.empty.hint")}
+          />
+        ) : (
+          <ul className="hub-list">
+            {tools.map((t) => (
+              <li key={t.name} className="hub-list-item">
+                <HubToolRow tool={t} locale={locale} />
               </li>
             ))}
           </ul>

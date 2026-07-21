@@ -1053,3 +1053,81 @@ a:focus-visible[data-active="true"] {
   padding-top: 1rem;
   border-top: 1px solid var(--color-border);
 }
+
+/* ─── v1.0.4: Hub Tool row + toggle (Dark Sci-Fi Tech) ─────────────
+ *
+ * The toggle is a CSS-only checkbox + track. We don't pull in
+ * a switch component library for one widget — the visual
+ * surface stays self-contained.
+ */
+
+.hub-row--enabled {
+  border-left: 2px solid var(--color-primary);
+}
+.hub-row--disabled {
+  border-left: 2px solid var(--color-border);
+  opacity: 0.7;
+}
+.hub-row--disabled:hover {
+  opacity: 0.9;
+}
+
+.hub-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.hub-toggle input {
+  /* The visible checkbox is hidden; the .hub-toggle-track
+     is the actual visible surface. We keep the input so the
+     browser handles keyboard / a11y correctly. */
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.hub-toggle-track {
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  background: var(--color-surface-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  position: relative;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.hub-toggle-thumb {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 16px;
+  height: 16px;
+  background: var(--color-muted);
+  border-radius: 50%;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.hub-toggle input:checked + .hub-toggle-track {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+.hub-toggle input:checked + .hub-toggle-track .hub-toggle-thumb {
+  transform: translateX(16px);
+  background: var(--color-background);
+}
+.hub-toggle input:focus-visible + .hub-toggle-track {
+  box-shadow: var(--glow-primary);
+}
+.hub-toggle input:disabled + .hub-toggle-track {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.hub-toggle-label {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  min-width: 1.5rem;
+  text-align: right;
+}

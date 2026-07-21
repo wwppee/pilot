@@ -56,6 +56,27 @@ export function registerStatsRoutes(
 
   app.get("/tools", async () => service.listTools());
 
+  // v1.0.4: per-tool enable/disable. POST /tools/:name/toggle
+  // with body `{ enabled: boolean }` writes the override to
+  // ~/.pilot/tools-state.json. 404 if the name isn't a known
+  // tool (rejects typo'd names that would otherwise silently
+  // get persisted to the state file).
+  app.post<{
+    Params: { name: string };
+    Body: { enabled?: unknown };
+  }>("/tools/:name/toggle", async (req, reply) => {
+    const name = req.params.name;
+    const enabled = req.body?.enabled;
+    if (typeof enabled !== "boolean") {
+      return reply.code(400).send({ error: "enabled (boolean) is required" });
+    }
+    const tools = await service.listTools();
+    if (!tools.some((t) => t.name === name)) {
+      return reply.code(404).send({ error: "unknown tool" });
+    }
+    return service.setToolEnabled(name, enabled);
+  });
+
   // ─── Project context (v0.4.2) ────────────────────────
 
   app.get<{ Querystring: { cwd?: string } }>("/context", async (req) => {

@@ -205,6 +205,20 @@ export const api = {
       body: JSON.stringify({ name }),
     }),
 
+  // v1.0.4: list + toggle tools. The server merges inventory
+  // (built-ins + npm extensions) with ~/.pilot/tools-state.json
+  // overrides before returning. Toggle writes the override.
+  listTools: () => pilot<ToolInventoryItem[]>("/tools"),
+  toggleTool: (name: string, enabled: boolean) =>
+    pilot<{ name: string; enabled: boolean }>(
+      `/tools/${encodeName(name)}/toggle`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      },
+    ),
+
   sessions: () => pilot<SessionInfo[]>("/sessions"),
   sessionTree: (id: string) =>
     pilot<SessionTree>(`/sessions/${encodeName(id)}/tree`),

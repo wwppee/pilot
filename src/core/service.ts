@@ -310,6 +310,16 @@ export interface PilotService {
   /** All tools available to pi (built-in + npm-installed extensions). */
   listTools(): Promise<ToolInventoryItem[]>;
 
+  // v1.0.4: enable / disable a single tool. Writes to
+  // ~/.pilot/tools-state.json (NOT pi's settings.json — see
+  // tools-state.ts for why). The toggle round-trips through
+  // setToolEnabled so a `true` removes the override entry
+  // rather than persisting a redundant `true`.
+  setToolEnabled(
+    name: string,
+    enabled: boolean,
+  ): Promise<{ name: string; enabled: boolean }>;
+
   /** Project context files visible from `cwd` (mirrors pi's discovery). */
   discoverProjectContext(cwd: string): Promise<ProjectContextRef[]>;
 
