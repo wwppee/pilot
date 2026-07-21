@@ -1,25 +1,25 @@
 "use client";
 
 /**
- * v0.9.0: NewWrapperCard — minimal form to create
- * a tool wrapper. The MVP scope is a 3-field form
- * (name + kind + tools + 1 rule-specific input);
- * the full edit form (with all rule fields per
- * kind, plus description, plus delete) is a
- * v0.9.x followup.
+ * v2.0.9 (= v1.1.10): NewWrapperCard — minimal form to
+ * create a tool wrapper.
  *
- * Why MVP-only? The contract is what v0.9.0 needs
- * to ship (the data model + REST + apply flow).
- * The full form is a UI surface; the user can
- * always edit the TOML directly under
- * `~/.pilot/wrappers/<name>.toml` to refine the
- * rule. The dashboard edit form lands when the
- * pi-side runtime hook is in (so the form's
- * preview button can show a real "this would
- * transform a tool call" result).
+ * Re-skin from v0.9.0 visual (.section-h2 / .subtitle /
+ * .form-row / .btn / .policy-edit-input) to the v1.0.2
+ * reference family (.hub-* / .hub-btn / .context-editor-
+ * textarea). Form logic is unchanged: same 3 fields
+ * (name + kind + tools), same onCreate() body that PUTs
+ * to /wrappers/:name with a kind-specific default rule.
+ *
+ * v0.9.0 originally scoped this as "MVP-only" so the
+ * dashboard surface landed fast and users could refine
+ * the rule via TOML. v1.1.10 keeps the same MVP scope
+ * (full edit form is the existing /wrappers/[name]/edit
+ * route).
  */
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Plus, AlertCircle } from "lucide-react";
 import { useT } from "@/components/I18n";
 
 export function NewWrapperCard() {
@@ -44,10 +44,6 @@ export function NewWrapperCard() {
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean);
-      // v0.9.0: only the rule's *kind-specific required
-      // fields* ship in the form. Defaults fill in the
-      // rest; the user can refine via the TOML or the
-      // v0.9.x edit form.
       const rule =
         kind === "retry"
           ? { kind: "retry", maxRetries: 3, initialBackoffMs: 1000 }
@@ -74,30 +70,35 @@ export function NewWrapperCard() {
       setName("");
       setTools("bash");
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : String(e),
-      );
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <section className="surface rounded-lg p-4">
-      <h2 className="section-h2">
+    <section className="hub-detail-card">
+      <h2 className="hub-detail-section-h2">
+        <Plus size={14} strokeWidth={1.75} />
         {t("wrappers.newCard.title")}
       </h2>
-      <p className="subtitle">
+      <p className="text-sm text-[var(--color-muted)] mb-3">
         {t("wrappers.newCard.subtitle")}
       </p>
-      {error ? (
-        <p className="text-xs text-[var(--error)] mb-2">{error}</p>
-      ) : null}
-      <form onSubmit={(e) => void onCreate(e)} className="form">
-        <div className="form-row">
-          <label htmlFor="new-wrapper-name">
-            {t("wrappers.newCard.nameLabel")}
-          </label>
+      {error && (
+        <div className="wrappers-message wrappers-message--error">
+          <AlertCircle size={14} strokeWidth={1.75} />
+          <span>{error}</span>
+        </div>
+      )}
+      <form
+        onSubmit={(e) => void onCreate(e)}
+        className="space-y-3"
+      >
+        <Field
+          label={t("wrappers.newCard.nameLabel")}
+          id="new-wrapper-name"
+        >
           <input
             id="new-wrapper-name"
             type="text"
@@ -106,20 +107,20 @@ export function NewWrapperCard() {
             pattern="[a-z0-9]+(-[a-z0-9]+)*"
             placeholder={t("wrappers.newCard.namePlaceholder")}
             required
-            className="policy-edit-input"
+            className="hub-search-input"
           />
-        </div>
-        <div className="form-row">
-          <label htmlFor="new-wrapper-kind">
-            {t("wrappers.newCard.kindLabel")}
-          </label>
+        </Field>
+        <Field
+          label={t("wrappers.newCard.kindLabel")}
+          id="new-wrapper-kind"
+        >
           <select
             id="new-wrapper-kind"
             value={kind}
             onChange={(e) =>
               setKind(e.target.value as "retry" | "log" | "transform")
             }
-            className="policy-edit-input"
+            className="hub-search-input"
           >
             <option value="retry">
               {t("wrappers.newCard.kindRetry")}
@@ -129,29 +130,52 @@ export function NewWrapperCard() {
               {t("wrappers.newCard.kindTransform")}
             </option>
           </select>
-        </div>
-        <div className="form-row">
-          <label htmlFor="new-wrapper-tools">
-            {t("wrappers.newCard.toolsLabel")}
-          </label>
+        </Field>
+        <Field
+          label={t("wrappers.newCard.toolsLabel")}
+          id="new-wrapper-tools"
+        >
           <input
             id="new-wrapper-tools"
             type="text"
             value={tools}
             onChange={(e) => setTools(e.target.value)}
             placeholder="bash, write"
-            className="policy-edit-input"
+            className="hub-search-input"
           />
-        </div>
+        </Field>
         <button
           type="submit"
-          className="btn"
+          className="hub-btn hub-btn--primary"
           disabled={busy}
           data-testid="wrapper-create"
         >
+          <Plus size={14} strokeWidth={1.75} />
           {busy ? t("btn.saving") : t("wrappers.newCard.submit")}
         </button>
       </form>
     </section>
+  );
+}
+
+function Field({
+  label,
+  id,
+  children,
+}: {
+  label: string;
+  id: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label
+        htmlFor={id}
+        className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1.5"
+      >
+        {label}
+      </label>
+      {children}
+    </div>
   );
 }
