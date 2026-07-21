@@ -1131,3 +1131,188 @@ a:focus-visible[data-active="true"] {
   min-width: 1.5rem;
   text-align: right;
 }
+
+/* ─── v1.1.0: Insight page (Dark Sci-Fi Tech) ─────────────────────
+ *
+ * The /insight page reuses the stat-card / list-row / table
+ * patterns from `pilot-webui-redesign/pages/dashboard.html`.
+ * Primary cyan for header chrome, success green for tool
+ * rows, warning amber for cost. State colors only — no
+ * secondary brand accent.
+ */
+
+.insight-page {
+  max-width: 1024px;
+}
+
+.insight-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.insight-stat-card {
+  padding: 1.25rem 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  position: relative;
+  overflow: hidden;
+}
+.insight-stat-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-lg);
+  pointer-events: none;
+  background: var(--color-primary-glow);
+  opacity: 0.5;
+}
+.insight-stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-foreground);
+  font-family: var(--font-mono);
+  letter-spacing: -0.02em;
+}
+.insight-stat-label {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.insight-section-h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  margin-bottom: 0.75rem;
+}
+
+.insight-two-col {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 0.75rem;
+}
+
+.insight-col-card {
+  padding: 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+.insight-col-title {
+  font-size: 0.75rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.insight-col-empty {
+  color: var(--color-dim);
+  font-size: 0.8125rem;
+  padding: 0.5rem 0;
+}
+
+.insight-bar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.insight-bar-row {
+  display: grid;
+  grid-template-columns: minmax(80px, 30%) 1fr 3rem;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 0.8125rem;
+}
+.insight-bar-name {
+  color: var(--color-foreground);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.insight-bar-wrap {
+  height: 6px;
+  background: var(--color-surface-tertiary);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.insight-bar {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+.insight-bar--primary {
+  background: var(--color-primary);
+}
+.insight-bar--success {
+  background: var(--state-success);
+}
+.insight-bar-count {
+  color: var(--color-muted);
+  font-family: var(--font-mono);
+  text-align: right;
+  font-size: 0.75rem;
+}
+
+.insight-table-wrap {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.insight-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+.insight-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.6875rem;
+  padding: 0.625rem 0.875rem;
+  background: var(--color-surface-secondary);
+  border-bottom: 1px solid var(--color-border);
+}
+.insight-table td {
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-foreground);
+}
+.insight-table tr:last-child td {
+  border-bottom: 0;
+}
+.insight-table tr:hover td {
+  background: var(--color-surface-secondary);
+}
+.insight-table-id {
+  font-family: var(--font-mono);
+  color: var(--color-primary);
+}
+.insight-table-mono {
+  font-family: var(--font-mono);
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.insight-table-num {
+  font-family: var(--font-mono);
+  text-align: right;
+  color: var(--color-muted);
+}

@@ -85,6 +85,26 @@ export type Dict = {
   "insight.comingSoon.title": string;
   "insight.comingSoon.body": string;
   "insight.comingSoon.routes": string;
+  // v1.1.0: real Insight page (replaces the v1.0.1
+  // placeholder). The page is a server component that
+  // pulls /stats + /usage + /sessions in parallel; the
+  // keys below cover the 4 stat cards, the by-model /
+  // by-tool bar lists, and the recent-sessions table.
+  "insight.stat.sessions": string;
+  "insight.stat.messages": string;
+  "insight.stat.tokens": string;
+  "insight.stat.cost": string;
+  "insight.section.byModel": string;
+  "insight.section.byTool": string;
+  "insight.section.recent": string;
+  "insight.empty.models": string;
+  "insight.empty.tools": string;
+  "insight.empty.sessions": string;
+  "insight.col.id": string;
+  "insight.col.cwd": string;
+  "insight.col.lastUsed": string;
+  "insight.col.entries": string;
+  "insight.footer.legacy": string;
   "settings.comingSoon.title": string;
   "settings.comingSoon.body": string;
   "settings.comingSoon.routes": string;
